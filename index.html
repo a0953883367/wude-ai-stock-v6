@@ -416,6 +416,13 @@ input{
     🇺🇸 美股 TOP10
     </button>
 
+<button
+class="etf"
+onclick="showMarket('ETF')">
+📊 ETF TOP10
+</button>
+
+
 </div>
 
 
@@ -1164,40 +1171,55 @@ function render(stocks){
 
 
 function showMarket(market){
+    // === V6.15 MARKET DATA ===
+    const marketData =
+        market === "TW"
+            ? (DATA.tw_top10 || [])
+            : market === "US"
+                ? (DATA.us_top10 || [])
+                : (DATA.etf_top10 || []);
+
 
     if(!DATA){
         return;
     }
 
 
-    if(market === "TW"){
+    
+if (market === "TW") {
 
-        document
+    document
         .getElementById("title")
-        .innerText =
-        "🇹🇼 台股 最值得買 TOP10";
+        .innerText = "🇹🇼 台股 最值得買 TOP10";
 
+    render(
+        DATA.tw_top10 || []
+    );
 
-        render(
-            DATA.tw_top10 || []
-        );
+}
+else if (market === "US") {
 
-    }
-
-
-    else{
-
-        document
+    document
         .getElementById("title")
-        .innerText =
-        "🇺🇸 美股 最值得買 TOP10";
+        .innerText = "🇺🇸 美股 最值得買 TOP10";
 
+    render(
+        DATA.us_top10 || []
+    );
 
-        render(
-            DATA.us_top10 || []
-        );
+}
+else if (market === "ETF") {
 
-    }
+    document
+        .getElementById("title")
+        .innerText = "📊 ETF 最值得買 TOP10";
+
+    render(
+        DATA.etf_top10 || []
+    );
+
+}
+
 
 }
 
@@ -1337,10 +1359,13 @@ const allStocks =
                 : []
           );
 
+
 const twStocks =
     allStocks
     .filter(x =>
         String(x["市場"] || "").includes("台")
+        &&
+        String(x["類型"] || "").trim().toUpperCase() !== "ETF"
     )
     .sort((a, b) =>
         Number(b["AI總分"] || 0) -
@@ -1351,11 +1376,24 @@ const usStocks =
     allStocks
     .filter(x =>
         String(x["市場"] || "").includes("美")
+        &&
+        String(x["類型"] || "").trim().toUpperCase() !== "ETF"
     )
     .sort((a, b) =>
         Number(b["AI總分"] || 0) -
         Number(a["AI總分"] || 0)
     );
+
+const etfStocks =
+    allStocks
+    .filter(x =>
+        String(x["類型"] || "").trim().toUpperCase() === "ETF"
+    )
+    .sort((a, b) =>
+        Number(b["AI總分"] || 0) -
+        Number(a["AI總分"] || 0)
+    );
+
 
 DATA = {
     version: rawData.version || "V6.14",
@@ -1364,9 +1402,11 @@ DATA = {
 
     tw_all: twStocks,
     us_all: usStocks,
+    etf_all: etfStocks,
 
     tw_top10: twStocks.slice(0, 10),
-    us_top10: usStocks.slice(0, 10)
+    us_top10: usStocks.slice(0, 10),
+    etf_top10: etfStocks.slice(0, 10)
 };
 
 // V614_FINAL_CLEAN
