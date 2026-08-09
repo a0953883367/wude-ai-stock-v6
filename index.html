@@ -1,0 +1,1392 @@
+
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
+
+<meta name="apple-mobile-web-app-capable"
+content="yes">
+
+<meta name="apple-mobile-web-app-status-bar-style"
+content="black-translucent">
+
+<title>武得 AI 股票助理 V6</title>
+
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+
+    margin:0;
+
+    padding:18px;
+
+    background:#07111f;
+
+    color:white;
+
+    font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+
+.header{
+
+    padding:20px;
+
+    background:#111c2e;
+
+    border-radius:22px;
+
+    margin-bottom:18px;
+}
+
+
+.title{
+
+    font-size:28px;
+
+    font-weight:800;
+}
+
+
+.sub{
+
+    color:#9ca3af;
+
+    margin-top:8px;
+}
+
+
+.buttons{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:10px;
+
+    margin-bottom:18px;
+}
+
+
+button{
+
+    border:0;
+
+    border-radius:15px;
+
+    padding:15px 8px;
+
+    font-size:17px;
+
+    font-weight:700;
+}
+
+
+.tw{
+
+    background:#2563eb;
+
+    color:white;
+}
+
+
+.us{
+
+    background:#374151;
+
+    color:white;
+}
+
+
+.searchbox{
+
+    display:flex;
+
+    gap:8px;
+
+    margin-bottom:18px;
+}
+
+
+input{
+
+    flex:1;
+
+    min-width:0;
+
+    padding:15px;
+
+    border-radius:14px;
+
+    border:1px solid #374151;
+
+    background:#111827;
+
+    color:white;
+
+    font-size:17px;
+}
+
+
+.search{
+
+    background:#22c55e;
+
+    color:white;
+
+    padding-left:18px;
+
+    padding-right:18px;
+}
+
+
+.section{
+
+    font-size:22px;
+
+    font-weight:800;
+
+    margin:20px 3px 12px 3px;
+}
+
+
+.status{
+
+    color:#94a3b8;
+
+    font-size:13px;
+
+    margin-bottom:12px;
+}
+
+
+.card{
+
+    background:#111827;
+
+    border:1px solid #263244;
+
+    border-radius:19px;
+
+    padding:17px;
+
+    margin-bottom:13px;
+}
+
+
+.rank{
+
+    color:#facc15;
+
+    font-size:14px;
+
+    font-weight:700;
+}
+
+
+.stock{
+
+    font-size:22px;
+
+    font-weight:800;
+
+    margin-top:5px;
+}
+
+
+.ticker{
+
+    color:#9ca3af;
+
+    font-size:15px;
+
+    margin-top:3px;
+}
+
+
+.score{
+
+    color:#4ade80;
+
+    font-size:19px;
+
+    font-weight:800;
+
+    margin-top:8px;
+}
+
+
+.grid{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:10px;
+
+    margin-top:14px;
+}
+
+
+.item{
+
+    background:#172033;
+
+    padding:11px;
+
+    border-radius:12px;
+}
+
+
+.label{
+
+    color:#94a3b8;
+
+    font-size:12px;
+}
+
+
+.value{
+
+    font-size:16px;
+
+    font-weight:700;
+
+    margin-top:4px;
+}
+
+
+.good{
+
+    color:#4ade80;
+}
+
+
+.warn{
+
+    color:#facc15;
+}
+
+
+.hot{
+
+    color:#fb7185;
+}
+
+
+.blue{
+
+    color:#60a5fa;
+}
+
+
+.buybox{
+
+    margin-top:14px;
+
+    background:#10261e;
+
+    border:1px solid #24553d;
+
+    padding:13px;
+
+    border-radius:14px;
+
+    line-height:1.8;
+}
+
+
+.newsbox{
+
+    margin-top:12px;
+
+    background:#172033;
+
+    padding:12px;
+
+    border-radius:12px;
+
+    line-height:1.7;
+}
+
+
+.advice{
+
+    margin-top:13px;
+
+    font-size:18px;
+
+    font-weight:800;
+
+    color:#facc15;
+}
+
+
+.footer{
+
+    text-align:center;
+
+    color:#64748b;
+
+    font-size:12px;
+
+    padding:25px 0 40px 0;
+}
+
+
+.error{
+
+    background:#3b1720;
+
+    color:#fca5a5;
+
+    padding:15px;
+
+    border-radius:14px;
+}
+
+
+@media(max-width:500px){
+
+    body{
+        padding:14px;
+    }
+
+    .grid{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .title{
+        font-size:25px;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="header">
+
+    <div class="title">
+    📱 武得 AI 股票助理 V6
+    </div>
+
+    <div class="sub">
+    台股＋美股 AI 選股系統
+    </div>
+
+</div>
+
+
+<div class="buttons">
+
+    <button
+    class="tw"
+    onclick="showMarket('TW')">
+    🇹🇼 台股 TOP10
+    </button>
+
+
+    <button
+    class="us"
+    onclick="showMarket('US')">
+    🇺🇸 美股 TOP10
+    </button>
+
+</div>
+
+
+<div class="searchbox">
+
+    <input
+    id="ticker"
+    placeholder="輸入 NVDA、AMZN、2330.TW">
+
+    <button
+    class="search"
+    onclick="searchStock()">
+    🔍
+    </button>
+
+</div>
+
+
+<div id="title"
+class="section">
+🇹🇼 台股 最值得買 TOP10
+</div>
+
+
+<div id="status"
+class="status">
+正在讀取 V6.13.1 資料...
+</div>
+
+
+<div id="results"></div>
+
+
+<div class="footer">
+
+武得 AI 股票助理 V6.13.1
+
+<br>
+
+AI 分析僅供研究參考
+
+</div>
+
+
+<script>
+
+let DATA = null;
+
+
+function getValue(stock,names){
+
+    for(const name of names){
+
+        if(
+            stock[name] !== undefined &&
+            stock[name] !== null &&
+            stock[name] !== ""
+        ){
+
+            return stock[name];
+
+        }
+
+    }
+
+    return "—";
+}
+
+
+function rangeValue(stock,lowName,highName){
+
+    const low = getValue(stock,[lowName]);
+
+    const high = getValue(stock,[highName]);
+
+    if(low === "—" && high === "—"){
+        return "—";
+    }
+
+    if(low === high){
+        return low;
+    }
+
+    return low + " ～ " + high;
+}
+
+
+function stockCard(stock,index){
+
+    const name =
+        getValue(
+            stock,
+            ["股票","名稱","Name","公司"]
+        );
+
+
+    const ticker =
+        getValue(
+            stock,
+            ["代號","Ticker","ticker","Symbol"]
+        );
+
+
+    const market =
+        getValue(
+            stock,
+            ["市場"]
+        );
+
+
+    const theme =
+        getValue(
+            stock,
+            ["主題"]
+        );
+
+
+    const risk =
+        getValue(
+            stock,
+            ["風險分類"]
+        );
+
+
+    const price =
+        getValue(
+            stock,
+            ["現價","股價","Price","price"]
+        );
+
+
+    const score =
+        getValue(
+            stock,
+            [
+                "V6.13.1分數",
+                "V6.13分數",
+                "AI總分",
+                "AI分數",
+                "總分",
+                "Score"
+            ]
+        );
+
+
+    const technical =
+        getValue(
+            stock,
+            ["技術分數"]
+        );
+
+
+    const fundamental =
+        getValue(
+            stock,
+            ["基本面分數"]
+        );
+
+
+    const valuation =
+        getValue(
+            stock,
+            ["估值分數"]
+        );
+
+
+    const newsScore =
+        getValue(
+            stock,
+            ["新聞分數"]
+        );
+
+
+    const news =
+        getValue(
+            stock,
+            ["新聞判斷"]
+        );
+
+
+    const earnings =
+        getValue(
+            stock,
+            ["下次財報"]
+        );
+
+
+    const earningsRisk =
+        getValue(
+            stock,
+            ["財報風險"]
+        );
+
+
+    const rsi =
+        getValue(
+            stock,
+            ["RSI"]
+        );
+
+
+    const m3 =
+        getValue(
+            stock,
+            ["3月基準%"]
+        );
+
+
+    const m6 =
+        getValue(
+            stock,
+            ["6月基準%"]
+        );
+
+
+    const y1 =
+        getValue(
+            stock,
+            ["1年基準%"]
+        );
+
+
+    const bull =
+        getValue(
+            stock,
+            ["1年樂觀%"]
+        );
+
+
+    const bear =
+        getValue(
+            stock,
+            ["1年悲觀%"]
+        );
+
+
+    const probability =
+        getValue(
+            stock,
+            [
+                "上漲機率%",
+                "上漲機率",
+                "勝率"
+            ]
+        );
+
+
+    const volatility =
+        getValue(
+            stock,
+            ["年化波動%"]
+        );
+
+
+    const fairBuy =
+        rangeValue(
+            stock,
+            "合理買入低",
+            "合理買入高"
+        );
+
+
+    const betterBuy =
+        rangeValue(
+            stock,
+            "較佳買點低",
+            "較佳買點高"
+        );
+
+
+    const aggressive =
+        getValue(
+            stock,
+            [
+                "積極買入價",
+                "積極買入"
+            ]
+        );
+
+
+    const support1 =
+        getValue(
+            stock,
+            ["第一支撐"]
+        );
+
+
+    const support2 =
+        getValue(
+            stock,
+            ["第二支撐"]
+        );
+
+
+    const resistance1 =
+        getValue(
+            stock,
+            ["第一壓力"]
+        );
+
+
+    const resistance2 =
+        getValue(
+            stock,
+            ["第二壓力"]
+        );
+
+
+    const riskPrice =
+        getValue(
+            stock,
+            ["風控價"]
+        );
+
+
+    const chg20 =
+        getValue(
+            stock,
+            ["20日漲幅%"]
+        );
+
+
+    const chg60 =
+        getValue(
+            stock,
+            ["60日漲幅%"]
+        );
+
+
+    const high52 =
+        getValue(
+            stock,
+            ["距52週高點%"]
+        );
+
+
+    const heat =
+        getValue(
+            stock,
+            ["過熱狀態"]
+        );
+
+
+    const timing =
+        getValue(
+            stock,
+            ["買進時機分數"]
+        );
+
+
+    const advice =
+        getValue(
+            stock,
+            [
+                "修正後操作",
+                "FINAL 操作",
+                "操作建議",
+                "AI操作建議"
+            ]
+        );
+
+
+    return `
+
+    <div class="card">
+
+        <div class="rank">
+        TOP ${index+1}
+        </div>
+
+
+        <div class="stock">
+        ${name}
+        </div>
+
+
+        <div class="ticker">
+        ${ticker} ｜ ${market}
+        </div>
+
+
+        <div class="ticker">
+        ${theme} ｜ ${risk}
+        </div>
+
+
+        <div class="score">
+        AI 總分：${score}
+        </div>
+
+
+        <div class="grid">
+
+
+            <div class="item">
+
+                <div class="label">
+                現價
+                </div>
+
+                <div class="value">
+                ${price}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                RSI
+                </div>
+
+                <div class="value">
+                ${rsi}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                技術分數
+                </div>
+
+                <div class="value">
+                ${technical}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                基本面分數
+                </div>
+
+                <div class="value">
+                ${fundamental}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                估值分數
+                </div>
+
+                <div class="value">
+                ${valuation}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                新聞分數
+                </div>
+
+                <div class="value">
+                ${newsScore}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                3個月基準
+                </div>
+
+                <div class="value good">
+                ${m3}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                6個月基準
+                </div>
+
+                <div class="value good">
+                ${m6}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                1年基準
+                </div>
+
+                <div class="value good">
+                ${y1}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                上漲機率
+                </div>
+
+                <div class="value">
+                ${probability}%
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+        <div class="buybox">
+
+            🟡 合理買入：
+            <b class="warn">
+            ${fairBuy}
+            </b>
+
+            <br>
+
+            🟢 較佳買點：
+            <b class="good">
+            ${betterBuy}
+            </b>
+
+            <br>
+
+            🔥 積極買入：
+            <b class="hot">
+            ${aggressive}
+            </b>
+
+            <br><br>
+
+            第一支撐：
+            <b>${support1}</b>
+
+            <br>
+
+            第二支撐：
+            <b>${support2}</b>
+
+            <br>
+
+            第一壓力：
+            <b>${resistance1}</b>
+
+            <br>
+
+            第二壓力：
+            <b>${resistance2}</b>
+
+            <br>
+
+            風控價：
+            <b class="hot">
+            ${riskPrice}
+            </b>
+
+        </div>
+
+
+        <div class="grid">
+
+
+            <div class="item">
+
+                <div class="label">
+                下次財報
+                </div>
+
+                <div class="value">
+                ${earnings}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                財報風險
+                </div>
+
+                <div class="value">
+                ${earningsRisk}
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                20日漲幅
+                </div>
+
+                <div class="value">
+                ${chg20}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                60日漲幅
+                </div>
+
+                <div class="value">
+                ${chg60}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                距52週高點
+                </div>
+
+                <div class="value">
+                ${high52}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                年化波動
+                </div>
+
+                <div class="value">
+                ${volatility}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                1年樂觀
+                </div>
+
+                <div class="value good">
+                ${bull}%
+                </div>
+
+            </div>
+
+
+            <div class="item">
+
+                <div class="label">
+                1年悲觀
+                </div>
+
+                <div class="value hot">
+                ${bear}%
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+        <div class="newsbox">
+
+            📰 ${news}
+
+            <br>
+
+            🌡 過熱狀態：${heat}
+
+            <br>
+
+            🎯 買進時機分數：${timing}
+
+        </div>
+
+
+        <div class="advice">
+
+        ${advice}
+
+        </div>
+
+
+    </div>
+
+    `;
+
+}
+
+
+function render(stocks){
+
+    const box =
+        document.getElementById("results");
+
+
+    if(!stocks || stocks.length === 0){
+
+        box.innerHTML =
+        `
+        <div class="card">
+        ⚠️ 找不到股票資料
+        </div>
+        `;
+
+        return;
+
+    }
+
+
+    box.innerHTML =
+        stocks
+        .map(
+            (s,i) => stockCard(s,i)
+        )
+        .join("");
+
+}
+
+
+function showMarket(market){
+
+    if(!DATA){
+        return;
+    }
+
+
+    if(market === "TW"){
+
+        document
+        .getElementById("title")
+        .innerText =
+        "🇹🇼 台股 最值得買 TOP10";
+
+
+        render(
+            DATA.tw_top10 || []
+        );
+
+    }
+
+
+    else{
+
+        document
+        .getElementById("title")
+        .innerText =
+        "🇺🇸 美股 最值得買 TOP10";
+
+
+        render(
+            DATA.us_top10 || []
+        );
+
+    }
+
+}
+
+
+function searchStock(){
+
+    if(!DATA){
+        return;
+    }
+
+
+    let q =
+        document
+        .getElementById("ticker")
+        .value
+        .trim()
+        .toUpperCase();
+
+
+    if(!q){
+        return;
+    }
+
+
+    const all = [
+
+        ...(DATA.tw_top10 || []),
+
+        ...(DATA.us_top10 || [])
+
+    ];
+
+
+    const found =
+        all.filter(stock => {
+
+
+            const ticker =
+                String(
+                    getValue(
+                        stock,
+                        ["代號","Ticker","ticker","Symbol"]
+                    )
+                )
+                .toUpperCase();
+
+
+            const name =
+                String(
+                    getValue(
+                        stock,
+                        ["股票","名稱","Name","公司"]
+                    )
+                )
+                .toUpperCase();
+
+
+            return (
+
+                ticker === q ||
+
+                ticker === q + ".TW" ||
+
+                ticker === q + ".TWO" ||
+
+                name.includes(q)
+
+            );
+
+        });
+
+
+    document
+    .getElementById("title")
+    .innerText =
+    "🔍 單股查詢：" + q;
+
+
+    if(found.length){
+
+        render(found);
+
+    }
+
+    else{
+
+        document
+        .getElementById("results")
+        .innerHTML =
+        `
+        <div class="card">
+
+        ⚠️ TOP10 資料中目前找不到 ${q}
+
+        </div>
+        `;
+
+    }
+
+}
+
+
+async function loadData(){
+
+    const status =
+        document.getElementById("status");
+
+
+    try{
+
+        const response =
+            await fetch(
+                "stock_data.json?t=" + Date.now(),
+                {
+                    cache:"no-store"
+                }
+            );
+
+
+        if(!response.ok){
+
+            throw new Error(
+                "HTTP " + response.status
+            );
+
+        }
+
+
+        DATA =
+            await response.json();
+
+
+        status.innerText =
+
+            "✅ " +
+
+            (DATA.version || "V6") +
+
+            "｜台股 " +
+
+            (DATA.tw_top10 || []).length +
+
+            " 檔｜美股 " +
+
+            (DATA.us_top10 || []).length +
+
+            " 檔";
+
+
+        showMarket("TW");
+
+    }
+
+
+    catch(error){
+
+        console.error(error);
+
+
+        status.innerText =
+            "❌ stock_data.json 讀取失敗";
+
+
+        document
+        .getElementById("results")
+        .innerHTML =
+        `
+        <div class="error">
+
+        stock_data.json 無法讀取。
+
+        <br><br>
+
+        錯誤：
+        ${error.message}
+
+        </div>
+        `;
+
+    }
+
+}
+
+
+loadData();
+
+</script>
+
+
+</body>
+
+</html>
