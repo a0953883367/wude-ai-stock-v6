@@ -1,0 +1,577 @@
+
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
+
+<meta name="apple-mobile-web-app-capable"
+content="yes">
+
+<meta name="apple-mobile-web-app-status-bar-style"
+content="black-translucent">
+
+<title>武得 AI 股票助理 V6</title>
+
+<style>
+
+body{
+    margin:0;
+    padding:18px;
+    background:#07111f;
+    color:white;
+    font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.header{
+    padding:20px;
+    background:#111c2e;
+    border-radius:22px;
+    margin-bottom:18px;
+}
+
+.title{
+    font-size:27px;
+    font-weight:800;
+}
+
+.sub{
+    color:#9ca3af;
+    margin-top:8px;
+}
+
+.buttons{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:18px;
+}
+
+button{
+    border:0;
+    border-radius:15px;
+    padding:15px 8px;
+    font-size:17px;
+    font-weight:700;
+}
+
+.tw{
+    background:#2563eb;
+    color:white;
+}
+
+.us{
+    background:#374151;
+    color:white;
+}
+
+.searchbox{
+    display:flex;
+    gap:8px;
+    margin-bottom:18px;
+}
+
+input{
+    flex:1;
+    padding:15px;
+    border-radius:14px;
+    border:1px solid #374151;
+    background:#111827;
+    color:white;
+    font-size:17px;
+}
+
+.search{
+    background:#22c55e;
+    color:white;
+    padding-left:18px;
+    padding-right:18px;
+}
+
+.card{
+    background:#111827;
+    border:1px solid #263244;
+    border-radius:19px;
+    padding:17px;
+    margin-bottom:13px;
+}
+
+.rank{
+    color:#facc15;
+    font-size:14px;
+    font-weight:700;
+}
+
+.stock{
+    font-size:22px;
+    font-weight:800;
+    margin-top:5px;
+}
+
+.ticker{
+    color:#9ca3af;
+    font-size:15px;
+    margin-top:3px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+}
+
+.item{
+    background:#172033;
+    padding:11px;
+    border-radius:12px;
+}
+
+.label{
+    color:#94a3b8;
+    font-size:12px;
+}
+
+.value{
+    font-size:16px;
+    font-weight:700;
+    margin-top:4px;
+}
+
+.good{
+    color:#4ade80;
+}
+
+.warn{
+    color:#facc15;
+}
+
+.hot{
+    color:#fb7185;
+}
+
+.section{
+    font-size:20px;
+    font-weight:800;
+    margin:20px 3px 12px 3px;
+}
+
+.footer{
+    text-align:center;
+    color:#64748b;
+    font-size:12px;
+    padding:25px 0 40px 0;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+<div class="title">
+📱 武得 AI 股票助理 V6
+</div>
+
+<div class="sub">
+台股＋美股 AI 選股系統
+</div>
+
+</div>
+
+
+<div class="buttons">
+
+<button class="tw"
+onclick="showMarket('TW')">
+🇹🇼 台股 TOP10
+</button>
+
+<button class="us"
+onclick="showMarket('US')">
+🇺🇸 美股 TOP10
+</button>
+
+</div>
+
+
+<div class="searchbox">
+
+<input
+id="ticker"
+placeholder="輸入 NVDA、TSM、2330.TW">
+
+<button
+class="search"
+onclick="searchStock()">
+🔍
+</button>
+
+</div>
+
+
+<div id="title"
+class="section">
+🇹🇼 台股 最值得買 TOP10
+</div>
+
+<div id="results"></div>
+
+
+<div class="footer">
+武得 AI 股票助理 V6.13.1
+<br>
+AI 分析僅供研究參考
+</div>
+
+
+<script>
+
+let DATA = null;
+let CURRENT = "TW";
+
+
+async function loadData(){
+
+    const response =
+        await fetch("stock_data.json");
+
+    DATA = await response.json();
+
+    showMarket("TW");
+}
+
+
+function getValue(stock,names){
+
+    for(const name of names){
+
+        if(
+            stock[name] !== undefined &&
+            stock[name] !== null &&
+            stock[name] !== ""
+        ){
+            return stock[name];
+        }
+    }
+
+    return "—";
+}
+
+
+function card(stock,index){
+
+    const name =
+        getValue(
+            stock,
+            ["股票","名稱","Name","公司"]
+        );
+
+    const ticker =
+        getValue(
+            stock,
+            ["代號","Ticker","ticker","Symbol"]
+        );
+
+    const price =
+        getValue(
+            stock,
+            ["現價","股價","Price","price"]
+        );
+
+    const score =
+        getValue(
+            stock,
+            [
+                "V6.13.1分數",
+                "V6.13分數",
+                "AI總分",
+                "AI分數",
+                "總分",
+                "Score"
+            ]
+        );
+
+    const buy =
+        getValue(
+            stock,
+            [
+                "合理買入價",
+                "合理價",
+                "買入價",
+                "Buy Price"
+            ]
+        );
+
+    const better =
+        getValue(
+            stock,
+            [
+                "較佳買點",
+                "較佳買入價",
+                "Better Buy"
+            ]
+        );
+
+    const aggressive =
+        getValue(
+            stock,
+            [
+                "積極買入",
+                "積極買入價",
+                "Aggressive Buy"
+            ]
+        );
+
+    const probability =
+        getValue(
+            stock,
+            [
+                "上漲機率",
+                "勝率",
+                "Probability"
+            ]
+        );
+
+    const upside =
+        getValue(
+            stock,
+            [
+                "未來漲幅",
+                "預估漲幅",
+                "上漲空間",
+                "Upside"
+            ]
+        );
+
+    const advice =
+        getValue(
+            stock,
+            [
+                "操作建議",
+                "AI操作建議",
+                "建議",
+                "Advice"
+            ]
+        );
+
+
+    return `
+
+    <div class="card">
+
+        <div class="rank">
+        TOP ${index+1}
+        </div>
+
+        <div class="stock">
+        ${name}
+        </div>
+
+        <div class="ticker">
+        ${ticker}
+        </div>
+
+
+        <div class="grid">
+
+            <div class="item">
+                <div class="label">
+                現價
+                </div>
+                <div class="value">
+                ${price}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                AI 分數
+                </div>
+                <div class="value">
+                ${score}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                🟡 合理買入
+                </div>
+                <div class="value warn">
+                ${buy}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                🟢 較佳買點
+                </div>
+                <div class="value good">
+                ${better}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                🔥 積極買入
+                </div>
+                <div class="value hot">
+                ${aggressive}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                🎯 上漲機率
+                </div>
+                <div class="value">
+                ${probability}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                📈 未來漲幅
+                </div>
+                <div class="value good">
+                ${upside}
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="label">
+                🤖 AI 建議
+                </div>
+                <div class="value">
+                ${advice}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    `;
+}
+
+
+function render(stocks){
+
+    const box =
+        document.getElementById("results");
+
+    box.innerHTML =
+        stocks.map(
+            (s,i)=>card(s,i)
+        ).join("");
+}
+
+
+function showMarket(market){
+
+    if(!DATA) return;
+
+    CURRENT = market;
+
+    if(market === "TW"){
+
+        document.getElementById("title")
+        .innerText =
+        "🇹🇼 台股 最值得買 TOP10";
+
+        render(DATA.tw_top10);
+
+    }else{
+
+        document.getElementById("title")
+        .innerText =
+        "🇺🇸 美股 最值得買 TOP10";
+
+        render(DATA.us_top10);
+    }
+}
+
+
+function searchStock(){
+
+    if(!DATA) return;
+
+    let q =
+        document
+        .getElementById("ticker")
+        .value
+        .trim()
+        .toUpperCase();
+
+    if(!q) return;
+
+    const all =
+        [
+            ...DATA.tw_top10,
+            ...DATA.us_top10
+        ];
+
+    const found =
+        all.filter(stock=>{
+
+            const ticker =
+                String(
+                    getValue(
+                        stock,
+                        [
+                            "代號",
+                            "Ticker",
+                            "ticker",
+                            "Symbol"
+                        ]
+                    )
+                ).toUpperCase();
+
+            return (
+                ticker === q ||
+                ticker === q+".TW" ||
+                ticker === q+".TWO"
+            );
+        });
+
+
+    document.getElementById("title")
+    .innerText =
+    "🔍 單股查詢："+q;
+
+
+    if(found.length){
+
+        render(found);
+
+    }else{
+
+        document.getElementById("results")
+        .innerHTML = `
+        <div class="card">
+        ⚠️ TOP10 資料中目前找不到 ${q}
+        </div>
+        `;
+    }
+}
+
+
+loadData();
+
+</script>
+
+</body>
+</html>
