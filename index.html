@@ -1329,6 +1329,21 @@ async function loadData(){
         DATA =
             await response.json();
 
+        // V614_K16_JSON_NORMALIZE
+        DATA = Array.isArray(DATA)
+            ? DATA
+            : (
+                Array.isArray(DATA?.data)
+                    ? DATA.data
+                    : []
+              );
+
+        console.log(
+            "V6.14-K16 股票資料筆數:",
+            DATA.length
+        );
+
+
 
         status.innerText =
 
