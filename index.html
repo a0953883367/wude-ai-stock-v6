@@ -1326,8 +1326,64 @@ async function loadData(){
         }
 
 
-        DATA =
+        const rawData =
             await response.json();
+
+        const allStocks =
+            Array.isArray(rawData)
+                ? rawData
+                : (
+                    Array.isArray(rawData.data)
+                        ? rawData.data
+                        : []
+                  );
+
+        const twStocks =
+            allStocks
+            .filter(x =>
+                String(x["市場"] || "")
+                .includes("台")
+            )
+            .sort(
+                (a,b) =>
+                    Number(b["AI總分"] || 0)
+                    -
+                    Number(a["AI總分"] || 0)
+            );
+
+        const usStocks =
+            allStocks
+            .filter(x =>
+                String(x["市場"] || "")
+                .includes("美")
+            )
+            .sort(
+                (a,b) =>
+                    Number(b["AI總分"] || 0)
+                    -
+                    Number(a["AI總分"] || 0)
+            );
+
+        DATA = {
+            version:
+                rawData.version
+                || "V6.14-K17",
+
+            all:
+                allStocks,
+
+            tw_top10:
+                twStocks.slice(0,10),
+
+            us_top10:
+                usStocks.slice(0,10),
+
+            tw_all:
+                twStocks,
+
+            us_all:
+                usStocks
+        };
 
         // V614_K16_JSON_NORMALIZE
         DATA = Array.isArray(DATA)
