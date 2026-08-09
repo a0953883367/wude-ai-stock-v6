@@ -1179,7 +1179,53 @@ function showMarket(market){
 
 
         render(
-            DATA.tw_top10 || []
+            
+
+    // V614_K18B_BUILD_TOP10
+    // K16 已把 K11 的 data[311] 轉成 DATA 陣列
+    if (Array.isArray(DATA)) {
+
+        const allStocks = DATA;
+
+        const twStocks = allStocks
+            .filter(x =>
+                String(x["市場"] || "").includes("台")
+            )
+            .sort((a, b) =>
+                Number(b["AI總分"] || 0) -
+                Number(a["AI總分"] || 0)
+            );
+
+        const usStocks = allStocks
+            .filter(x =>
+                String(x["市場"] || "").includes("美")
+            )
+            .sort((a, b) =>
+                Number(b["AI總分"] || 0) -
+                Number(a["AI總分"] || 0)
+            );
+
+        DATA = {
+            version: "V6.14-K18B",
+
+            all: allStocks,
+
+            tw_all: twStocks,
+            us_all: usStocks,
+
+            tw_top10: twStocks.slice(0, 10),
+            us_top10: usStocks.slice(0, 10)
+        };
+
+        console.log(
+            "V6.14-K18B",
+            "全部:", DATA.all.length,
+            "台股:", DATA.tw_all.length,
+            "美股:", DATA.us_all.length
+        );
+    }
+
+DATA.tw_top10 || []
         );
 
     }
@@ -1222,13 +1268,12 @@ function searchStock(){
     }
 
 
-    const all = [
+    
+const all = DATA.all || [
+    ...(DATA.tw_top10 || []),
+    ...(DATA.us_top10 || [])
+];
 
-        ...(DATA.tw_top10 || []),
-
-        ...(DATA.us_top10 || [])
-
-    ];
 
 
     const found =
