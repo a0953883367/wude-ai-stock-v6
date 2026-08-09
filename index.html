@@ -2139,6 +2139,415 @@ v614LoadSearchData();
 
 loadData();
 
+
+
+
+
+
+
+
+
+
+/* === V614-I START === */
+
+
+/* ===========================================================
+   搜尋資料 → 完整 AI 分析卡
+=========================================================== */
+
+function v614FullCard(item){
+
+    const market =
+        String(item["市場"] || "");
+
+    const flag =
+        market.includes("台")
+        ? "🇹🇼"
+        : "🇺🇸";
+
+    const name =
+        item["股票"] || "—";
+
+    const ticker =
+        item["代號"] || "—";
+
+    const type =
+        item["類型"] || "個股";
+
+    const theme =
+        item["主題"] || "—";
+
+    const industry =
+        item["次產業"] || "—";
+
+
+    /*
+       search_data.json 目前主要負責：
+       名稱 / 代號 / 市場 / 類型 / 主題 / 次產業
+
+       如果未來資料庫已有下面欄位，
+       這張卡會自動顯示。
+    */
+
+    const price =
+        item["現價"] ??
+        item["股價"] ??
+        "待更新";
+
+    const score =
+        item["AI分數"] ??
+        item["AI綜合分數"] ??
+        "待分析";
+
+    const action =
+        item["操作建議"] ??
+        "待分析";
+
+    const buy =
+        item["合理買入價"] ??
+        item["建議買入價"] ??
+        "待分析";
+
+    const strongBuy =
+        item["積極買入區"] ??
+        item["較佳買點"] ??
+        "待分析";
+
+    const support =
+        item["支撐"] ??
+        item["支撐價"] ??
+        "待分析";
+
+    const resistance =
+        item["壓力"] ??
+        item["壓力價"] ??
+        "待分析";
+
+    const risk =
+        item["風險"] ??
+        "待分析";
+
+
+    return `
+
+    <div style="
+        background:#111c2e;
+        border:1px solid #40506d;
+        border-radius:24px;
+        padding:22px;
+        margin:16px 0 25px 0;
+    ">
+
+        <div style="
+            color:#ffcf26;
+            font-size:18px;
+            font-weight:900;
+            margin-bottom:12px;
+        ">
+            AI 搜尋分析
+        </div>
+
+
+        <div style="
+            font-size:27px;
+            line-height:1.25;
+            font-weight:900;
+            color:#ffffff;
+        ">
+            ${flag}
+            ${v614Esc(name)}
+        </div>
+
+
+        <div style="
+            color:#aab4c8;
+            font-size:18px;
+            margin-top:9px;
+        ">
+            ${v614Esc(ticker)}
+            ｜ ${v614Esc(type)}
+            ｜ ${v614Esc(market)}
+        </div>
+
+
+        <div style="
+            margin-top:17px;
+            padding-top:15px;
+            border-top:1px solid #33415c;
+        ">
+
+            <div style="
+                color:#72d98b;
+                font-size:20px;
+                font-weight:900;
+            ">
+                ${v614Esc(theme)}
+            </div>
+
+            <div style="
+                color:#aab4c8;
+                margin-top:6px;
+            ">
+                ${v614Esc(industry)}
+            </div>
+
+        </div>
+
+
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:10px;
+            margin-top:20px;
+        ">
+
+            ${v614Metric(
+                "💰 現價",
+                price
+            )}
+
+            ${v614Metric(
+                "🤖 AI分數",
+                score
+            )}
+
+            ${v614Metric(
+                "🎯 合理買入",
+                buy
+            )}
+
+            ${v614Metric(
+                "🔥 積極買入",
+                strongBuy
+            )}
+
+            ${v614Metric(
+                "🟢 支撐",
+                support
+            )}
+
+            ${v614Metric(
+                "🔴 壓力",
+                resistance
+            )}
+
+        </div>
+
+
+        <div style="
+            background:#0b1423;
+            border-radius:16px;
+            padding:16px;
+            margin-top:14px;
+        ">
+
+            <div style="
+                color:#aab4c8;
+                font-size:14px;
+            ">
+                📌 操作建議
+            </div>
+
+            <div style="
+                color:#ffffff;
+                font-size:20px;
+                font-weight:800;
+                margin-top:5px;
+            ">
+                ${v614Esc(action)}
+            </div>
+
+        </div>
+
+
+        <div style="
+            background:#0b1423;
+            border-radius:16px;
+            padding:16px;
+            margin-top:10px;
+        ">
+
+            <div style="
+                color:#aab4c8;
+                font-size:14px;
+            ">
+                ⚠️ 風險
+            </div>
+
+            <div style="
+                color:#ffffff;
+                font-size:17px;
+                margin-top:5px;
+            ">
+                ${v614Esc(risk)}
+            </div>
+
+        </div>
+
+    </div>
+
+    `;
+}
+
+
+/* ===========================================================
+   小分析框
+=========================================================== */
+
+function v614Metric(title,value){
+
+    return `
+
+    <div style="
+        background:#0b1423;
+        border-radius:15px;
+        padding:14px;
+        min-height:72px;
+    ">
+
+        <div style="
+            color:#8f9bb0;
+            font-size:13px;
+        ">
+            ${title}
+        </div>
+
+        <div style="
+            color:#ffffff;
+            font-size:18px;
+            font-weight:900;
+            margin-top:5px;
+            word-break:break-word;
+        ">
+            ${v614Esc(value)}
+        </div>
+
+    </div>
+
+    `;
+
+}
+
+
+/* ===========================================================
+   重新定義搜尋結果顯示
+=========================================================== */
+
+function v614RenderSearchData(query, found){
+
+    const box =
+        v614GetResultBox();
+
+    if(!found || !found.length){
+        return false;
+    }
+
+
+    const tw =
+        found.filter(
+            x =>
+                String(
+                    x["市場"] || ""
+                ).includes("台")
+        );
+
+    const us =
+        found.filter(
+            x =>
+                String(
+                    x["市場"] || ""
+                ).includes("美")
+        );
+
+
+    let output = `
+
+        <div style="
+            margin-top:25px;
+            margin-bottom:18px;
+        ">
+
+            <div style="
+                font-size:28px;
+                font-weight:900;
+                color:#ffffff;
+            ">
+                🔎 搜尋：${v614Esc(query)}
+            </div>
+
+            <div style="
+                color:#9ca8bd;
+                font-size:18px;
+                margin-top:8px;
+            ">
+                共找到 ${found.length} 筆相關標的
+            </div>
+
+        </div>
+
+    `;
+
+
+    if(tw.length){
+
+        output += `
+
+            <div style="
+                font-size:25px;
+                font-weight:900;
+                margin:25px 0 12px 0;
+            ">
+                🇹🇼 台灣 ${tw.length} 筆
+            </div>
+
+        `;
+
+        output +=
+            tw.map(
+                x => v614FullCard(x)
+            ).join("");
+
+    }
+
+
+    if(us.length){
+
+        output += `
+
+            <div style="
+                font-size:25px;
+                font-weight:900;
+                margin:28px 0 12px 0;
+            ">
+                🇺🇸 美國 ${us.length} 筆
+            </div>
+
+        `;
+
+        output +=
+            us.map(
+                x => v614FullCard(x)
+            ).join("");
+
+    }
+
+
+    box.innerHTML = output;
+
+
+    box.scrollIntoView({
+        behavior:"smooth",
+        block:"start"
+    });
+
+
+    return true;
+}
+
+
+/* === V614-I END === */
+
+
 </script>
 
 
