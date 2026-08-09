@@ -1382,6 +1382,761 @@ async function loadData(){
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* === V614H SEARCH START === */
+
+let V614_SEARCH_DATA = [];
+let V614_SEARCH_READY = false;
+
+
+/* ---------------------------------------------------------
+   讀取 search_data.json
+--------------------------------------------------------- */
+
+async function v614LoadSearchData(){
+
+    try{
+
+        const response = await fetch(
+            "./search_data.json?v=" + Date.now()
+        );
+
+        if(!response.ok){
+            throw new Error(
+                "HTTP " + response.status
+            );
+        }
+
+        const json = await response.json();
+
+        if(Array.isArray(json)){
+
+            V614_SEARCH_DATA = json;
+
+        }else if(Array.isArray(json.data)){
+
+            V614_SEARCH_DATA = json.data;
+
+        }else{
+
+            V614_SEARCH_DATA = [];
+
+        }
+
+        V614_SEARCH_READY = true;
+
+        console.log(
+            "✅ V6.14 搜尋資料載入完成：",
+            V614_SEARCH_DATA.length
+        );
+
+    }catch(error){
+
+        console.error(
+            "❌ search_data.json 載入失敗：",
+            error
+        );
+
+        V614_SEARCH_READY = false;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   找搜尋框
+--------------------------------------------------------- */
+
+function v614GetInput(){
+
+    const inputs = Array.from(
+        document.querySelectorAll("input")
+    );
+
+    let input = inputs.find(
+        el => {
+
+            const p = (
+                el.placeholder || ""
+            ).toLowerCase();
+
+            return (
+                p.includes("nvda") ||
+                p.includes("2330") ||
+                p.includes("amzn")
+            );
+
+        }
+    );
+
+    if(!input){
+
+        input = inputs.find(
+            el =>
+                el.type === "text" ||
+                !el.type
+        );
+
+    }
+
+    return input || null;
+}
+
+
+/* ---------------------------------------------------------
+   HTML 安全處理
+--------------------------------------------------------- */
+
+function v614Esc(value){
+
+    return String(
+        value ?? ""
+    )
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
+}
+
+
+/* ---------------------------------------------------------
+   搜尋同義詞
+--------------------------------------------------------- */
+
+function v614Words(q){
+
+    const aliases = {
+
+        "人工智慧":[
+            "ai",
+            "人工智慧"
+        ],
+
+        "人工智能":[
+            "ai",
+            "人工智能"
+        ],
+
+        "機器人":[
+            "機器人",
+            "robot",
+            "robotics"
+        ],
+
+        "人形機器人":[
+            "機器人",
+            "人形機器人",
+            "robotics"
+        ],
+
+        "無人車":[
+            "無人車",
+            "自駕",
+            "adas",
+            "robotaxi"
+        ],
+
+        "自駕":[
+            "無人車",
+            "自駕",
+            "adas",
+            "robotaxi"
+        ],
+
+        "無人機":[
+            "無人機",
+            "drone",
+            "uav",
+            "航太"
+        ],
+
+        "量子":[
+            "量子",
+            "quantum"
+        ],
+
+        "量子運算":[
+            "量子",
+            "quantum"
+        ],
+
+        "半導體":[
+            "半導體",
+            "晶片",
+            "semiconductor"
+        ],
+
+        "光通訊":[
+            "光通訊",
+            "cpo",
+            "矽光子"
+        ],
+
+        "cpo":[
+            "cpo",
+            "光通訊"
+        ],
+
+        "資料中心":[
+            "資料中心",
+            "data center",
+            "datacenter"
+        ],
+
+        "散熱":[
+            "散熱",
+            "液冷",
+            "cooling"
+        ],
+
+        "電力":[
+            "電力",
+            "電源",
+            "能源",
+            "核能"
+        ],
+
+        "etf":[
+            "etf"
+        ]
+
+    };
+
+    return aliases[q] || [q];
+}
+
+
+/* ---------------------------------------------------------
+   建立結果區
+--------------------------------------------------------- */
+
+function v614GetResultBox(){
+
+    let box = document.getElementById(
+        "v614SearchResults"
+    );
+
+    if(box){
+        return box;
+    }
+
+    const input = v614GetInput();
+
+    box = document.createElement("div");
+
+    box.id = "v614SearchResults";
+
+    box.style.marginTop = "20px";
+    box.style.marginBottom = "24px";
+
+    if(input){
+
+        const searchArea =
+            input.closest(".search") ||
+            input.parentElement;
+
+        if(searchArea){
+
+            searchArea.insertAdjacentElement(
+                "afterend",
+                box
+            );
+
+        }else{
+
+            document.body.appendChild(box);
+
+        }
+
+    }else{
+
+        document.body.appendChild(box);
+
+    }
+
+    return box;
+}
+
+
+/* ---------------------------------------------------------
+   卡片
+--------------------------------------------------------- */
+
+function v614Cards(list){
+
+    return list.map(item => {
+
+        const market =
+            item["市場"] || "";
+
+        const flag =
+            market.includes("台")
+            ? "🇹🇼"
+            : "🇺🇸";
+
+        return `
+
+        <div style="
+            background:#111c2e;
+            border:1px solid #33415c;
+            border-radius:20px;
+            padding:18px;
+            margin:12px 0;
+        ">
+
+            <div style="
+                font-size:22px;
+                font-weight:900;
+                color:#ffffff;
+            ">
+                ${flag}
+                ${v614Esc(item["股票"])}
+            </div>
+
+            <div style="
+                color:#aab4c8;
+                font-size:17px;
+                margin-top:7px;
+            ">
+                ${v614Esc(item["代號"])}
+                ｜ ${v614Esc(item["類型"])}
+            </div>
+
+            <div style="
+                color:#72d98b;
+                font-size:17px;
+                font-weight:800;
+                margin-top:11px;
+            ">
+                ${v614Esc(item["主題"])}
+            </div>
+
+            <div style="
+                color:#aab4c8;
+                font-size:15px;
+                margin-top:7px;
+            ">
+                ${v614Esc(item["次產業"])}
+            </div>
+
+        </div>
+
+        `;
+
+    }).join("");
+}
+
+
+/* ---------------------------------------------------------
+   執行搜尋
+--------------------------------------------------------- */
+
+function v614RunSearch(){
+
+    const input = v614GetInput();
+
+    if(!input){
+        return false;
+    }
+
+    const originalQuery =
+        input.value.trim();
+
+    const q =
+        originalQuery.toLowerCase();
+
+    if(!q){
+        return false;
+    }
+
+
+    if(!V614_SEARCH_READY){
+
+        const box = v614GetResultBox();
+
+        box.innerHTML = `
+        <div style="
+            background:#3a2d12;
+            border-radius:18px;
+            padding:18px;
+            color:#ffd66b;
+        ">
+            ⏳ 搜尋資料載入中，
+            請稍後再按一次搜尋。
+        </div>
+        `;
+
+        return true;
+    }
+
+
+    const words = v614Words(q);
+
+
+    let found = V614_SEARCH_DATA.filter(
+        item => {
+
+            const text = [
+
+                item["股票"],
+                item["代號"],
+                item["市場"],
+                item["類型"],
+                item["主題"],
+                item["次產業"]
+
+            ]
+            .join(" ")
+            .toLowerCase();
+
+            return words.some(
+                word =>
+                    text.includes(
+                        String(word)
+                        .toLowerCase()
+                    )
+            );
+
+        }
+    );
+
+
+    /* 去除重複代號 */
+
+    const seen = new Set();
+
+    found = found.filter(item => {
+
+        const ticker =
+            String(
+                item["代號"] || ""
+            );
+
+        if(seen.has(ticker)){
+            return false;
+        }
+
+        seen.add(ticker);
+
+        return true;
+    });
+
+
+    /* 完全符合名稱 / 代號優先 */
+
+    found.sort((a,b) => {
+
+        function priority(x){
+
+            const ticker =
+                String(
+                    x["代號"] || ""
+                ).toLowerCase();
+
+            const name =
+                String(
+                    x["股票"] || ""
+                ).toLowerCase();
+
+
+            if(ticker === q){
+                return 0;
+            }
+
+            if(
+                ticker.replace(".tw","")
+                .replace(".two","")
+                === q
+            ){
+                return 1;
+            }
+
+            if(name === q){
+                return 2;
+            }
+
+            if(
+                ticker.includes(q)
+            ){
+                return 3;
+            }
+
+            if(
+                name.includes(q)
+            ){
+                return 4;
+            }
+
+            return 5;
+        }
+
+        return (
+            priority(a)
+            -
+            priority(b)
+        );
+
+    });
+
+
+    const box = v614GetResultBox();
+
+
+    if(found.length === 0){
+
+        box.innerHTML = `
+
+        <div style="
+            background:#3b171c;
+            color:#ffadb4;
+            border-radius:20px;
+            padding:22px;
+            margin-top:18px;
+        ">
+
+            ⚠️ 搜尋資料庫目前找不到：
+
+            <b>
+                ${v614Esc(originalQuery)}
+            </b>
+
+        </div>
+
+        `;
+
+        return true;
+    }
+
+
+    /* 最多顯示60筆 */
+
+    found = found.slice(
+        0,
+        60
+    );
+
+
+    const tw = found.filter(
+        item =>
+            String(
+                item["市場"] || ""
+            ).includes("台")
+    );
+
+
+    const us = found.filter(
+        item =>
+            String(
+                item["市場"] || ""
+            ).includes("美")
+    );
+
+
+    box.innerHTML = `
+
+        <div style="
+            font-size:27px;
+            font-weight:900;
+            margin-top:25px;
+            margin-bottom:8px;
+            color:#ffffff;
+        ">
+            🔎 搜尋：
+            ${v614Esc(originalQuery)}
+        </div>
+
+
+        <div style="
+            color:#aab4c8;
+            margin-bottom:22px;
+        ">
+            共找到
+            ${found.length}
+            筆相關標的
+        </div>
+
+
+        ${
+            tw.length
+            ? `
+
+            <div style="
+                font-size:23px;
+                font-weight:900;
+                margin-top:20px;
+            ">
+                🇹🇼 台灣
+                ${tw.length}
+                筆
+            </div>
+
+            ${v614Cards(tw)}
+
+            `
+            : ""
+        }
+
+
+        ${
+            us.length
+            ? `
+
+            <div style="
+                font-size:23px;
+                font-weight:900;
+                margin-top:28px;
+            ">
+                🇺🇸 美國
+                ${us.length}
+                筆
+            </div>
+
+            ${v614Cards(us)}
+
+            `
+            : ""
+        }
+
+    `;
+
+
+    box.scrollIntoView({
+        behavior:"smooth",
+        block:"start"
+    });
+
+
+    return true;
+}
+
+
+/* ---------------------------------------------------------
+   攔截 Enter
+--------------------------------------------------------- */
+
+document.addEventListener(
+    "keydown",
+    function(event){
+
+        const input =
+            v614GetInput();
+
+        if(
+            input &&
+            event.target === input &&
+            event.key === "Enter"
+        ){
+
+            event.preventDefault();
+
+            event.stopImmediatePropagation();
+
+            v614RunSearch();
+
+        }
+
+    },
+    true
+);
+
+
+/* ---------------------------------------------------------
+   攔截搜尋按鈕
+--------------------------------------------------------- */
+
+document.addEventListener(
+    "click",
+    function(event){
+
+        const input =
+            v614GetInput();
+
+        if(!input){
+            return;
+        }
+
+
+        const button =
+            event.target.closest("button");
+
+        if(!button){
+            return;
+        }
+
+
+        const searchPanel =
+            input.closest(".search")
+            ||
+            input.parentElement;
+
+
+        const insideSameArea =
+            searchPanel &&
+            searchPanel.contains(button);
+
+
+        const buttonText =
+            (
+                button.innerText ||
+                button.textContent ||
+                ""
+            );
+
+
+        const looksLikeSearch =
+            insideSameArea
+            ||
+            buttonText.includes("🔍")
+            ||
+            buttonText.includes("搜尋")
+            ||
+            buttonText.includes("分析");
+
+
+        if(looksLikeSearch){
+
+            if(
+                input.value.trim()
+            ){
+
+                event.preventDefault();
+
+                event.stopImmediatePropagation();
+
+                v614RunSearch();
+
+            }
+
+        }
+
+    },
+    true
+);
+
+
+/* ---------------------------------------------------------
+   啟動
+--------------------------------------------------------- */
+
+v614LoadSearchData();
+
+/* === V614H SEARCH END === */
+
+
+
 loadData();
 
 </script>
