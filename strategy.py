@@ -218,9 +218,19 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return min(high, max(low, value))
 
 
-def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def score_candidates(
+    rows: list[dict[str, Any]], macro_regime: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     if not rows:
         return []
+    macro_regime = macro_regime or {}
+    macro_score = _finite(macro_regime.get("score"), 50.0)
+    macro_active = bool(
+        macro_regime.get("calibration", {}).get("affects_ai_score")
+    )
+    # Keep the original model untouched during calibration. After 16 valid
+    # trading days, macro risk can adjust the total by at most +/-4 points.
+    macro_adjustment = _clamp((macro_score - 50) * 0.08, -4.0, 4.0) if macro_active else 0.0
     theme_change: dict[str, float] = {}
     for theme in {str(r["theme"]) for r in rows}:
         changes = [r["change_pct"] for r in rows if str(r["theme"]) == theme]
@@ -310,6 +320,7 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             + fundamental_score * 0.10
             + group_score * 0.14
             + _clamp(position_score) * 0.08
+            + macro_adjustment
         )
         row.update({
             "technical_score": round(_clamp(technical), 1),
@@ -321,7 +332,10 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "fundamental_score": round(fundamental_score, 1),
             "financial_quality_score": round(quality_score, 1),
             "group_score": round(group_score, 1),
-            "score": round(total, 1),
+            "macro_score": round(macro_score, 1),
+            "macro_adjustment": round(macro_adjustment, 1),
+            "macro_affects_score": macro_active,
+            "score": round(_clamp(total), 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
         })
         row["buy_price"] = round(min(row["price"], row["support1"] * 1.01), 2)
