@@ -33,6 +33,12 @@ def test_candidate_scoring_has_prices_and_ranking():
         "margin_5d_change": 100_000,
         "short_5d_change": -20_000,
         "sbl_5d_change": 30_000,
+        "fundamental_available": 1,
+        "per": 18.5,
+        "pbr": 4.2,
+        "dividend_yield": 2.5,
+        "revenue_yoy_pct": 20.0,
+        "revenue_mom_pct": 9.1,
     })
     ranked = score_candidates([row])
     assert ranked[0]["rank"] == 1
@@ -42,6 +48,8 @@ def test_candidate_scoring_has_prices_and_ranking():
     assert ranked[0]["institution_5d"] == 6_000_000
     assert 0 <= ranked[0]["credit_score"] <= 100
     assert 0 <= ranked[0]["kline_score"] <= 100
+    assert 0 <= ranked[0]["valuation_score"] <= 100
+    assert 0 <= ranked[0]["fundamental_score"] <= 100
     assert ranked[0]["volume_price_pattern"]
     assert 0 <= ranked[0]["score"] <= 100
 

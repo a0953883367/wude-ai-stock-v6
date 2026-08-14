@@ -51,6 +51,8 @@ def _stock_block(row: dict[str, Any]) -> str:
         lines.insert(2, f"   法人 1/5/10日：{_num(row.get('institution_1d'), 0)}/{_num(row.get('institution_5d'), 0)}/{_num(row.get('institution_10d'), 0)} 股")
     if row.get("credit_available"):
         lines.insert(-1, f"   信用 5日：融資 {_signed(row.get('margin_5d_change'))}｜融券 {_signed(row.get('short_5d_change'))}｜借券賣出 {_signed(row.get('sbl_5d_change'))} 股")
+    if row.get("fundamental_available"):
+        lines.insert(-1, f"   基本面：PER {_num(row.get('per'))}｜PBR {_num(row.get('pbr'))}｜殖利率 {_num(row.get('dividend_yield'))}%｜營收年增 {_change(row.get('revenue_yoy_pct'))}")
     if row.get("broker_available"):
         buyers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_buy", [])[:3]) or "N/A"
         sellers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_sell", [])[:3]) or "N/A"
@@ -74,6 +76,8 @@ def render_markdown(report: dict[str, Any]) -> str:
             missing.append("法人")
         if not status.get("credit_count"):
             missing.append("融資融券／借券")
+        if not status.get("fundamental_count"):
+            missing.append("基本面／估值")
         if missing:
             lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；本次自動採中性分數")
         if not status.get("broker_count"):

@@ -306,6 +306,72 @@ def fetch_credit_flows(stock_ids: set[str]) -> dict[str, dict[str, float]]:
     return _aggregate_credit_rows(margin_rows, short_rows, stock_ids)
 
 
+def _aggregate_fundamental_rows(
+    per_rows: list[dict[str, Any]], revenue_rows: list[dict[str, Any]], stock_ids: set[str]
+) -> dict[str, dict[str, float]]:
+    """Combine latest valuation with monthly revenue YoY/MoM trends."""
+    output: dict[str, dict[str, float]] = {}
+    per_by_sid: dict[str, list[dict[str, Any]]] = {}
+    for row in per_rows:
+        sid = str(row.get("stock_id", ""))
+        if sid in stock_ids:
+            per_by_sid.setdefault(sid, []).append(row)
+    for sid, rows in per_by_sid.items():
+        latest = max(rows, key=lambda row: str(row.get("date", "")))
+        output.setdefault(sid, {}).update({
+            "fundamental_available": 1.0,
+            "per": float(latest.get("PER", 0) or 0),
+            "pbr": float(latest.get("PBR", 0) or 0),
+            "dividend_yield": float(latest.get("dividend_yield", 0) or 0),
+        })
+
+    revenue_by_sid: dict[str, dict[tuple[int, int], float]] = {}
+    for row in revenue_rows:
+        sid = str(row.get("stock_id", ""))
+        if sid not in stock_ids:
+            continue
+        year = int(float(row.get("revenue_year", 0) or 0))
+        month = int(float(row.get("revenue_month", 0) or 0))
+        if year and month:
+            revenue_by_sid.setdefault(sid, {})[(year, month)] = float(row.get("revenue", 0) or 0)
+    for sid, periods in revenue_by_sid.items():
+        if not periods:
+            continue
+        keys = sorted(periods)
+        latest_key = keys[-1]
+        latest_revenue = periods[latest_key]
+        prior_year = periods.get((latest_key[0] - 1, latest_key[1]))
+        previous = periods[keys[-2]] if len(keys) > 1 else None
+        yoy = (latest_revenue / prior_year - 1) * 100 if prior_year else None
+        mom = (latest_revenue / previous - 1) * 100 if previous else None
+        item = output.setdefault(sid, {})
+        item.update({
+            "fundamental_available": 1.0,
+            "revenue_year": float(latest_key[0]),
+            "revenue_month": float(latest_key[1]),
+            "monthly_revenue": latest_revenue,
+        })
+        if yoy is not None:
+            item["revenue_yoy_pct"] = yoy
+        if mom is not None:
+            item["revenue_mom_pct"] = mom
+    return output
+
+
+def fetch_fundamentals(stock_ids: set[str]) -> dict[str, dict[str, float]]:
+    """Fetch free Taiwan valuation and monthly-revenue datasets."""
+    if not SETTINGS.finmind_token or not stock_ids:
+        return {}
+    end = date.today()
+    per_rows = _dataset_for_ids(
+        "TaiwanStockPER", stock_ids, end - timedelta(days=21), end
+    )
+    revenue_rows = _dataset_for_ids(
+        "TaiwanStockMonthRevenue", stock_ids, end - timedelta(days=450), end
+    )
+    return _aggregate_fundamental_rows(per_rows, revenue_rows, stock_ids)
+
+
 def fetch_broker_branches(stock_ids: set[str]) -> dict[str, dict[str, Any]]:
     """Fetch optional Sponsor-tier broker branch concentration for recent sessions."""
     if not SETTINGS.finmind_token or not stock_ids:
