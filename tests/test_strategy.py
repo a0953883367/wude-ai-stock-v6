@@ -21,10 +21,18 @@ def test_candidate_scoring_has_prices_and_ranking():
         {"symbol": "2330.TW", "name": "測試股", "type": "個股", "theme": "半導體", "industry": "晶圓"},
         daily,
         intraday,
-        {"foreign": 2_000_000, "trust": 100_000, "dealer": -50_000},
+        {
+            "foreign": 2_000_000, "trust": 100_000, "dealer": -50_000,
+            "available": 1, "institution_1d": 2_050_000,
+            "institution_3d": 4_000_000, "institution_5d": 6_000_000,
+            "institution_10d": 8_000_000,
+        },
     )
     ranked = score_candidates([row])
     assert ranked[0]["rank"] == 1
     assert ranked[0]["support1"] <= ranked[0]["resistance2"]
+    assert ranked[0]["ma5"] >= ranked[0]["ma10"] >= ranked[0]["ma20"]
+    assert ranked[0]["avg_volume5"] > 0
+    assert ranked[0]["institution_5d"] == 6_000_000
     assert 0 <= ranked[0]["score"] <= 100
 
