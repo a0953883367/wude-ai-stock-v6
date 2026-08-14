@@ -21,39 +21,55 @@ def _num(value: Any, digits: int = 2) -> str:
     return f"{float(value):,.{digits}f}"
 
 
+def _code(row: dict[str, Any]) -> str:
+    symbol = str(row.get("symbol", ""))
+    return symbol.split(".")[0] if row.get("market") == "TW" else symbol
+
+
+def _change(value: Any) -> str:
+    number = float(value or 0)
+    return f"{number:+.2f}%"
+
+
+def _stock_block(row: dict[str, Any]) -> str:
+    action = str(row.get("action", "🟡 觀察"))
+    light = action[:1] if action[:1] in {"🟢", "🟡", "🔴"} else "🟡"
+    action_text = action[1:].strip()
+    return "\n".join([
+        f"{light} {row['name']} {_code(row)}｜{_num(row.get('price'))}｜{_change(row.get('change_pct'))}｜量 {_num(row.get('volume_pace'))}x",
+        f"   買 {_num(row.get('buy_price'))}｜支撐 {_num(row.get('support1'))}｜壓力 {_num(row.get('resistance1'))}｜{action_text}｜{row.get('risk', '一般波動')}",
+    ])
+
+
 def render_markdown(report: dict[str, Any]) -> str:
     period_names = {"morning": "早報", "noon": "午報", "evening": "晚報"}
     lines = [
-        f"# 武得 AI 股票{period_names[report['period']]}",
+        f"📊 武得 AI 股票{period_names[report['period']]}",
+        f"🕒 {report['updated_at']}（台灣時間）",
+        f"固定清單 {report['watchlist_analyzed_count']}/{report['watchlist_count']} 檔｜背景掃描 {report['universe_count']} 檔",
         "",
-        f"更新：{report['updated_at']}（台灣時間）",
-        f"候選池：{report['universe_count']} 檔｜成功分析：{report['analyzed_count']} 檔",
-        "",
-        "## 國際與大盤",
+        "🌏 國際與大盤",
     ]
     for name, item in report["market"].items():
-        change = item.get("change_pct")
-        sign = "+" if change is not None and change >= 0 else ""
-        lines.append(f"- {name}: {_num(item.get('price'))}（{sign}{_num(change)}%）")
-    lines.extend(["", "## 台股動態 TOP 10", ""])
-    for row in report["top"]:
-        change_sign = "+" if row["change_pct"] >= 0 else ""
-        attack_sign = "+" if row["attack_volume"] >= 0 else ""
-        lines.extend([
-            f"### {row['rank']}. {row['name']}（{row['symbol']}）｜{row['score']} 分",
-            f"- 現價 {_num(row['price'])}｜漲跌 {change_sign}{_num(row['change_pct'])}%｜相對量能 {_num(row['volume_pace'])} 倍｜攻擊量 {attack_sign}{_num(row['attack_volume'], 1)}%",
-            f"- 法人合計 {int(row['institution_net']):+,} 股｜族群 {row['theme']}（{row['theme_change_pct']:+.2f}%）",
-            f"- 支撐 {_num(row['support1'])} / {_num(row['support2'])}｜壓力 {_num(row['resistance1'])} / {_num(row['resistance2'])}",
-            f"- 建議：{row['action']}｜參考買價 {_num(row['buy_price'])}｜風控 {_num(row['stop_price'])}｜風險：{row['risk']}",
-            "",
-        ])
+        lines.append(f"{name}｜{_num(item.get('price'))}｜{_change(item.get('change_pct'))}")
+
+    for market, title in (("TW", "🇹🇼 台股固定觀察"), ("US", "🇺🇸 美股／ETF固定觀察")):
+        rows = [row for row in report["watchlist"] if row.get("market") == market]
+        lines.extend(["", title, ""])
+        lines.extend(_stock_block(row) + "\n" for row in rows)
+
+    if report.get("unavailable"):
+        missing = "、".join(f"{item['name']}({_code(item)})" for item in report["unavailable"])
+        lines.extend(["", "⚪ 暫無可靠行情", missing])
+
+    lines.extend(["", "🏆 全台股背景掃描最強 5 檔", ""])
+    lines.extend(_stock_block(row) + "\n" for row in report["top"])
     lines.extend([
-        "## 判讀原則",
-        "排名會隨盤中分時量能、攻擊量、股價、法人與族群強弱重新洗牌，不使用開盤前固定名次。攻擊量為 5 分 K 上漲量減下跌量的代理值，不等同交易所逐筆主動買賣資料。",
         "",
-        "> 本報告為資料整理與風險輔助，不保證獲利，也不是代客下單建議。",
+        "判讀：🟢可分批｜🟡等拉回或確認｜🔴暫不買",
+        "本報告為資料整理與風險輔助，不保證獲利，也不是代客下單建議。",
     ])
-    return "\n".join(lines)
+    return "\n".join(lines).strip()
 
 
 def save_report(report: dict[str, Any], markdown: str) -> tuple[Path, Path]:
@@ -69,22 +85,33 @@ def save_report(report: dict[str, Any], markdown: str) -> tuple[Path, Path]:
     return latest_json, latest_md
 
 
+def _telegram_chunks(text: str, limit: int = 3800) -> list[str]:
+    chunks: list[str] = []
+    current = ""
+    for paragraph in text.split("\n\n"):
+        candidate = paragraph if not current else f"{current}\n\n{paragraph}"
+        if len(candidate) <= limit:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+        while len(paragraph) > limit:
+            split = paragraph.rfind("\n", 0, limit)
+            split = split if split > 500 else limit
+            chunks.append(paragraph[:split])
+            paragraph = paragraph[split:].lstrip()
+        current = paragraph
+    if current:
+        chunks.append(current)
+    return chunks
+
+
 def send_telegram(markdown: str) -> bool:
     if not SETTINGS.telegram_bot_token or not SETTINGS.telegram_chat_id:
         LOG.info("Telegram secrets not set; report saved without sending")
         return False
     url = f"https://api.telegram.org/bot{SETTINGS.telegram_bot_token}/sendMessage"
-    chunks: list[str] = []
-    remaining = markdown
-    while remaining:
-        if len(remaining) <= 3500:
-            chunks.append(remaining)
-            break
-        split = remaining.rfind("\n", 0, 3500)
-        split = split if split > 1000 else 3500
-        chunks.append(remaining[:split])
-        remaining = remaining[split:].lstrip()
-    for chunk in chunks:
+    for chunk in _telegram_chunks(markdown):
         response = requests.post(
             url,
             json={"chat_id": SETTINGS.telegram_chat_id, "text": chunk, "disable_web_page_preview": True},
@@ -92,4 +119,3 @@ def send_telegram(markdown: str) -> bool:
         )
         response.raise_for_status()
     return True
-

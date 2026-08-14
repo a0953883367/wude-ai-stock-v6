@@ -16,6 +16,7 @@ from data_fetcher import (
 )
 from notifier import render_markdown, save_report, send_telegram
 from strategy import build_features, score_candidates
+from watchlist import load_watchlist
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,12 +30,26 @@ def main() -> int:
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     now = datetime.now(TAIPEI)
-    universe = load_taiwan_universe()
-    symbols = [item["symbol"] for item in universe]
+
+    market_universe = load_taiwan_universe()
+    for item in market_universe:
+        item.setdefault("market", "TW")
+    watchlist = load_watchlist()
+
+    combined = {item["symbol"]: item for item in market_universe}
+    combined.update({item["symbol"]: item for item in watchlist})
+    universe = list(combined.values())
+    symbols = list(combined)
+
     history = download_history(symbols)
     intraday = download_intraday(symbols)
-    stock_ids = {symbol.split(".")[0] for symbol in symbols}
+    stock_ids = {
+        item["symbol"].split(".")[0]
+        for item in universe
+        if item.get("market") == "TW"
+    }
     institutions = fetch_institutional_flows(stock_ids)
+
     features = []
     for item in universe:
         symbol = item["symbol"]
@@ -42,21 +57,36 @@ def main() -> int:
         if daily is None:
             continue
         stock_id = symbol.split(".")[0]
-        row = build_features(item, daily, intraday.get(symbol), institutions.get(stock_id))
+        institution = institutions.get(stock_id) if item.get("market") == "TW" else None
+        row = build_features(item, daily, intraday.get(symbol), institution)
         if row:
             features.append(row)
+
     ranked = score_candidates(features)
     if not ranked:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
+
+    by_symbol = {row["symbol"]: row for row in ranked}
+    watchlist_rows = [by_symbol[item["symbol"]] for item in watchlist if item["symbol"] in by_symbol]
+    unavailable = [item for item in watchlist if item["symbol"] not in by_symbol]
+    market_top = [
+        row for row in ranked
+        if row.get("market") == "TW" and row.get("type") == "個股"
+    ][:5]
+
     report = {
         "system": "武得 AI 股票助理 V6",
         "period": args.period,
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "timezone": "Asia/Taipei",
-        "universe_count": len(universe),
+        "universe_count": len(market_universe),
         "analyzed_count": len(ranked),
+        "watchlist_count": len(watchlist),
+        "watchlist_analyzed_count": len(watchlist_rows),
         "market": fetch_core_market(),
-        "top": ranked[: SETTINGS.top_n],
+        "watchlist": watchlist_rows,
+        "unavailable": unavailable,
+        "top": market_top,
         "method": {
             "technical": 0.30,
             "volume_and_attack": 0.25,
@@ -76,4 +106,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
