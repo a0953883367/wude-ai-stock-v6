@@ -76,12 +76,15 @@ def save_report(report: dict[str, Any], markdown: str) -> tuple[Path, Path]:
     SETTINGS.reports_dir.mkdir(parents=True, exist_ok=True)
     latest_json = SETTINGS.reports_dir / "latest.json"
     latest_md = SETTINGS.reports_dir / "latest.md"
-    latest_json.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    payload = json.dumps(report, ensure_ascii=False, indent=2)
+    latest_json.write_text(payload, encoding="utf-8")
     latest_md.write_text(markdown, encoding="utf-8")
+    period_json = SETTINGS.reports_dir / f"{report['period']}.json"
+    period_json.write_text(payload, encoding="utf-8")
     archive = SETTINGS.reports_dir / "archive"
     archive.mkdir(exist_ok=True)
     archive_name = f"{report['updated_at'][:10]}-{report['period']}.json"
-    (archive / archive_name).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (archive / archive_name).write_text(payload, encoding="utf-8")
     return latest_json, latest_md
 
 
