@@ -19,6 +19,17 @@ from strategy import build_features, score_candidates
 from watchlist import load_watchlist
 
 
+def sort_by_score(rows: list[dict]) -> list[dict]:
+    """Keep every row and order valid AI scores from highest to lowest."""
+    def score(row: dict) -> float:
+        try:
+            return float(row.get("score"))
+        except (TypeError, ValueError):
+            return float("-inf")
+
+    return sorted(rows, key=score, reverse=True)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--period", choices=["morning", "noon", "evening"], required=True)
@@ -67,7 +78,11 @@ def main() -> int:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
 
     by_symbol = {row["symbol"]: row for row in ranked}
-    watchlist_rows = [by_symbol[item["symbol"]] for item in watchlist if item["symbol"] in by_symbol]
+    watchlist_rows = sort_by_score([
+        by_symbol[item["symbol"]]
+        for item in watchlist
+        if item["symbol"] in by_symbol
+    ])
     unavailable = [item for item in watchlist if item["symbol"] not in by_symbol]
     market_top = [
         row for row in ranked
