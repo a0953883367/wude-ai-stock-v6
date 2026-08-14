@@ -82,6 +82,14 @@ def render_markdown(report: dict[str, Any]) -> str:
             lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；本次自動採中性分數")
         if not status.get("broker_count"):
             lines.append("ℹ️ 分點通報：券商分點未取得，可能為 Sponsor 試用到期；其他免費籌碼不受影響")
+    performance = report.get("performance", {})
+    five_day = performance.get("horizons", {}).get("5", {})
+    if five_day.get("samples"):
+        lines.append(
+            f"🎯 回測5日：{five_day['samples']}筆｜上漲命中 {five_day['win_rate_pct']:.1f}%｜平均 {_change(five_day['avg_return_pct'])}｜最差 {_change(five_day['worst_return_pct'])}"
+        )
+    else:
+        lines.append("🎯 回測：已開始留存排名；累積5個交易日後顯示首批命中率")
     lines.extend(["", "🌏 國際與大盤"])
     for name, item in report["market"].items():
         lines.append(f"{name}｜{_num(item.get('price'))}｜{_change(item.get('change_pct'))}")
