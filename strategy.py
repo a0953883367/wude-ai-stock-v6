@@ -267,18 +267,40 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if row["ma20_distance_pct"] >= 10:
             position_score -= 15
 
+        valuation_parts: list[float] = []
+        per = _finite(row.get("per"), 0)
+        if per:
+            valuation_parts.append(75 if 0 < per <= 12 else 68 if per <= 20 else 58 if per <= 30 else 45 if per <= 45 else 35)
+        pbr = _finite(row.get("pbr"), 0)
+        if pbr:
+            valuation_parts.append(68 if pbr <= 1.5 else 58 if pbr <= 3 else 50 if pbr <= 6 else 38)
+        dividend_yield = _finite(row.get("dividend_yield"), 0)
+        if dividend_yield:
+            valuation_parts.append(_clamp(50 + dividend_yield * 4, 50, 75))
+        valuation_score = float(np.mean(valuation_parts)) if valuation_parts else 50.0
+        growth_parts: list[float] = []
+        if row.get("revenue_yoy_pct") is not None:
+            growth_parts.append(_clamp(50 + _finite(row.get("revenue_yoy_pct")) * 0.8))
+        if row.get("revenue_mom_pct") is not None:
+            growth_parts.append(_clamp(50 + _finite(row.get("revenue_mom_pct")) * 0.35))
+        growth_score = float(np.mean(growth_parts)) if growth_parts else 50.0
+        fundamental_score = valuation_score * 0.55 + growth_score * 0.45
+
         total = (
-            _clamp(technical) * 0.30
-            + volume_score * 0.25
-            + institution_score * 0.18
-            + group_score * 0.17
-            + _clamp(position_score) * 0.10
+            _clamp(technical) * 0.28
+            + volume_score * 0.23
+            + institution_score * 0.17
+            + fundamental_score * 0.10
+            + group_score * 0.14
+            + _clamp(position_score) * 0.08
         )
         row.update({
             "technical_score": round(_clamp(technical), 1),
             "volume_score": round(volume_score, 1),
             "institution_score": round(institution_score, 1),
             "credit_score": round(credit_score, 1),
+            "valuation_score": round(valuation_score, 1),
+            "fundamental_score": round(fundamental_score, 1),
             "group_score": round(group_score, 1),
             "score": round(total, 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
@@ -290,6 +312,8 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             row["risk"] = "跌破20日低點，先避開"
         elif row.get("credit_available") and sbl_pressure >= 5 and row["price"] < row["ma20"]:
             row["risk"] = "借券賣壓增加且跌破月線"
+        elif row.get("fundamental_available") and _finite(row.get("revenue_yoy_pct")) < -15 and per > 40:
+            row["risk"] = "估值偏高且營收衰退"
         elif row["ma20_distance_pct"] >= 12:
             row["risk"] = "乖離月線過大，勿追高"
         elif row["rsi"] >= 78 or row["volume_pace"] >= 3.5:
@@ -304,7 +328,8 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         trend_ready = row["price"] >= row["ma10"] >= row["ma20"]
         not_extended = row["ma20_distance_pct"] < 10
         kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
-        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready:
+        fundamental_ready = not row.get("fundamental_available") or fundamental_score >= 40
+        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready and fundamental_ready:
             row["action"] = "🟢 可分批，等回測買點"
         elif total >= 58:
             row["action"] = "🟡 觀察，不追高"

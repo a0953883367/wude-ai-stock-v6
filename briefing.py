@@ -13,6 +13,7 @@ from data_fetcher import (
     fetch_broker_branches,
     fetch_core_market,
     fetch_credit_flows,
+    fetch_fundamentals,
     fetch_institutional_flows,
     load_taiwan_universe,
 )
@@ -65,6 +66,7 @@ def main() -> int:
     # fixed list while the wider background scan safely remains neutral.
     institutions = fetch_institutional_flows(watchlist_stock_ids)
     credit_flows = fetch_credit_flows(watchlist_stock_ids)
+    fundamentals = fetch_fundamentals(watchlist_stock_ids)
     broker_branches = fetch_broker_branches(watchlist_stock_ids)
 
     features = []
@@ -79,6 +81,7 @@ def main() -> int:
         if row:
             if item.get("market") == "TW":
                 row.update(credit_flows.get(stock_id, {}))
+                row.update(fundamentals.get(stock_id, {}))
                 row.update(broker_branches.get(stock_id, {}))
             features.append(row)
 
@@ -112,6 +115,7 @@ def main() -> int:
             "finmind_configured": bool(SETTINGS.finmind_token),
             "institutional_count": len(institutions),
             "credit_count": len(credit_flows),
+            "fundamental_count": len(fundamentals),
             "broker_count": len(broker_branches),
             "expected_tw_count": len(watchlist_stock_ids),
         },
@@ -119,13 +123,14 @@ def main() -> int:
         "unavailable": unavailable,
         "top": market_top,
         "method": {
-            "technical": 0.30,
+            "technical": 0.28,
             "kline_and_volume_price": "included within technical weight",
-            "volume_and_attack": 0.25,
-            "institutional": 0.18,
+            "volume_and_attack": 0.23,
+            "institutional": 0.17,
             "credit_chips": "included within institutional weight when available",
-            "theme_resonance": 0.17,
-            "support_resistance": 0.10,
+            "fundamental_and_valuation": 0.10,
+            "theme_resonance": 0.14,
+            "support_resistance": 0.08,
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
