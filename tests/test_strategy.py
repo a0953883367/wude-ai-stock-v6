@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import _candlestick_features, build_features, score_candidates
+from strategy import _candlestick_features, _next_day_scenario, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -62,6 +62,9 @@ def test_candidate_scoring_has_prices_and_ranking():
     assert 0 <= ranked[0]["financial_quality_score"] <= 100
     assert ranked[0]["volume_price_pattern"]
     assert 0 <= ranked[0]["score"] <= 100
+    assert ranked[0]["scenario_defense_low"] <= ranked[0]["scenario_defense_high"]
+    assert ranked[0]["scenario_no_chase_low"] <= ranked[0]["scenario_no_chase_high"]
+    assert "不追" in ranked[0]["scenario_no_chase"]
 
 
 def test_candlestick_detects_volume_breakout():
@@ -74,3 +77,21 @@ def test_candlestick_detects_volume_breakout():
     assert result["breakout20"] is True
     assert "突破20日高" in result["kline_pattern"]
     assert result["volume_price_pattern"] == "價漲量增"
+
+
+def test_next_day_scenario_never_invents_missing_institution_data():
+    row = {
+        "price": 75.0,
+        "support1": 73.0,
+        "support2": 70.0,
+        "resistance1": 76.0,
+        "resistance2": 80.0,
+        "daily_volume_ratio": 2.5,
+        "institution_available": False,
+        "intraday_available": False,
+    }
+    result = _next_day_scenario(row)
+    assert result["scenario_defense_low"] == 73.0
+    assert "法人資料未取得" in result["scenario_basis"]
+    assert "待開盤15～30分鐘資料" in result["scenario_continuation"]
+    assert result["scenario_data_quality"] == "部分資料"
