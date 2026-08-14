@@ -218,12 +218,36 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return min(high, max(low, value))
 
 
+def _performance_adjustment(
+    performance: dict[str, Any], signal: str
+) -> tuple[float, int, str | None]:
+    """Return a strongly shrunk adjustment from verified forward outcomes."""
+    if not performance.get("calibration", {}).get("affects_ai_score"):
+        return 0.0, 0, None
+    metrics = performance.get("signals", {}).get(signal, {})
+    for horizon in ("5", "1"):
+        metric = metrics.get(horizon, {})
+        samples = int(metric.get("samples") or 0)
+        if not samples:
+            continue
+        win_rate = _finite(metric.get("win_rate_pct"), 50.0)
+        avg_return = _finite(metric.get("avg_return_pct"), 0.0)
+        direction_return = -avg_return if signal == "🔴" else avg_return
+        raw_edge = (win_rate - 50) * 0.04 + direction_return * 0.15
+        confidence = min(0.5, samples / (samples + 100))
+        return _clamp(raw_edge * confidence, -2.0, 2.0), samples, horizon
+    return 0.0, 0, None
+
+
 def score_candidates(
-    rows: list[dict[str, Any]], macro_regime: dict[str, Any] | None = None
+    rows: list[dict[str, Any]],
+    macro_regime: dict[str, Any] | None = None,
+    performance: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     if not rows:
         return []
     macro_regime = macro_regime or {}
+    performance = performance or {}
     macro_score = _finite(macro_regime.get("score"), 50.0)
     macro_active = bool(
         macro_regime.get("calibration", {}).get("affects_ai_score")
@@ -313,7 +337,7 @@ def score_candidates(
         else:
             fundamental_score = valuation_score * 0.55 + growth_score * 0.45
 
-        total = (
+        base_total = (
             _clamp(technical) * 0.28
             + volume_score * 0.23
             + institution_score * 0.17
@@ -322,6 +346,11 @@ def score_candidates(
             + _clamp(position_score) * 0.08
             + macro_adjustment
         )
+        preliminary_signal = "🟢" if base_total >= 70 else "🟡" if base_total >= 58 else "🔴"
+        performance_adjustment, performance_samples, performance_horizon = (
+            _performance_adjustment(performance, preliminary_signal)
+        )
+        total = _clamp(base_total + performance_adjustment)
         row.update({
             "technical_score": round(_clamp(technical), 1),
             "volume_score": round(volume_score, 1),
@@ -335,7 +364,10 @@ def score_candidates(
             "macro_score": round(macro_score, 1),
             "macro_adjustment": round(macro_adjustment, 1),
             "macro_affects_score": macro_active,
-            "score": round(_clamp(total), 1),
+            "performance_adjustment": round(performance_adjustment, 2),
+            "performance_samples": performance_samples,
+            "performance_horizon": performance_horizon,
+            "score": round(total, 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
         })
         row["buy_price"] = round(min(row["price"], row["support1"] * 1.01), 2)
