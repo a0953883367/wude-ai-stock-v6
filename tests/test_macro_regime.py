@@ -41,3 +41,19 @@ def test_same_date_replaces_snapshot_instead_of_counting_three_reports(tmp_path)
     assert result["calibration"]["trading_days_collected"] == 1
     payload = json.loads((tmp_path / "macro_history.json").read_text(encoding="utf-8"))
     assert len(payload["snapshots"]) == 1
+
+
+def test_historical_backfill_activates_without_waiting(tmp_path):
+    history = [
+        {"date": f"2026-07-{day:02d}", "market": _market()}
+        for day in range(1, 17)
+    ]
+    result = update_macro_regime(
+        tmp_path,
+        _market(),
+        "2026-08-14 20:00:00",
+        "evening",
+        history,
+    )
+    assert result["calibration"]["trading_days_collected"] >= 16
+    assert result["calibration"]["affects_ai_score"] is True
