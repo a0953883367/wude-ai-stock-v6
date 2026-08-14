@@ -235,6 +235,130 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return min(high, max(low, value))
 
 
+
+def _positioning_radar(row: dict[str, Any]) -> dict[str, Any]:
+    """Estimate observable buying/short pressure without claiming hidden intent.
+
+    The radar is explanatory only and deliberately does not alter the AI score.
+    Taiwan and US markets use different evidence because their disclosures differ.
+    """
+    market = str(row.get("market", "US")).upper()
+    score = 50.0
+    evidence: list[str] = []
+    available_groups = 0
+    change = _finite(row.get("change_pct"))
+    volume_ratio = _finite(row.get("daily_volume_ratio"), 1.0)
+    attack15 = _finite(row.get("opening_attack_15m"))
+    attack30 = _finite(row.get("opening_attack_30m"))
+
+    if market == "TW":
+        if row.get("institution_available"):
+            available_groups += 1
+            one = _finite(row.get("institution_1d"))
+            five = _finite(row.get("institution_5d"))
+            if one > 0 and five > 0:
+                score += 16
+                evidence.append(f"三大法人1日與5日同步買超（{one:+,.0f}／{five:+,.0f}股）")
+            elif one < 0 and five < 0:
+                score -= 16
+                evidence.append(f"三大法人1日與5日同步賣超（{one:+,.0f}／{five:+,.0f}股）")
+            else:
+                score += 4 if five > 0 else -4 if five < 0 else 0
+                evidence.append(f"三大法人5日累計 {five:+,.0f} 股，短線方向未完全一致")
+        else:
+            evidence.append("法人資料未取得，不推定主力方向")
+
+        if row.get("credit_available"):
+            available_groups += 1
+            short5 = _finite(row.get("short_5d_change"))
+            sbl5 = _finite(row.get("sbl_5d_change"))
+            margin5 = _finite(row.get("margin_5d_change"))
+            short_pressure = short5 + sbl5
+            base = max(_finite(row.get("avg_volume20")) * 5, 1)
+            pressure_pct = short_pressure / base * 100
+            if pressure_pct >= 2:
+                score -= 12
+                evidence.append(f"融券＋借券賣出5日增加 {short_pressure:+,.0f} 股，空方壓力升高")
+            elif pressure_pct <= -2:
+                score += 9
+                evidence.append(f"融券＋借券賣出5日減少 {short_pressure:+,.0f} 股，空單回補")
+            elif margin5 > base * 0.03 and change < 0:
+                score -= 7
+                evidence.append("股價偏弱但融資增加，籌碼擁擠需留意")
+            else:
+                evidence.append("融資融券與借券變化未達明顯門檻")
+
+        if row.get("broker_available"):
+            available_groups += 1
+            buy_net = sum(max(_finite(item.get("net")), 0) for item in row.get("top_brokers_buy", []))
+            sell_net = abs(sum(min(_finite(item.get("net")), 0) for item in row.get("top_brokers_sell", [])))
+            if buy_net > sell_net * 1.25:
+                score += 7
+                evidence.append("主要買超分點金額／張數集中度高於賣超分點")
+            elif sell_net > buy_net * 1.25:
+                score -= 7
+                evidence.append("主要賣超分點集中度高於買超分點")
+    else:
+        if row.get("us_short_volume_available"):
+            available_groups += 1
+            ratio = _finite(row.get("us_short_volume_ratio_pct"))
+            report_date = str(row.get("us_short_volume_date", ""))
+            if ratio >= 55:
+                score -= 11
+                evidence.append(f"FINRA {report_date} 每日放空成交占比 {ratio:.1f}%，偏高")
+            elif ratio <= 35:
+                score += 6
+                evidence.append(f"FINRA {report_date} 每日放空成交占比 {ratio:.1f}%，偏低")
+            else:
+                evidence.append(f"FINRA {report_date} 每日放空成交占比 {ratio:.1f}%，中性")
+        else:
+            evidence.append("FINRA每日放空成交資料未取得，不推定空單部位")
+
+    if row.get("intraday_available"):
+        available_groups += 1
+        attack = attack30 if attack30 else attack15
+        if attack >= 12 and change >= 0:
+            score += 10
+            evidence.append(f"開盤攻擊量 {attack:+.1f}%，買盤轉強")
+        elif attack <= -12 and change <= 0:
+            score -= 10
+            evidence.append(f"開盤攻擊量 {attack:+.1f}%，賣壓增強")
+
+    if volume_ratio >= 1.5 and change >= 2:
+        score += 7
+        evidence.append(f"價漲量增，日量為20日均量 {volume_ratio:.2f} 倍")
+    elif volume_ratio >= 1.5 and change <= -2:
+        score -= 9
+        evidence.append(f"價跌量增，日量為20日均量 {volume_ratio:.2f} 倍")
+    elif not evidence:
+        evidence.append("目前量價訊號中性")
+
+    score = round(_clamp(score), 1)
+    if score >= 68:
+        signal = "🔥 多方押注"
+    elif score >= 58:
+        signal = "🟢 買盤／回補轉強"
+    elif score <= 32:
+        signal = "🔴 放空／賣壓增強"
+    elif score <= 42:
+        signal = "⚠️ 籌碼偏空"
+    else:
+        signal = "⚪ 多空不明"
+
+    needed = 3 if market == "TW" else 2
+    result = {
+        "positioning_market": market,
+        "positioning_score": score,
+        "positioning_signal": signal,
+        "positioning_evidence": evidence[:4],
+        "positioning_data_quality": "完整" if available_groups >= needed else "部分資料",
+        "positioning_affects_ai_score": False,
+    }
+    if market == "US":
+        result["positioning_disclaimer"] = "FINRA每日放空成交量≠未回補空單；本雷達不把它當成即時主力持倉"
+    return result
+
+
 def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
     """Build market-specific conditional scenarios without inventing probability."""
     market = str(row.get("market", "US")).upper()
@@ -483,6 +607,7 @@ def score_candidates(
         else:
             row["action"] = "🔴 暫不買"
 
+        row.update(_positioning_radar(row))
         row.update(_next_day_scenario(row))
 
     ranked = sorted(rows, key=lambda r: (r["score"], r["volume_pace"], r["change_pct"]), reverse=True)

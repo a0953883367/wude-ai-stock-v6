@@ -17,6 +17,7 @@ from data_fetcher import (
     fetch_fundamentals,
     fetch_financial_quality,
     fetch_institutional_flows,
+    fetch_us_short_volume,
     load_taiwan_universe,
 )
 from macro_regime import update_macro_regime
@@ -66,6 +67,11 @@ def main() -> int:
         for item in watchlist
         if item.get("market") == "TW"
     }
+    us_symbols = {
+        item["symbol"].upper()
+        for item in universe
+        if item.get("market") == "US"
+    }
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
     institutions = fetch_institutional_flows(watchlist_stock_ids)
@@ -73,6 +79,7 @@ def main() -> int:
     fundamentals = fetch_fundamentals(watchlist_stock_ids)
     financial_quality = fetch_financial_quality(watchlist_stock_ids)
     broker_branches = fetch_broker_branches(watchlist_stock_ids)
+    us_short_volume = fetch_us_short_volume(us_symbols)
 
     features = []
     for item in universe:
@@ -89,6 +96,8 @@ def main() -> int:
                 row.update(fundamentals.get(stock_id, {}))
                 row.update(financial_quality.get(stock_id, {}))
                 row.update(broker_branches.get(stock_id, {}))
+            elif item.get("market") == "US":
+                row.update(us_short_volume.get(symbol.upper(), {}))
             features.append(row)
 
     market = fetch_core_market()
@@ -156,6 +165,7 @@ def main() -> int:
             "fundamental_count": len(fundamentals),
             "financial_quality_count": len(financial_quality),
             "broker_count": len(broker_branches),
+            "us_short_volume_count": len(us_short_volume),
             "expected_tw_count": len(watchlist_stock_ids),
         },
         "watchlist": watchlist_rows,

@@ -2,6 +2,7 @@ from data_fetcher import (
     _aggregate_credit_rows,
     _aggregate_financial_quality_rows,
     _aggregate_fundamental_rows,
+    _parse_finra_short_volume,
 )
 
 
@@ -82,3 +83,19 @@ def test_financial_quality_rows_have_profitability_cash_and_debt():
     assert result["debt_ratio_pct"] == 40.0
     assert round(result["roe_pct"], 2) == 8.33
     assert result["operating_cash_flow_positive"] == 1.0
+
+
+
+def test_parse_finra_short_volume_aggregates_markets_and_labels_limit():
+    payload = "\n".join([
+        "Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market",
+        "20260813|NVDA|100|5|300|Q",
+        "20260813|NVDA|50|0|200|N",
+        "20260813|AAPL|90|0|100|Q",
+    ])
+    result = _parse_finra_short_volume(payload, {"NVDA"}, "2026-08-13")
+    assert result["NVDA"]["us_short_volume"] == 150
+    assert result["NVDA"]["us_short_exempt_volume"] == 5
+    assert result["NVDA"]["us_total_reported_volume"] == 500
+    assert result["NVDA"]["us_short_volume_ratio_pct"] == 31
+    assert "不等於未回補空單" in result["NVDA"]["us_short_volume_note"]

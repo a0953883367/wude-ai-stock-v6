@@ -65,6 +65,15 @@ def _stock_block(row: dict[str, Any]) -> str:
         buyers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_buy", [])[:3]) or "N/A"
         sellers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_sell", [])[:3]) or "N/A"
         lines.insert(-1, f"   分點：買 {buyers}｜賣 {sellers}")
+    if row.get("positioning_signal"):
+        lines.append(
+            f"   🎯 主力多空雷達：{row.get('positioning_signal')}｜"
+            f"{_num(row.get('positioning_score'), 1)}分｜{row.get('positioning_data_quality', '部分資料')}"
+        )
+        for item in row.get("positioning_evidence", [])[:3]:
+            lines.append(f"   • {item}")
+        if row.get("positioning_disclaimer"):
+            lines.append(f"   註：{row.get('positioning_disclaimer')}")
     if row.get("scenario_continuation"):
         lines.extend([
             f"   📋 {row.get('scenario_title', '明日劇本')}（{row.get('scenario_data_quality', '部分資料')}）",

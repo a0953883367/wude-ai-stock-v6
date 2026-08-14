@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import _candlestick_features, _next_day_scenario, build_features, score_candidates
+from strategy import _candlestick_features, _next_day_scenario, _positioning_radar, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -115,3 +115,42 @@ def test_us_scenario_does_not_use_taiwan_institution_wording():
     assert "美股不套用台股三大法人" in result["scenario_basis"]
     assert "美股正式開盤後15～30分鐘" in result["scenario_continuation"]
     assert result["scenario_data_quality"] == "完整"
+
+
+
+def test_tw_positioning_radar_uses_tw_disclosures_without_changing_score():
+    row = {
+        "market": "TW", "change_pct": 3.0, "daily_volume_ratio": 1.8,
+        "institution_available": 1, "institution_1d": 100_000,
+        "institution_5d": 400_000, "credit_available": 1,
+        "short_5d_change": -40_000, "sbl_5d_change": -20_000,
+        "margin_5d_change": 0, "avg_volume20": 1_000_000,
+        "intraday_available": 1, "opening_attack_15m": 15,
+        "opening_attack_30m": 18, "broker_available": 0,
+    }
+    result = _positioning_radar(row)
+    assert result["positioning_score"] >= 68
+    assert result["positioning_signal"] == "🔥 多方押注"
+    assert result["positioning_affects_ai_score"] is False
+
+
+def test_us_positioning_radar_labels_short_volume_as_transaction_data():
+    row = {
+        "market": "US", "change_pct": -3.0, "daily_volume_ratio": 1.7,
+        "us_short_volume_available": 1, "us_short_volume_ratio_pct": 62,
+        "us_short_volume_date": "2026-08-13", "intraday_available": 1,
+        "opening_attack_15m": -18, "opening_attack_30m": -20,
+    }
+    result = _positioning_radar(row)
+    assert result["positioning_score"] <= 32
+    assert result["positioning_signal"] == "🔴 放空／賣壓增強"
+    assert "≠未回補空單" in result["positioning_disclaimer"]
+
+
+def test_us_positioning_radar_stays_partial_when_finra_is_missing():
+    result = _positioning_radar({
+        "market": "US", "change_pct": 0, "daily_volume_ratio": 1,
+        "intraday_available": 0,
+    })
+    assert result["positioning_data_quality"] == "部分資料"
+    assert any("不推定空單部位" in text for text in result["positioning_evidence"])
