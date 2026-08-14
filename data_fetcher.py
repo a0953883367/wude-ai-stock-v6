@@ -32,6 +32,9 @@ CORE_MARKET = {
     "AMD": "AMD",
     "SMH": "SMH",
     "美元台幣": "TWD=X",
+    "美元指數": "DX-Y.NYB",
+    "VIX": "^VIX",
+    "美國10年期公債殖利率": "^TNX",
 }
 
 
