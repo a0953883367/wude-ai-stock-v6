@@ -317,6 +317,7 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "institution_score": round(institution_score, 1),
             "credit_score": round(credit_score, 1),
             "valuation_score": round(valuation_score, 1),
+            "growth_score": round(growth_score, 1),
             "fundamental_score": round(fundamental_score, 1),
             "financial_quality_score": round(quality_score, 1),
             "group_score": round(group_score, 1),
