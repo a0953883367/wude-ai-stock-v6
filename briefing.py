@@ -10,7 +10,9 @@ from config import SETTINGS, TAIPEI
 from data_fetcher import (
     download_history,
     download_intraday,
+    fetch_broker_branches,
     fetch_core_market,
+    fetch_credit_flows,
     fetch_institutional_flows,
     load_taiwan_universe,
 )
@@ -60,6 +62,13 @@ def main() -> int:
         if item.get("market") == "TW"
     }
     institutions = fetch_institutional_flows(stock_ids)
+    watchlist_stock_ids = {
+        item["symbol"].split(".")[0]
+        for item in watchlist
+        if item.get("market") == "TW"
+    }
+    credit_flows = fetch_credit_flows(watchlist_stock_ids)
+    broker_branches = fetch_broker_branches(watchlist_stock_ids)
 
     features = []
     for item in universe:
@@ -71,6 +80,9 @@ def main() -> int:
         institution = institutions.get(stock_id) if item.get("market") == "TW" else None
         row = build_features(item, daily, intraday.get(symbol), institution)
         if row:
+            if item.get("market") == "TW":
+                row.update(credit_flows.get(stock_id, {}))
+                row.update(broker_branches.get(stock_id, {}))
             features.append(row)
 
     ranked = score_candidates(features)
@@ -106,6 +118,7 @@ def main() -> int:
             "technical": 0.30,
             "volume_and_attack": 0.25,
             "institutional": 0.18,
+            "credit_chips": "included within institutional weight when available",
             "theme_resonance": 0.17,
             "support_resistance": 0.10,
         },

@@ -158,6 +158,16 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             institution_score = _clamp(50 + participation * 2 + continuity)
         else:
             institution_score = 50.0
+        credit_score = 50.0
+        if row.get("credit_available"):
+            five_day_volume = max(row["avg_volume20"] * 5, 1)
+            margin_pressure = _finite(row.get("margin_5d_change")) / five_day_volume * 100
+            short_pressure = (
+                _finite(row.get("short_5d_change")) + _finite(row.get("sbl_5d_change"))
+            ) / five_day_volume * 100
+            # Rising margin is crowded retail leverage; rising short/SBL is sell pressure.
+            credit_score = _clamp(50 - margin_pressure * 1.2 - short_pressure * 1.5)
+            institution_score = institution_score * 0.72 + credit_score * 0.28
         group_score = _clamp(50 + theme_change[str(row["theme"])] * 10)
         position_score = 65 if row["price"] <= row["support1"] * 1.03 else 52
         if row["price"] >= row["resistance2"] * 0.995:
@@ -176,13 +186,17 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "technical_score": round(_clamp(technical), 1),
             "volume_score": round(volume_score, 1),
             "institution_score": round(institution_score, 1),
+            "credit_score": round(credit_score, 1),
             "group_score": round(group_score, 1),
             "score": round(total, 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
         })
         row["buy_price"] = round(min(row["price"], row["support1"] * 1.01), 2)
         row["stop_price"] = round(row["support2"] * 0.98, 2)
-        if row["ma20_distance_pct"] >= 12:
+        sbl_pressure = _finite(row.get("sbl_5d_change")) / max(row["avg_volume20"] * 5, 1) * 100
+        if row.get("credit_available") and sbl_pressure >= 5 and row["price"] < row["ma20"]:
+            row["risk"] = "借券賣壓增加且跌破月線"
+        elif row["ma20_distance_pct"] >= 12:
             row["risk"] = "乖離月線過大，勿追高"
         elif row["rsi"] >= 78 or row["volume_pace"] >= 3.5:
             row["risk"] = "過熱，勿追高"

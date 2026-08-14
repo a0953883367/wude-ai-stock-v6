@@ -31,6 +31,12 @@ def _change(value: Any) -> str:
     return f"{number:+.2f}%"
 
 
+def _signed(value: Any) -> str:
+    if value is None:
+        return "N/A"
+    return f"{float(value):+,.0f}"
+
+
 def _stock_block(row: dict[str, Any]) -> str:
     action = str(row.get("action", "🟡 觀察"))
     light = action[:1] if action[:1] in {"🟢", "🟡", "🔴"} else "🟡"
@@ -42,6 +48,12 @@ def _stock_block(row: dict[str, Any]) -> str:
     ]
     if row.get("institution_available"):
         lines.insert(2, f"   法人 1/5/10日：{_num(row.get('institution_1d'), 0)}/{_num(row.get('institution_5d'), 0)}/{_num(row.get('institution_10d'), 0)} 股")
+    if row.get("credit_available"):
+        lines.insert(-1, f"   信用 5日：融資 {_signed(row.get('margin_5d_change'))}｜融券 {_signed(row.get('short_5d_change'))}｜借券賣出 {_signed(row.get('sbl_5d_change'))} 股")
+    if row.get("broker_available"):
+        buyers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_buy", [])[:3]) or "N/A"
+        sellers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_sell", [])[:3]) or "N/A"
+        lines.insert(-1, f"   分點：買 {buyers}｜賣 {sellers}")
     return "\n".join(lines)
 
 
