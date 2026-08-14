@@ -108,9 +108,13 @@ function normalizeReport(row){
 function stockCard(stock,index){
   var change=Number.isFinite(Number(stock.change))?percent(stock.change):esc(stock.change);
   var volume=stock.volume==='—'?'—':number(stock.volume,2)+'x';
-  var data='<div class="databox">📈 均線 5／10／20／60日：<b>'+[stock.ma5,stock.ma10,stock.ma20,stock.ma60].map(function(v){return number(v,2);}).join('／')+'</b><br>📊 均量 5／10／20日：<b>'+[stock.avgVolume5,stock.avgVolume10,stock.avgVolume20].map(compact).join('／')+'</b>';
-  if(Number(stock.institutionAvailable)>0)data+='<br>🏦 法人合計 1／5／10日：<b>'+[stock.institution1d,stock.institution5d,stock.institution10d].map(compact).join('／')+'</b>';
-  data+='</div>';
+  var hasMarketDetail=[stock.ma5,stock.ma10,stock.ma20,stock.ma60,stock.avgVolume5,stock.avgVolume10,stock.avgVolume20].some(function(v){return Number.isFinite(Number(v));});
+  var data='';
+  if(hasMarketDetail){
+    data='<div class="databox">📈 均線 5／10／20／60日：<b>'+[stock.ma5,stock.ma10,stock.ma20,stock.ma60].map(function(v){return number(v,2);}).join('／')+'</b><br>📊 均量 5／10／20日：<b>'+[stock.avgVolume5,stock.avgVolume10,stock.avgVolume20].map(compact).join('／')+'</b>';
+    if(Number(stock.institutionAvailable)>0)data+='<br>🏦 法人合計 1／5／10日：<b>'+[stock.institution1d,stock.institution5d,stock.institution10d].map(compact).join('／')+'</b>';
+    data+='</div>';
+  }
   return [
     '<article class="card"><div class="card-head"><div><div class="rank">TOP '+(index+1)+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
