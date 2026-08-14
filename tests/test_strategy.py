@@ -28,11 +28,17 @@ def test_candidate_scoring_has_prices_and_ranking():
             "institution_10d": 8_000_000,
         },
     )
+    row.update({
+        "credit_available": 1,
+        "margin_5d_change": 100_000,
+        "short_5d_change": -20_000,
+        "sbl_5d_change": 30_000,
+    })
     ranked = score_candidates([row])
     assert ranked[0]["rank"] == 1
     assert ranked[0]["support1"] <= ranked[0]["resistance2"]
     assert ranked[0]["ma5"] >= ranked[0]["ma10"] >= ranked[0]["ma20"]
     assert ranked[0]["avg_volume5"] > 0
     assert ranked[0]["institution_5d"] == 6_000_000
+    assert 0 <= ranked[0]["credit_score"] <= 100
     assert 0 <= ranked[0]["score"] <= 100
-

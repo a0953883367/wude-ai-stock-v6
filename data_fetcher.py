@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
@@ -220,6 +221,151 @@ def fetch_institutional_flows(stock_ids: set[str]) -> dict[str, dict[str, float]
         LOG.warning("FinMind institutional data unavailable: %s", exc)
         return {}
     return _aggregate_institutional_rows(rows, stock_ids)
+
+
+def _finmind_rows(dataset: str, start: date, end: date, stock_id: str | None = None) -> list[dict[str, Any]]:
+    """Read one FinMind dataset and treat plan/rate failures as unavailable."""
+    if not SETTINGS.finmind_token:
+        return []
+    params: dict[str, str] = {
+        "dataset": dataset,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+    }
+    if stock_id:
+        params["data_id"] = stock_id
+    try:
+        response = requests.get(
+            "https://api.finmindtrade.com/api/v4/data",
+            params=params,
+            headers={"Authorization": f"Bearer {SETTINGS.finmind_token}"},
+            timeout=SETTINGS.request_timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("status") not in (None, 200):
+            return []
+        return payload.get("data", []) or []
+    except Exception as exc:
+        LOG.debug("FinMind %s unavailable for %s: %s", dataset, stock_id or "all", exc)
+        return []
+
+
+def _dataset_for_ids(dataset: str, stock_ids: set[str], start: date, end: date) -> list[dict[str, Any]]:
+    """Prefer one all-market request; free plans fall back to per-stock calls."""
+    rows = _finmind_rows(dataset, start, end)
+    if rows:
+        return [row for row in rows if str(row.get("stock_id", "")) in stock_ids]
+    output: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        jobs = {pool.submit(_finmind_rows, dataset, start, end, sid): sid for sid in stock_ids}
+        for job in as_completed(jobs):
+            output.extend(job.result())
+    return output
+
+
+def _aggregate_credit_rows(
+    margin_rows: list[dict[str, Any]], short_rows: list[dict[str, Any]], stock_ids: set[str]
+) -> dict[str, dict[str, float]]:
+    """Build latest and 5-session changes for margin, short sale and SBL balances."""
+    by_sid: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+    for kind, rows in (("margin", margin_rows), ("short", short_rows)):
+        for row in rows:
+            sid = str(row.get("stock_id", ""))
+            if sid not in stock_ids:
+                continue
+            by_sid.setdefault(sid, {}).setdefault(kind, {})[str(row.get("date", ""))] = row
+
+    output: dict[str, dict[str, float]] = {}
+    for sid, kinds in by_sid.items():
+        item: dict[str, float] = {}
+        margin_dates = sorted(kinds.get("margin", {}), reverse=True)
+        if margin_dates:
+            latest = kinds["margin"][margin_dates[0]]
+            oldest = kinds["margin"][margin_dates[min(4, len(margin_dates) - 1)]]
+            margin_balance = float(latest.get("MarginPurchaseTodayBalance", 0) or 0)
+            short_balance = float(latest.get("ShortSaleTodayBalance", 0) or 0)
+            item.update({
+                "credit_available": 1.0,
+                "margin_balance": margin_balance,
+                "margin_1d_change": margin_balance - float(latest.get("MarginPurchaseYesterdayBalance", 0) or 0),
+                "margin_5d_change": margin_balance - float(oldest.get("MarginPurchaseYesterdayBalance", 0) or 0),
+                "short_balance": short_balance,
+                "short_1d_change": short_balance - float(latest.get("ShortSaleYesterdayBalance", 0) or 0),
+                "short_5d_change": short_balance - float(oldest.get("ShortSaleYesterdayBalance", 0) or 0),
+            })
+        short_dates = sorted(kinds.get("short", {}), reverse=True)
+        if short_dates:
+            latest = kinds["short"][short_dates[0]]
+            oldest = kinds["short"][short_dates[min(4, len(short_dates) - 1)]]
+            sbl_balance = float(latest.get("SBLShortSalesCurrentDayBalance", 0) or 0)
+            item.update({
+                "credit_available": 1.0,
+                "sbl_balance": sbl_balance,
+                "sbl_1d_change": sbl_balance - float(latest.get("SBLShortSalesPreviousDayBalance", 0) or 0),
+                "sbl_5d_change": sbl_balance - float(oldest.get("SBLShortSalesPreviousDayBalance", 0) or 0),
+            })
+        if item:
+            output[sid] = item
+    return output
+
+
+def fetch_credit_flows(stock_ids: set[str]) -> dict[str, dict[str, float]]:
+    """Fetch margin/short and securities-borrowing short-sale balances."""
+    if not SETTINGS.finmind_token or not stock_ids:
+        return {}
+    end = date.today()
+    start = end - timedelta(days=14)
+    margin_rows = _dataset_for_ids("TaiwanStockMarginPurchaseShortSale", stock_ids, start, end)
+    short_rows = _dataset_for_ids("TaiwanDailyShortSaleBalances", stock_ids, start, end)
+    return _aggregate_credit_rows(margin_rows, short_rows, stock_ids)
+
+
+def fetch_broker_branches(stock_ids: set[str]) -> dict[str, dict[str, Any]]:
+    """Fetch optional Sponsor-tier broker branch concentration for recent sessions."""
+    if not SETTINGS.finmind_token or not stock_ids:
+        return {}
+    end = date.today()
+    start = end - timedelta(days=7)
+
+    def fetch_one(sid: str) -> tuple[str, list[dict[str, Any]]]:
+        try:
+            response = requests.get(
+                "https://api.finmindtrade.com/api/v4/taiwan_stock_trading_daily_report_secid_agg",
+                params={"data_id": sid, "start_date": start.isoformat(), "end_date": end.isoformat()},
+                headers={"Authorization": f"Bearer {SETTINGS.finmind_token}"},
+                timeout=SETTINGS.request_timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            return sid, payload.get("data", []) or []
+        except Exception:
+            return sid, []
+
+    first = sorted(stock_ids)[0]
+    sid, probe = fetch_one(first)
+    if not probe:  # Sponsor dataset: stop immediately when the token has no access.
+        return {}
+    collected = {sid: probe}
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        jobs = [pool.submit(fetch_one, item) for item in stock_ids if item != first]
+        for job in as_completed(jobs):
+            item, rows = job.result()
+            if rows:
+                collected[item] = rows
+
+    output: dict[str, dict[str, Any]] = {}
+    for sid, rows in collected.items():
+        latest_date = max((str(row.get("date", "")) for row in rows), default="")
+        latest = [row for row in rows if str(row.get("date", "")) == latest_date]
+        branches = []
+        for row in latest:
+            net = float(row.get("buy_volume", 0) or 0) - float(row.get("sell_volume", 0) or 0)
+            branches.append({"name": str(row.get("securities_trader", "")), "net": int(net)})
+        buyers = sorted((b for b in branches if b["net"] > 0), key=lambda b: b["net"], reverse=True)[:3]
+        sellers = sorted((b for b in branches if b["net"] < 0), key=lambda b: b["net"])[:3]
+        output[sid] = {"broker_available": True, "broker_date": latest_date, "top_brokers_buy": buyers, "top_brokers_sell": sellers}
+    return output
 
 
 def market_session_fraction(now: datetime | None = None) -> float:
