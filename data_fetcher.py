@@ -569,6 +569,81 @@ def fetch_broker_branches(stock_ids: set[str]) -> dict[str, dict[str, Any]]:
     return output
 
 
+def _parse_finra_short_volume(
+    text: str, symbols: set[str], report_date: str
+) -> dict[str, dict[str, Any]]:
+    """Parse FINRA consolidated daily short-sale volume.
+
+    This dataset describes short-sale *transactions* reported for one session.
+    It is not outstanding short interest and must not be presented as such.
+    """
+    wanted = {str(symbol).upper() for symbol in symbols}
+    totals: dict[str, dict[str, float]] = {}
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return {}
+    headers = lines[0].lstrip("\ufeff").split("|")
+    positions = {name: idx for idx, name in enumerate(headers)}
+    required = {"Symbol", "ShortVolume", "ShortExemptVolume", "TotalVolume"}
+    if not required.issubset(positions):
+        return {}
+    for line in lines[1:]:
+        fields = line.split("|")
+        try:
+            symbol = fields[positions["Symbol"]].upper()
+            if symbol not in wanted:
+                continue
+            item = totals.setdefault(
+                symbol, {"short": 0.0, "short_exempt": 0.0, "total": 0.0}
+            )
+            item["short"] += float(fields[positions["ShortVolume"]] or 0)
+            item["short_exempt"] += float(fields[positions["ShortExemptVolume"]] or 0)
+            item["total"] += float(fields[positions["TotalVolume"]] or 0)
+        except (IndexError, TypeError, ValueError):
+            continue
+
+    output: dict[str, dict[str, Any]] = {}
+    for symbol, item in totals.items():
+        total = item["total"]
+        if total <= 0:
+            continue
+        output[symbol] = {
+            "us_short_volume_available": 1.0,
+            "us_short_volume_date": report_date,
+            "us_short_volume": int(item["short"]),
+            "us_short_exempt_volume": int(item["short_exempt"]),
+            "us_total_reported_volume": int(total),
+            "us_short_volume_ratio_pct": (item["short"] + item["short_exempt"]) / total * 100,
+            "us_short_volume_note": "FINRA每日放空成交量，不等於未回補空單或即時主力部位",
+        }
+    return output
+
+
+def fetch_us_short_volume(symbols: set[str]) -> dict[str, dict[str, Any]]:
+    """Fetch the latest available FINRA consolidated daily short-volume file."""
+    wanted = {str(symbol).upper() for symbol in symbols if symbol}
+    if not wanted:
+        return {}
+    # FINRA files are session based. Try recent calendar days so weekends and
+    # market holidays do not make the whole briefing fail.
+    for days_back in range(0, 12):
+        session = date.today() - timedelta(days=days_back)
+        stamp = session.strftime("%Y%m%d")
+        url = f"https://cdn.finra.org/equity/regsho/daily/CNMSshvol{stamp}.txt"
+        try:
+            response = requests.get(url, timeout=SETTINGS.request_timeout)
+            if response.status_code != 200 or not response.text.strip():
+                continue
+            parsed = _parse_finra_short_volume(
+                response.text, wanted, session.isoformat()
+            )
+            if parsed:
+                return parsed
+        except Exception:
+            continue
+    return {}
+
+
 def market_session_fraction(now: datetime | None = None) -> float:
     now = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
     minute = now.hour * 60 + now.minute
