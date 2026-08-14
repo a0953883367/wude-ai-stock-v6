@@ -236,45 +236,54 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
 
 
 def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
-    """Build factual conditional scenarios without inventing a win probability."""
+    """Build market-specific conditional scenarios without inventing probability."""
+    market = str(row.get("market", "US")).upper()
+    is_tw = market == "TW"
     price = max(_finite(row.get("price")), 0.01)
     support1 = min(_finite(row.get("support1"), price), price)
     support2 = min(_finite(row.get("support2"), support1), support1)
     resistance1 = max(_finite(row.get("resistance1"), price), price)
     resistance2 = max(_finite(row.get("resistance2"), resistance1), resistance1)
     defense_low = support1
-    defense_high = min(price, support1 * 1.015)
-    if defense_high < defense_low:
-        defense_high = defense_low
+    defense_high = max(defense_low, min(price, support1 * 1.015))
     no_chase_low = resistance1
     no_chase_high = max(resistance1 * 1.03, min(resistance2, resistance1 * 1.05))
 
-    if row.get("institution_available"):
-        foreign = int(_finite(row.get("foreign_net")))
-        institution = int(_finite(row.get("institution_1d")))
-        institution_text = (
-            f"外資 {foreign:+,} 股、三大法人 {institution:+,} 股"
-        )
+    if is_tw:
+        market_label = "🇹🇼 台股明日劇本"
+        if row.get("institution_available"):
+            foreign = int(_finite(row.get("foreign_net")))
+            institution = int(_finite(row.get("institution_1d")))
+            flow_text = f"外資 {foreign:+,} 股、三大法人 {institution:+,} 股"
+        else:
+            flow_text = "台股法人資料未取得，不推定主力方向"
+        opening_text = "台股09:00開盤後15～30分鐘"
+        complete = row.get("institution_available") and row.get("intraday_available")
     else:
-        institution_text = "法人資料未取得，不推定主力方向"
+        market_label = "🇺🇸 美股下個交易日劇本"
+        # US stocks must not be judged with Taiwan foreign/trust/dealer fields.
+        flow_text = "美股不套用台股三大法人；以盤前跳空、量價與開盤攻擊量判讀"
+        opening_text = "美股正式開盤後15～30分鐘"
+        complete = row.get("intraday_available")
 
     volume_ratio = _finite(row.get("daily_volume_ratio"), 1.0)
     volume_text = f"日量為20日均量 {volume_ratio:.2f} 倍"
     intraday_text = (
-        "開盤15～30分鐘攻擊量轉正且相對量能達1.3倍"
+        f"{opening_text}攻擊量轉正且相對量能達1.3倍"
         if row.get("intraday_available")
-        else "待開盤15～30分鐘資料出現後再確認量價"
+        else f"待{opening_text}資料出現後再確認量價"
     )
-    quality = "完整" if row.get("institution_available") and row.get("intraday_available") else "部分資料"
 
     return {
+        "scenario_market": market,
+        "scenario_title": market_label,
         "scenario_defense_low": round(defense_low, 2),
         "scenario_defense_high": round(defense_high, 2),
         "scenario_breakdown": round(support2, 2),
         "scenario_breakout": round(resistance1, 2),
         "scenario_no_chase_low": round(no_chase_low, 2),
         "scenario_no_chase_high": round(no_chase_high, 2),
-        "scenario_basis": f"{institution_text}；{volume_text}",
+        "scenario_basis": f"{flow_text}；{volume_text}",
         "scenario_continuation": (
             f"守住 {defense_low:.2f}～{defense_high:.2f}，且{intraday_text}，續攻條件轉強"
         ),
@@ -285,9 +294,8 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         "scenario_breakdown_text": (
             f"跌破 {support1:.2f} 且30分鐘無法收回先減碼；跌破 {support2:.2f} 視為轉弱"
         ),
-        "scenario_data_quality": quality,
+        "scenario_data_quality": "完整" if complete else "部分資料",
     }
-
 
 def _performance_adjustment(
     performance: dict[str, Any], signal: str

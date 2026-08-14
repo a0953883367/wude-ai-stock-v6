@@ -67,7 +67,7 @@ def _stock_block(row: dict[str, Any]) -> str:
         lines.insert(-1, f"   分點：買 {buyers}｜賣 {sellers}")
     if row.get("scenario_continuation"):
         lines.extend([
-            f"   📋 明日劇本（{row.get('scenario_data_quality', '部分資料')}）",
+            f"   📋 {row.get('scenario_title', '明日劇本')}（{row.get('scenario_data_quality', '部分資料')}）",
             f"   依據：{row.get('scenario_basis')}",
             f"   🔥 {row.get('scenario_continuation')}",
             f"   ⚠️ {row.get('scenario_no_chase')}",

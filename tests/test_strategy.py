@@ -81,6 +81,7 @@ def test_candlestick_detects_volume_breakout():
 
 def test_next_day_scenario_never_invents_missing_institution_data():
     row = {
+        "market": "TW",
         "price": 75.0,
         "support1": 73.0,
         "support2": 70.0,
@@ -95,3 +96,22 @@ def test_next_day_scenario_never_invents_missing_institution_data():
     assert "法人資料未取得" in result["scenario_basis"]
     assert "待開盤15～30分鐘資料" in result["scenario_continuation"]
     assert result["scenario_data_quality"] == "部分資料"
+
+
+def test_us_scenario_does_not_use_taiwan_institution_wording():
+    row = {
+        "market": "US",
+        "price": 225.0,
+        "support1": 220.0,
+        "support2": 210.0,
+        "resistance1": 230.0,
+        "resistance2": 240.0,
+        "daily_volume_ratio": 1.4,
+        "institution_available": False,
+        "intraday_available": True,
+    }
+    result = _next_day_scenario(row)
+    assert result["scenario_title"] == "🇺🇸 美股下個交易日劇本"
+    assert "美股不套用台股三大法人" in result["scenario_basis"]
+    assert "美股正式開盤後15～30分鐘" in result["scenario_continuation"]
+    assert result["scenario_data_quality"] == "完整"
