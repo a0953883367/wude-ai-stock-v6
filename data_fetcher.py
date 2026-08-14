@@ -152,6 +152,34 @@ def fetch_core_market() -> dict[str, dict[str, float | None]]:
     return output
 
 
+def fetch_macro_history(period: str = "3mo") -> list[dict[str, Any]]:
+    """Return date-aligned macro snapshots for immediate historical calibration."""
+    labels = ("美元台幣", "美元指數", "VIX", "美國10年期公債殖利率")
+    histories = download_history([CORE_MARKET[label] for label in labels], period=period)
+    by_date: dict[str, dict[str, dict[str, float | None]]] = {}
+    for label in labels:
+        frame = histories.get(CORE_MARKET[label])
+        if frame is None or frame.empty or "close" not in frame:
+            continue
+        close = frame["close"].dropna()
+        for index in range(len(close)):
+            timestamp = pd.Timestamp(close.index[index])
+            trade_date = timestamp.date().isoformat()
+            price = float(close.iloc[index])
+            change = (
+                float((close.iloc[index] / close.iloc[index - 1] - 1) * 100)
+                if index > 0 else None
+            )
+            by_date.setdefault(trade_date, {})[label] = {
+                "price": price,
+                "change_pct": change,
+            }
+    return [
+        {"date": trade_date, "market": by_date[trade_date]}
+        for trade_date in sorted(by_date)
+    ][-45:]
+
+
 def _aggregate_institutional_rows(
     rows: list[dict[str, Any]], stock_ids: set[str]
 ) -> dict[str, dict[str, float]]:
