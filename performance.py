@@ -65,7 +65,8 @@ def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         and snapshot.get("predictions")
     })
     collected = len(trading_dates)
-    minimum = 16
+    one_day_samples = int(horizons["1"]["samples"])
+    active = one_day_samples > 0
     return {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "snapshot_count": len(snapshots),
@@ -73,12 +74,13 @@ def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         "signals": signals,
         "calibration": {
             "trading_days_collected": collected,
-            "minimum_trading_days": minimum,
-            "remaining_trading_days": max(minimum - collected, 0),
-            "status": "ready_for_review" if collected >= minimum else "collecting_only",
-            "affects_ai_score": False,
+            "minimum_trading_days": 0,
+            "remaining_trading_days": 0,
+            "status": "active" if active else "waiting_for_first_outcome",
+            "affects_ai_score": active,
+            "eligible_one_day_samples": one_day_samples,
         },
-        "note": "交易日以平日近似；遇休市會在下一次有行情時補算。歷史樣本增加後才具參考性。",
+        "note": "只使用系統實際留存後產生的報酬，不偽造過去AI判斷；少量樣本以統計收縮限制影響。",
     }
 
 
@@ -157,3 +159,13 @@ def update_performance(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return summary
+
+
+def load_performance_context(reports_dir: Path) -> dict[str, Any]:
+    """Load only verified outcomes saved by earlier briefing runs."""
+    try:
+        return json.loads(
+            (reports_dir / "performance.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, json.JSONDecodeError, TypeError):
+        return {}

@@ -218,9 +218,43 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return min(high, max(low, value))
 
 
-def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _performance_adjustment(
+    performance: dict[str, Any], signal: str
+) -> tuple[float, int, str | None]:
+    """Return a strongly shrunk adjustment from verified forward outcomes."""
+    if not performance.get("calibration", {}).get("affects_ai_score"):
+        return 0.0, 0, None
+    metrics = performance.get("signals", {}).get(signal, {})
+    for horizon in ("5", "1"):
+        metric = metrics.get(horizon, {})
+        samples = int(metric.get("samples") or 0)
+        if not samples:
+            continue
+        win_rate = _finite(metric.get("win_rate_pct"), 50.0)
+        avg_return = _finite(metric.get("avg_return_pct"), 0.0)
+        direction_return = -avg_return if signal == "🔴" else avg_return
+        raw_edge = (win_rate - 50) * 0.04 + direction_return * 0.15
+        confidence = min(0.5, samples / (samples + 100))
+        return _clamp(raw_edge * confidence, -2.0, 2.0), samples, horizon
+    return 0.0, 0, None
+
+
+def score_candidates(
+    rows: list[dict[str, Any]],
+    macro_regime: dict[str, Any] | None = None,
+    performance: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     if not rows:
         return []
+    macro_regime = macro_regime or {}
+    performance = performance or {}
+    macro_score = _finite(macro_regime.get("score"), 50.0)
+    macro_active = bool(
+        macro_regime.get("calibration", {}).get("affects_ai_score")
+    )
+    # Keep the original model untouched during calibration. After 16 valid
+    # trading days, macro risk can adjust the total by at most +/-4 points.
+    macro_adjustment = _clamp((macro_score - 50) * 0.08, -4.0, 4.0) if macro_active else 0.0
     theme_change: dict[str, float] = {}
     for theme in {str(r["theme"]) for r in rows}:
         changes = [r["change_pct"] for r in rows if str(r["theme"]) == theme]
@@ -303,14 +337,20 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             fundamental_score = valuation_score * 0.55 + growth_score * 0.45
 
-        total = (
+        base_total = (
             _clamp(technical) * 0.28
             + volume_score * 0.23
             + institution_score * 0.17
             + fundamental_score * 0.10
             + group_score * 0.14
             + _clamp(position_score) * 0.08
+            + macro_adjustment
         )
+        preliminary_signal = "🟢" if base_total >= 70 else "🟡" if base_total >= 58 else "🔴"
+        performance_adjustment, performance_samples, performance_horizon = (
+            _performance_adjustment(performance, preliminary_signal)
+        )
+        total = _clamp(base_total + performance_adjustment)
         row.update({
             "technical_score": round(_clamp(technical), 1),
             "volume_score": round(volume_score, 1),
@@ -321,6 +361,12 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "fundamental_score": round(fundamental_score, 1),
             "financial_quality_score": round(quality_score, 1),
             "group_score": round(group_score, 1),
+            "macro_score": round(macro_score, 1),
+            "macro_adjustment": round(macro_adjustment, 1),
+            "macro_affects_score": macro_active,
+            "performance_adjustment": round(performance_adjustment, 2),
+            "performance_samples": performance_samples,
+            "performance_horizon": performance_horizon,
             "score": round(total, 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
         })

@@ -12,14 +12,16 @@ from data_fetcher import (
     download_intraday,
     fetch_broker_branches,
     fetch_core_market,
+    fetch_macro_history,
     fetch_credit_flows,
     fetch_fundamentals,
     fetch_financial_quality,
     fetch_institutional_flows,
     load_taiwan_universe,
 )
+from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
-from performance import update_performance
+from performance import load_performance_context, update_performance
 from strategy import build_features, score_candidates
 from watchlist import load_watchlist
 
@@ -89,7 +91,16 @@ def main() -> int:
                 row.update(broker_branches.get(stock_id, {}))
             features.append(row)
 
-    ranked = score_candidates(features)
+    market = fetch_core_market()
+    macro_regime = update_macro_regime(
+        SETTINGS.reports_dir,
+        market,
+        now.strftime("%Y-%m-%d %H:%M:%S"),
+        args.period,
+        fetch_macro_history(),
+    )
+    performance_context = load_performance_context(SETTINGS.reports_dir)
+    ranked = score_candidates(features, macro_regime, performance_context)
     if not ranked:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
 
@@ -136,7 +147,8 @@ def main() -> int:
         "analyzed_count": len(ranked),
         "watchlist_count": len(watchlist),
         "watchlist_analyzed_count": len(watchlist_rows),
-        "market": fetch_core_market(),
+        "market": market,
+        "macro_regime": macro_regime,
         "data_status": {
             "finmind_configured": bool(SETTINGS.finmind_token),
             "institutional_count": len(institutions),
@@ -160,6 +172,8 @@ def main() -> int:
             "financial_quality": "included within fundamental weight when available",
             "theme_resonance": 0.14,
             "support_resistance": 0.08,
+            "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
+            "verified_outcome_feedback": "actual saved 1/5-day returns only; statistically shrunk and capped at +/-2 points",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
