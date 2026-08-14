@@ -35,7 +35,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <body>
 <div class="shell">
   <header class="header">
-    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.23-A1</div></div>
+    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.24-Q1</div></div>
   </header>
 
   <div class="nav-label">排行與固定清單</div>
@@ -44,6 +44,14 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-view="US">🇺🇸 美股 TOP20</button>
     <button data-view="ETF">📊 ETF TOP20</button>
     <button data-view="WATCH">⭐ 我的清單</button>
+  </div>
+
+  <div class="nav-label">⚛️ 量子概念股專區</div>
+  <div class="buttons" id="quantumButtons">
+    <button data-quantum="tw_stocks">🇹🇼 台股</button>
+    <button data-quantum="us_stocks">🇺🇸 美股</button>
+    <button data-quantum="tw_etfs">🇹🇼 台灣 ETF</button>
+    <button data-quantum="us_etfs">🇺🇸 美國 ETF</button>
   </div>
 
   <div class="nav-label">AI 股票早中晚報</div>
@@ -63,12 +71,12 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.23-A1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.24-Q1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],tw:[],us:[],etf:[],latest:null,reports:{},view:'TW'};
+var STATE={stockData:null,allLegacy:[],normalized:[],tw:[],us:[],etf:[],quantum:null,latest:null,reports:{},view:'TW'};
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function first(obj,names,fallback){for(var i=0;i<names.length;i++){var v=obj[names[i]];if(v!==undefined&&v!==null&&v!=='')return v;}return fallback===undefined?'—':fallback;}
@@ -204,8 +212,36 @@ function renderStocks(stocks){
   box.innerHTML=stocks.map(stockCard).join('');
 }
 function setActive(selector,attribute,value){document.querySelectorAll(selector).forEach(function(btn){btn.classList.toggle('active',btn.getAttribute(attribute)===value);});}
+function clearOtherNav(active){
+  ['#marketButtons button','#quantumButtons button','#reportButtons button'].forEach(function(selector){
+    if(selector!==active)document.querySelectorAll(selector).forEach(function(b){b.classList.remove('active');});
+  });
+}
+function quantumSymbol(value){return String(value||'').toUpperCase().replace(/\.(TW|TWO)$/,'');}
+function showQuantum(group){
+  STATE.view='QUANTUM:'+group;setActive('#quantumButtons button','data-quantum',group);clearOtherNav('#quantumButtons button');
+  var cfg=STATE.quantum&&STATE.quantum.groups?STATE.quantum.groups[group]:null;
+  if(!cfg){document.getElementById('title').textContent='⚛️ 量子概念股';document.getElementById('status').textContent='量子清單尚未載入';renderStocks([]);return;}
+  var found=[],missing=[];
+  (cfg.items||[]).forEach(function(item){
+    var key=quantumSymbol(item.symbol);
+    var stock=STATE.normalized.find(function(row){return quantumSymbol(row.symbol)===key;});
+    if(stock){
+      var copy=Object.assign({},stock);
+      copy.risk=(item.classification||'量子概念')+'｜'+(item.role||copy.risk||'');
+      found.push(copy);
+    }else missing.push(item);
+  });
+  found=sortByScore(found);
+  document.getElementById('title').textContent=cfg.title;
+  document.getElementById('status').textContent='依 AI 總分由高到低｜'+(cfg.note||'量子概念觀察清單');
+  var notice='<div class="empty">⚛️ '+esc(STATE.quantum.disclaimer||'量子產業仍在早期，波動與技術路線風險高。')+'</div>';
+  var cards=found.length?found.map(stockCard).join(''):'<div class="empty">等待下一次自動分析資料。</div>';
+  var wait=missing.length?'<div class="empty">等待資料更新：'+missing.map(function(x){return esc(x.name)+'（'+esc(x.symbol)+'）';}).join('、')+'</div>':'';
+  document.getElementById('results').innerHTML=notice+cards+wait;
+}
 function showMarket(view){
-  STATE.view=view;setActive('#marketButtons button','data-view',view);document.querySelectorAll('#reportButtons button').forEach(function(b){b.classList.remove('active');});
+  STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
   var map={TW:['🇹🇼 台股 最值得買 TOP20',STATE.tw],US:['🇺🇸 美股 最值得買 TOP20',STATE.us],ETF:['📊 ETF 最值得買 TOP20',STATE.etf]};
   if(view==='WATCH'){
     document.getElementById('title').textContent='⭐ 我的固定觀察清單';
@@ -266,15 +302,16 @@ function searchStock(){
 }
 async function loadAll(){
   try{
-    var pair=await Promise.all([fetchJSON('stock_data.json'),fetchJSON('reports/latest.json').catch(function(){return null;})]);
-    var raw=pair[0],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[1];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
-    var normalized=all.map(normalizeLegacy);STATE.tw=normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
+    var pair=await Promise.all([fetchJSON('stock_data.json'),fetchJSON('reports/latest.json').catch(function(){return null;}),fetchJSON('quantum_watchlist.json').catch(function(){return null;})]);
+    var raw=pair[0],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[1];STATE.quantum=pair[2];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
+    var normalized=all.map(normalizeLegacy);STATE.normalized=normalized;STATE.tw=normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
     STATE.us=normalized.filter(function(x){return x.market==='US'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
     STATE.etf=normalized.filter(function(x){return String(x.type).toUpperCase()==='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
     renderMarketStrip(STATE.latest);renderPerformance(STATE.latest);showMarket('TW');
   }catch(error){document.getElementById('status').textContent='❌ 資料讀取失敗';document.getElementById('results').innerHTML='<div class="error">無法讀取股票資料：'+esc(error.message)+'</div>';}
 }
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
+document.querySelectorAll('#quantumButtons button').forEach(function(btn){btn.addEventListener('click',function(){showQuantum(btn.getAttribute('data-quantum'));});});
 document.querySelectorAll('#reportButtons button').forEach(function(btn){btn.addEventListener('click',function(){showReport(btn.getAttribute('data-period'));});});
 document.getElementById('searchButton').addEventListener('click',searchStock);
 document.getElementById('ticker').addEventListener('keydown',function(e){if(e.key==='Enter')searchStock();});
