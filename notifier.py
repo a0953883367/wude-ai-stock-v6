@@ -105,12 +105,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines.append("🎯 回測：已開始留存排名；累積5個交易日後顯示首批命中率")
-    if calibration.get("status") == "ready_for_review":
-        lines.append("🔔 回測已累積16個交易日：目前仍未影響AI分數，請確認後才會納入計分")
+    if calibration.get("affects_ai_score"):
+        samples = int(calibration.get("eligible_one_day_samples") or 0)
+        lines.append(f"✅ 實績校正：已用 {samples} 筆真實漲跌結果，小幅校正AI分數")
     else:
-        remaining = calibration.get("remaining_trading_days")
-        if remaining is not None:
-            lines.append(f"🛡️ 計分保護期：尚差 {remaining} 個交易日；目前回測不影響AI總分與排名")
+        lines.append("🛡️ 實績校正：等待首批真實隔日漲跌；目前調整為0分")
     macro = report.get("macro_regime", {})
     macro_calibration = macro.get("calibration", {})
     if macro_calibration.get("affects_ai_score"):
