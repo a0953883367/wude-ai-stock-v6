@@ -21,9 +21,9 @@ def test_performance_records_and_evaluates_next_business_day(tmp_path: Path):
     assert metric["samples"] == 1
     assert metric["win_rate_pct"] == 100.0
     assert metric["avg_return_pct"] == 10.0
-    assert summary["calibration"]["affects_ai_score"] is False
-    assert summary["calibration"]["trading_days_collected"] == 2
-    assert summary["calibration"]["remaining_trading_days"] == 14
+    assert summary["calibration"]["affects_ai_score"] is True
+    assert summary["calibration"]["eligible_one_day_samples"] == 1
+    assert summary["calibration"]["remaining_trading_days"] == 0
     history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
     assert history["snapshots"][0]["predictions"][0]["outcomes"]["1"] == 10.0
 
