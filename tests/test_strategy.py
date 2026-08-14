@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import build_features, score_candidates
+from strategy import _candlestick_features, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -41,4 +41,18 @@ def test_candidate_scoring_has_prices_and_ranking():
     assert ranked[0]["avg_volume5"] > 0
     assert ranked[0]["institution_5d"] == 6_000_000
     assert 0 <= ranked[0]["credit_score"] <= 100
+    assert 0 <= ranked[0]["kline_score"] <= 100
+    assert ranked[0]["volume_price_pattern"]
     assert 0 <= ranked[0]["score"] <= 100
+
+
+def test_candlestick_detects_volume_breakout():
+    close = pd.Series([100 + i * 0.1 for i in range(20)] + [110.0])
+    open_ = close - 0.5
+    high = close + 0.2
+    low = open_ - 0.2
+    volume = pd.Series([1_000_000] * 20 + [2_000_000])
+    result = _candlestick_features(open_, high, low, close, volume, 1_000_000)
+    assert result["breakout20"] is True
+    assert "突破20日高" in result["kline_pattern"]
+    assert result["volume_price_pattern"] == "價漲量增"

@@ -52,6 +52,94 @@ def _intraday_metrics(frame: pd.DataFrame | None, avg_volume: float) -> tuple[fl
     return pace, attack, live_price
 
 
+def _candlestick_features(
+    open_: pd.Series, high: pd.Series, low: pd.Series, close: pd.Series,
+    volume: pd.Series, avg_volume20: float,
+) -> dict[str, Any]:
+    """Return explainable daily candle, volume-price and 20-day breakout signals."""
+    current_open = _finite(open_.iloc[-1], _finite(close.iloc[-1]))
+    current_close = _finite(close.iloc[-1])
+    current_high = _finite(high.iloc[-1], max(current_open, current_close))
+    current_low = _finite(low.iloc[-1], min(current_open, current_close))
+    previous_open = _finite(open_.iloc[-2], _finite(close.iloc[-2])) if len(close) > 1 else current_open
+    previous_close = _finite(close.iloc[-2], current_close) if len(close) > 1 else current_close
+    candle_range = max(current_high - current_low, abs(current_close) * 0.001, 0.01)
+    body = current_close - current_open
+    body_abs = abs(body)
+    upper_wick = current_high - max(current_open, current_close)
+    lower_wick = min(current_open, current_close) - current_low
+    body_ratio = body_abs / candle_range
+    labels: list[str] = []
+    score_delta = 0.0
+
+    bullish_engulfing = (
+        previous_close < previous_open and body > 0
+        and current_open <= previous_close and current_close >= previous_open
+    )
+    bearish_engulfing = (
+        previous_close > previous_open and body < 0
+        and current_open >= previous_close and current_close <= previous_open
+    )
+    if bullish_engulfing:
+        labels.append("多方吞噬")
+        score_delta += 8
+    elif bearish_engulfing:
+        labels.append("空方吞噬")
+        score_delta -= 8
+    elif body_ratio <= 0.12:
+        labels.append("十字線")
+    elif lower_wick >= max(body_abs * 2, candle_range * 0.45) and upper_wick <= candle_range * 0.25:
+        labels.append("錘子線")
+        score_delta += 5
+    elif upper_wick >= max(body_abs * 2, candle_range * 0.45) and lower_wick <= candle_range * 0.25:
+        labels.append("上影壓力")
+        score_delta -= 5
+    elif body_ratio >= 0.65 and body > 0:
+        labels.append("長紅K")
+        score_delta += 5
+    elif body_ratio >= 0.65 and body < 0:
+        labels.append("長黑K")
+        score_delta -= 6
+    else:
+        labels.append("小紅K" if body > 0 else "小黑K")
+
+    prior_high20 = _finite(high.iloc[:-1].tail(20).max(), current_high)
+    prior_low20 = _finite(low.iloc[:-1].tail(20).min(), current_low)
+    breakout20 = current_close > prior_high20
+    breakdown20 = current_close < prior_low20
+    if breakout20:
+        labels.append("突破20日高")
+        score_delta += 8
+    elif breakdown20:
+        labels.append("跌破20日低")
+        score_delta -= 10
+
+    daily_volume_ratio = _finite(volume.iloc[-1], 0.0) / max(avg_volume20, 1.0)
+    daily_change = current_close - previous_close
+    if daily_volume_ratio >= 1.3 and daily_change > 0:
+        volume_price = "價漲量增"
+        score_delta += 5
+    elif daily_volume_ratio >= 1.3 and daily_change < 0:
+        volume_price = "價跌量增"
+        score_delta -= 7
+    elif daily_volume_ratio <= 0.8 and daily_change >= 0:
+        volume_price = "價穩量縮"
+        score_delta += 2
+    elif daily_volume_ratio <= 0.8 and daily_change < 0:
+        volume_price = "量縮整理"
+    else:
+        volume_price = "量價中性"
+
+    return {
+        "kline_pattern": "／".join(labels),
+        "kline_score": round(_clamp(50 + score_delta), 1),
+        "daily_volume_ratio": round(daily_volume_ratio, 2),
+        "volume_price_pattern": volume_price,
+        "breakout20": breakout20,
+        "breakdown20": breakdown20,
+    }
+
+
 def build_features(
     item: dict[str, Any],
     daily: pd.DataFrame,
@@ -62,6 +150,7 @@ def build_features(
         return None
     daily = daily.dropna(subset=["close"]).copy()
     close = daily["close"].astype(float)
+    open_ = daily.get("open", close).astype(float)
     high = daily.get("high", close).astype(float)
     low = daily.get("low", close).astype(float)
     volume = daily.get("volume", pd.Series(0, index=daily.index)).astype(float)
@@ -78,6 +167,7 @@ def build_features(
     avg5 = _finite(completed_volume.tail(5).mean(), 1.0)
     avg10 = _finite(completed_volume.tail(10).mean(), avg5)
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
+    candle = _candlestick_features(open_, high, low, close, volume, avg20)
     pace, attack, live = _intraday_metrics(intraday, avg20)
     price = live or _finite(close.iloc[-1])
     change = (price / prev - 1) * 100 if prev else 0.0
@@ -107,6 +197,7 @@ def build_features(
         "avg_volume10": int(avg10),
         "avg_volume20": int(avg20),
         "ma20_distance_pct": round((price / ma20 - 1) * 100 if ma20 else 0.0, 2),
+        **candle,
         "support1": round(support1, 2),
         "support2": round(support2, 2),
         "resistance1": round(resistance1, 2),
@@ -146,6 +237,7 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             technical -= 12
         elif 52 <= row["rsi"] <= 70:
             technical += 6
+        technical += (_finite(row.get("kline_score"), 50) - 50) * 0.35
 
         volume_score = _clamp(35 + (row["volume_pace"] - 1) * 35 + row["attack_volume"] * 0.25)
         if row.get("institution_available"):
@@ -194,7 +286,9 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row["buy_price"] = round(min(row["price"], row["support1"] * 1.01), 2)
         row["stop_price"] = round(row["support2"] * 0.98, 2)
         sbl_pressure = _finite(row.get("sbl_5d_change")) / max(row["avg_volume20"] * 5, 1) * 100
-        if row.get("credit_available") and sbl_pressure >= 5 and row["price"] < row["ma20"]:
+        if row.get("breakdown20"):
+            row["risk"] = "跌破20日低點，先避開"
+        elif row.get("credit_available") and sbl_pressure >= 5 and row["price"] < row["ma20"]:
             row["risk"] = "借券賣壓增加且跌破月線"
         elif row["ma20_distance_pct"] >= 12:
             row["risk"] = "乖離月線過大，勿追高"
@@ -209,7 +303,8 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
         trend_ready = row["price"] >= row["ma10"] >= row["ma20"]
         not_extended = row["ma20_distance_pct"] < 10
-        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended:
+        kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
+        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready:
             row["action"] = "🟢 可分批，等回測買點"
         elif total >= 58:
             row["action"] = "🟡 觀察，不追高"
