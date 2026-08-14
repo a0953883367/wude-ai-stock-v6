@@ -56,17 +56,14 @@ def main() -> int:
 
     history = download_history(symbols)
     intraday = download_intraday(symbols)
-    stock_ids = {
-        item["symbol"].split(".")[0]
-        for item in universe
-        if item.get("market") == "TW"
-    }
-    institutions = fetch_institutional_flows(stock_ids)
     watchlist_stock_ids = {
         item["symbol"].split(".")[0]
         for item in watchlist
         if item.get("market") == "TW"
     }
+    # Free FinMind plans allow per-stock requests, so enrichment targets the
+    # fixed list while the wider background scan safely remains neutral.
+    institutions = fetch_institutional_flows(watchlist_stock_ids)
     credit_flows = fetch_credit_flows(watchlist_stock_ids)
     broker_branches = fetch_broker_branches(watchlist_stock_ids)
 
@@ -111,6 +108,13 @@ def main() -> int:
         "watchlist_count": len(watchlist),
         "watchlist_analyzed_count": len(watchlist_rows),
         "market": fetch_core_market(),
+        "data_status": {
+            "finmind_configured": bool(SETTINGS.finmind_token),
+            "institutional_count": len(institutions),
+            "credit_count": len(credit_flows),
+            "broker_count": len(broker_branches),
+            "expected_tw_count": len(watchlist_stock_ids),
+        },
         "watchlist": watchlist_rows,
         "unavailable": unavailable,
         "top": market_top,
