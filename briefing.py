@@ -12,6 +12,7 @@ from data_fetcher import (
     download_intraday,
     fetch_broker_branches,
     fetch_core_market,
+    fetch_macro_history,
     fetch_credit_flows,
     fetch_fundamentals,
     fetch_financial_quality,
@@ -20,7 +21,7 @@ from data_fetcher import (
 )
 from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
-from performance import update_performance
+from performance import load_performance_context, update_performance
 from strategy import build_features, score_candidates
 from watchlist import load_watchlist
 
@@ -96,8 +97,10 @@ def main() -> int:
         market,
         now.strftime("%Y-%m-%d %H:%M:%S"),
         args.period,
+        fetch_macro_history(),
     )
-    ranked = score_candidates(features, macro_regime)
+    performance_context = load_performance_context(SETTINGS.reports_dir)
+    ranked = score_candidates(features, macro_regime, performance_context)
     if not ranked:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
 
@@ -169,7 +172,8 @@ def main() -> int:
             "financial_quality": "included within fundamental weight when available",
             "theme_resonance": 0.14,
             "support_resistance": 0.08,
-            "macro_risk": "first 16 valid trading days are observation-only; then capped at +/-4 points",
+            "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
+            "verified_outcome_feedback": "actual saved 1/5-day returns only; statistically shrunk and capped at +/-2 points",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
