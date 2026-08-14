@@ -184,7 +184,8 @@ function renderPerformance(report){
   if(!h){box.innerHTML='<div class="performance">🎯 回測已啟動，累積資料後顯示命中率。</div>';return;}
   var available=['1','5','10','20'].filter(function(k){return Number((h[k]||{}).samples)>0;});
   if(!available.length){box.innerHTML='<div class="performance">🎯 已開始保存每次 TOP20；累積1個交易日後顯示第一批結果。</div>';return;}
-  box.innerHTML='<div class="performance">🎯 歷史回測（僅代表過往）<br>'+available.map(function(k){var m=h[k];return '<b>'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct);}).join('<br>')+'</div>';
+  var c=p.calibration||{},guard=c.status==='ready_for_review'?'🔔 已滿16個交易日，等待確認後才納入計分':'🛡️ 保護期尚差 '+number(c.remaining_trading_days,0)+' 個交易日；目前不影響AI分數';
+  box.innerHTML='<div class="performance">🎯 歷史回測（僅代表過往）<br>'+available.map(function(k){var m=h[k];return '<b>'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct);}).join('<br>')+'<br>'+guard+'</div>';
 }
 async function fetchJSON(path){var response=await fetch(path+'?t='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);return response.json();}
 async function showReport(period){
