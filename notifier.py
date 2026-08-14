@@ -63,9 +63,21 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"📊 武得 AI 股票{period_names[report['period']]}",
         f"🕒 {report['updated_at']}（台灣時間）",
         f"固定清單 {report['watchlist_analyzed_count']}/{report['watchlist_count']} 檔｜背景掃描 {report['universe_count']} 檔",
-        "",
-        "🌏 國際與大盤",
     ]
+    status = report.get("data_status", {})
+    if not status.get("finmind_configured"):
+        lines.append("⚠️ 籌碼通報：FINMIND_TOKEN 未設定，本次使用中性籌碼分數")
+    else:
+        missing = []
+        if not status.get("institutional_count"):
+            missing.append("法人")
+        if not status.get("credit_count"):
+            missing.append("融資融券／借券")
+        if missing:
+            lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；本次自動採中性分數")
+        if not status.get("broker_count"):
+            lines.append("ℹ️ 分點通報：券商分點未取得，可能為 Sponsor 試用到期；其他免費籌碼不受影響")
+    lines.extend(["", "🌏 國際與大盤"])
     for name, item in report["market"].items():
         lines.append(f"{name}｜{_num(item.get('price'))}｜{_change(item.get('change_pct'))}")
 

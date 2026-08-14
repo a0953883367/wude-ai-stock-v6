@@ -202,24 +202,9 @@ def fetch_institutional_flows(stock_ids: set[str]) -> dict[str, dict[str, float]
     end = date.today()
     # 21 calendar days normally covers at least 10 Taiwan trading sessions.
     start = end - timedelta(days=21)
-    params = {
-        "dataset": "TaiwanStockInstitutionalInvestorsBuySell",
-        "start_date": start.isoformat(),
-        "end_date": end.isoformat(),
-    }
-    headers = {"Authorization": f"Bearer {SETTINGS.finmind_token}"}
-    try:
-        response = requests.get(
-            "https://api.finmindtrade.com/api/v4/data",
-            params=params,
-            headers=headers,
-            timeout=SETTINGS.request_timeout,
-        )
-        response.raise_for_status()
-        rows = response.json().get("data", [])
-    except Exception as exc:
-        LOG.warning("FinMind institutional data unavailable: %s", exc)
-        return {}
+    rows = _dataset_for_ids(
+        "TaiwanStockInstitutionalInvestorsBuySell", stock_ids, start, end
+    )
     return _aggregate_institutional_rows(rows, stock_ids)
 
 

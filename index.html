@@ -177,7 +177,12 @@ async function showReport(period){
   document.getElementById('title').textContent=names[period];document.getElementById('status').textContent='正在讀取報告…';
   try{
     var report=STATE.reports[period]||await fetchJSON('reports/'+period+'.json');STATE.reports[period]=report;
-    document.getElementById('status').textContent='更新：'+report.updated_at+'｜固定清單 '+report.watchlist_analyzed_count+'/'+report.watchlist_count+' 檔｜背景掃描 '+report.universe_count+' 檔';
+    var statusText='更新：'+report.updated_at+'｜固定清單 '+report.watchlist_analyzed_count+'/'+report.watchlist_count+' 檔｜背景掃描 '+report.universe_count+' 檔';
+    var ds=report.data_status||{};
+    if(ds.finmind_configured===false)statusText+='｜⚠️ FinMind Token 未設定';
+    else if(ds.finmind_configured&&(Number(ds.institutional_count)===0||Number(ds.credit_count)===0))statusText+='｜⚠️ 籌碼資料未完整取得';
+    if(ds.finmind_configured&&Number(ds.broker_count)===0)statusText+='｜ℹ️ 分點無權限或未取得';
+    document.getElementById('status').textContent=statusText;
     renderMarketStrip(report);
     var tw=sortByScore(report.watchlist.filter(function(x){return x.market==='TW';}).map(normalizeReport));
     var us=sortByScore(report.watchlist.filter(function(x){return x.market==='US';}).map(normalizeReport));
