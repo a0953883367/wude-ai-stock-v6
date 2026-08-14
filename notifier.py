@@ -65,6 +65,14 @@ def _stock_block(row: dict[str, Any]) -> str:
         buyers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_buy", [])[:3]) or "N/A"
         sellers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_sell", [])[:3]) or "N/A"
         lines.insert(-1, f"   分點：買 {buyers}｜賣 {sellers}")
+    if row.get("scenario_continuation"):
+        lines.extend([
+            f"   📋 明日劇本（{row.get('scenario_data_quality', '部分資料')}）",
+            f"   依據：{row.get('scenario_basis')}",
+            f"   🔥 {row.get('scenario_continuation')}",
+            f"   ⚠️ {row.get('scenario_no_chase')}",
+            f"   🛡️ {row.get('scenario_breakdown_text')}",
+        ])
     return "\n".join(lines)
 
 
