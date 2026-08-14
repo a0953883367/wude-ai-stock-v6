@@ -120,6 +120,7 @@ def main() -> int:
         "top": market_top,
         "method": {
             "technical": 0.30,
+            "kline_and_volume_price": "included within technical weight",
             "volume_and_attack": 0.25,
             "institutional": 0.18,
             "credit_chips": "included within institutional weight when available",
