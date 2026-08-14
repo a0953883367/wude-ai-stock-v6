@@ -111,6 +111,18 @@ def render_markdown(report: dict[str, Any]) -> str:
         remaining = calibration.get("remaining_trading_days")
         if remaining is not None:
             lines.append(f"🛡️ 計分保護期：尚差 {remaining} 個交易日；目前回測不影響AI總分與排名")
+    macro = report.get("macro_regime", {})
+    macro_calibration = macro.get("calibration", {})
+    if macro_calibration.get("affects_ai_score"):
+        lines.append(
+            f"🌐 總體風險：{macro.get('regime', '中性')} {macro.get('score', 50):.1f}分｜已納入計分"
+        )
+    else:
+        remaining = macro_calibration.get("remaining_trading_days")
+        if remaining is not None:
+            lines.append(
+                f"🌐 總體風險：{macro.get('regime', '中性')} {macro.get('score', 50):.1f}分｜尚差 {remaining} 個交易日，暫不計分"
+            )
     lines.extend(["", "🌏 國際與大盤"])
     for name, item in report["market"].items():
         lines.append(f"{name}｜{_num(item.get('price'))}｜{_change(item.get('change_pct'))}")
