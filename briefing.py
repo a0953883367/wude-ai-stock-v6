@@ -18,6 +18,7 @@ from data_fetcher import (
     load_taiwan_universe,
 )
 from notifier import render_markdown, save_report, send_telegram
+from performance import update_performance
 from strategy import build_features, score_candidates
 from watchlist import load_watchlist
 
@@ -101,6 +102,28 @@ def main() -> int:
         if row.get("market") == "TW" and row.get("type") == "個股"
     ][:5]
 
+    # Save the same high-to-low TOP20 groups shown by the product. Historical
+    # outcomes never change today's score; they only measure later accuracy.
+    backtest_groups = {
+        "TW": [row for row in ranked if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))][:20],
+        "US": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
+        "ETF": [row for row in ranked if "ETF" in str(row.get("type", ""))][:20],
+    }
+    predictions = []
+    for group, rows in backtest_groups.items():
+        for rank, row in enumerate(rows, 1):
+            item = dict(row)
+            item["backtest_group"] = group
+            item["backtest_rank"] = rank
+            predictions.append(item)
+    performance = update_performance(
+        SETTINGS.reports_dir,
+        predictions,
+        ranked,
+        now.strftime("%Y-%m-%d %H:%M:%S"),
+        args.period,
+    )
+
     report = {
         "system": "武得 AI 股票助理 V6",
         "period": args.period,
@@ -122,6 +145,7 @@ def main() -> int:
         "watchlist": watchlist_rows,
         "unavailable": unavailable,
         "top": market_top,
+        "performance": performance,
         "method": {
             "technical": 0.28,
             "kline_and_volume_price": "included within technical weight",
