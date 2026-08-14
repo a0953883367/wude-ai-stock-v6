@@ -107,6 +107,7 @@ def update_macro_regime(
     market: dict[str, dict[str, Any]],
     updated_at: str,
     period: str,
+    historical_snapshots: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Persist one latest snapshot per date and activate only after 16 valid days."""
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -115,6 +116,27 @@ def update_macro_regime(
         payload = json.loads(history_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):
         payload = {"version": 1, "snapshots": []}
+
+    # Seed the calibration with real historical market observations. This avoids
+    # waiting 16 future sessions while keeping the same data-quality guard.
+    existing_dates = {str(row.get("date")) for row in payload.get("snapshots", [])}
+    for historical in historical_snapshots or []:
+        historical_date = str(historical.get("date", ""))
+        if not historical_date or historical_date in existing_dates:
+            continue
+        historical_eval = evaluate_macro_regime(historical.get("market", {}))
+        if not historical_eval["data_available"]:
+            continue
+        payload.setdefault("snapshots", []).append({
+            "date": historical_date,
+            "updated_at": f"{historical_date} 20:00:00",
+            "period": "historical_backfill",
+            "score": historical_eval["score"],
+            "regime": historical_eval["regime"],
+            "data_available": True,
+            "indicators": historical_eval["indicators"],
+        })
+        existing_dates.add(historical_date)
 
     evaluated = evaluate_macro_regime(market)
     trade_date = updated_at[:10]
