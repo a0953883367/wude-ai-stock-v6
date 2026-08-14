@@ -83,6 +83,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         if not status.get("broker_count"):
             lines.append("ℹ️ 分點通報：券商分點未取得，可能為 Sponsor 試用到期；其他免費籌碼不受影響")
     performance = report.get("performance", {})
+    calibration = performance.get("calibration", {})
     five_day = performance.get("horizons", {}).get("5", {})
     if five_day.get("samples"):
         lines.append(
@@ -90,6 +91,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines.append("🎯 回測：已開始留存排名；累積5個交易日後顯示首批命中率")
+    if calibration.get("status") == "ready_for_review":
+        lines.append("🔔 回測已累積16個交易日：目前仍未影響AI分數，請確認後才會納入計分")
+    else:
+        remaining = calibration.get("remaining_trading_days")
+        if remaining is not None:
+            lines.append(f"🛡️ 計分保護期：尚差 {remaining} 個交易日；目前回測不影響AI總分與排名")
     lines.extend(["", "🌏 國際與大盤"])
     for name, item in report["market"].items():
         lines.append(f"{name}｜{_num(item.get('price'))}｜{_change(item.get('change_pct'))}")

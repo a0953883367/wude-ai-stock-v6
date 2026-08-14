@@ -57,11 +57,27 @@ def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         horizons[key] = _metric(all_returns)
         for signal in signals:
             signals[signal][key] = _metric(by_signal[signal], positive_is_hit=signal != "🔴")
+    trading_dates = sorted({
+        str(snapshot.get("date"))
+        for snapshot in snapshots
+        if snapshot.get("date")
+        and date.fromisoformat(str(snapshot.get("date"))).weekday() < 5
+        and snapshot.get("predictions")
+    })
+    collected = len(trading_dates)
+    minimum = 16
     return {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "snapshot_count": len(snapshots),
         "horizons": horizons,
         "signals": signals,
+        "calibration": {
+            "trading_days_collected": collected,
+            "minimum_trading_days": minimum,
+            "remaining_trading_days": max(minimum - collected, 0),
+            "status": "ready_for_review" if collected >= minimum else "collecting_only",
+            "affects_ai_score": False,
+        },
         "note": "交易日以平日近似；遇休市會在下一次有行情時補算。歷史樣本增加後才具參考性。",
     }
 
