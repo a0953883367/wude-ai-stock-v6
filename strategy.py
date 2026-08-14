@@ -284,7 +284,24 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if row.get("revenue_mom_pct") is not None:
             growth_parts.append(_clamp(50 + _finite(row.get("revenue_mom_pct")) * 0.35))
         growth_score = float(np.mean(growth_parts)) if growth_parts else 50.0
-        fundamental_score = valuation_score * 0.55 + growth_score * 0.45
+        quality_parts: list[float] = []
+        if row.get("eps_yoy_pct") is not None:
+            quality_parts.append(_clamp(50 + _finite(row.get("eps_yoy_pct")) * 0.5))
+        if row.get("gross_margin_pct") is not None:
+            quality_parts.append(_clamp(35 + _finite(row.get("gross_margin_pct"))))
+        if row.get("operating_margin_pct") is not None:
+            quality_parts.append(_clamp(45 + _finite(row.get("operating_margin_pct")) * 1.2))
+        if row.get("roe_pct") is not None:
+            quality_parts.append(_clamp(45 + _finite(row.get("roe_pct")) * 2))
+        if row.get("debt_ratio_pct") is not None:
+            quality_parts.append(_clamp(80 - _finite(row.get("debt_ratio_pct")) * 0.6))
+        if row.get("operating_cash_flow_positive") is not None:
+            quality_parts.append(65 if row.get("operating_cash_flow_positive") else 35)
+        quality_score = float(np.mean(quality_parts)) if quality_parts else 50.0
+        if row.get("financial_quality_available"):
+            fundamental_score = valuation_score * 0.35 + growth_score * 0.25 + quality_score * 0.40
+        else:
+            fundamental_score = valuation_score * 0.55 + growth_score * 0.45
 
         total = (
             _clamp(technical) * 0.28
@@ -301,6 +318,7 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "credit_score": round(credit_score, 1),
             "valuation_score": round(valuation_score, 1),
             "fundamental_score": round(fundamental_score, 1),
+            "financial_quality_score": round(quality_score, 1),
             "group_score": round(group_score, 1),
             "score": round(total, 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
@@ -314,6 +332,8 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             row["risk"] = "借券賣壓增加且跌破月線"
         elif row.get("fundamental_available") and _finite(row.get("revenue_yoy_pct")) < -15 and per > 40:
             row["risk"] = "估值偏高且營收衰退"
+        elif row.get("financial_quality_available") and not row.get("operating_cash_flow_positive") and _finite(row.get("debt_ratio_pct")) >= 65:
+            row["risk"] = "營業現金流轉負且負債偏高"
         elif row["ma20_distance_pct"] >= 12:
             row["risk"] = "乖離月線過大，勿追高"
         elif row["rsi"] >= 78 or row["volume_pace"] >= 3.5:
@@ -329,7 +349,8 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         not_extended = row["ma20_distance_pct"] < 10
         kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
         fundamental_ready = not row.get("fundamental_available") or fundamental_score >= 40
-        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready and fundamental_ready:
+        quality_ready = not row.get("financial_quality_available") or quality_score >= 38
+        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready and fundamental_ready and quality_ready:
             row["action"] = "🟢 可分批，等回測買點"
         elif total >= 58:
             row["action"] = "🟡 觀察，不追高"

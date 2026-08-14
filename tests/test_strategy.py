@@ -39,6 +39,14 @@ def test_candidate_scoring_has_prices_and_ranking():
         "dividend_yield": 2.5,
         "revenue_yoy_pct": 20.0,
         "revenue_mom_pct": 9.1,
+        "financial_quality_available": 1,
+        "eps": 2.0,
+        "eps_yoy_pct": 33.3,
+        "gross_margin_pct": 40.0,
+        "operating_margin_pct": 20.0,
+        "roe_pct": 8.3,
+        "debt_ratio_pct": 40.0,
+        "operating_cash_flow_positive": 1,
     })
     ranked = score_candidates([row])
     assert ranked[0]["rank"] == 1
@@ -50,6 +58,7 @@ def test_candidate_scoring_has_prices_and_ranking():
     assert 0 <= ranked[0]["kline_score"] <= 100
     assert 0 <= ranked[0]["valuation_score"] <= 100
     assert 0 <= ranked[0]["fundamental_score"] <= 100
+    assert 0 <= ranked[0]["financial_quality_score"] <= 100
     assert ranked[0]["volume_price_pattern"]
     assert 0 <= ranked[0]["score"] <= 100
 

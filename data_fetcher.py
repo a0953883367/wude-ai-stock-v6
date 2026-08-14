@@ -372,6 +372,125 @@ def fetch_fundamentals(stock_ids: set[str]) -> dict[str, dict[str, float]]:
     return _aggregate_fundamental_rows(per_rows, revenue_rows, stock_ids)
 
 
+def _statement_value(rows: list[dict[str, Any]], aliases: set[str], name_tokens: tuple[str, ...] = ()) -> float | None:
+    for row in rows:
+        if str(row.get("type", "")) in aliases:
+            return float(row.get("value", 0) or 0)
+    for row in rows:
+        origin = str(row.get("origin_name", ""))
+        if name_tokens and any(token in origin for token in name_tokens):
+            return float(row.get("value", 0) or 0)
+    return None
+
+
+def _aggregate_financial_quality_rows(
+    income_rows: list[dict[str, Any]], balance_rows: list[dict[str, Any]],
+    cash_rows: list[dict[str, Any]], stock_ids: set[str],
+) -> dict[str, dict[str, float]]:
+    """Build comparable profitability, balance-sheet and cash-quality fields."""
+    grouped: dict[str, dict[str, dict[str, list[dict[str, Any]]]]] = {}
+    for section, rows in (("income", income_rows), ("balance", balance_rows), ("cash", cash_rows)):
+        for row in rows:
+            sid = str(row.get("stock_id", ""))
+            if sid in stock_ids:
+                grouped.setdefault(sid, {}).setdefault(section, {}).setdefault(str(row.get("date", "")), []).append(row)
+
+    output: dict[str, dict[str, float]] = {}
+    for sid, sections in grouped.items():
+        item: dict[str, float] = {"financial_quality_available": 1.0}
+        income_dates = sorted(sections.get("income", {}))
+        net_income: float | None = None
+        if income_dates:
+            latest_date = income_dates[-1]
+            latest = sections["income"][latest_date]
+            revenue = _statement_value(latest, {"Revenue", "OperatingRevenue", "TotalRevenue"}, ("營業收入", "收入合計", "營收"))
+            gross = _statement_value(latest, {"GrossProfit", "GrossProfitLoss"}, ("營業毛利",))
+            operating = _statement_value(latest, {"OperatingIncome", "OperatingIncomeLoss"}, ("營業利益", "營業損益"))
+            net_income = _statement_value(latest, {"IncomeAfterTaxes", "ProfitLoss", "NetIncome"}, ("本期淨利", "本期損益"))
+            eps = _statement_value(latest, {"EPS", "BasicEarningsLossPerShare"}, ("每股盈餘",))
+            item["financial_report_date"] = latest_date
+            if eps is not None:
+                item["eps"] = eps
+                latest_year, latest_month = int(latest_date[:4]), latest_date[5:7]
+                prior_eps = None
+                for old_date in reversed(income_dates[:-1]):
+                    if old_date.startswith(f"{latest_year - 1}-{latest_month}"):
+                        prior_eps = _statement_value(sections["income"][old_date], {"EPS", "BasicEarningsLossPerShare"}, ("每股盈餘",))
+                        break
+                if prior_eps not in (None, 0):
+                    item["eps_yoy_pct"] = (eps / prior_eps - 1) * 100
+            if revenue not in (None, 0):
+                if gross is not None:
+                    item["gross_margin_pct"] = gross / revenue * 100
+                if operating is not None:
+                    item["operating_margin_pct"] = operating / revenue * 100
+
+        balance_dates = sorted(sections.get("balance", {}))
+        equity: float | None = None
+        if balance_dates:
+            latest = sections["balance"][balance_dates[-1]]
+            assets = _statement_value(latest, {"Assets", "TotalAssets"}, ("資產總額", "資產合計"))
+            liabilities = _statement_value(latest, {"Liabilities", "TotalLiabilities"}, ("負債總額", "負債合計"))
+            equity = _statement_value(latest, {"Equity", "TotalEquity", "EquityAttributableToOwnersOfParent"}, ("權益總額", "權益合計"))
+            if assets not in (None, 0) and liabilities is not None:
+                item["debt_ratio_pct"] = liabilities / assets * 100
+        if net_income is not None and equity not in (None, 0):
+            item["roe_pct"] = net_income / equity * 100
+
+        cash_dates = sorted(sections.get("cash", {}))
+        if cash_dates:
+            latest = sections["cash"][cash_dates[-1]]
+            operating_cash = _statement_value(
+                latest, {"CashFlowsFromOperatingActivities", "NetCashFlowsFromUsedInOperatingActivities"},
+                ("營業活動之淨現金",),
+            )
+            if operating_cash is not None:
+                item["operating_cash_flow"] = operating_cash
+                item["operating_cash_flow_positive"] = 1.0 if operating_cash > 0 else 0.0
+        if len(item) > 1:
+            output[sid] = item
+    return output
+
+
+def fetch_financial_quality(
+    stock_ids: set[str], cache_path: Path = SETTINGS.reports_dir / "financial_quality_cache.json",
+    batch_size: int = 30,
+) -> dict[str, dict[str, Any]]:
+    """Refresh a quota-safe batch of quarterly statements and reuse the cache."""
+    if not SETTINGS.finmind_token or not stock_ids:
+        return {}
+    try:
+        cache = json.loads(cache_path.read_text(encoding="utf-8"))
+        cached_rows = dict(cache.get("stocks", {}))
+    except (FileNotFoundError, json.JSONDecodeError, TypeError):
+        cached_rows = {}
+    today = date.today()
+    pending = []
+    for sid in sorted(stock_ids):
+        cached_at = str(cached_rows.get(sid, {}).get("cached_at", ""))
+        try:
+            stale = (today - date.fromisoformat(cached_at)).days >= 30
+        except ValueError:
+            stale = True
+        if sid not in cached_rows or stale:
+            pending.append(sid)
+    target = set(pending[:batch_size])
+    if target:
+        start = today - timedelta(days=500)
+        income = _dataset_for_ids("TaiwanStockFinancialStatements", target, start, today)
+        balance = _dataset_for_ids("TaiwanStockBalanceSheet", target, start, today)
+        cash = _dataset_for_ids("TaiwanStockCashFlowsStatement", target, start, today)
+        refreshed = _aggregate_financial_quality_rows(income, balance, cash, target)
+        for sid, item in refreshed.items():
+            cached_rows[sid] = {**item, "cached_at": today.isoformat()}
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(
+            json.dumps({"updated_at": today.isoformat(), "stocks": cached_rows}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    return {sid: cached_rows[sid] for sid in stock_ids if sid in cached_rows}
+
+
 def fetch_broker_branches(stock_ids: set[str]) -> dict[str, dict[str, Any]]:
     """Fetch optional Sponsor-tier broker branch concentration for recent sessions."""
     if not SETTINGS.finmind_token or not stock_ids:

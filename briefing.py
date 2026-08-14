@@ -14,6 +14,7 @@ from data_fetcher import (
     fetch_core_market,
     fetch_credit_flows,
     fetch_fundamentals,
+    fetch_financial_quality,
     fetch_institutional_flows,
     load_taiwan_universe,
 )
@@ -68,6 +69,7 @@ def main() -> int:
     institutions = fetch_institutional_flows(watchlist_stock_ids)
     credit_flows = fetch_credit_flows(watchlist_stock_ids)
     fundamentals = fetch_fundamentals(watchlist_stock_ids)
+    financial_quality = fetch_financial_quality(watchlist_stock_ids)
     broker_branches = fetch_broker_branches(watchlist_stock_ids)
 
     features = []
@@ -83,6 +85,7 @@ def main() -> int:
             if item.get("market") == "TW":
                 row.update(credit_flows.get(stock_id, {}))
                 row.update(fundamentals.get(stock_id, {}))
+                row.update(financial_quality.get(stock_id, {}))
                 row.update(broker_branches.get(stock_id, {}))
             features.append(row)
 
@@ -139,6 +142,7 @@ def main() -> int:
             "institutional_count": len(institutions),
             "credit_count": len(credit_flows),
             "fundamental_count": len(fundamentals),
+            "financial_quality_count": len(financial_quality),
             "broker_count": len(broker_branches),
             "expected_tw_count": len(watchlist_stock_ids),
         },
@@ -153,6 +157,7 @@ def main() -> int:
             "institutional": 0.17,
             "credit_chips": "included within institutional weight when available",
             "fundamental_and_valuation": 0.10,
+            "financial_quality": "included within fundamental weight when available",
             "theme_resonance": 0.14,
             "support_resistance": 0.08,
         },

@@ -31,6 +31,10 @@ def _change(value: Any) -> str:
     return f"{number:+.2f}%"
 
 
+def _optional_percent(value: Any) -> str:
+    return "N/A" if value is None else _change(value)
+
+
 def _signed(value: Any) -> str:
     if value is None:
         return "N/A"
@@ -53,6 +57,10 @@ def _stock_block(row: dict[str, Any]) -> str:
         lines.insert(-1, f"   信用 5日：融資 {_signed(row.get('margin_5d_change'))}｜融券 {_signed(row.get('short_5d_change'))}｜借券賣出 {_signed(row.get('sbl_5d_change'))} 股")
     if row.get("fundamental_available"):
         lines.insert(-1, f"   基本面：PER {_num(row.get('per'))}｜PBR {_num(row.get('pbr'))}｜殖利率 {_num(row.get('dividend_yield'))}%｜營收年增 {_change(row.get('revenue_yoy_pct'))}")
+    if row.get("financial_quality_available"):
+        lines.insert(-1, f"   財務品質：EPS {_num(row.get('eps'))}（年增 {_optional_percent(row.get('eps_yoy_pct'))}）｜毛利 {_optional_percent(row.get('gross_margin_pct'))}｜營益 {_optional_percent(row.get('operating_margin_pct'))}｜ROE估 {_optional_percent(row.get('roe_pct'))}｜負債 {_optional_percent(row.get('debt_ratio_pct'))}")
+        cash_text = "正" if row.get("operating_cash_flow_positive") else "負"
+        lines.insert(-1, f"   現金流：營業現金流為{cash_text}｜財務品質分 {_num(row.get('financial_quality_score'), 1)}")
     if row.get("broker_available"):
         buyers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_buy", [])[:3]) or "N/A"
         sellers = "、".join(str(item.get("name", "")) for item in row.get("top_brokers_sell", [])[:3]) or "N/A"
@@ -82,6 +90,12 @@ def render_markdown(report: dict[str, Any]) -> str:
             lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；本次自動採中性分數")
         if not status.get("broker_count"):
             lines.append("ℹ️ 分點通報：券商分點未取得，可能為 Sponsor 試用到期；其他免費籌碼不受影響")
+        quality_count = int(status.get("financial_quality_count") or 0)
+        expected_count = int(status.get("expected_tw_count") or 0)
+        if quality_count == 0:
+            lines.append("⚠️ 財務品質通報：本次未取得財報資料，請檢查Token／API額度；不完整股票使用中性分數")
+        elif quality_count < expected_count:
+            lines.append(f"ℹ️ 財務品質：已快取 {quality_count}/{expected_count} 檔；為避免免費額度超限，每次最多補30檔")
     performance = report.get("performance", {})
     calibration = performance.get("calibration", {})
     five_day = performance.get("horizons", {}).get("5", {})

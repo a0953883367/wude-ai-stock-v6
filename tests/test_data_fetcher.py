@@ -1,4 +1,8 @@
-from data_fetcher import _aggregate_credit_rows, _aggregate_fundamental_rows
+from data_fetcher import (
+    _aggregate_credit_rows,
+    _aggregate_financial_quality_rows,
+    _aggregate_fundamental_rows,
+)
 
 
 def test_credit_rows_have_latest_and_five_day_changes():
@@ -48,3 +52,33 @@ def test_fundamental_rows_have_valuation_and_revenue_growth():
     assert result["pbr"] == 4.2
     assert result["revenue_yoy_pct"] == 20.0
     assert round(result["revenue_mom_pct"], 2) == 9.09
+
+
+def test_financial_quality_rows_have_profitability_cash_and_debt():
+    income_rows = [
+        {"date": "2025-06-30", "stock_id": "2330", "type": "EPS", "value": 1.5},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "Revenue", "value": 1000},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "GrossProfit", "value": 400},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "OperatingIncome", "value": 200},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "IncomeAfterTaxes", "value": 100},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "EPS", "value": 2.0},
+    ]
+    balance_rows = [
+        {"date": "2026-06-30", "stock_id": "2330", "type": "Assets", "value": 2000},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "Liabilities", "value": 800},
+        {"date": "2026-06-30", "stock_id": "2330", "type": "Equity", "value": 1200},
+    ]
+    cash_rows = [{
+        "date": "2026-06-30", "stock_id": "2330",
+        "type": "CashFlowsFromOperatingActivities", "value": 150,
+    }]
+    result = _aggregate_financial_quality_rows(
+        income_rows, balance_rows, cash_rows, {"2330"}
+    )["2330"]
+    assert result["eps"] == 2.0
+    assert round(result["eps_yoy_pct"], 2) == 33.33
+    assert result["gross_margin_pct"] == 40.0
+    assert result["operating_margin_pct"] == 20.0
+    assert result["debt_ratio_pct"] == 40.0
+    assert round(result["roe_pct"], 2) == 8.33
+    assert result["operating_cash_flow_positive"] == 1.0
