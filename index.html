@@ -121,6 +121,7 @@ function normalizeReport(row){
     klinePattern:row.kline_pattern,klineScore:row.kline_score,dailyVolumeRatio:row.daily_volume_ratio,volumePricePattern:row.volume_price_pattern,breakout20:row.breakout20,breakdown20:row.breakdown20,
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
+    scenarioQuality:row.scenario_data_quality,scenarioBasis:row.scenario_basis,scenarioContinuation:row.scenario_continuation,scenarioNoChase:row.scenario_no_chase,scenarioBreakdown:row.scenario_breakdown_text,
     stop:row.stop_price,advice:row.action||'🟡 觀察',risk:row.risk||'一般波動',light:lightFrom(row.action,row.score),source:'report'
   };
 }
@@ -186,6 +187,7 @@ function stockCard(stock,index){
     }
     data+='</div>';
   }
+  var scenario=stock.scenarioContinuation?'<div class="databox">📋 <b>明日多空劇本（'+esc(stock.scenarioQuality||'部分資料')+'）</b><br>依據：'+esc(stock.scenarioBasis||'資料不足')+'<br>🔥 '+esc(stock.scenarioContinuation)+'<br>⚠️ '+esc(stock.scenarioNoChase||'—')+'<br>🛡️ '+esc(stock.scenarioBreakdown||'—')+'</div>':'';
   return [
     '<article class="card"><div class="card-head"><div><div class="rank">TOP '+(index+1)+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
@@ -198,7 +200,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',analysisPanel(stock),data,
+    '</div>',analysisPanel(stock),data,scenario,
     '<div class="buybox">🟡 參考買價：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳買點：<b>'+priceValue(stock.better)+'</b><br>',
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',

@@ -36,20 +36,34 @@ def _rsi(close: pd.Series, window: int = 14) -> float:
     return _finite(value.iloc[-1], 50.0)
 
 
-def _intraday_metrics(frame: pd.DataFrame | None, avg_volume: float) -> tuple[float, float, float | None]:
-    if frame is None or frame.empty:
-        return 1.0, 0.0, None
-    volume = frame.get("volume", pd.Series(dtype=float)).fillna(0)
+def _attack_volume(frame: pd.DataFrame) -> float:
+    """Signed up-bar volume share; positive means buyers controlled the window."""
+    if frame.empty:
+        return 0.0
+    volume = frame.get("volume", pd.Series(0, index=frame.index)).fillna(0)
     open_ = frame.get("open", pd.Series(dtype=float))
+    close = frame.get("close", pd.Series(dtype=float))
+    up = float(volume[close > open_].sum()) if len(close) else 0.0
+    down = float(volume[close < open_].sum()) if len(close) else 0.0
+    return (up - down) / max(up + down, 1.0) * 100
+
+
+def _intraday_metrics(
+    frame: pd.DataFrame | None, avg_volume: float
+) -> tuple[float, float, float | None, float | None, float | None]:
+    if frame is None or frame.empty:
+        return 1.0, 0.0, None, None, None
+    volume = frame.get("volume", pd.Series(dtype=float)).fillna(0)
     close = frame.get("close", pd.Series(dtype=float))
     total = float(volume.sum())
     expected = max(avg_volume * market_session_fraction(), 1.0)
     pace = total / expected
-    up = float(volume[close > open_].sum()) if len(close) else 0.0
-    down = float(volume[close < open_].sum()) if len(close) else 0.0
-    attack = (up - down) / max(up + down, 1.0) * 100
+    attack = _attack_volume(frame)
+    # The feed uses 5-minute bars. Three/six bars are the opening 15/30 minutes.
+    attack15 = _attack_volume(frame.iloc[:3]) if len(frame) >= 3 else None
+    attack30 = _attack_volume(frame.iloc[:6]) if len(frame) >= 6 else None
     live_price = _finite(close.dropna().iloc[-1], 0.0) if not close.dropna().empty else None
-    return pace, attack, live_price
+    return pace, attack, live_price, attack15, attack30
 
 
 def _candlestick_features(
@@ -168,7 +182,7 @@ def build_features(
     avg10 = _finite(completed_volume.tail(10).mean(), avg5)
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
-    pace, attack, live = _intraday_metrics(intraday, avg20)
+    pace, attack, live, attack15, attack30 = _intraday_metrics(intraday, avg20)
     price = live or _finite(close.iloc[-1])
     change = (price / prev - 1) * 100 if prev else 0.0
     ma5 = _finite(close.tail(5).mean(), price)
@@ -188,6 +202,9 @@ def build_features(
         "change_pct": round(change, 2),
         "volume_pace": round(pace, 2),
         "attack_volume": round(attack, 1),
+        "opening_attack_15m": None if attack15 is None else round(attack15, 1),
+        "opening_attack_30m": None if attack30 is None else round(attack30, 1),
+        "intraday_available": attack15 is not None,
         "rsi": round(rsi, 1),
         "ma5": round(ma5, 2),
         "ma10": round(ma10, 2),
@@ -216,6 +233,60 @@ def build_features(
 
 def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return min(high, max(low, value))
+
+
+def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
+    """Build factual conditional scenarios without inventing a win probability."""
+    price = max(_finite(row.get("price")), 0.01)
+    support1 = min(_finite(row.get("support1"), price), price)
+    support2 = min(_finite(row.get("support2"), support1), support1)
+    resistance1 = max(_finite(row.get("resistance1"), price), price)
+    resistance2 = max(_finite(row.get("resistance2"), resistance1), resistance1)
+    defense_low = support1
+    defense_high = min(price, support1 * 1.015)
+    if defense_high < defense_low:
+        defense_high = defense_low
+    no_chase_low = resistance1
+    no_chase_high = max(resistance1 * 1.03, min(resistance2, resistance1 * 1.05))
+
+    if row.get("institution_available"):
+        foreign = int(_finite(row.get("foreign_net")))
+        institution = int(_finite(row.get("institution_1d")))
+        institution_text = (
+            f"外資 {foreign:+,} 股、三大法人 {institution:+,} 股"
+        )
+    else:
+        institution_text = "法人資料未取得，不推定主力方向"
+
+    volume_ratio = _finite(row.get("daily_volume_ratio"), 1.0)
+    volume_text = f"日量為20日均量 {volume_ratio:.2f} 倍"
+    intraday_text = (
+        "開盤15～30分鐘攻擊量轉正且相對量能達1.3倍"
+        if row.get("intraday_available")
+        else "待開盤15～30分鐘資料出現後再確認量價"
+    )
+    quality = "完整" if row.get("institution_available") and row.get("intraday_available") else "部分資料"
+
+    return {
+        "scenario_defense_low": round(defense_low, 2),
+        "scenario_defense_high": round(defense_high, 2),
+        "scenario_breakdown": round(support2, 2),
+        "scenario_breakout": round(resistance1, 2),
+        "scenario_no_chase_low": round(no_chase_low, 2),
+        "scenario_no_chase_high": round(no_chase_high, 2),
+        "scenario_basis": f"{institution_text}；{volume_text}",
+        "scenario_continuation": (
+            f"守住 {defense_low:.2f}～{defense_high:.2f}，且{intraday_text}，續攻條件轉強"
+        ),
+        "scenario_no_chase": (
+            f"若直接跳到 {no_chase_low:.2f}～{no_chase_high:.2f}，爆量卻無法站穩 "
+            f"{resistance1:.2f}，不追，提防高檔換手"
+        ),
+        "scenario_breakdown_text": (
+            f"跌破 {support1:.2f} 且30分鐘無法收回先減碼；跌破 {support2:.2f} 視為轉弱"
+        ),
+        "scenario_data_quality": quality,
+    }
 
 
 def _performance_adjustment(
@@ -403,6 +474,8 @@ def score_candidates(
             row["action"] = "🟡 觀察，不追高"
         else:
             row["action"] = "🔴 暫不買"
+
+        row.update(_next_day_scenario(row))
 
     ranked = sorted(rows, key=lambda r: (r["score"], r["volume_pace"], r["change_pct"]), reverse=True)
     for rank, row in enumerate(ranked, 1):
