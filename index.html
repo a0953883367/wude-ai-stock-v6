@@ -73,6 +73,7 @@ function priceValue(value){var n=Number(value);return Number.isFinite(n)?number(
 function range(obj,a,b){var low=first(obj,[a],'—'),high=first(obj,[b],'—');if(low==='—'&&high==='—')return '—';if(high==='—'||String(low)===String(high))return low;return low+' ～ '+high;}
 function lightFrom(text,score){text=String(text||'');if(text.indexOf('🟢')>=0)return '🟢';if(text.indexOf('🔴')>=0)return '🔴';if(text.indexOf('🟡')>=0)return '🟡';var n=Number(score);return n>=70?'🟢':n>=58?'🟡':'🔴';}
 function marketCode(symbol,market){symbol=String(symbol||'');return market==='TW'?symbol.split('.')[0]:symbol;}
+function sortByScore(rows){return rows.slice().sort(function(a,b){var x=Number(a.score),y=Number(b.score);if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;return y-x;});}
 
 function normalizeLegacy(row){
   var marketText=String(first(row,['市場'],''));
@@ -131,7 +132,7 @@ function showMarket(view){
   var map={TW:['🇹🇼 台股 最值得買 TOP10',STATE.tw],US:['🇺🇸 美股 最值得買 TOP10',STATE.us],ETF:['📊 ETF 最值得買 TOP10',STATE.etf]};
   if(view==='WATCH'){
     document.getElementById('title').textContent='⭐ 我的固定觀察清單';
-    var rows=STATE.latest&&STATE.latest.watchlist?STATE.latest.watchlist.map(normalizeReport):[];
+    var rows=STATE.latest&&STATE.latest.watchlist?sortByScore(STATE.latest.watchlist.map(normalizeReport)):[];
     document.getElementById('status').textContent=STATE.latest?'最新更新：'+STATE.latest.updated_at+'｜固定清單 '+rows.length+' 檔':'等待第一份自動報告';
     renderStocks(rows);return;
   }
@@ -152,11 +153,11 @@ async function showReport(period){
     var report=STATE.reports[period]||await fetchJSON('reports/'+period+'.json');STATE.reports[period]=report;
     document.getElementById('status').textContent='更新：'+report.updated_at+'｜固定清單 '+report.watchlist_analyzed_count+'/'+report.watchlist_count+' 檔｜背景掃描 '+report.universe_count+' 檔';
     renderMarketStrip(report);
-    var tw=report.watchlist.filter(function(x){return x.market==='TW';}).map(normalizeReport);
-    var us=report.watchlist.filter(function(x){return x.market==='US';}).map(normalizeReport);
+    var tw=sortByScore(report.watchlist.filter(function(x){return x.market==='TW';}).map(normalizeReport));
+    var us=sortByScore(report.watchlist.filter(function(x){return x.market==='US';}).map(normalizeReport));
     var html='<div class="group">🇹🇼 台股固定觀察</div>'+tw.map(stockCard).join('')+'<div class="group">🇺🇸 美股與 ETF 固定觀察</div>'+us.map(stockCard).join('');
     if(report.unavailable&&report.unavailable.length){html+='<div class="group">⚪ 暫無可靠行情</div><div class="empty">'+report.unavailable.map(function(x){return esc(x.name)+'('+esc(marketCode(x.symbol,x.market))+')';}).join('、')+'</div>';}
-    html+='<div class="group">🏆 全台股背景掃描最強 5 檔</div>'+report.top.map(normalizeReport).map(stockCard).join('');
+    html+='<div class="group">🏆 全台股背景掃描最強 5 檔</div>'+sortByScore(report.top.map(normalizeReport)).map(stockCard).join('');
     document.getElementById('results').innerHTML=html;
   }catch(error){
     if(STATE.latest&&STATE.latest.period===period){STATE.reports[period]=STATE.latest;return showReport(period);}
