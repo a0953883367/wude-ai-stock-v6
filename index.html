@@ -36,9 +36,9 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 
   <div class="nav-label">排行與固定清單</div>
   <div class="buttons" id="marketButtons">
-    <button data-view="TW" class="active">🇹🇼 台股 TOP10</button>
-    <button data-view="US">🇺🇸 美股 TOP10</button>
-    <button data-view="ETF">📊 ETF TOP10</button>
+    <button data-view="TW" class="active">🇹🇼 台股 TOP20</button>
+    <button data-view="US">🇺🇸 美股 TOP20</button>
+    <button data-view="ETF">📊 ETF TOP20</button>
     <button data-view="WATCH">⭐ 我的清單</button>
   </div>
 
@@ -54,7 +54,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button class="search" id="searchButton" aria-label="搜尋股票">🔍</button>
   </div>
 
-  <div id="title" class="section">🇹🇼 台股 最值得買 TOP10</div>
+  <div id="title" class="section">🇹🇼 台股 最值得買 TOP20</div>
   <div id="status" class="status">正在讀取最新資料…</div>
   <div id="marketStrip" class="market-strip"></div>
   <main id="results" aria-live="polite"></main>
@@ -129,7 +129,7 @@ function renderStocks(stocks){
 function setActive(selector,attribute,value){document.querySelectorAll(selector).forEach(function(btn){btn.classList.toggle('active',btn.getAttribute(attribute)===value);});}
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);document.querySelectorAll('#reportButtons button').forEach(function(b){b.classList.remove('active');});
-  var map={TW:['🇹🇼 台股 最值得買 TOP10',STATE.tw],US:['🇺🇸 美股 最值得買 TOP10',STATE.us],ETF:['📊 ETF 最值得買 TOP10',STATE.etf]};
+  var map={TW:['🇹🇼 台股 最值得買 TOP20',STATE.tw],US:['🇺🇸 美股 最值得買 TOP20',STATE.us],ETF:['📊 ETF 最值得買 TOP20',STATE.etf]};
   if(view==='WATCH'){
     document.getElementById('title').textContent='⭐ 我的固定觀察清單';
     var rows=STATE.latest&&STATE.latest.watchlist?sortByScore(STATE.latest.watchlist.map(normalizeReport)):[];
@@ -176,9 +176,9 @@ async function loadAll(){
   try{
     var pair=await Promise.all([fetchJSON('stock_data.json'),fetchJSON('reports/latest.json').catch(function(){return null;})]);
     var raw=pair[0],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[1];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
-    var normalized=all.map(normalizeLegacy);STATE.tw=normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,10);
-    STATE.us=normalized.filter(function(x){return x.market==='US'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,10);
-    STATE.etf=normalized.filter(function(x){return String(x.type).toUpperCase()==='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,10);
+    var normalized=all.map(normalizeLegacy);STATE.tw=normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
+    STATE.us=normalized.filter(function(x){return x.market==='US'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
+    STATE.etf=normalized.filter(function(x){return String(x.type).toUpperCase()==='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
     renderMarketStrip(STATE.latest);showMarket('TW');
   }catch(error){document.getElementById('status').textContent='❌ 資料讀取失敗';document.getElementById('results').innerHTML='<div class="error">無法讀取股票資料：'+esc(error.message)+'</div>';}
 }
