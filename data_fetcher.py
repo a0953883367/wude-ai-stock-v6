@@ -148,12 +148,59 @@ def fetch_core_market() -> dict[str, dict[str, float | None]]:
     return output
 
 
+def _aggregate_institutional_rows(
+    rows: list[dict[str, Any]], stock_ids: set[str]
+) -> dict[str, dict[str, float]]:
+    """Aggregate institutional flows over 1/3/5/10 available sessions."""
+    daily: dict[str, dict[str, dict[str, float]]] = {}
+    for row in rows:
+        sid = str(row.get("stock_id", ""))
+        if sid not in stock_ids:
+            continue
+        trade_date = str(row.get("date", ""))
+        name = str(row.get("name", ""))
+        net = float(row.get("buy", 0) or 0) - float(row.get("sell", 0) or 0)
+        item = daily.setdefault(sid, {}).setdefault(
+            trade_date, {"foreign": 0.0, "trust": 0.0, "dealer": 0.0}
+        )
+        if name == "Foreign_Investor":
+            item["foreign"] += net
+        elif name == "Investment_Trust":
+            item["trust"] += net
+        elif name in {"Dealer", "Dealer_self", "Dealer_Hedging"}:
+            item["dealer"] += net
+
+    output: dict[str, dict[str, float]] = {}
+    for sid, by_date in daily.items():
+        dates = sorted(by_date, reverse=True)
+        if not dates:
+            continue
+        latest = by_date[dates[0]]
+        item: dict[str, float] = {
+            "foreign": latest["foreign"],
+            "trust": latest["trust"],
+            "dealer": latest["dealer"],
+            "available": 1.0,
+        }
+        for window in (1, 3, 5, 10):
+            selected = dates[:window]
+            for group in ("foreign", "trust", "dealer"):
+                item[f"{group}_{window}d"] = sum(by_date[d][group] for d in selected)
+            item[f"institution_{window}d"] = sum(
+                sum(by_date[d][group] for group in ("foreign", "trust", "dealer"))
+                for d in selected
+            )
+        output[sid] = item
+    return output
+
+
 def fetch_institutional_flows(stock_ids: set[str]) -> dict[str, dict[str, float]]:
     """Fetch recent all-market institutional trades from FinMind in one request."""
     if not SETTINGS.finmind_token:
         return {}
     end = date.today()
-    start = end - timedelta(days=8)
+    # 21 calendar days normally covers at least 10 Taiwan trading sessions.
+    start = end - timedelta(days=21)
     params = {
         "dataset": "TaiwanStockInstitutionalInvestorsBuySell",
         "start_date": start.isoformat(),
@@ -172,32 +219,10 @@ def fetch_institutional_flows(stock_ids: set[str]) -> dict[str, dict[str, float]
     except Exception as exc:
         LOG.warning("FinMind institutional data unavailable: %s", exc)
         return {}
-
-    latest: dict[str, str] = {}
-    for row in rows:
-        sid = str(row.get("stock_id", ""))
-        if sid in stock_ids:
-            latest[sid] = max(latest.get(sid, ""), str(row.get("date", "")))
-
-    output: dict[str, dict[str, float]] = {}
-    for row in rows:
-        sid = str(row.get("stock_id", ""))
-        if sid not in latest or str(row.get("date", "")) != latest[sid]:
-            continue
-        name = str(row.get("name", ""))
-        net = float(row.get("buy", 0) or 0) - float(row.get("sell", 0) or 0)
-        item = output.setdefault(sid, {"foreign": 0.0, "trust": 0.0, "dealer": 0.0})
-        if name == "Foreign_Investor":
-            item["foreign"] += net
-        elif name == "Investment_Trust":
-            item["trust"] += net
-        elif name in {"Dealer", "Dealer_self", "Dealer_Hedging"}:
-            item["dealer"] += net
-    return output
+    return _aggregate_institutional_rows(rows, stock_ids)
 
 
 def market_session_fraction(now: datetime | None = None) -> float:
     now = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
     minute = now.hour * 60 + now.minute
     return min(1.0, max(15 / 270, (minute - 9 * 60) / 270))
-

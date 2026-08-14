@@ -35,10 +35,14 @@ def _stock_block(row: dict[str, Any]) -> str:
     action = str(row.get("action", "🟡 觀察"))
     light = action[:1] if action[:1] in {"🟢", "🟡", "🔴"} else "🟡"
     action_text = action[1:].strip()
-    return "\n".join([
+    lines = [
         f"{light} {row['name']} {_code(row)}｜{_num(row.get('price'))}｜{_change(row.get('change_pct'))}｜量 {_num(row.get('volume_pace'))}x",
+        f"   均線 5/10/20：{_num(row.get('ma5'))}/{_num(row.get('ma10'))}/{_num(row.get('ma20'))}",
         f"   買 {_num(row.get('buy_price'))}｜支撐 {_num(row.get('support1'))}｜壓力 {_num(row.get('resistance1'))}｜{action_text}｜{row.get('risk', '一般波動')}",
-    ])
+    ]
+    if row.get("institution_available"):
+        lines.insert(2, f"   法人 1/5/10日：{_num(row.get('institution_1d'), 0)}/{_num(row.get('institution_5d'), 0)}/{_num(row.get('institution_10d'), 0)} 股")
+    return "\n".join(lines)
 
 
 def render_markdown(report: dict[str, Any]) -> str:

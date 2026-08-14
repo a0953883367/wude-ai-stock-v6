@@ -66,11 +66,23 @@ def build_features(
     low = daily.get("low", close).astype(float)
     volume = daily.get("volume", pd.Series(0, index=daily.index)).astype(float)
     prev = _finite(close.iloc[-2], _finite(close.iloc[-1])) if len(close) > 1 else _finite(close.iloc[-1])
-    avg20 = _finite(volume.tail(21).head(20).mean(), 1.0)
+    # Exclude the still-forming daily bar only when intraday data belongs to
+    # the same session. On weekends/holidays, keep the latest completed day.
+    completed_volume = volume
+    if intraday is not None and not intraday.empty and len(volume) > 1:
+        try:
+            if pd.Timestamp(daily.index[-1]).date() == pd.Timestamp(intraday.index[-1]).date():
+                completed_volume = volume.iloc[:-1]
+        except (TypeError, ValueError):
+            pass
+    avg5 = _finite(completed_volume.tail(5).mean(), 1.0)
+    avg10 = _finite(completed_volume.tail(10).mean(), avg5)
+    avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     pace, attack, live = _intraday_metrics(intraday, avg20)
     price = live or _finite(close.iloc[-1])
     change = (price / prev - 1) * 100 if prev else 0.0
     ma5 = _finite(close.tail(5).mean(), price)
+    ma10 = _finite(close.tail(10).mean(), ma5)
     ma20 = _finite(close.tail(20).mean(), price)
     ma60 = _finite(close.tail(60).mean(), ma20)
     rsi = _rsi(close)
@@ -88,8 +100,13 @@ def build_features(
         "attack_volume": round(attack, 1),
         "rsi": round(rsi, 1),
         "ma5": round(ma5, 2),
+        "ma10": round(ma10, 2),
         "ma20": round(ma20, 2),
         "ma60": round(ma60, 2),
+        "avg_volume5": int(avg5),
+        "avg_volume10": int(avg10),
+        "avg_volume20": int(avg20),
+        "ma20_distance_pct": round((price / ma20 - 1) * 100 if ma20 else 0.0, 2),
         "support1": round(support1, 2),
         "support2": round(support2, 2),
         "resistance1": round(resistance1, 2),
@@ -98,6 +115,11 @@ def build_features(
         "trust_net": int(_finite(inst.get("trust"))),
         "dealer_net": int(_finite(inst.get("dealer"))),
         "institution_net": int(inst_net),
+        "institution_available": bool(_finite(inst.get("available"))),
+        "institution_1d": int(_finite(inst.get("institution_1d", inst_net))),
+        "institution_3d": int(_finite(inst.get("institution_3d", inst_net))),
+        "institution_5d": int(_finite(inst.get("institution_5d", inst_net))),
+        "institution_10d": int(_finite(inst.get("institution_10d", inst_net))),
     }
 
 
@@ -116,21 +138,32 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in rows:
         technical = 50.0
         technical += _clamp(row["change_pct"] * 4, -20, 20)
-        technical += 8 if row["price"] >= row["ma5"] else -6
-        technical += 8 if row["ma5"] >= row["ma20"] else -6
-        technical += 6 if row["ma20"] >= row["ma60"] else -5
+        technical += 7 if row["price"] >= row["ma5"] else -6
+        technical += 7 if row["ma5"] >= row["ma10"] else -6
+        technical += 7 if row["ma10"] >= row["ma20"] else -6
+        technical += 5 if row["ma20"] >= row["ma60"] else -5
         if row["rsi"] >= 78:
             technical -= 12
         elif 52 <= row["rsi"] <= 70:
             technical += 6
 
         volume_score = _clamp(35 + (row["volume_pace"] - 1) * 35 + row["attack_volume"] * 0.25)
-        inst_billions = row["institution_net"] / 1_000_000_000
-        institution_score = _clamp(50 + inst_billions * 12)
+        if row.get("institution_available"):
+            participation = row["institution_5d"] / max(row["avg_volume20"] * 5, 1) * 100
+            continuity = 0
+            if row["institution_1d"] > 0 and row["institution_3d"] > 0 and row["institution_5d"] > 0:
+                continuity = 8
+            elif row["institution_1d"] < 0 and row["institution_3d"] < 0 and row["institution_5d"] < 0:
+                continuity = -8
+            institution_score = _clamp(50 + participation * 2 + continuity)
+        else:
+            institution_score = 50.0
         group_score = _clamp(50 + theme_change[str(row["theme"])] * 10)
         position_score = 65 if row["price"] <= row["support1"] * 1.03 else 52
         if row["price"] >= row["resistance2"] * 0.995:
             position_score -= 12
+        if row["ma20_distance_pct"] >= 10:
+            position_score -= 15
 
         total = (
             _clamp(technical) * 0.30
@@ -149,7 +182,9 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         })
         row["buy_price"] = round(min(row["price"], row["support1"] * 1.01), 2)
         row["stop_price"] = round(row["support2"] * 0.98, 2)
-        if row["rsi"] >= 78 or row["volume_pace"] >= 3.5:
+        if row["ma20_distance_pct"] >= 12:
+            row["risk"] = "乖離月線過大，勿追高"
+        elif row["rsi"] >= 78 or row["volume_pace"] >= 3.5:
             row["risk"] = "過熱，勿追高"
         elif row["price"] < row["ma20"]:
             row["risk"] = "跌破月線，等待止穩"
@@ -158,7 +193,9 @@ def score_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             row["risk"] = "一般波動"
 
-        if total >= 70 and row["attack_volume"] > 0 and row["price"] >= row["ma20"]:
+        trend_ready = row["price"] >= row["ma10"] >= row["ma20"]
+        not_extended = row["ma20_distance_pct"] < 10
+        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended:
             row["action"] = "🟢 可分批，等回測買點"
         elif total >= 58:
             row["action"] = "🟡 觀察，不追高"
