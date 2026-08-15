@@ -635,8 +635,12 @@ def score_candidates(
         performance_adjustment, performance_samples, performance_horizon = (
             _performance_adjustment(performance, preliminary_signal)
         )
-        total = _clamp(base_total + performance_adjustment)
+        # Only verified, recent negative news can reduce the score. A failed
+        # news request, a single-source report, or an unverified rumor is neutral.
+        news_penalty = _clamp(_finite(row.get("news_penalty")), 0.0, 15.0)
+        total = _clamp(base_total + performance_adjustment - news_penalty)
         row.update({
+            "news_penalty": round(news_penalty, 1),
             "technical_score": round(_clamp(technical), 1),
             "volume_score": round(volume_score, 1),
             "institution_score": round(institution_score, 1),
