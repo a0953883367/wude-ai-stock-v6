@@ -1,6 +1,40 @@
 import pandas as pd
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
+from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, market_session_fraction, score_candidates
+
+
+def test_market_session_fraction_uses_each_markets_clock():
+    tw = ZoneInfo("Asia/Taipei")
+    ny = ZoneInfo("America/New_York")
+    assert market_session_fraction("TW", datetime(2026, 8, 17, 8, 30, tzinfo=tw)) == 0
+    assert market_session_fraction("TW", datetime(2026, 8, 17, 13, 30, tzinfo=tw)) == 1
+    assert market_session_fraction("US", datetime(2026, 8, 17, 9, 0, tzinfo=ny)) == 0
+    assert market_session_fraction("US", datetime(2026, 8, 17, 16, 0, tzinfo=ny)) == 1
+    assert 0.49 < market_session_fraction("US", datetime(2026, 8, 17, 12, 45, tzinfo=ny)) < 0.51
+
+
+def test_us_intraday_volume_is_not_scaled_by_taiwan_session():
+    dates = pd.date_range("2026-05-01", periods=30, freq="B")
+    daily = pd.DataFrame({
+        "close": [100.0] * 30, "open": [99.0] * 30,
+        "high": [101.0] * 30, "low": [98.0] * 30,
+        "volume": [1_000_000] * 30,
+    }, index=dates)
+    intraday_index = pd.date_range(
+        "2026-06-15 09:30", periods=40, freq="5min", tz="America/New_York"
+    )
+    intraday = pd.DataFrame({
+        "open": [100.0] * 40, "close": [100.1] * 40,
+        "volume": [12_500] * 40,
+    }, index=intraday_index)
+    result = build_features(
+        {"symbol": "TEST", "market": "US", "name": "Test", "type": "個股", "theme": "Test"},
+        daily, intraday, None,
+    )
+    assert result is not None
+    assert 0.9 <= result["volume_pace"] <= 1.1
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -94,7 +128,7 @@ def test_next_day_scenario_never_invents_missing_institution_data():
     result = _next_day_scenario(row)
     assert result["scenario_defense_low"] == 73.0
     assert "法人資料未取得" in result["scenario_basis"]
-    assert "待開盤15～30分鐘資料" in result["scenario_continuation"]
+    assert "待台股09:00開盤後15～30分鐘資料" in result["scenario_continuation"]
     assert result["scenario_data_quality"] == "部分資料"
 
 

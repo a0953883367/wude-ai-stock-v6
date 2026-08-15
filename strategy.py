@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -12,11 +13,22 @@ import pandas as pd
 from config import TAIPEI
 
 
-def market_session_fraction(now: datetime | None = None) -> float:
-    """Elapsed fraction of Taiwan's regular 09:00-13:30 session."""
-    now = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
+NEW_YORK = ZoneInfo("America/New_York")
+
+
+def market_session_fraction(
+    market: str = "TW", now: datetime | None = None
+) -> float:
+    """Elapsed regular-session fraction for TW or US, including US DST."""
+    market = str(market or "TW").upper()
+    timezone = TAIPEI if market == "TW" else NEW_YORK
+    now = (now or datetime.now(timezone)).astimezone(timezone)
     minute = now.hour * 60 + now.minute
-    return min(1.0, max(15 / 270, (minute - 9 * 60) / 270))
+    if market == "TW":
+        start, duration = 9 * 60, 270
+    else:
+        start, duration = 9 * 60 + 30, 390
+    return min(1.0, max(0.0, (minute - start) / duration))
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -49,14 +61,22 @@ def _attack_volume(frame: pd.DataFrame) -> float:
 
 
 def _intraday_metrics(
-    frame: pd.DataFrame | None, avg_volume: float
+    frame: pd.DataFrame | None, avg_volume: float, market: str = "TW"
 ) -> tuple[float, float, float | None, float | None, float | None]:
     if frame is None or frame.empty:
         return 1.0, 0.0, None, None, None
     volume = frame.get("volume", pd.Series(dtype=float)).fillna(0)
     close = frame.get("close", pd.Series(dtype=float))
     total = float(volume.sum())
-    expected = max(avg_volume * market_session_fraction(), 1.0)
+    bar_time = None
+    if isinstance(frame.index, pd.DatetimeIndex) and len(frame.index):
+        stamp = pd.Timestamp(frame.index[-1])
+        if stamp.tzinfo is None:
+            timezone = TAIPEI if str(market).upper() == "TW" else NEW_YORK
+            stamp = stamp.tz_localize(timezone)
+        bar_time = stamp.to_pydatetime()
+    elapsed = market_session_fraction(market, bar_time)
+    expected = max(avg_volume * elapsed, avg_volume if elapsed <= 0 else 1.0)
     pace = total / expected
     attack = _attack_volume(frame)
     # The feed uses 5-minute bars. Three/six bars are the opening 15/30 minutes.
@@ -182,7 +202,21 @@ def build_features(
     avg10 = _finite(completed_volume.tail(10).mean(), avg5)
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
-    pace, attack, live, attack15, attack30 = _intraday_metrics(intraday, avg20)
+    market = str(item.get("market") or ("TW" if str(item.get("symbol", "")).upper().endswith(".TW") else "US")).upper()
+    pace, attack, live, attack15, attack30 = _intraday_metrics(intraday, avg20, market)
+    if intraday is not None and not intraday.empty and completed_volume is not volume:
+        candle["daily_volume_ratio"] = round(pace, 2)
+        daily_change = (live or _finite(close.iloc[-1])) - prev
+        if pace >= 1.3 and daily_change > 0:
+            candle["volume_price_pattern"] = "價漲量增"
+        elif pace >= 1.3 and daily_change < 0:
+            candle["volume_price_pattern"] = "價跌量增"
+        elif pace <= 0.8 and daily_change >= 0:
+            candle["volume_price_pattern"] = "價穩量縮"
+        elif pace <= 0.8:
+            candle["volume_price_pattern"] = "量縮整理"
+        else:
+            candle["volume_price_pattern"] = "量價中性"
     price = live or _finite(close.iloc[-1])
     change = (price / prev - 1) * 100 if prev else 0.0
     ma5 = _finite(close.tail(5).mean(), price)
@@ -1212,7 +1246,7 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     max_loss = (.035 if is_etf else .045) if market == "TW" else (.040 if is_etf else .055)
     if str(row.get("entry_profile") or "") == "美股高波動":
         max_loss = .070
-    tick = _tick_size(row, max(price, 1.0))
+    tick = _price_tick(row, max(price, 1.0))
     anchors = [v for v in (entry_low, support1) if v > 0]
     anchor = min(anchors) if anchors else 0.0
     structural = anchor-atr*.35 if anchor and atr else price*(1-max_loss)
@@ -1222,6 +1256,12 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         stop = _market_price(row, entry_low-max(atr*.35, tick))
     risk = max(entry_high-stop, tick) if entry_high else tick
     target1 = _market_price(row, max(resistance1, entry_high+risk*1.5))
+    # Exchange tick rounding must not turn a nominal 1.5 reward/risk plan into
+    # 1.49. Move the first target up by valid ticks until the displayed plan
+    # still meets its advertised minimum.
+    if entry_high and risk > 0:
+        while (target1-entry_high)/risk < 1.5:
+            target1 = _market_price(row, target1+tick)
     target2 = _market_price(row, max(resistance2, entry_high+risk*2.3, target1+tick))
     rr = round((target1-entry_high)/risk, 2) if risk > 0 and entry_high else 0.0
 
@@ -1337,7 +1377,7 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     stop_floor = batch1_high*(1-max_loss) if batch1_high > 0 else price*(1-max_loss)
     stop = _market_price(row, max(structural_stop, stop_floor))
     target1 = _market_price(row, max(resistance2, price*1.15, batch1_high*1.18))
-    target2 = _market_price(row, max(target1+_tick_size(row, max(target1, 1.0)), price*1.28, batch1_high*1.32))
+    target2 = _market_price(row, max(target1+_price_tick(row, max(target1, 1.0)), price*1.28, batch1_high*1.32))
 
     trend_ok = price >= ma60*.90 if ma60 > 0 else False
     leveraged_etf = is_etf and _etf_kind(row) == "槓桿／反向ETF"

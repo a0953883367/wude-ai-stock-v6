@@ -27,12 +27,8 @@ from notifier import render_markdown, save_report, send_telegram
 from news_risk import fetch_news_risks
 from performance import load_performance_context, update_performance
 import strategy
-from sitecustomize import _tick_size
 from watchlist import load_watchlist
 
-# V6.29 trading plans call this helper from strategy.py. Bind it explicitly
-# instead of relying on Python's optional sitecustomize auto-import behavior.
-strategy._tick_size = _tick_size
 build_features = strategy.build_features
 score_candidates = strategy.score_candidates
 
@@ -222,15 +218,19 @@ def main() -> int:
         "top": market_top,
         "performance": performance,
         "method": {
-            "technical": 0.28,
-            "kline_and_volume_price": "included within technical weight",
-            "volume_and_attack": 0.23,
-            "institutional": 0.17,
-            "credit_chips": "included within institutional weight when available",
-            "fundamental_and_valuation": 0.10,
-            "financial_quality": "included within fundamental weight when available",
-            "theme_resonance": 0.14,
-            "support_resistance": 0.08,
+            "overall_company": {
+                "technical_trend": 0.20,
+                "volume_momentum": 0.15,
+                "institutional_flow": 0.15,
+                "financial_quality": 0.15,
+                "growth": 0.15,
+                "valuation": 0.10,
+                "news_risk": 0.10,
+            },
+            "short_term": "1至5個交易日；量價、短均線與K線、籌碼、開盤攻擊量及風報比獨立計分",
+            "mid_long_term": "3至12個月；財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險獨立計分",
+            "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
+            "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "verified_outcome_feedback": "actual saved 1/5-day returns only; statistically shrunk and capped at +/-2 points",
         },
@@ -248,7 +248,7 @@ def main() -> int:
     ranking_payload = {
         "updated_at": report["updated_at"],
         "period": args.period,
-        "ranking_basis": "entry_score",
+        "ranking_basis": "overall_ranking_score",
         "data": ranking_rows,
     }
     ranking_path = SETTINGS.reports_dir / "rankings.json"
