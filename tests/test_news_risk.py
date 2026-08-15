@@ -27,7 +27,7 @@ def test_official_severe_event_reduces_score():
 def test_two_independent_trusted_sources_are_cross_verified():
     result = classify_news(
         [
-            article("Demand weakens and orders are cut", "Reuters"),
+            article("Weak demand leads to order cut", "Reuters"),
             article("Analyst downgrade follows weak demand", "CNBC"),
         ],
         NOW,
