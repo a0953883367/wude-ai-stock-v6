@@ -51,6 +51,17 @@ def _stock_block(row: dict[str, Any]) -> str:
         f"   K線：{row.get('kline_pattern', 'N/A')}｜{row.get('volume_price_pattern', '量價中性')}｜日量 {_num(row.get('daily_volume_ratio'))}x",
         f"   買 {_num(row.get('buy_price'))}｜支撐 {_num(row.get('support1'))}｜壓力 {_num(row.get('resistance1'))}｜{action_text}｜{row.get('risk', '一般波動')}",
     ]
+    news_level = str(row.get("news_risk_level") or "")
+    news_penalty = float(row.get("news_penalty") or 0)
+    if news_penalty > 0 or news_level.startswith(("🔴", "🟡")):
+        effect = f"｜計分 -{news_penalty:.1f}" if news_penalty > 0 else "｜僅觀察、不扣分"
+        lines.append(
+            f"   📰 {news_level}{effect}｜{row.get('news_summary', '近期負面消息請留意')}"
+        )
+        for article in (row.get("news_articles") or [])[:2]:
+            lines.append(
+                f"      {article.get('published_at', '—')}｜{article.get('publisher', '來源未標示')}｜{article.get('title', '')}"
+            )
     if row.get("institution_available"):
         lines.insert(2, f"   法人 1/5/10日：{_num(row.get('institution_1d'), 0)}/{_num(row.get('institution_5d'), 0)}/{_num(row.get('institution_10d'), 0)} 股")
     if row.get("credit_available"):
