@@ -17,6 +17,7 @@ from data_fetcher import (
     fetch_credit_flows,
     fetch_fundamentals,
     fetch_financial_quality,
+    fetch_etf_metadata,
     fetch_institutional_flows,
     fetch_us_short_volume,
     load_taiwan_universe,
@@ -94,6 +95,7 @@ def main() -> int:
     financial_quality = fetch_financial_quality(watchlist_stock_ids)
     broker_branches = fetch_broker_branches(watchlist_stock_ids)
     us_short_volume = fetch_us_short_volume(us_symbols)
+    etf_metadata = fetch_etf_metadata(universe)
 
     features = []
     for item in universe:
@@ -105,6 +107,7 @@ def main() -> int:
         institution = institutions.get(stock_id) if item.get("market") == "TW" else None
         row = build_features(item, daily, intraday.get(symbol), institution)
         if row:
+            row.update(etf_metadata.get(symbol, {}))
             if item.get("market") == "TW":
                 row.update(credit_flows.get(stock_id, {}))
                 row.update(fundamentals.get(stock_id, {}))

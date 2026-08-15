@@ -307,3 +307,51 @@ def test_three_rank_fields_are_independent():
     long = sorted(rows, key=lambda row: row["mid_long_score"], reverse=True)
     assert overall[0] is not short[0]
     assert short[0] is long[0]
+
+
+
+def test_etf_uses_independent_score_model_and_blocks_large_premium():
+    dates = pd.date_range("2026-01-01", periods=65, freq="B")
+    daily = pd.DataFrame({
+        "close": [100 + i * 0.1 for i in range(65)],
+        "open": [99.8 + i * 0.1 for i in range(65)],
+        "high": [100.5 + i * 0.1 for i in range(65)],
+        "low": [99.5 + i * 0.1 for i in range(65)],
+        "volume": [1_000_000] * 65,
+    }, index=dates)
+    row = build_features(
+        {"symbol": "TEST", "name": "測試ETF", "type": "ETF", "theme": "大盤", "industry": "ETF", "market": "US"},
+        daily, None, None,
+    )
+    row.update({
+        "nav_price": row["price"] * 0.96,
+        "premium_discount_pct": 4.17,
+        "bid_ask_spread_pct": 0.08,
+        "expense_ratio_pct": 0.25,
+        "aum": 10_000_000_000,
+        "etf_return_3y_pct": 12.0,
+        "etf_return_5y_pct": 10.0,
+        "beta_3y": 1.0,
+    })
+    result = score_candidates([row])[0]
+    assert result["score_model"] == "ETF獨立模型"
+    assert result["etf_kind"] == "被動ETF"
+    assert result["etf_premium_blocked"] is True
+    assert result["entry_score"] <= 55
+    assert result["short_term_eligible"] is False
+
+
+def test_leveraged_etf_is_excluded_from_standard_long_term_plan():
+    row = {
+        "symbol": "00631L.TW", "name": "元大台灣50正2", "type": "ETF", "market": "TW",
+        "price": 100.0, "ma20": 98.0, "ma60": 95.0, "atr14": 2.0,
+        "score": 80.0, "technical_score": 80.0, "volume_score": 75.0,
+        "better_buy_low": 92.0, "better_buy_high": 96.0,
+        "support1": 92.0, "support2": 88.0, "resistance1": 105.0, "resistance2": 112.0,
+        "avg_volume20": 1_000_000, "news_penalty": 0,
+        "etf_return_3y_pct": 20.0, "etf_return_5y_pct": 15.0,
+        "bid_ask_spread_pct": 0.1, "aum": 1_000_000_000,
+    }
+    result = _mid_long_term_plan(row)
+    assert result["mid_long_eligible"] is False
+    assert result["mid_long_status"] == "🔴 不列入一般中長線"
