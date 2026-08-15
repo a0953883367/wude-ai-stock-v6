@@ -25,8 +25,15 @@ from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
 from news_risk import fetch_news_risks
 from performance import load_performance_context, update_performance
-from strategy import build_features, score_candidates
+import strategy
+from sitecustomize import _tick_size
 from watchlist import load_watchlist
+
+# V6.29 trading plans call this helper from strategy.py. Bind it explicitly
+# instead of relying on Python's optional sitecustomize auto-import behavior.
+strategy._tick_size = _tick_size
+build_features = strategy.build_features
+score_candidates = strategy.score_candidates
 
 
 def sort_by_score(rows: list[dict]) -> list[dict]:
