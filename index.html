@@ -107,15 +107,16 @@ var STATE={stockData:null,allLegacy:[],normalized:[],tw:[],us:[],etf:[],quantum:
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function first(obj,names,fallback){for(var i=0;i<names.length;i++){var v=obj[names[i]];if(v!==undefined&&v!==null&&v!=='')return v;}return fallback===undefined?'—':fallback;}
-function number(value,digits){var n=Number(value);return Number.isFinite(n)?n.toLocaleString('zh-TW',{minimumFractionDigits:digits||0,maximumFractionDigits:digits===undefined?2:digits}):'—';}
-function percent(value){var n=Number(value);return Number.isFinite(n)?(n>=0?'+':'')+n.toFixed(2)+'%':'—';}
-function priceValue(value){var n=Number(value);return Number.isFinite(n)?number(n,2):esc(value);}
-function compact(value){var n=Number(value);if(!Number.isFinite(n))return '—';if(Math.abs(n)>=100000000)return (n/100000000).toFixed(2)+'億';if(Math.abs(n)>=10000)return (n/10000).toFixed(2)+'萬';return number(n,0);}
-function compactSigned(value){var n=Number(value);if(!Number.isFinite(n))return '—';return (n>0?'+':'')+compact(n);}
+function hasValue(value){return value!==undefined&&value!==null&&value!==''&&value!=='—';}
+function number(value,digits){if(!hasValue(value))return '—';var n=Number(value);return Number.isFinite(n)?n.toLocaleString('zh-TW',{minimumFractionDigits:digits||0,maximumFractionDigits:digits===undefined?2:digits}):'—';}
+function percent(value){if(!hasValue(value))return '—';var n=Number(value);return Number.isFinite(n)?(n>=0?'+':'')+n.toFixed(2)+'%':'—';}
+function priceValue(value){if(!hasValue(value))return '—';var n=Number(value);return Number.isFinite(n)?number(n,2):esc(value);}
+function compact(value){if(!hasValue(value))return '—';var n=Number(value);if(!Number.isFinite(n))return '—';if(Math.abs(n)>=100000000)return (n/100000000).toFixed(2)+'億';if(Math.abs(n)>=10000)return (n/10000).toFixed(2)+'萬';return number(n,0);}
+function compactSigned(value){if(!hasValue(value))return '—';var n=Number(value);if(!Number.isFinite(n))return '—';return (n>0?'+':'')+compact(n);}
 function range(obj,a,b){var low=first(obj,[a],'—'),high=first(obj,[b],'—');if(low==='—'&&high==='—')return '—';if(high==='—'||String(low)===String(high))return low;return low+' ～ '+high;}
 function lightFrom(text,score){text=String(text||'');if(text.indexOf('🟢')>=0)return '🟢';if(text.indexOf('🔴')>=0)return '🔴';if(text.indexOf('🟡')>=0)return '🟡';var n=Number(score);return n>=70?'🟢':n>=58?'🟡':'🔴';}
 function marketCode(symbol,market){symbol=String(symbol||'');return market==='TW'?symbol.split('.')[0]:symbol;}
-function sortByScore(rows){return rows.slice().sort(function(a,b){var x=Number(a.entryScore),y=Number(b.entryScore);if(!Number.isFinite(x))x=Number(a.score);if(!Number.isFinite(y))y=Number(b.score);if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;return y-x;});}
+function sortByScore(rows){return rows.slice().sort(function(a,b){var x=Number(a.score),y=Number(b.score);if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;return y-x;});}
 
 function normalizeLegacy(row){
   var marketText=String(first(row,['市場'],''));

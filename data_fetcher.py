@@ -10,7 +10,7 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -18,7 +18,7 @@ import pandas as pd
 import requests
 import yfinance as yf
 
-from config import SETTINGS, TAIPEI
+from config import SETTINGS
 
 
 LOG = logging.getLogger(__name__)
@@ -755,9 +755,3 @@ def fetch_us_short_volume(symbols: set[str]) -> dict[str, dict[str, Any]]:
         except Exception:
             continue
     return {}
-
-
-def market_session_fraction(now: datetime | None = None) -> float:
-    now = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
-    minute = now.hour * 60 + now.minute
-    return min(1.0, max(15 / 270, (minute - 9 * 60) / 270))

@@ -50,7 +50,7 @@ def _stock_block(row: dict[str, Any]) -> str:
         f"   {row.get('outlook_direction', '↔️ 震盪平盤')}｜未來1～5日｜信心度 {_num(row.get('outlook_confidence'), 1)}%",
         f"   均線 5/10/20：{_num(row.get('ma5'))}/{_num(row.get('ma10'))}/{_num(row.get('ma20'))}",
         f"   K線：{row.get('kline_pattern', 'N/A')}｜{row.get('volume_price_pattern', '量價中性')}｜日量 {_num(row.get('daily_volume_ratio'))}x",
-        f"   買 {_num(row.get('buy_price'))}｜支撐 {_num(row.get('support1'))}｜壓力 {_num(row.get('resistance1'))}｜{action_text}｜{row.get('risk', '一般波動')}",
+        f"   買進區 {_num(row.get('buy_zone_low'))}～{_num(row.get('buy_zone_high'))}｜支撐 {_num(row.get('support1'))}｜壓力 {_num(row.get('resistance1'))}｜{action_text}｜{row.get('risk', '一般波動')}",
     ]
     news_level = str(row.get("news_risk_level") or "")
     news_penalty = float(row.get("news_penalty") or 0)
@@ -106,7 +106,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     ]
     status = report.get("data_status", {})
     if not status.get("finmind_configured"):
-        lines.append("⚠️ 籌碼通報：FINMIND_TOKEN 未設定，本次使用中性籌碼分數")
+        lines.append("⚠️ 籌碼通報：FINMIND_TOKEN 未設定；缺少的籌碼維度不納入計分，並降低資料信心")
     else:
         missing = []
         if not status.get("institutional_count"):
@@ -116,13 +116,13 @@ def render_markdown(report: dict[str, Any]) -> str:
         if not status.get("fundamental_count"):
             missing.append("基本面／估值")
         if missing:
-            lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；本次自動採中性分數")
+            lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；缺少維度不納入計分並降低資料信心")
         if not status.get("broker_count"):
             lines.append("ℹ️ 分點通報：券商分點未取得，可能為 Sponsor 試用到期；其他免費籌碼不受影響")
         quality_count = int(status.get("financial_quality_count") or 0)
         expected_count = int(status.get("expected_tw_count") or 0)
         if quality_count == 0:
-            lines.append("⚠️ 財務品質通報：本次未取得財報資料，請檢查Token／API額度；不完整股票使用中性分數")
+            lines.append("⚠️ 財務品質通報：本次未取得財報資料，請檢查 Token／API額度；缺少維度不納入計分並限制中長線資格")
         elif quality_count < expected_count:
             lines.append(f"ℹ️ 財務品質：已快取 {quality_count}/{expected_count} 檔；為避免免費額度超限，每次最多補30檔")
     performance = report.get("performance", {})
