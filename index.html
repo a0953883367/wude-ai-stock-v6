@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
-<title>武得 AI 股票助理 V6.24</title>
+<title>武得 AI 股票助理 V6.25</title>
 <style>
 :root{--bg:#07111f;--panel:#111c2e;--card:#111827;--soft:#172033;--line:#263244;--muted:#94a3b8;--blue:#2563eb;--green:#22c55e;--yellow:#facc15;--red:#fb7185;--white:#f8fafc}
 *{box-sizing:border-box}
@@ -62,8 +62,8 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   </div>
 
   <div class="refresh-panel">
-    <button class="refresh-button" id="refreshButton">🔄 立即更新資料</button>
-    <div class="refresh-help">按下後會開啟 GitHub Actions；選擇時段，再按綠色 Run workflow。手動更新不會改變原排程。</div>
+    <button class="refresh-button" id="refreshButton">🔄 重新整理最新資料</button>
+    <div class="refresh-help">不會離開此頁；顯示最近一次完成的背景更新。交易時段約每 30 分鐘更新，Telegram 通知時間不變。</div>
   </div>
 
   <div class="searchbox">
@@ -76,7 +76,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.24-Q2<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.25-Q1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <script>
@@ -328,7 +328,12 @@ async function loadAll(){
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
 document.querySelectorAll('#quantumButtons button').forEach(function(btn){btn.addEventListener('click',function(){showQuantum(btn.getAttribute('data-quantum'));});});
 document.querySelectorAll('#reportButtons button').forEach(function(btn){btn.addEventListener('click',function(){showReport(btn.getAttribute('data-period'));});});
-document.getElementById('refreshButton').addEventListener('click',function(){window.open('https://github.com/a0953883367/wude-ai-stock-v6/actions/workflows/stock-briefing.yml','_blank','noopener');});
+document.getElementById('refreshButton').addEventListener('click',function(){
+  var button=this;
+  button.disabled=true;
+  button.textContent='⏳ 正在讀取最新資料…';
+  window.location.reload();
+});
 document.getElementById('searchButton').addEventListener('click',searchStock);
 document.getElementById('ticker').addEventListener('keydown',function(e){if(e.key==='Enter')searchStock();});
 loadAll();
