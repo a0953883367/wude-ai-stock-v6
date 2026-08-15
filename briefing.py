@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from datetime import datetime
 
@@ -199,6 +200,27 @@ def main() -> int:
     }
     markdown = render_markdown(report)
     latest_json, latest_md = save_report(report, markdown)
+
+    # The homepage needs current opportunity rankings, not the legacy static
+    # stock_data.json scores. Keep only TOP20 per group to control repository
+    # growth during the two-hour background refresh.
+    ranking_rows = []
+    for group in ("TW", "US", "ETF"):
+        ranking_rows.extend(backtest_groups[group])
+    ranking_payload = {
+        "updated_at": report["updated_at"],
+        "period": args.period,
+        "ranking_basis": "entry_score",
+        "data": ranking_rows,
+    }
+    ranking_path = SETTINGS.reports_dir / "rankings.json"
+    ranking_tmp = SETTINGS.reports_dir / "rankings.tmp"
+    ranking_tmp.write_text(
+        json.dumps(ranking_payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    ranking_tmp.replace(ranking_path)
+
     delivered = False if args.no_telegram else send_telegram(markdown)
     print(markdown)
     print(f"\nSaved: {latest_json}, {latest_md}; Telegram={delivered}")
