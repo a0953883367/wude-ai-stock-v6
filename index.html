@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
-<title>武得 AI 股票助理 V6.25</title>
+<title>武得 AI 股票助理 V6.26</title>
 <style>
 :root{--bg:#07111f;--panel:#111c2e;--card:#111827;--soft:#172033;--line:#263244;--muted:#94a3b8;--blue:#2563eb;--green:#22c55e;--yellow:#facc15;--red:#fb7185;--white:#f8fafc}
 *{box-sizing:border-box}
@@ -76,7 +76,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.25-Q1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.26-Q1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <script>
@@ -93,7 +93,7 @@ function compactSigned(value){var n=Number(value);if(!Number.isFinite(n))return 
 function range(obj,a,b){var low=first(obj,[a],'—'),high=first(obj,[b],'—');if(low==='—'&&high==='—')return '—';if(high==='—'||String(low)===String(high))return low;return low+' ～ '+high;}
 function lightFrom(text,score){text=String(text||'');if(text.indexOf('🟢')>=0)return '🟢';if(text.indexOf('🔴')>=0)return '🔴';if(text.indexOf('🟡')>=0)return '🟡';var n=Number(score);return n>=70?'🟢':n>=58?'🟡':'🔴';}
 function marketCode(symbol,market){symbol=String(symbol||'');return market==='TW'?symbol.split('.')[0]:symbol;}
-function sortByScore(rows){return rows.slice().sort(function(a,b){var x=Number(a.score),y=Number(b.score);if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;return y-x;});}
+function sortByScore(rows){return rows.slice().sort(function(a,b){var x=Number(a.entryScore),y=Number(b.entryScore);if(!Number.isFinite(x))x=Number(a.score);if(!Number.isFinite(y))y=Number(b.score);if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;return y-x;});}
 
 function normalizeLegacy(row){
   var marketText=String(first(row,['市場'],''));
@@ -102,7 +102,7 @@ function normalizeLegacy(row){
   var score=first(row,['V6.13.1分數','V6.13分數','AI總分','AI分數','總分','Score'],'—');
   return {
     name:first(row,['股票','名稱','Name','公司'],'—'),symbol:first(row,['代號','Ticker','ticker','Symbol'],'—'),market:market,type:first(row,['類型'],'個股'),
-    theme:first(row,['主題'],'—'),score:score,price:first(row,['現價','股價','Price','price'],'—'),change:first(row,['漲跌幅','漲跌%'],'—'),
+    theme:first(row,['主題'],'—'),score:score,entryScore:score,price:first(row,['現價','股價','Price','price'],'—'),change:first(row,['漲跌幅','漲跌%'],'—'),
     rsi:first(row,['RSI'],'—'),volume:first(row,['相對量能'],'—'),technical:first(row,['技術分數','technical_score'],'—'),volumeScore:first(row,['量能分數','volume_score'],50),institutionScore:first(row,['籌碼分數','institution_score'],50),creditScore:first(row,['信用分數','credit_score'],50),valuationScore:first(row,['估值分數','valuation_score'],50),growthScore:first(row,['成長分數','growth_score'],50),financialQualityScore:first(row,['財務品質分數','financial_quality_score'],50),fundamental:first(row,['基本面分數'],'—'),
     news:first(row,['新聞分數'],'—'),buy:range(row,'合理買入低','合理買入高')!=='—'?range(row,'合理買入低','合理買入高'):first(row,['合理買入'],'—'),
     better:range(row,'較佳買點低','較佳買點高')!=='—'?range(row,'較佳買點低','較佳買點高'):first(row,['較佳買點'],'—'),
@@ -116,8 +116,8 @@ function normalizeLegacy(row){
 function normalizeReport(row){
   return {
     name:row.name||'—',symbol:row.symbol||'—',market:row.market||'US',type:row.type||'個股',theme:row.theme||'—',
-    score:row.score,price:row.price,change:row.change_pct,rsi:row.rsi,volume:row.volume_pace,technical:row.technical_score,volumeScore:row.volume_score,institutionScore:row.institution_score,creditScore:row.credit_score,valuationScore:row.valuation_score,growthScore:row.growth_score,financialQualityScore:row.financial_quality_score,fundamental:row.fundamental_score,news:'—',
-    buy:row.buy_price,better:row.buy_price,support1:row.support1,support2:row.support2,resistance1:row.resistance1,resistance2:row.resistance2,
+    score:row.score,entryScore:row.entry_score,price:row.price,change:row.change_pct,rsi:row.rsi,volume:row.volume_pace,technical:row.technical_score,volumeScore:row.volume_score,institutionScore:row.institution_score,creditScore:row.credit_score,valuationScore:row.valuation_score,growthScore:row.growth_score,financialQualityScore:row.financial_quality_score,fundamental:row.fundamental_score,news:'—',
+    buy:(row.buy_zone_low!=null?row.buy_zone_low+' ～ '+row.buy_zone_high:row.buy_price),better:(row.better_buy_low!=null?row.better_buy_low+' ～ '+row.better_buy_high:row.buy_price),entryNote:row.entry_note,support1:row.support1,support2:row.support2,resistance1:row.resistance1,resistance2:row.resistance2,
     ma5:row.ma5,ma10:row.ma10,ma20:row.ma20,ma60:row.ma60,
     avgVolume5:row.avg_volume5,avgVolume10:row.avg_volume10,avgVolume20:row.avg_volume20,
     institutionAvailable:row.institution_available,institution1d:row.institution_1d,institution5d:row.institution_5d,institution10d:row.institution_10d,
@@ -205,7 +205,7 @@ function stockCard(stock,index){
     '<article class="card"><div class="card-head"><div><div class="rank">TOP '+(index+1)+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
     '<div class="light">'+esc(stock.light)+'</div></div>',
-    '<div class="score">AI 總分：'+esc(number(stock.score,1))+'</div>',
+    '<div class="score">AI 總分：'+esc(number(stock.score,1))+'</div><div class="score">現在進場分數：'+esc(number(stock.entryScore,1))+'</div>',
     '<div class="grid">',
       '<div class="item"><div class="label">現價</div><div class="value">'+esc(number(stock.price,2))+'</div></div>',
       '<div class="item"><div class="label">漲跌</div><div class="value '+(Number(stock.change)>=0?'up':'down')+'">'+change+'</div></div>',
@@ -214,7 +214,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
     '</div>',analysisPanel(stock),data,positioning,scenario,
-    '<div class="buybox">🟡 參考買價：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳買點：<b>'+priceValue(stock.better)+'</b><br>',
+    '<div class="buybox">🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
     '風控價：<b class="down">'+esc(number(stock.stop,2))+'</b></div>',
@@ -317,12 +317,23 @@ function searchStock(){
 }
 async function loadAll(){
   try{
-    var pair=await Promise.all([fetchJSON('stock_data.json'),fetchJSON('reports/latest.json').catch(function(){return null;}),fetchJSON('quantum_watchlist.json').catch(function(){return null;})]);
-    var raw=pair[0],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[1];STATE.quantum=pair[2];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
-    var normalized=all.map(normalizeLegacy);STATE.normalized=normalized;STATE.tw=normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
-    STATE.us=normalized.filter(function(x){return x.market==='US'&&String(x.type).toUpperCase()!=='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
-    STATE.etf=normalized.filter(function(x){return String(x.type).toUpperCase()==='ETF';}).sort(function(a,b){return Number(b.score||0)-Number(a.score||0);}).slice(0,20);
+    var pair=await Promise.all([
+      fetchJSON('reports/rankings.json').catch(function(){return null;}),
+      fetchJSON('stock_data.json'),
+      fetchJSON('reports/latest.json').catch(function(){return null;}),
+      fetchJSON('quantum_watchlist.json').catch(function(){return null;})
+    ]);
+    var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
+    var legacy=all.map(normalizeLegacy);
+    var current=live&&Array.isArray(live.data)?live.data.map(normalizeReport):[];
+    var normalized=current.length?current:legacy;
+    STATE.normalized=normalized;
+    STATE.tw=sortByScore(normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase().indexOf('ETF')<0;})).slice(0,20);
+    STATE.us=sortByScore(normalized.filter(function(x){return x.market==='US'&&String(x.type).toUpperCase().indexOf('ETF')<0;})).slice(0,20);
+    STATE.etf=sortByScore(normalized.filter(function(x){return String(x.type).toUpperCase().indexOf('ETF')>=0;})).slice(0,20);
     renderMarketStrip(STATE.latest);renderPerformance(STATE.latest);showMarket('TW');
+    if(live&&live.updated_at)document.getElementById('status').textContent+='｜排名更新 '+live.updated_at;
   }catch(error){document.getElementById('status').textContent='❌ 資料讀取失敗';document.getElementById('results').innerHTML='<div class="error">無法讀取股票資料：'+esc(error.message)+'</div>';}
 }
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
