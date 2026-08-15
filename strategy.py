@@ -615,6 +615,24 @@ def _entry_plan(
     }
 
 
+def _available_weighted_score(
+    components: list[tuple[float, float, bool]],
+) -> tuple[float, int, int, float]:
+    """Score only verified dimensions and reduce confidence when data is missing."""
+    available = [(score, weight) for score, weight, ok in components if ok]
+    total_weight = sum(weight for _, weight, _ in components)
+    available_weight = sum(weight for _, weight in available)
+    count = len(available)
+    total = len(components)
+    if not available or total_weight <= 0:
+        return 0.0, count, total, 0.0
+    raw = sum(_clamp(score) * weight for score, weight in available) / available_weight
+    coverage = available_weight / total_weight
+    # Missing dimensions never receive a neutral 50. They lower confidence and rank.
+    adjusted = raw * (0.55 + 0.45 * coverage)
+    return round(_clamp(adjusted), 1), count, total, round(coverage * 100, 1)
+
+
 def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     """Conservative trigger-based plan for a 1-5 trading day trade."""
     market = str(row.get("market") or "").upper()
@@ -648,12 +666,21 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     else:
         trend_score, setup = 30.0, "趨勢未確認"
 
-    score = entry_score*.35 + technical*.25 + volume_score*.15 + positioning*.10 + trend_score*.15
+    attack_score = _clamp(50 + attack * 0.8)
+    structure_score = _clamp((trend_score + _finite(row.get("position_score"), 50.0)) / 2)
+    news_score = _clamp(100 - max(news_penalty, 0.0) * 6)
+    score, short_available, short_total, short_confidence = _available_weighted_score([
+        (volume_score, 25, _finite(row.get("avg_volume20")) > 0),
+        (technical, 20, technical_ok),
+        (positioning, 20, bool(row.get("institution_available") or row.get("credit_available"))),
+        (attack_score, 15, row.get("attack_volume") is not None),
+        (structure_score, 15, technical_ok),
+        (news_score, 5, bool(row.get("news_data_available"))),
+    ])
     if rsi >= 72:
         score -= min(12.0, (rsi-72)*1.5+4)
     if ma20 > 0 and price/ma20-1 >= .10:
         score -= 8
-    score -= min(15.0, max(news_penalty, 0.0))
     if row.get("breakdown20"):
         score -= 15
     score = round(_clamp(score, 0.0, 100.0), 1)
@@ -712,7 +739,8 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         "short_term_rr": rr, "short_term_holding_period": "1～5個交易日",
         "short_term_exit_rule": "跌破停損價立即退出；第一停利減碼一半並移動停損至成本，第二停利或跌破5日線退出",
         "short_term_reason": reason,
-        "short_term_data_quality": f"{coverage_total}/{coverage_expected}",
+        "short_term_data_quality": f"{short_available}/{short_total}",
+        "short_term_confidence": short_confidence,
     }
 
 
@@ -741,19 +769,24 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
 
     fundamental_available = bool(row.get("fundamental_available"))
     quality_available = bool(row.get("financial_quality_available"))
+    growth_available = row.get("revenue_yoy_pct") is not None or row.get("revenue_mom_pct") is not None
+    valuation_available = bool(_finite(row.get("per")) or _finite(row.get("pbr")) or _finite(row.get("dividend_yield")))
+    institution_available = bool(row.get("institution_available") or row.get("credit_available"))
     news_available = bool(row.get("news_data_available"))
     technical_available = all(v > 0 for v in (price, ma20, ma60, atr))
-    available = sum((technical_available, fundamental_available, quality_available, news_available))
-    required = 2 if is_etf else 3
+    news_score = _clamp(100 - max(news_penalty, 0.0) * 6)
+    long_score, available, long_total, long_confidence = _available_weighted_score([
+        (quality, 25, quality_available),
+        (growth, 25, growth_available),
+        (valuation, 15, valuation_available),
+        (technical, 15, technical_available),
+        (_finite(row.get("positioning_score"), 50.0), 10, institution_available),
+        (news_score, 10, news_available),
+    ])
+    required = 3 if is_etf else 4
     data_ok = available >= required
-
-    if is_etf:
-        long_score = ai_score*.35 + technical*.35 + valuation*.10 + growth*.10 + quality*.10
-    else:
-        long_score = ai_score*.20 + technical*.20 + fundamental*.20 + quality*.18 + growth*.12 + valuation*.10
     if price > 0 and ma60 > 0:
         long_score += 4 if price >= ma20 >= ma60 else (-8 if price < ma60*.90 else 0)
-    long_score -= min(15.0, max(news_penalty, 0.0))
     long_score = round(_clamp(long_score, 0.0, 100.0), 1)
 
     # Three batches: fair pullback, deeper support, and long-term trend defense.
@@ -775,10 +808,10 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     )
     if eligible:
         status = "🟢 可分批布局" if price <= batch1_high*1.03 else "🟡 等待回測布局"
-        reason = f"中長線分數 {long_score:.1f}｜可用資料 {available}/4｜採三段資金管理"
+        reason = f"中長線分數 {long_score:.1f}｜可用資料 {available}/{long_total}｜採三段資金管理"
     elif not data_ok or not technical_available:
         status = "⚪ 資料不足"
-        reason = f"可用資料 {available}/4，個股至少需 {required} 面向才列入"
+        reason = f"可用資料 {available}/{long_total}，個股至少需 {required} 面向才列入"
     elif news_penalty >= 10:
         status = "🔴 重大風險觀察"
         reason = f"負面新聞風險扣分 {news_penalty:.1f}，暫停新增部位"
@@ -801,7 +834,8 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         "mid_long_allocation": "第一批40%｜第二批30%｜趨勢確認後30%",
         "mid_long_exit_rule": "跌破中長線風控價且兩日未收復則減碼；基本面轉差、重大負面事件或月線轉空時重新評估",
         "mid_long_reason": reason,
-        "mid_long_data_quality": f"{available}/4",
+        "mid_long_data_quality": f"{available}/{long_total}",
+        "mid_long_confidence": long_confidence,
     }
 
 
@@ -930,15 +964,17 @@ def score_candidates(
         else:
             fundamental_score = valuation_score * 0.55 + growth_score * 0.45
 
-        base_total = (
-            _clamp(technical) * 0.28
-            + volume_score * 0.23
-            + institution_score * 0.17
-            + fundamental_score * 0.10
-            + group_score * 0.14
-            + _clamp(position_score) * 0.08
-            + macro_adjustment
-        )
+        news_score = _clamp(100 - max(_finite(row.get("news_penalty")), 0.0) * 6)
+        base_total, overall_available, overall_total, overall_confidence = _available_weighted_score([
+            (_clamp(technical), 20, all(_finite(row.get(k)) > 0 for k in ("price", "ma5", "ma10", "ma20"))),
+            (volume_score, 15, _finite(row.get("avg_volume20")) > 0),
+            (institution_score, 15, bool(row.get("institution_available") or row.get("credit_available"))),
+            (quality_score, 15, bool(row.get("financial_quality_available"))),
+            (growth_score, 15, bool(growth_parts)),
+            (valuation_score, 10, bool(valuation_parts)),
+            (news_score, 10, bool(row.get("news_data_available"))),
+        ])
+        base_total += macro_adjustment
         preliminary_signal = "🟢" if base_total >= 70 else "🟡" if base_total >= 58 else "🔴"
         performance_adjustment, performance_samples, performance_horizon = (
             _performance_adjustment(performance, preliminary_signal)
@@ -958,6 +994,9 @@ def score_candidates(
             "fundamental_score": round(fundamental_score, 1),
             "financial_quality_score": round(quality_score, 1),
             "group_score": round(group_score, 1),
+            "position_score": round(_clamp(position_score), 1),
+            "overall_data_quality": f"{overall_available}/{overall_total}",
+            "overall_confidence": overall_confidence,
             "macro_score": round(macro_score, 1),
             "macro_adjustment": round(macro_adjustment, 1),
             "macro_affects_score": macro_active,
@@ -1024,4 +1063,9 @@ def score_candidates(
     )
     for rank, row in enumerate(ranked, 1):
         row["rank"] = rank
+        row["overall_rank"] = rank
+    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("short_term_score", 0), reverse=True), 1):
+        row["short_term_rank"] = rank
+    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("mid_long_score", 0), reverse=True), 1):
+        row["mid_long_rank"] = rank
     return ranked
