@@ -495,6 +495,35 @@ def _entry_coverage(row: dict[str, Any], is_etf: bool) -> tuple[int, int]:
     return sum(flags), len(flags)
 
 
+def _market_flow_score(row: dict[str, Any]) -> tuple[float, bool, str]:
+    """Return a disclosure-aware flow score for the candidate's own market."""
+    market = str(row.get("market") or "").upper()
+    if market == "TW":
+        return (
+            _finite(row.get("institution_score"), 50.0),
+            bool(row.get("institution_available") or row.get("credit_available")),
+            "台股法人／信用籌碼",
+        )
+    score = 50.0
+    available = False
+    relative_volume = _finite(row.get("market_relative_volume"), 1.0)
+    change = _finite(row.get("change_pct"))
+    attack = _finite(row.get("opening_attack_30m"), _finite(row.get("attack_volume")))
+    if _finite(row.get("avg_volume20")) > 0:
+        available = True
+        score += _clamp((relative_volume - 1.0) * 18, -12, 12)
+        if relative_volume >= 1.15:
+            score += 5 if change >= 0 else -6
+    if row.get("us_short_volume_available"):
+        available = True
+        short_ratio = _finite(row.get("us_short_volume_ratio_pct"), 45.0)
+        score += _clamp((45.0 - short_ratio) * 0.45, -8, 6)
+    if row.get("intraday_available"):
+        available = True
+        score += _clamp(attack * 0.20, -8, 8)
+    return round(_clamp(score), 1), available, "美股FINRA交易流／相對量能"
+
+
 def _entry_plan(
     row: dict[str, Any],
     total: float,
@@ -512,10 +541,16 @@ def _entry_plan(
     atr_pct = raw_atr / price if raw_atr > 0 else 0.0
 
     if is_etf:
-        profile = "ETF"
-        first_near, first_far = 0.008, 0.018
-        better_near, better_far = 0.022, 0.038
-        atr_floor, stop_gap = 0.008, 0.007
+        if market == "US":
+            profile = "美股ETF"
+            first_near, first_far = 0.012, 0.025
+            better_near, better_far = 0.032, 0.055
+            atr_floor, stop_gap = 0.012, 0.010
+        else:
+            profile = "台灣ETF"
+            first_near, first_far = 0.008, 0.018
+            better_near, better_far = 0.022, 0.038
+            atr_floor, stop_gap = 0.008, 0.007
     elif market == "TW":
         profile = "台股個股"
         first_near, first_far = 0.010, 0.020
@@ -642,6 +677,121 @@ def _available_weighted_score(
     return round(_clamp(adjusted), 1), count, total, round(coverage * 100, 1)
 
 
+def _complete_price_plan(row: dict[str, Any]) -> dict[str, Any]:
+    """Return a complete, sanity-checked price plan and its ranking quality.
+
+    Display values may be derived from the current price and ATR when exchange
+    history is incomplete, but derived plans are explicitly demoted.  This
+    avoids both blank fields and fabricated high rankings.
+    """
+    price = max(_finite(row.get("price")), 0.01)
+    atr = _finite(row.get("atr14"))
+    tick = _price_tick(row, price)
+    is_etf = _is_etf(row)
+    market = str(row.get("market") or "").upper()
+    us_high_vol = market == "US" and not is_etf and (atr / price if price else 0) >= 0.04
+    fallback_floor = (
+        0.016 if market == "US" and is_etf else
+        0.035 if us_high_vol else
+        0.022 if market == "US" else
+        0.012 if is_etf else 0.02
+    )
+    fallback_atr = max(atr, price * fallback_floor, tick)
+
+    buy_low = _finite(row.get("buy_zone_low"))
+    buy_high = _finite(row.get("buy_zone_high"))
+    better_low = _finite(row.get("better_buy_low"))
+    better_high = _finite(row.get("better_buy_high"))
+    stop = _finite(row.get("stop_price"))
+    support1 = _finite(row.get("support1"))
+    support2 = _finite(row.get("support2"))
+    resistance1 = _finite(row.get("resistance1"))
+    resistance2 = _finite(row.get("resistance2"))
+
+    derived: list[str] = []
+    max_first_pullback = (
+        0.10 if market == "US" and is_etf else
+        0.20 if us_high_vol else
+        0.16 if market == "US" else
+        0.08 if is_etf else 0.14
+    )
+    zones_ok = (
+        0 < better_low <= better_high < buy_low <= buy_high < price
+        and buy_low >= price * (1 - max_first_pullback)
+    )
+    if not zones_ok:
+        derived.append("進場區")
+        first_near = 0.015 if market == "US" and is_etf else 0.025 if us_high_vol else 0.018 if market == "US" else 0.010 if is_etf else 0.018
+        base_first_far = 0.030 if market == "US" and is_etf else 0.055 if us_high_vol else 0.040 if market == "US" else 0.020 if is_etf else 0.035
+        first_far = max(base_first_far, fallback_atr / price * 1.05)
+        first_far = min(first_far, max_first_pullback)
+        better_floor = 0.045 if market == "US" and is_etf else 0.075 if market == "US" else 0.030 if is_etf else 0.050
+        better_near = min(max(first_far + 0.008, better_floor), 0.22)
+        better_far = min(max(better_near + 0.015, fallback_atr / price * 2.0), 0.20)
+        buy_low = _market_price(row, price * (1 - first_far))
+        buy_high = _market_price(row, price * (1 - first_near))
+        better_low = _market_price(row, price * (1 - better_far))
+        better_high = _market_price(row, price * (1 - better_near))
+
+    if not (0 < support1 <= price * 1.03):
+        support1 = buy_low
+        derived.append("第一支撐")
+    if not (0 < support2 <= support1):
+        support2 = min(better_low, support1 - tick)
+        derived.append("第二支撐")
+    if not (resistance1 > price):
+        resistance1 = _market_price(row, price + fallback_atr)
+        derived.append("第一壓力")
+    if not (resistance2 > resistance1):
+        resistance2 = _market_price(row, resistance1 + fallback_atr)
+        derived.append("第二壓力")
+    if not (0 < stop < better_low):
+        stop = _market_price(row, better_low - max(fallback_atr * 0.75, tick))
+        derived.append("風控價")
+
+    required_inputs = {
+        "20日線": _finite(row.get("ma20")) > 0,
+        "60日線": _finite(row.get("ma60")) > 0,
+        "ATR": atr > 0,
+        "20日均量": _finite(row.get("avg_volume20")) > 0,
+    }
+    verified_count = sum(required_inputs.values())
+    if not derived and verified_count == len(required_inputs):
+        quality, factor = "完整", 1.0
+    elif verified_count >= 3:
+        quality, factor = "部分推估", 0.88
+    else:
+        quality, factor = "資料不足", 0.68
+
+    return {
+        "buy_zone_low": buy_low,
+        "buy_zone_high": buy_high,
+        "better_buy_low": better_low,
+        "better_buy_high": better_high,
+        "buy_price": _market_price(row, (buy_low + buy_high) / 2),
+        "support1": _market_price(row, support1),
+        "support2": _market_price(row, support2),
+        "resistance1": _market_price(row, resistance1),
+        "resistance2": _market_price(row, resistance2),
+        "stop_price": stop,
+        "price_plan_complete": True,
+        "price_plan_quality": quality,
+        "price_plan_rank_factor": factor,
+        "price_plan_derived_fields": derived,
+        "price_plan_note": (
+            "價格資料完整，使用均線、ATR與近期支撐壓力計算"
+            if quality == "完整" else
+            f"{quality}：{('、'.join(derived) or '部分指標')}採保守推估，排名已下調"
+        ),
+        "price_plan_market_model": (
+            "美股ETF模型" if market == "US" and is_etf else
+            "美股高波動模型" if us_high_vol else
+            "美股一般模型" if market == "US" else
+            "台灣ETF模型" if is_etf else "台股個股模型"
+        ),
+    }
+
+
 
 def _is_etf(row: dict[str, Any]) -> bool:
     return "ETF" in str(row.get("type") or "").upper()
@@ -729,10 +879,27 @@ def _etf_score_bundle(
     concentration_available = concentration is not None
     concentration_score = _clamp(100 - max(_finite(concentration) - 35, 0) * 1.3) if concentration_available else 0.0
 
+    market = str(row.get("market") or "").upper()
     breadth = row.get("holdings_breadth_score")
     breadth_available = breadth is not None
     flow = row.get("fund_flow_score")
     flow_available = flow is not None
+    flow_label = "基金資金流"
+    if market == "TW" and row.get("institution_available"):
+        participation = _finite(row.get("institution_5d")) / max(_finite(row.get("avg_volume20")) * 5, 1) * 100
+        continuity = 0.0
+        if all(_finite(row.get(key)) > 0 for key in ("institution_1d", "institution_3d", "institution_5d")):
+            continuity = 8.0
+        elif all(_finite(row.get(key)) < 0 for key in ("institution_1d", "institution_3d", "institution_5d")):
+            continuity = -8.0
+        institutional_flow = _clamp(50 + participation * 2 + continuity)
+        flow = float(np.mean([_finite(flow), institutional_flow])) if flow_available else institutional_flow
+        flow_available = True
+        flow_label = "法人參與／基金資金流" if row.get("fund_flow_score") is not None else "法人參與"
+    elif market == "US" and not flow_available and row.get("market_flow_available"):
+        flow = _finite(row.get("market_flow_score"))
+        flow_available = True
+        flow_label = "美股市場相對資金流"
 
     fx_risk = row.get("fx_risk_score")
     event_score = (
@@ -743,6 +910,7 @@ def _etf_score_bundle(
 
     return {
         "etf_kind": _etf_kind(row),
+        "market": market,
         "portfolio_score": round(_clamp(portfolio_score), 1),
         "portfolio_available": portfolio_available,
         "tracking_score": round(_clamp(tracking_score), 1),
@@ -761,6 +929,7 @@ def _etf_score_bundle(
         "breadth_available": breadth_available,
         "flow_score": round(_clamp(_finite(flow)), 1),
         "flow_available": flow_available,
+        "flow_label": flow_label,
         "event_score": round(_clamp(event_score), 1),
         "event_available": event_available,
         "technical_score": round(_clamp(technical), 1),
@@ -769,12 +938,23 @@ def _etf_score_bundle(
 
 
 def _etf_overall_components(bundle: dict[str, Any]) -> list[tuple[float, float, bool]]:
+    if bundle["market"] == "TW":
+        return [
+            (bundle["portfolio_score"], 20, bundle["portfolio_available"]),
+            (bundle["technical_score"], 20, True),
+            (bundle["liquidity_score"], 15, bundle["liquidity_available"]),
+            (bundle["premium_score"], 15, bundle["premium_available"]),
+            (bundle["tracking_score"], 10, bundle["tracking_available"]),
+            (bundle["flow_score"], 10, bundle["flow_available"]),
+            (bundle["breadth_score"], 5, bundle["breadth_available"]),
+            (bundle["event_score"], 5, bundle["event_available"]),
+        ]
     return [
         (bundle["portfolio_score"], 25, bundle["portfolio_available"]),
-        (bundle["technical_score"], 20, True),
+        (bundle["technical_score"], 15, True),
         (bundle["tracking_score"], 15, bundle["tracking_available"]),
-        (bundle["liquidity_score"], 10, bundle["liquidity_available"]),
-        (bundle["premium_score"], 10, bundle["premium_available"]),
+        (bundle["liquidity_score"], 15, bundle["liquidity_available"]),
+        (bundle["premium_score"], 5, bundle["premium_available"]),
         (float(np.mean([
             score for score, ok in (
                 (bundle["risk_score"], bundle["risk_available"]),
@@ -782,7 +962,7 @@ def _etf_overall_components(bundle: dict[str, Any]) -> list[tuple[float, float, 
             ) if ok
         ])) if bundle["risk_available"] or bundle["concentration_available"] else 0.0,
          10, bundle["risk_available"] or bundle["concentration_available"]),
-        (bundle["cost_score"], 5, bundle["cost_available"]),
+        (bundle["cost_score"], 10, bundle["cost_available"]),
         (bundle["event_score"], 5, bundle["event_available"]),
     ]
 
@@ -790,13 +970,22 @@ def _etf_overall_components(bundle: dict[str, Any]) -> list[tuple[float, float, 
 def _etf_short_components(
     bundle: dict[str, Any], structure_score: float
 ) -> list[tuple[float, float, bool]]:
+    if bundle["market"] == "TW":
+        return [
+            (bundle["technical_score"], 25, True),
+            (bundle["volume_score"], 25, bundle["liquidity_available"]),
+            (bundle["premium_score"], 15, bundle["premium_available"]),
+            (bundle["flow_score"], 15, bundle["flow_available"]),
+            (structure_score, 15, True),
+            (bundle["event_score"], 5, bundle["event_available"]),
+        ]
     return [
         (bundle["technical_score"], 25, True),
         (bundle["volume_score"], 20, bundle["liquidity_available"]),
-        (bundle["breadth_score"], 15, bundle["breadth_available"]),
-        (bundle["premium_score"], 15, bundle["premium_available"]),
-        (bundle["flow_score"], 10, bundle["flow_available"]),
-        (structure_score, 10, True),
+        (bundle["breadth_score"], 10, bundle["breadth_available"]),
+        (bundle["premium_score"], 10, bundle["premium_available"]),
+        (bundle["flow_score"], 15, bundle["flow_available"]),
+        (structure_score, 15, True),
         (bundle["event_score"], 5, bundle["event_available"]),
     ]
 
@@ -815,13 +1004,24 @@ def _etf_long_components(bundle: dict[str, Any], row: dict[str, Any]) -> list[tu
         ) if ok
     ]
     tracking_cost = float(np.mean(tracking_cost_scores)) if tracking_cost_scores else 0.0
+    if bundle["market"] == "TW":
+        return [
+            (bundle["portfolio_score"], 25, bundle["portfolio_available"]),
+            (return_score, 15, bool(returns)),
+            (tracking_cost, 10, bool(tracking_cost_scores)),
+            (bundle["flow_score"], 15, bundle["flow_available"]),
+            (bundle["risk_score"], 10, bundle["risk_available"]),
+            (bundle["concentration_score"], 10, bundle["concentration_available"]),
+            (bundle["liquidity_score"], 10, bundle["liquidity_available"]),
+            (bundle["event_score"], 5, bundle["event_available"]),
+        ]
     return [
         (bundle["portfolio_score"], 25, bundle["portfolio_available"]),
         (return_score, 20, bool(returns)),
         (bundle["risk_score"], 15, bundle["risk_available"]),
-        (tracking_cost, 15, bool(tracking_cost_scores)),
+        (tracking_cost, 20, bool(tracking_cost_scores)),
         (bundle["concentration_score"], 10, bundle["concentration_available"]),
-        (bundle["liquidity_score"], 10, bundle["liquidity_available"]),
+        (bundle["liquidity_score"], 5, bundle["liquidity_available"]),
         (bundle["event_score"], 5, bundle["event_available"]),
     ]
 
@@ -871,7 +1071,7 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         score, short_available, short_total, short_confidence = _available_weighted_score([
             (volume_score, 25, _finite(row.get("avg_volume20")) > 0),
             (technical, 20, technical_ok),
-            (positioning, 20, bool(row.get("institution_available") or row.get("credit_available"))),
+            (positioning, 20, bool(row.get("institution_available") or row.get("credit_available") or row.get("us_short_volume_available") or row.get("intraday_available"))),
             (attack_score, 15, row.get("attack_volume") is not None),
             (structure_score, 15, technical_ok),
             (news_score, 5, bool(row.get("news_data_available"))),
@@ -901,11 +1101,12 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     rr = round((target1-entry_high)/risk, 2) if risk > 0 and entry_high else 0.0
 
     market_relative_volume = _finite(row.get("market_relative_volume"), 1.0)
-    volume_ok = (
-        volume_pace >= (.70 if is_etf else .75)
-        or market_relative_volume >= 0.90
-        or attack > 0
-    )
+    if is_etf and market == "TW":
+        volume_ok = volume_pace >= .70 or market_relative_volume >= .90 or attack > 0
+    elif is_etf and market == "US":
+        volume_ok = market_relative_volume >= .90 or volume_pace >= .80 or attack > 0
+    else:
+        volume_ok = volume_pace >= .75 or market_relative_volume >= .90 or attack > 0
     premium = _finite(row.get("premium_discount_pct"))
     premium_available = row.get("premium_discount_pct") is not None
     premium_limit = max(1.5, _finite(row.get("premium_discount_60d_std_pct")) * 2)
@@ -977,7 +1178,7 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     quality_available = bool(row.get("financial_quality_available"))
     growth_available = row.get("revenue_yoy_pct") is not None or row.get("revenue_mom_pct") is not None
     valuation_available = bool(_finite(row.get("per")) or _finite(row.get("pbr")) or _finite(row.get("dividend_yield")))
-    institution_available = bool(row.get("institution_available") or row.get("credit_available"))
+    institution_available = bool(row.get("institution_available") or row.get("credit_available") or row.get("us_short_volume_available") or row.get("intraday_available"))
     news_available = bool(row.get("news_data_available"))
     technical_available = all(v > 0 for v in (price, ma20, ma60, atr))
     news_score = _clamp(100 - max(news_penalty, 0.0) * 6)
@@ -1137,6 +1338,10 @@ def score_candidates(
             # Rising margin is crowded retail leverage; rising short/SBL is sell pressure.
             credit_score = _clamp(50 - margin_pressure * 1.2 - short_pressure * 1.5)
             institution_score = institution_score * 0.72 + credit_score * 0.28
+        row["institution_score"] = institution_score
+        market_flow_score, market_flow_available, market_flow_model = _market_flow_score(row)
+        if market_name == "US":
+            institution_score = market_flow_score
         group_score = _clamp(50 + theme_change[str(row["theme"])] * 10)
         position_score = 65 if row["price"] <= row["support1"] * 1.03 else 52
         if row["price"] >= row["resistance2"] * 0.995:
@@ -1192,7 +1397,9 @@ def score_candidates(
                 "etf_risk_score": etf_bundle["risk_score"] if etf_bundle["risk_available"] else None,
                 "etf_cost_score": etf_bundle["cost_score"] if etf_bundle["cost_available"] else None,
                 "etf_long_term_eligible": etf_bundle["etf_kind"] != "槓桿／反向ETF",
-                "score_model": "ETF獨立模型",
+                "score_model": "美股ETF獨立模型" if market_name == "US" else "台灣ETF獨立模型",
+                "etf_market_flow_score": etf_bundle["flow_score"] if etf_bundle["flow_available"] else None,
+                "etf_market_flow_label": etf_bundle["flow_label"],
             })
             base_total, overall_available, overall_total, overall_confidence = _available_weighted_score(
                 _etf_overall_components(etf_bundle)
@@ -1201,13 +1408,13 @@ def score_candidates(
             base_total, overall_available, overall_total, overall_confidence = _available_weighted_score([
                 (_clamp(technical), 20, all(_finite(row.get(k)) > 0 for k in ("price", "ma5", "ma10", "ma20"))),
                 (volume_score, 15, _finite(row.get("avg_volume20")) > 0),
-                (institution_score, 15, bool(row.get("institution_available") or row.get("credit_available"))),
+                (institution_score, 15, market_flow_available if market_name == "US" else bool(row.get("institution_available") or row.get("credit_available"))),
                 (quality_score, 15, bool(row.get("financial_quality_available"))),
                 (growth_score, 15, bool(growth_parts)),
                 (valuation_score, 10, bool(valuation_parts)),
                 (news_score, 10, bool(row.get("news_data_available"))),
             ])
-            row["score_model"] = "個股獨立模型"
+            row["score_model"] = "美股個股獨立模型" if market_name == "US" else "台股個股獨立模型"
         base_total += macro_adjustment
         preliminary_signal = "🟢" if base_total >= 70 else "🟡" if base_total >= 58 else "🔴"
         performance_adjustment, performance_samples, performance_horizon = (
@@ -1222,6 +1429,9 @@ def score_candidates(
             "technical_score": round(_clamp(technical), 1),
             "volume_score": round(volume_score, 1),
             "institution_score": round(institution_score, 1),
+            "market_flow_score": round(market_flow_score, 1),
+            "market_flow_available": market_flow_available,
+            "market_flow_model": market_flow_model,
             "credit_score": round(credit_score, 1),
             "valuation_score": round(valuation_score, 1),
             "growth_score": round(growth_score, 1),
@@ -1249,6 +1459,10 @@ def score_candidates(
             group_score,
             position_score,
         ))
+        # Every displayed candidate receives a complete price plan.  When any
+        # level must be derived because source data is incomplete or
+        # inconsistent, its ranking confidence is reduced below.
+        row.update(_complete_price_plan(row))
         sbl_pressure = _finite(row.get("sbl_5d_change")) / max(row["avg_volume20"] * 5, 1) * 100
         if row.get("breakdown20"):
             row["risk"] = "跌破20日低點，先避開"
@@ -1290,16 +1504,34 @@ def score_candidates(
         row.update(_short_term_plan(row))
         row.update(_mid_long_term_plan(row))
 
+        plan_factor = _finite(row.get("price_plan_rank_factor"), 0.68)
+        coverage_factor = 0.75 + 0.25 * (_finite(row.get("overall_confidence")) / 100)
+        row["overall_ranking_score"] = round(row["score"] * plan_factor * coverage_factor, 1)
+        row["short_term_ranking_score"] = round(
+            _finite(row.get("short_term_score"))
+            * plan_factor
+            * (1.0 if row.get("short_term_eligible") else 0.82),
+            1,
+        )
+        row["mid_long_ranking_score"] = round(
+            _finite(row.get("mid_long_score"))
+            * plan_factor
+            * (1.0 if row.get("mid_long_eligible") else 0.82),
+            1,
+        )
+
     ranked = sorted(
         rows,
-        key=lambda r: (r["entry_score"], r["score"], r["volume_pace"], r["change_pct"]),
+        # Overall TOP20 represents the sum of verified dimensions.  Entry
+        # timing is only a tie-breaker and no longer controls the main list.
+        key=lambda r: (r["overall_ranking_score"], r["score"], r["entry_score"]),
         reverse=True,
     )
     for rank, row in enumerate(ranked, 1):
         row["rank"] = rank
         row["overall_rank"] = rank
-    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("short_term_score", 0), reverse=True), 1):
+    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("short_term_ranking_score", 0), reverse=True), 1):
         row["short_term_rank"] = rank
-    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("mid_long_score", 0), reverse=True), 1):
+    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("mid_long_ranking_score", 0), reverse=True), 1):
         row["mid_long_rank"] = rank
     return ranked

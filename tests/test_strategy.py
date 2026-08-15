@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import _available_weighted_score, _candlestick_features, _entry_plan, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
+from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -202,10 +202,31 @@ def test_etf_uses_narrower_profile_without_company_fundamentals():
         "market": "US", "type": "ETF", "price": 100.0, "atr14": 1.0,
         "fundamental_available": 0, "financial_quality_available": 0,
     })
-    assert result["entry_profile"] == "ETF"
+    assert result["entry_profile"] == "美股ETF"
     assert result["entry_data_total"] == 4
     assert result["buy_zone_high"] <= 99.2
     assert result["better_buy_high"] < result["buy_zone_low"]
+
+
+def test_us_flow_uses_finra_and_relative_us_volume_not_tw_institutions():
+    score, available, model = _market_flow_score({
+        "market": "US", "market_relative_volume": 1.4,
+        "change_pct": 2.0, "avg_volume20": 1_000_000,
+        "us_short_volume_available": 1, "us_short_volume_ratio_pct": 34,
+        "institution_available": 0,
+    })
+    assert available is True
+    assert score > 50
+    assert "FINRA" in model
+
+
+def test_us_complete_plan_declares_us_specific_model():
+    plan = _complete_price_plan({
+        "market": "US", "type": "個股", "price": 100,
+        "atr14": 5, "ma20": 96, "ma60": 90, "avg_volume20": 1_000_000,
+    })
+    assert plan["price_plan_market_model"] == "美股高波動模型"
+    assert plan["buy_zone_high"] < 100
 
 
 def test_incomplete_company_data_caps_entry_score():
@@ -217,6 +238,28 @@ def test_incomplete_company_data_caps_entry_score():
     assert result["entry_data_coverage"] <= 3
     assert result["entry_score"] <= 75
     assert "資料涵蓋" in result["entry_note"]
+
+
+def test_price_plan_always_has_all_levels_and_demotes_derived_values():
+    row = {
+        "market": "TW", "type": "ETF", "price": 106.40,
+        "atr14": 1.2, "ma20": 101.59, "ma60": 102.58,
+        "avg_volume20": 100_000,
+        # Simulate a stale, unreasonable legacy plan.
+        "buy_zone_low": 93.50, "buy_zone_high": 93.55,
+        "better_buy_low": 0, "better_buy_high": 0,
+        "support1": 93.50, "support2": 0,
+        "resistance1": 105.76, "resistance2": 0, "stop_price": 0,
+    }
+    plan = _complete_price_plan(row)
+    assert plan["price_plan_complete"] is True
+    assert plan["price_plan_quality"] == "部分推估"
+    assert plan["price_plan_rank_factor"] < 1
+    assert 0 < plan["stop_price"] < plan["better_buy_low"]
+    assert plan["better_buy_low"] < plan["better_buy_high"] < plan["buy_zone_low"] < plan["buy_zone_high"] < row["price"]
+    assert plan["buy_zone_low"] >= row["price"] * 0.92
+    assert plan["support2"] < plan["support1"]
+    assert row["price"] < plan["resistance1"] < plan["resistance2"]
 
 
 
@@ -334,11 +377,36 @@ def test_etf_uses_independent_score_model_and_blocks_large_premium():
         "beta_3y": 1.0,
     })
     result = score_candidates([row])[0]
-    assert result["score_model"] == "ETF獨立模型"
+    assert result["score_model"] == "美股ETF獨立模型"
     assert result["etf_kind"] == "被動ETF"
     assert result["etf_premium_blocked"] is True
     assert result["entry_score"] <= 55
     assert result["short_term_eligible"] is False
+
+
+def test_tw_etf_uses_institution_participation_as_market_flow():
+    row = {
+        "market": "TW", "type": "ETF", "avg_volume20": 1_000_000,
+        "institution_available": 1, "institution_1d": 100_000,
+        "institution_3d": 250_000, "institution_5d": 500_000,
+    }
+    bundle = _etf_score_bundle(row, technical=70, volume_score=75, news_score=80)
+    assert bundle["market"] == "TW"
+    assert bundle["flow_available"] is True
+    assert bundle["flow_label"] == "法人參與"
+    assert bundle["flow_score"] > 50
+
+
+def test_us_etf_does_not_require_tw_institution_data_for_flow():
+    row = {
+        "market": "US", "type": "ETF", "avg_volume20": 2_000_000,
+        "market_flow_available": True, "market_flow_score": 68,
+    }
+    bundle = _etf_score_bundle(row, technical=70, volume_score=75, news_score=80)
+    assert bundle["market"] == "US"
+    assert bundle["flow_available"] is True
+    assert bundle["flow_label"] == "美股市場相對資金流"
+    assert bundle["flow_score"] == 68
 
 
 def test_leveraged_etf_is_excluded_from_standard_long_term_plan():
