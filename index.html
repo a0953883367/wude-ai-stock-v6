@@ -24,7 +24,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .performance{background:#10261e;border:1px solid #24553d;border-radius:14px;padding:12px;margin:2px 0 12px;color:#d1fae5;line-height:1.7;font-size:13px}.performance b{color:#4ade80}
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;margin-bottom:13px;box-shadow:0 10px 28px rgba(0,0,0,.12)}.card-head{display:flex;justify-content:space-between;gap:10px}.rank{color:var(--yellow);font-size:13px;font-weight:900}.light{font-size:24px}.stock{font-size:22px;font-weight:900;margin-top:5px}.ticker{color:var(--muted);font-size:14px;margin-top:4px}.score{color:#4ade80;font-size:19px;font-weight:900;margin-top:9px}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:13px}.item{background:var(--soft);padding:11px;border-radius:12px}.label{color:var(--muted);font-size:12px}.value{font-size:16px;font-weight:800;margin-top:4px;overflow-wrap:anywhere}
-.databox{margin-top:13px;background:#101a2b;border:1px solid #2b3b53;padding:13px;border-radius:14px;line-height:1.8;color:#dbeafe}.buybox{margin-top:13px;background:#10261e;border:1px solid #24553d;padding:13px;border-radius:14px;line-height:1.85}.advice{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:16px;font-weight:850;line-height:1.55}.risk{color:#fbbf24;font-size:13px;margin-top:7px;line-height:1.5}
+.databox{margin-top:13px;background:#101a2b;border:1px solid #2b3b53;padding:13px;border-radius:14px;line-height:1.8;color:#dbeafe}.buybox{margin-top:13px;background:#10261e;border:1px solid #24553d;padding:13px;border-radius:14px;line-height:1.85}.advice{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:16px;font-weight:850;line-height:1.55}.waiting{color:#fbbf24;font-weight:800}.risk{color:#fbbf24;font-size:13px;margin-top:7px;line-height:1.5}
 .deep{margin-top:13px;border:1px solid #33445e;border-radius:14px;background:#0d1727;overflow:hidden}.deep summary{cursor:pointer;padding:13px;color:#7dd3fc;font-weight:850;list-style:none}.deep summary::-webkit-details-marker{display:none}.deep summary:after{content:'⌄';float:right}.deep[open] summary:after{content:'⌃'}.deep-body{border-top:1px solid #26364d;padding:12px}.radar-wrap{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:center}.radar{width:170px;height:170px}.factor{margin:7px 0}.factor-head{display:flex;justify-content:space-between;gap:8px;font-size:12px}.factor-track{height:7px;border-radius:999px;background:#233047;margin-top:4px;overflow:hidden}.factor-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#38bdf8,#22c55e)}.factor-note{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}.neutral-note{font-size:11px;color:#fbbf24;margin-top:10px;line-height:1.5}
 .deep-conclusion{margin:12px 0 8px;background:#12243a;border:1px solid #285077;border-radius:12px;padding:11px;line-height:1.6;font-size:13px}.deep-conclusion b{color:#7dd3fc}.insight-title{font-size:13px;font-weight:900;margin:13px 0 7px}.insight{border-left:3px solid #64748b;background:#162033;padding:8px 10px;margin:6px 0;border-radius:0 9px 9px 0;font-size:12px;line-height:1.5}.insight.good{border-color:#22c55e;color:#dcfce7}.insight.warn{border-color:#f59e0b;color:#fef3c7}.insight.bad{border-color:#fb7185;color:#ffe4e6}.coverage{display:inline-block;margin-top:5px;color:#94a3b8;font-size:11px}
 .group{font-size:18px;font-weight:900;margin:22px 3px 10px}.empty,.error{padding:18px;border-radius:15px;background:#172033;color:#cbd5e1;line-height:1.7}.error{background:#3b1720;color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:28px 0 42px;line-height:1.8}
@@ -35,7 +35,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <body>
 <div class="shell">
   <header class="header">
-    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.29-S2</div></div>
+    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.29-S3</div></div>
   </header>
 
   <div class="nav-label">排行與固定清單</div>
@@ -98,7 +98,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.29-S2<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.29-S3<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <script>
@@ -126,7 +126,7 @@ function normalizeLegacy(row){
   return {
     name:first(row,['股票','名稱','Name','公司'],'—'),symbol:first(row,['代號','Ticker','ticker','Symbol'],'—'),market:market,type:first(row,['類型'],'個股'),
     theme:first(row,['主題'],'—'),score:score,entryScore:score,price:first(row,['現價','股價','Price','price'],'—'),change:first(row,['漲跌幅','漲跌%'],'—'),
-    rsi:first(row,['RSI'],'—'),volume:first(row,['相對量能'],'—'),technical:first(row,['技術分數','technical_score'],'—'),volumeScore:first(row,['量能分數','volume_score'],50),institutionScore:first(row,['籌碼分數','institution_score'],50),creditScore:first(row,['信用分數','credit_score'],50),valuationScore:first(row,['估值分數','valuation_score'],50),growthScore:first(row,['成長分數','growth_score'],50),financialQualityScore:first(row,['財務品質分數','financial_quality_score'],50),fundamental:first(row,['基本面分數'],'—'),
+    rsi:first(row,['RSI'],'—'),volume:first(row,['相對量能'],'—'),technical:first(row,['技術分數','technical_score'],'—'),volumeScore:first(row,['量能分數','volume_score'],'—'),institutionScore:first(row,['籌碼分數','institution_score'],'—'),creditScore:first(row,['信用分數','credit_score'],'—'),valuationScore:first(row,['估值分數','valuation_score'],'—'),growthScore:first(row,['成長分數','growth_score'],'—'),financialQualityScore:first(row,['財務品質分數','financial_quality_score'],'—'),fundamental:first(row,['基本面分數'],'—'),
     news:first(row,['新聞分數'],'—'),buy:range(row,'合理買入低','合理買入高')!=='—'?range(row,'合理買入低','合理買入高'):first(row,['合理買入'],'—'),
     better:range(row,'較佳買點低','較佳買點高')!=='—'?range(row,'較佳買點低','較佳買點高'):first(row,['較佳買點'],'—'),
     support1:first(row,['第一支撐'],'—'),support2:first(row,['第二支撐'],'—'),resistance1:first(row,['第一壓力'],'—'),resistance2:first(row,['第二壓力'],'—'),
@@ -159,16 +159,16 @@ function normalizeReport(row){
     stop:row.stop_price,advice:row.action||'🟡 觀察',risk:row.risk||'一般波動',light:lightFrom(row.action,row.score),source:'report'
   };
 }
-function bounded(value){var n=Number(value);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50;}
+function bounded(value){var n=Number(value);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;}
 function radarSvg(values){
   var cx=85,cy=85,r=58,angles=[-90,-30,30,90,150,210];
   function point(angle,ratio){var rad=angle*Math.PI/180;return (cx+Math.cos(rad)*r*ratio).toFixed(1)+','+(cy+Math.sin(rad)*r*ratio).toFixed(1);}
   var grids=[.25,.5,.75,1].map(function(level){return '<polygon points="'+angles.map(function(a){return point(a,level);}).join(' ')+'" fill="none" stroke="#334155" stroke-width="1"/>';}).join('');
   var axes=angles.map(function(a){return '<line x1="'+cx+'" y1="'+cy+'" x2="'+point(a,1).split(',')[0]+'" y2="'+point(a,1).split(',')[1]+'" stroke="#26364d"/>';}).join('');
-  var shape=angles.map(function(a,i){return point(a,bounded(values[i])/100);}).join(' ');
+  var shape=angles.map(function(a,i){var v=bounded(values[i]);return point(a,(v===null?0:v)/100);}).join(' ');
   return '<svg class="radar" viewBox="0 0 170 170" role="img" aria-label="六大分析雷達圖">'+grids+axes+'<polygon points="'+shape+'" fill="rgba(56,189,248,.30)" stroke="#38bdf8" stroke-width="2"/><circle cx="85" cy="85" r="3" fill="#4ade80"/><text x="85" y="13" text-anchor="middle">技術</text><text x="151" y="49" text-anchor="middle">量能</text><text x="151" y="127" text-anchor="middle">籌碼</text><text x="85" y="164" text-anchor="middle">財務</text><text x="19" y="127" text-anchor="middle">成長</text><text x="19" y="49" text-anchor="middle">估值</text></svg>';
 }
-function scoreTone(value){var n=bounded(value);return n>=70?'強':n>=58?'偏強':n>=45?'中性':'偏弱';}
+function scoreTone(value){var n=bounded(value);if(n===null)return '等待資料';return n>=70?'強':n>=58?'偏強':n>=45?'中性':'偏弱';}
 function insightRows(stock){
   var rows=[],price=Number(stock.price),ma20=Number(stock.ma20),rsi=Number(stock.rsi),vol=Number(stock.volume),inst=Number(stock.institution5d),per=Number(stock.per),growth=Number(stock.revenueYoy),debt=Number(stock.debtRatio);
   if(Number.isFinite(price)&&Number.isFinite(ma20))rows.push([price>=ma20?'good':'warn','技術｜現價'+(price>=ma20?'站上':'跌破')+'20日線 '+number(ma20,2)]);
@@ -190,7 +190,7 @@ function analysisPanel(stock){
   var ordered=factors.slice().sort(function(a,b){return b[1]-a[1];}),insights=insightRows(stock),coverage=6-missing.length;
   var conclusion='<div class="deep-conclusion"><b>AI 重點：</b>目前最強為「'+ordered[0][0]+'」'+number(ordered[0][1],1)+'分；較弱為「'+ordered[ordered.length-1][0]+'」'+number(ordered[ordered.length-1][1],1)+'分。<br><span class="coverage">可靠資料涵蓋 '+coverage+'/6 面向；此處只解讀現有分數，不另行改變排名。</span></div>';
   var insightHtml=insights.length?'<div class="insight-title">逐項判斷原因</div>'+insights.map(function(x){return '<div class="insight '+x[0]+'">'+esc(x[1])+'</div>';}).join(''):'';
-  return '<details class="deep"><summary>🧠 查看六大深入分析</summary><div class="deep-body">'+conclusion+'<div class="radar-wrap">'+radarSvg(values)+'<div>'+factors.map(function(f){return '<div class="factor"><div class="factor-head"><b>'+f[0]+'</b><span>'+number(f[1],1)+'｜'+scoreTone(f[1])+'</span></div><div class="factor-track"><div class="factor-fill" style="width:'+bounded(f[1])+'%"></div></div><div class="factor-note">'+f[2]+'</div></div>';}).join('')+'</div></div>'+insightHtml+(missing.length?'<div class="neutral-note">⚠️ '+missing.join('、')+'尚未取得完整資料，目前以中性 50 分呈現，不會因此扣分。</div>':'')+'</div></details>';
+  return '<details class="deep"><summary>🧠 查看六大深入分析</summary><div class="deep-body">'+conclusion+'<div class="radar-wrap">'+radarSvg(values)+'<div>'+factors.map(function(f){return '<div class="factor"><div class="factor-head"><b>'+f[0]+'</b><span>'+number(f[1],1)+'｜'+scoreTone(f[1])+'</span></div><div class="factor-track"><div class="factor-fill" style="width:'+(bounded(f[1])===null?0:bounded(f[1]))+'%"></div></div><div class="factor-note">'+f[2]+'</div></div>';}).join('')+'</div></div>'+insightHtml+(missing.length?'<div class="neutral-note">⚠️ '+missing.join('、')+'尚未取得完整資料，欄位保留並顯示「等待資料」，不代填 50 分。</div>':'')+'</div></details>';
 }
 function stockCard(stock,index){
   var outlook='';
@@ -199,8 +199,11 @@ function stockCard(stock,index){
     var outlookReasons=(stock.outlookReasons||[]).map(function(v){return '• '+esc(v);}).join('<br>');
     outlook='<div class="databox"><b class="'+outlookClass+'">'+esc(stock.outlookDirection)+'</b>｜'+esc(stock.outlookHorizon||'未來1～5個交易日')+'｜信心度 <b>'+esc(number(stock.outlookConfidence,1))+'%</b>｜資料 '+esc(stock.outlookQuality||'—')+'<br>'+outlookReasons+'<br><span class="muted">轉向條件：'+esc(stock.outlookChangeCondition||'等待更多資料')+'</span></div>';
   }
+  if(!outlook)outlook='<div class="databox"><b>📈 短期方向</b><br><span class="waiting">等待資料</span>｜不虛構看漲／看跌判斷</div>';
   var longPlan=stock.midLongStatus?'<div class="databox">🌳 <b>'+esc(stock.midLongStatus)+'</b>｜中長線分數 '+esc(number(stock.midLongScore,1))+'｜'+esc(stock.midLongPeriod)+'<br>第一布局區：<b>'+esc(number(stock.midLongBatch1Low,2))+' ～ '+esc(number(stock.midLongBatch1High,2))+'</b><br>第二布局區：<b>'+esc(number(stock.midLongBatch2Low,2))+' ～ '+esc(number(stock.midLongBatch2High,2))+'</b><br>資金配置：<b>'+esc(stock.midLongAllocation)+'</b><br>中長線風控：<b class="down">'+esc(number(stock.midLongStop,2))+'</b>｜第一目標：<b>'+esc(number(stock.midLongTarget1,2))+'</b>｜第二目標：<b>'+esc(number(stock.midLongTarget2,2))+'</b><br>'+esc(stock.midLongReason)+'<br>退場：'+esc(stock.midLongExit)+'</div>':'';
+  if(!longPlan)longPlan='<div class="databox">🌳 <b>中長線判斷</b><br>中長線分數：<span class="waiting">等待資料</span><br>第一布局區：等待資料<br>第二布局區：等待資料<br>資金配置：等待資料<br>風控／第一目標／第二目標：等待資料</div>';
   var shortPlan=stock.shortTermStatus?'<div class="databox">⚡ <b>'+esc(stock.shortTermStatus)+'</b>｜短線分數 '+esc(number(stock.shortTermScore,1))+'｜'+esc(stock.shortTermPeriod)+'<br>型態：<b>'+esc(stock.shortTermSetup)+'</b>｜資料 '+esc(stock.shortTermQuality)+'<br>進場區：<b>'+esc(number(stock.shortTermEntryLow,2))+' ～ '+esc(number(stock.shortTermEntryHigh,2))+'</b><br>觸發：<b>'+esc(stock.shortTermTrigger)+'</b><br>停損：<b class="down">'+esc(number(stock.shortTermStop,2))+'</b>｜第一停利：<b>'+esc(number(stock.shortTermTarget1,2))+'</b>｜第二停利：<b>'+esc(number(stock.shortTermTarget2,2))+'</b>｜風報比 '+esc(number(stock.shortTermRr,2))+'<br>'+esc(stock.shortTermReason)+'<br>出場：'+esc(stock.shortTermExit)+'</div>':'';
+  if(!shortPlan)shortPlan='<div class="databox">⚡ <b>短線判斷</b><br>短線分數：<span class="waiting">等待資料</span><br>進場區／觸發／停損／第一停利／第二停利：等待資料</div>';
   var change=Number.isFinite(Number(stock.change))?percent(stock.change):esc(stock.change);
   var volume=stock.volume==='—'?'—':number(stock.volume,2)+'x';
   var hasMarketDetail=[stock.ma5,stock.ma10,stock.ma20,stock.ma60,stock.avgVolume5,stock.avgVolume10,stock.avgVolume20].some(function(v){return Number.isFinite(Number(v));});
@@ -229,6 +232,7 @@ function stockCard(stock,index){
     }
     data+='</div>';
   }
+  if(!data)data='<div class="databox"><b>📊 技術／量價／籌碼／基本面</b><br>均線／均量／K線／法人／信用／基本面／財務品質／分點：<span class="waiting">等待資料</span></div>';
   var positioning='';
   if(stock.positioningSignal){
     var evidence=(stock.positioningEvidence||[]).slice(0,4).map(function(v){return '• '+esc(v);}).join('<br>');
@@ -236,7 +240,9 @@ function stockCard(stock,index){
     if(stock.positioningDisclaimer)positioning+='<br><span class="muted">註：'+esc(stock.positioningDisclaimer)+'</span>';
     positioning+='<br><span class="muted">此雷達僅顯示，不影響原本AI排名分數。</span></div>';
   }
+  if(!positioning)positioning='<div class="databox">🎯 <b>主力多空雷達</b><br><span class="waiting">等待資料</span>｜資料不足時不虛構主力方向</div>';
   var scenario=stock.scenarioContinuation?'<div class="databox">📋 <b>'+esc(stock.scenarioTitle||(stock.market==='TW'?'🇹🇼 台股明日劇本':'🇺🇸 美股下個交易日劇本'))+'（'+esc(stock.scenarioQuality||'部分資料')+'）</b><br>依據：'+esc(stock.scenarioBasis||'資料不足')+'<br>🔥 '+esc(stock.scenarioContinuation)+'<br>⚠️ '+esc(stock.scenarioNoChase||'—')+'<br>🛡️ '+esc(stock.scenarioBreakdown||'—')+'</div>':'';
+  if(!scenario)scenario='<div class="databox">📋 <b>交易劇本</b><br>依據／續強／不追價／跌破條件：<span class="waiting">等待資料</span></div>';
   var newsLevel=stock.newsRiskLevel||'⚪ 尚未掃描';
   var newsEffect=Number(stock.newsPenalty)>0?'影響計分：<b class="down">-'+number(stock.newsPenalty,1)+' 分</b>':'僅供觀察，不影響計分';
   var newsLinks=(stock.newsArticles||[]).slice(0,3).map(function(item){
@@ -315,18 +321,10 @@ function showShortTerm(group){
 }
 
 function quantumSymbol(value){return String(value||'').toUpperCase().replace(/\\.(TW|TWO)$/,'');}
-function quantumPlaceholder(item,index){
-  return [
-    '<article class="card"><div class="card-head"><div><div class="rank">追蹤 '+(index+1)+'</div>',
-    '<div class="stock">'+esc(item.name)+'</div>',
-    '<div class="ticker">'+esc(item.symbol)+' ｜ ⚛️ '+esc(item.classification||'量子概念')+'</div></div>',
-    '<div class="light">⚪</div></div>',
-    '<div class="databox"><b>'+esc(item.role||'量子產業觀察標的')+'</b><br>',
-    '此標的已列入固定量子追蹤清單；目前價格或 AI 分數尚未取得，先直接顯示，後續資料更新後會自動換成完整分析卡片。</div>',
-    '<div class="advice">⚪ 資料待補｜目前僅列入觀察，不作為立即買進依據</div>',
-    '<div class="risk">風險：量子產業仍在早期，波動與技術路線風險高</div></article>'
-  ].join('');
+function placeholderStock(item,market,risk){
+  return {name:item.name||'—',symbol:item.symbol||'—',market:market||'US',type:String(item.symbol||'').toUpperCase().indexOf('ETF')>=0?'ETF':'個股',theme:item.classification||'概念觀察',score:'—',entryScore:'—',price:'—',change:'—',rsi:'—',volume:'—',technical:'—',fundamental:'—',news:'等待資料',buy:'—',better:'—',support1:'—',support2:'—',resistance1:'—',resistance2:'—',stop:'—',advice:'⚪ 資料待補｜目前僅列入觀察，不作為立即買進依據',risk:risk||item.role||'資料待補',light:'⚪',source:'placeholder'};
 }
+function quantumPlaceholder(item,index){var m=String(item.symbol||'').match(/\.(TW|TWO)$/i)?'TW':'US';return stockCard(placeholderStock(item,m,'量子產業仍在早期，波動與技術路線風險高'),index);}
 function showQuantum(group){
   STATE.view='QUANTUM:'+group;setActive('#quantumButtons button','data-quantum',group);clearOtherNav('#quantumButtons button');
   var cfg=STATE.quantum&&STATE.quantum.groups?STATE.quantum.groups[group]:null;
@@ -363,18 +361,7 @@ function showQuantum(group){
   var placeholders=missing.map(function(item,index){return quantumPlaceholder(item,matched.length+index);}).join('');
   document.getElementById('results').innerHTML=notice+cards+placeholders;
 }
-function opticalPlaceholder(item,index){
-  return [
-    '<article class="card"><div class="card-head"><div><div class="rank">追蹤 '+(index+1)+'</div>',
-    '<div class="stock">'+esc(item.name)+'</div>',
-    '<div class="ticker">'+esc(item.symbol)+' ｜ 🔦 '+esc(item.classification||'光通訊概念')+'</div></div>',
-    '<div class="light">⚪</div></div>',
-    '<div class="databox"><b>'+esc(item.role||'光通訊產業觀察標的')+'</b><br>',
-    '此標的已列入固定光通訊追蹤清單；目前價格或 AI 分數尚未取得，先直接顯示，後續資料更新後會自動換成完整分析卡片。</div>',
-    '<div class="advice">⚪ 資料待補｜目前僅列入觀察，不作為立即買進依據</div>',
-    '<div class="risk">風險：注意 AI 資本支出、800G／1.6T需求、庫存循環與估值波動</div></article>'
-  ].join('');
-}
+function opticalPlaceholder(item,index){var m=String(item.symbol||'').match(/\.(TW|TWO)$/i)?'TW':'US';return stockCard(placeholderStock(item,m,'注意 AI 資本支出、800G／1.6T需求、庫存循環與估值波動'),index);}
 function showOptical(group){
   STATE.view='OPTICAL:'+group;setActive('#opticalButtons button','data-optical',group);clearOtherNav('#opticalButtons button');
   var cfg=STATE.optical&&STATE.optical.groups?STATE.optical.groups[group]:null;
@@ -450,7 +437,7 @@ async function showReport(period){
     var tw=sortByScore(report.watchlist.filter(function(x){return x.market==='TW';}).map(normalizeReport));
     var us=sortByScore(report.watchlist.filter(function(x){return x.market==='US';}).map(normalizeReport));
     var html='<div class="group">🇹🇼 台股固定觀察</div>'+tw.map(stockCard).join('')+'<div class="group">🇺🇸 美股與 ETF 固定觀察</div>'+us.map(stockCard).join('');
-    if(report.unavailable&&report.unavailable.length){html+='<div class="group">⚪ 暫無可靠行情</div><div class="empty">'+report.unavailable.map(function(x){return esc(x.name)+'('+esc(marketCode(x.symbol,x.market))+')';}).join('、')+'</div>';}
+    if(report.unavailable&&report.unavailable.length){html+='<div class="group">⚪ 暫無可靠行情</div>'+report.unavailable.map(function(x,i){return stockCard(placeholderStock(x,x.market||'US','暫無可靠行情，等待資料'),i);}).join('');}
     html+='<div class="group">🏆 全台股背景掃描最強 5 檔</div>'+sortByScore(report.top.map(normalizeReport)).map(stockCard).join('');
     document.getElementById('results').innerHTML=html;
   }catch(error){
