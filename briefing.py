@@ -42,6 +42,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--period", choices=["morning", "noon", "evening"], required=True)
     parser.add_argument("--no-telegram", action="store_true")
+    parser.add_argument(
+        "--intraday",
+        action="store_true",
+        help="Silent background refresh; do not add a new performance prediction snapshot.",
+    )
     return parser.parse_args()
 
 
@@ -139,13 +144,18 @@ def main() -> int:
             item["backtest_group"] = group
             item["backtest_rank"] = rank
             predictions.append(item)
-    performance = update_performance(
-        SETTINGS.reports_dir,
-        predictions,
-        ranked,
-        now.strftime("%Y-%m-%d %H:%M:%S"),
-        args.period,
-    )
+    if args.intraday:
+        # Background refreshes may run many times per trading day. Reuse the
+        # latest verified context so they do not distort the backtest sample.
+        performance = performance_context
+    else:
+        performance = update_performance(
+            SETTINGS.reports_dir,
+            predictions,
+            ranked,
+            now.strftime("%Y-%m-%d %H:%M:%S"),
+            args.period,
+        )
 
     report = {
         "system": "武得 AI 股票助理 V6",
