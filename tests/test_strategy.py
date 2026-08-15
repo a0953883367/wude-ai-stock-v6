@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import _candlestick_features, _next_day_scenario, _positioning_radar, build_features, score_candidates
+from strategy import _candlestick_features, _entry_plan, _next_day_scenario, _positioning_radar, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -154,3 +154,66 @@ def test_us_positioning_radar_stays_partial_when_finra_is_missing():
     })
     assert result["positioning_data_quality"] == "部分資料"
     assert any("不推定空單部位" in text for text in result["positioning_evidence"])
+
+
+def _plan(row):
+    defaults = {
+        "price": 100.0, "market": "US", "type": "個股", "atr14": 2.0,
+        "rsi": 50, "ma20_distance_pct": 0, "resistance1": 110,
+        "volume_pace": 1.0, "avg_volume20": 1_000_000, "ma20": 95,
+        "fundamental_available": 1, "financial_quality_available": 1,
+        "news_data_available": 1, "us_short_volume_available": 1,
+    }
+    defaults.update(row)
+    return _entry_plan(defaults, 80, 80, 75, 70, 70, 65)
+
+
+def test_tw_stock_entry_zones_are_separated_and_use_valid_ticks():
+    result = _plan({"market": "TW", "price": 2370.0, "atr14": 5.0})
+    assert result["entry_profile"] == "台股個股"
+    assert result["buy_zone_high"] <= 2370 * 0.99
+    assert result["buy_zone_low"] <= result["buy_zone_high"]
+    assert result["better_buy_high"] < result["buy_zone_low"]
+    assert result["better_buy_low"] <= 2370 * 0.96
+    assert all(value % 5 == 0 for value in (
+        result["buy_zone_low"], result["buy_zone_high"],
+        result["better_buy_low"], result["better_buy_high"],
+    ))
+
+
+def test_us_regular_entry_zones_require_meaningful_pullback():
+    result = _plan({"market": "US", "price": 274.48, "atr14": 5.0})
+    assert result["entry_profile"] == "美股一般"
+    assert result["buy_zone_high"] <= 274.48 * 0.985 + 0.01
+    assert result["better_buy_high"] < result["buy_zone_low"]
+    assert result["better_buy_low"] <= 274.48 * 0.94 + 0.01
+
+
+def test_us_high_volatility_stock_uses_wider_zones():
+    result = _plan({"market": "US", "price": 40.0, "atr14": 2.4})
+    assert result["entry_profile"] == "美股高波動"
+    assert result["buy_zone_high"] <= 39.0
+    assert result["better_buy_high"] < result["buy_zone_low"]
+    assert result["better_buy_low"] <= 36.0
+
+
+def test_etf_uses_narrower_profile_without_company_fundamentals():
+    result = _plan({
+        "market": "US", "type": "ETF", "price": 100.0, "atr14": 1.0,
+        "fundamental_available": 0, "financial_quality_available": 0,
+    })
+    assert result["entry_profile"] == "ETF"
+    assert result["entry_data_total"] == 4
+    assert result["buy_zone_high"] <= 99.2
+    assert result["better_buy_high"] < result["buy_zone_low"]
+
+
+def test_incomplete_company_data_caps_entry_score():
+    result = _plan({
+        "market": "TW", "price": 2370.0, "atr14": 5.0,
+        "institution_available": 0, "fundamental_available": 0,
+        "financial_quality_available": 0, "news_data_available": 0,
+    })
+    assert result["entry_data_coverage"] <= 3
+    assert result["entry_score"] <= 75
+    assert "資料涵蓋" in result["entry_note"]
