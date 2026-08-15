@@ -588,7 +588,7 @@ def _entry_plan(
         cap = 75.0 if coverage <= 3 else 82.0 if coverage == 4 else 90.0 if coverage == 5 else 100.0
     entry_score = min(entry_score, cap)
 
-    if missing and entry_score >= 70:
+    if missing:
         note = f"資料涵蓋 {coverage}/{coverage_total}，僅列觀察；等價格回測且補齊資料"
     elif price > buy_high:
         note = f"{profile}區間：現價高於第一買進區，等待回測、不追價"
