@@ -137,6 +137,119 @@ def download_intraday(symbols: list[str]) -> dict[str, pd.DataFrame]:
     return result
 
 
+
+
+def _ratio_percent(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not pd.notna(number):
+        return None
+    return number * 100 if abs(number) <= 1 else number
+
+
+def _normalize_etf_info(info: dict[str, Any]) -> dict[str, Any]:
+    """Normalize Yahoo fund fields and keep missing values explicitly unavailable."""
+    def number(*keys: str) -> float | None:
+        for key in keys:
+            value = info.get(key)
+            try:
+                result = float(value)
+            except (TypeError, ValueError):
+                continue
+            if pd.notna(result):
+                return result
+        return None
+
+    nav = number("navPrice", "netAssetValue")
+    bid, ask = number("bid"), number("ask")
+    spread = None
+    if bid and ask and ask >= bid:
+        spread = (ask - bid) / ((ask + bid) / 2) * 100
+    result = {
+        "nav_price": nav,
+        "bid_ask_spread_pct": spread,
+        "expense_ratio_pct": _ratio_percent(info.get("annualReportExpenseRatio")),
+        "aum": number("totalAssets", "netAssets"),
+        "etf_return_3y_pct": _ratio_percent(info.get("threeYearAverageReturn")),
+        "etf_return_5y_pct": _ratio_percent(info.get("fiveYearAverageReturn")),
+        "etf_ytd_return_pct": _ratio_percent(info.get("ytdReturn")),
+        "beta_3y": number("beta3Year"),
+        "etf_category": info.get("category"),
+        "etf_family": info.get("fundFamily"),
+    }
+    price = number("regularMarketPrice", "currentPrice")
+    if nav and price:
+        result["premium_discount_pct"] = (price / nav - 1) * 100
+    available = sum(value is not None for key, value in result.items() if key not in {"etf_category", "etf_family"})
+    result["etf_metadata_available"] = available > 0
+    result["etf_metadata_fields"] = available
+    return result
+
+
+def fetch_etf_metadata(
+    universe: list[dict[str, Any]],
+    cache_path: Path | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Fetch ETF-only metadata once per day so two-hour refreshes stay lightweight."""
+    cache_path = cache_path or (SETTINGS.reports_dir / "etf_metadata_cache.json")
+    etfs = {
+        str(item.get("symbol") or ""): item
+        for item in universe
+        if "ETF" in str(item.get("type") or "").upper() and item.get("symbol")
+    }
+    if not etfs:
+        return {}
+    today = date.today()
+    cached: dict[str, Any] = {}
+    try:
+        cached = json.loads(cache_path.read_text(encoding="utf-8")).get("funds", {})
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        cached = {}
+
+    output: dict[str, dict[str, Any]] = {}
+    pending: list[str] = []
+    for symbol in etfs:
+        item = cached.get(symbol, {})
+        try:
+            fresh = (today - date.fromisoformat(str(item.get("cached_at")))).days < 1
+        except (TypeError, ValueError):
+            fresh = False
+        if fresh:
+            output[symbol] = {key: value for key, value in item.items() if key != "cached_at"}
+        else:
+            pending.append(symbol)
+
+    def fetch_one(symbol: str) -> tuple[str, dict[str, Any]]:
+        try:
+            info = yf.Ticker(symbol).get_info() or {}
+            return symbol, _normalize_etf_info(info)
+        except Exception as exc:
+            LOG.debug("ETF metadata unavailable for %s: %s", symbol, exc)
+            return symbol, {}
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        jobs = [pool.submit(fetch_one, symbol) for symbol in pending]
+        for job in as_completed(jobs):
+            symbol, item = job.result()
+            if item:
+                output[symbol] = item
+                cached[symbol] = {**item, "cached_at": today.isoformat()}
+            elif symbol in cached:
+                output[symbol] = {key: value for key, value in cached[symbol].items() if key != "cached_at"}
+
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(
+            json.dumps({"updated_at": today.isoformat(), "funds": cached}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        LOG.debug("ETF metadata cache write failed: %s", exc)
+    return output
+
+
 def fetch_core_market() -> dict[str, dict[str, float | None]]:
     histories = download_history(list(CORE_MARKET.values()), period="7d")
     output: dict[str, dict[str, float | None]] = {}

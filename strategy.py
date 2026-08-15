@@ -587,8 +587,16 @@ def _entry_plan(
     else:
         cap = 75.0 if coverage <= 3 else 82.0 if coverage == 4 else 90.0 if coverage == 5 else 100.0
     entry_score = min(entry_score, cap)
+    premium = _finite(row.get("premium_discount_pct"))
+    premium_available = row.get("premium_discount_pct") is not None
+    premium_limit = max(1.5, _finite(row.get("premium_discount_60d_std_pct")) * 2)
+    premium_blocked = bool(is_etf and premium_available and premium > premium_limit)
+    if premium_blocked:
+        entry_score = min(entry_score, 55.0)
 
-    if missing:
+    if premium_blocked:
+        note = f"ETF溢價 {premium:.2f}% 高於 {premium_limit:.2f}% 門檻，先等市價貼近淨值、不追價"
+    elif missing:
         note = f"資料涵蓋 {coverage}/{coverage_total}，僅列觀察；等價格回測且補齊資料"
     elif price > buy_high:
         note = f"{profile}區間：現價高於第一買進區，等待回測、不追價"
@@ -612,6 +620,7 @@ def _entry_plan(
         "buy_price": _market_price(row, (buy_low + buy_high) / 2),
         "stop_price": stop_price,
         "entry_note": note,
+        "etf_premium_blocked": premium_blocked,
     }
 
 
@@ -631,6 +640,190 @@ def _available_weighted_score(
     # Missing dimensions never receive a neutral 50. They lower confidence and rank.
     adjusted = raw * (0.55 + 0.45 * coverage)
     return round(_clamp(adjusted), 1), count, total, round(coverage * 100, 1)
+
+
+
+def _is_etf(row: dict[str, Any]) -> bool:
+    return "ETF" in str(row.get("type") or "").upper()
+
+
+def _etf_kind(row: dict[str, Any]) -> str:
+    """Classify ETF rules without treating leveraged products as long-term funds."""
+    name = str(row.get("name") or "").upper()
+    symbol = str(row.get("symbol") or "").upper().split(".")[0]
+    combined = f"{name} {str(row.get('type') or '').upper()}"
+    leveraged_words = ("槓桿", "反向", "正2", "反1", "2X", "3X", "ULTRA", "INVERSE", "BEAR")
+    if any(word in combined for word in leveraged_words):
+        return "槓桿／反向ETF"
+    if "主動" in combined or (
+        str(row.get("market") or "").upper() == "TW"
+        and symbol.endswith("A") and symbol[:-1].isdigit()
+    ):
+        return "主動ETF"
+    return "被動ETF"
+
+
+def _etf_score_bundle(
+    row: dict[str, Any],
+    technical: float,
+    volume_score: float,
+    news_score: float,
+) -> dict[str, Any]:
+    """Build verified ETF dimensions; unavailable data never receives a neutral 50."""
+    returns = [
+        _finite(row.get(key))
+        for key in ("etf_return_3y_pct", "etf_return_5y_pct", "benchmark_excess_return_pct")
+        if row.get(key) is not None
+    ]
+    portfolio_available = bool(returns or row.get("etf_portfolio_score") is not None)
+    portfolio_score = (
+        _finite(row.get("etf_portfolio_score"))
+        if row.get("etf_portfolio_score") is not None
+        else float(np.mean([_clamp(50 + value * 0.45) for value in returns]))
+        if returns else 0.0
+    )
+
+    tracking_error = row.get("tracking_error_pct")
+    tracking_difference = row.get("tracking_difference_pct")
+    tracking_available = tracking_error is not None or tracking_difference is not None
+    tracking_score = _clamp(
+        100
+        - abs(_finite(tracking_error)) * 18
+        - abs(_finite(tracking_difference)) * 10
+    ) if tracking_available else 0.0
+
+    spread = row.get("bid_ask_spread_pct")
+    aum = _finite(row.get("aum"))
+    liquidity_parts = [volume_score] if _finite(row.get("avg_volume20")) > 0 else []
+    if spread is not None:
+        liquidity_parts.append(_clamp(100 - abs(_finite(spread)) * 45))
+    if aum > 0:
+        liquidity_parts.append(_clamp(35 + math.log10(max(aum, 1)) * 6))
+    liquidity_score = float(np.mean(liquidity_parts)) if liquidity_parts else 0.0
+    liquidity_available = bool(liquidity_parts)
+
+    premium = row.get("premium_discount_pct")
+    premium_available = premium is not None
+    premium_score = _clamp(100 - abs(_finite(premium)) * 22) if premium_available else 0.0
+
+    beta = row.get("beta_3y")
+    drawdown = row.get("max_drawdown_pct")
+    risk_parts: list[float] = []
+    if beta is not None:
+        risk_parts.append(_clamp(90 - abs(_finite(beta) - 1.0) * 35))
+    if drawdown is not None:
+        risk_parts.append(_clamp(100 - abs(_finite(drawdown)) * 2.0))
+    risk_score = float(np.mean(risk_parts)) if risk_parts else 0.0
+    risk_available = bool(risk_parts)
+
+    expense = row.get("expense_ratio_pct")
+    cost_parts: list[float] = []
+    if expense is not None:
+        cost_parts.append(_clamp(100 - max(_finite(expense), 0.0) * 45))
+    if aum > 0:
+        cost_parts.append(_clamp(35 + math.log10(max(aum, 1)) * 6))
+    cost_score = float(np.mean(cost_parts)) if cost_parts else 0.0
+    cost_available = bool(cost_parts)
+
+    concentration = row.get("top10_concentration_pct")
+    concentration_available = concentration is not None
+    concentration_score = _clamp(100 - max(_finite(concentration) - 35, 0) * 1.3) if concentration_available else 0.0
+
+    breadth = row.get("holdings_breadth_score")
+    breadth_available = breadth is not None
+    flow = row.get("fund_flow_score")
+    flow_available = flow is not None
+
+    fx_risk = row.get("fx_risk_score")
+    event_score = (
+        float(np.mean([news_score, _finite(fx_risk)]))
+        if fx_risk is not None else news_score
+    )
+    event_available = bool(row.get("news_data_available") or fx_risk is not None)
+
+    return {
+        "etf_kind": _etf_kind(row),
+        "portfolio_score": round(_clamp(portfolio_score), 1),
+        "portfolio_available": portfolio_available,
+        "tracking_score": round(_clamp(tracking_score), 1),
+        "tracking_available": tracking_available,
+        "liquidity_score": round(_clamp(liquidity_score), 1),
+        "liquidity_available": liquidity_available,
+        "premium_score": round(_clamp(premium_score), 1),
+        "premium_available": premium_available,
+        "risk_score": round(_clamp(risk_score), 1),
+        "risk_available": risk_available,
+        "cost_score": round(_clamp(cost_score), 1),
+        "cost_available": cost_available,
+        "concentration_score": round(_clamp(concentration_score), 1),
+        "concentration_available": concentration_available,
+        "breadth_score": round(_clamp(_finite(breadth)), 1),
+        "breadth_available": breadth_available,
+        "flow_score": round(_clamp(_finite(flow)), 1),
+        "flow_available": flow_available,
+        "event_score": round(_clamp(event_score), 1),
+        "event_available": event_available,
+        "technical_score": round(_clamp(technical), 1),
+        "volume_score": round(_clamp(volume_score), 1),
+    }
+
+
+def _etf_overall_components(bundle: dict[str, Any]) -> list[tuple[float, float, bool]]:
+    return [
+        (bundle["portfolio_score"], 25, bundle["portfolio_available"]),
+        (bundle["technical_score"], 20, True),
+        (bundle["tracking_score"], 15, bundle["tracking_available"]),
+        (bundle["liquidity_score"], 10, bundle["liquidity_available"]),
+        (bundle["premium_score"], 10, bundle["premium_available"]),
+        (float(np.mean([
+            score for score, ok in (
+                (bundle["risk_score"], bundle["risk_available"]),
+                (bundle["concentration_score"], bundle["concentration_available"]),
+            ) if ok
+        ])) if bundle["risk_available"] or bundle["concentration_available"] else 0.0,
+         10, bundle["risk_available"] or bundle["concentration_available"]),
+        (bundle["cost_score"], 5, bundle["cost_available"]),
+        (bundle["event_score"], 5, bundle["event_available"]),
+    ]
+
+
+def _etf_short_components(
+    bundle: dict[str, Any], structure_score: float
+) -> list[tuple[float, float, bool]]:
+    return [
+        (bundle["technical_score"], 25, True),
+        (bundle["volume_score"], 20, bundle["liquidity_available"]),
+        (bundle["breadth_score"], 15, bundle["breadth_available"]),
+        (bundle["premium_score"], 15, bundle["premium_available"]),
+        (bundle["flow_score"], 10, bundle["flow_available"]),
+        (structure_score, 10, True),
+        (bundle["event_score"], 5, bundle["event_available"]),
+    ]
+
+
+def _etf_long_components(bundle: dict[str, Any], row: dict[str, Any]) -> list[tuple[float, float, bool]]:
+    returns = [
+        _finite(row.get(key))
+        for key in ("etf_return_3y_pct", "etf_return_5y_pct")
+        if row.get(key) is not None
+    ]
+    return_score = float(np.mean([_clamp(50 + value * 0.45) for value in returns])) if returns else 0.0
+    tracking_cost_scores = [
+        score for score, ok in (
+            (bundle["tracking_score"], bundle["tracking_available"]),
+            (bundle["cost_score"], bundle["cost_available"]),
+        ) if ok
+    ]
+    tracking_cost = float(np.mean(tracking_cost_scores)) if tracking_cost_scores else 0.0
+    return [
+        (bundle["portfolio_score"], 25, bundle["portfolio_available"]),
+        (return_score, 20, bool(returns)),
+        (bundle["risk_score"], 15, bundle["risk_available"]),
+        (tracking_cost, 15, bool(tracking_cost_scores)),
+        (bundle["concentration_score"], 10, bundle["concentration_available"]),
+        (bundle["liquidity_score"], 10, bundle["liquidity_available"]),
+        (bundle["event_score"], 5, bundle["event_available"]),
+    ]
 
 
 def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
@@ -669,14 +862,20 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     attack_score = _clamp(50 + attack * 0.8)
     structure_score = _clamp((trend_score + _finite(row.get("position_score"), 50.0)) / 2)
     news_score = _clamp(100 - max(news_penalty, 0.0) * 6)
-    score, short_available, short_total, short_confidence = _available_weighted_score([
-        (volume_score, 25, _finite(row.get("avg_volume20")) > 0),
-        (technical, 20, technical_ok),
-        (positioning, 20, bool(row.get("institution_available") or row.get("credit_available"))),
-        (attack_score, 15, row.get("attack_volume") is not None),
-        (structure_score, 15, technical_ok),
-        (news_score, 5, bool(row.get("news_data_available"))),
-    ])
+    if is_etf:
+        etf_bundle = _etf_score_bundle(row, technical, volume_score, news_score)
+        score, short_available, short_total, short_confidence = _available_weighted_score(
+            _etf_short_components(etf_bundle, structure_score)
+        )
+    else:
+        score, short_available, short_total, short_confidence = _available_weighted_score([
+            (volume_score, 25, _finite(row.get("avg_volume20")) > 0),
+            (technical, 20, technical_ok),
+            (positioning, 20, bool(row.get("institution_available") or row.get("credit_available"))),
+            (attack_score, 15, row.get("attack_volume") is not None),
+            (structure_score, 15, technical_ok),
+            (news_score, 5, bool(row.get("news_data_available"))),
+        ])
     if rsi >= 72:
         score -= min(12.0, (rsi-72)*1.5+4)
     if ma20 > 0 and price/ma20-1 >= .10:
@@ -707,9 +906,13 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         or market_relative_volume >= 0.90
         or attack > 0
     )
+    premium = _finite(row.get("premium_discount_pct"))
+    premium_available = row.get("premium_discount_pct") is not None
+    premium_limit = max(1.5, _finite(row.get("premium_discount_60d_std_pct")) * 2)
+    premium_ok = not is_etf or not premium_available or premium <= premium_limit
     eligible = bool(
         technical_ok and coverage_ok and entry_score >= 58 and score >= 60
-        and price >= ma20*.99 and 40 <= rsi <= 72 and volume_ok
+        and price >= ma20*.99 and 40 <= rsi <= 72 and volume_ok and premium_ok
         and not row.get("breakdown20") and news_penalty < 8
         and price <= entry_high*(1.08 if is_etf else 1.10) and rr >= 1.5
     )
@@ -719,6 +922,9 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
                    if price > entry_high else
                    "進場區不破支撐，出現量增紅K或突破前15分鐘高點才分批進場")
         reason = f"{setup}｜量能合格｜風報比 {rr:.2f}"
+    elif not premium_ok:
+        status, trigger = "🔴 淨值溢價過高", f"目前溢價 {premium:.2f}% 高於 {premium_limit:.2f}% 門檻，不追價"
+        reason = "市價明顯高於基金淨值，先等溢價收斂"
     elif not coverage_ok or not technical_ok:
         status, trigger = "⚪ 資料不足", "等待均線、ATR、量能與資料完整度補齊，不先進場"
         reason = f"資料涵蓋 {coverage_total}/{coverage_expected}，暫不列入短線首選"
@@ -775,14 +981,20 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     news_available = bool(row.get("news_data_available"))
     technical_available = all(v > 0 for v in (price, ma20, ma60, atr))
     news_score = _clamp(100 - max(news_penalty, 0.0) * 6)
-    long_score, available, long_total, long_confidence = _available_weighted_score([
-        (quality, 25, quality_available),
-        (growth, 25, growth_available),
-        (valuation, 15, valuation_available),
-        (technical, 15, technical_available),
-        (_finite(row.get("positioning_score"), 50.0), 10, institution_available),
-        (news_score, 10, news_available),
-    ])
+    if is_etf:
+        etf_bundle = _etf_score_bundle(row, technical, _finite(row.get("volume_score")), news_score)
+        long_score, available, long_total, long_confidence = _available_weighted_score(
+            _etf_long_components(etf_bundle, row)
+        )
+    else:
+        long_score, available, long_total, long_confidence = _available_weighted_score([
+            (quality, 25, quality_available),
+            (growth, 25, growth_available),
+            (valuation, 15, valuation_available),
+            (technical, 15, technical_available),
+            (_finite(row.get("positioning_score"), 50.0), 10, institution_available),
+            (news_score, 10, news_available),
+        ])
     required = 3 if is_etf else 4
     data_ok = available >= required
     if price > 0 and ma60 > 0:
@@ -802,11 +1014,15 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     target2 = _market_price(row, max(target1+_tick_size(row, max(target1, 1.0)), price*1.28, batch1_high*1.32))
 
     trend_ok = price >= ma60*.90 if ma60 > 0 else False
+    leveraged_etf = is_etf and _etf_kind(row) == "槓桿／反向ETF"
     eligible = bool(
-        data_ok and technical_available and ai_score >= 62 and long_score >= 62
+        not leveraged_etf and data_ok and technical_available and ai_score >= 62 and long_score >= 62
         and trend_ok and news_penalty < 10 and batch1_low > 0 and batch1_high > 0
     )
-    if eligible:
+    if leveraged_etf:
+        status = "🔴 不列入一般中長線"
+        reason = "槓桿／反向ETF有每日再平衡與路徑風險，不使用3～12個月一般布局模型"
+    elif eligible:
         status = "🟢 可分批布局" if price <= batch1_high*1.03 else "🟡 等待回測布局"
         reason = f"中長線分數 {long_score:.1f}｜可用資料 {available}/{long_total}｜採三段資金管理"
     elif not data_ok or not technical_available:
@@ -965,15 +1181,33 @@ def score_candidates(
             fundamental_score = valuation_score * 0.55 + growth_score * 0.45
 
         news_score = _clamp(100 - max(_finite(row.get("news_penalty")), 0.0) * 6)
-        base_total, overall_available, overall_total, overall_confidence = _available_weighted_score([
-            (_clamp(technical), 20, all(_finite(row.get(k)) > 0 for k in ("price", "ma5", "ma10", "ma20"))),
-            (volume_score, 15, _finite(row.get("avg_volume20")) > 0),
-            (institution_score, 15, bool(row.get("institution_available") or row.get("credit_available"))),
-            (quality_score, 15, bool(row.get("financial_quality_available"))),
-            (growth_score, 15, bool(growth_parts)),
-            (valuation_score, 10, bool(valuation_parts)),
-            (news_score, 10, bool(row.get("news_data_available"))),
-        ])
+        if _is_etf(row):
+            etf_bundle = _etf_score_bundle(row, technical, volume_score, news_score)
+            row.update({
+                "etf_kind": etf_bundle["etf_kind"],
+                "etf_portfolio_score": etf_bundle["portfolio_score"] if etf_bundle["portfolio_available"] else None,
+                "etf_tracking_score": etf_bundle["tracking_score"] if etf_bundle["tracking_available"] else None,
+                "etf_liquidity_score": etf_bundle["liquidity_score"] if etf_bundle["liquidity_available"] else None,
+                "etf_premium_score": etf_bundle["premium_score"] if etf_bundle["premium_available"] else None,
+                "etf_risk_score": etf_bundle["risk_score"] if etf_bundle["risk_available"] else None,
+                "etf_cost_score": etf_bundle["cost_score"] if etf_bundle["cost_available"] else None,
+                "etf_long_term_eligible": etf_bundle["etf_kind"] != "槓桿／反向ETF",
+                "score_model": "ETF獨立模型",
+            })
+            base_total, overall_available, overall_total, overall_confidence = _available_weighted_score(
+                _etf_overall_components(etf_bundle)
+            )
+        else:
+            base_total, overall_available, overall_total, overall_confidence = _available_weighted_score([
+                (_clamp(technical), 20, all(_finite(row.get(k)) > 0 for k in ("price", "ma5", "ma10", "ma20"))),
+                (volume_score, 15, _finite(row.get("avg_volume20")) > 0),
+                (institution_score, 15, bool(row.get("institution_available") or row.get("credit_available"))),
+                (quality_score, 15, bool(row.get("financial_quality_available"))),
+                (growth_score, 15, bool(growth_parts)),
+                (valuation_score, 10, bool(valuation_parts)),
+                (news_score, 10, bool(row.get("news_data_available"))),
+            ])
+            row["score_model"] = "個股獨立模型"
         base_total += macro_adjustment
         preliminary_signal = "🟢" if base_total >= 70 else "🟡" if base_total >= 58 else "🔴"
         performance_adjustment, performance_samples, performance_horizon = (

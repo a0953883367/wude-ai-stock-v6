@@ -99,3 +99,22 @@ def test_parse_finra_short_volume_aggregates_markets_and_labels_limit():
     assert result["NVDA"]["us_total_reported_volume"] == 500
     assert result["NVDA"]["us_short_volume_ratio_pct"] == 31
     assert "不等於未回補空單" in result["NVDA"]["us_short_volume_note"]
+
+
+
+def test_normalize_etf_info_calculates_premium_spread_and_ratios():
+    from data_fetcher import _normalize_etf_info
+    result = _normalize_etf_info({
+        "navPrice": 100,
+        "regularMarketPrice": 102,
+        "bid": 101.9,
+        "ask": 102.1,
+        "annualReportExpenseRatio": 0.0025,
+        "totalAssets": 10_000_000_000,
+        "threeYearAverageReturn": 0.12,
+    })
+    assert round(result["premium_discount_pct"], 2) == 2.0
+    assert 0 < result["bid_ask_spread_pct"] < 1
+    assert result["expense_ratio_pct"] == 0.25
+    assert result["etf_return_3y_pct"] == 12.0
+    assert result["etf_metadata_available"] is True
