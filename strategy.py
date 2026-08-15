@@ -194,6 +194,7 @@ def build_features(
     support2 = _finite(low.tail(20).min(), support1)
     resistance1 = _finite(high.tail(5).max(), price)
     resistance2 = _finite(high.tail(20).max(), resistance1)
+    atr14 = _finite((high - low).tail(14).mean(), price * 0.02)
     inst = institution or {"foreign": 0.0, "trust": 0.0, "dealer": 0.0}
     inst_net = sum(_finite(inst.get(k)) for k in ("foreign", "trust", "dealer"))
     return {
@@ -219,6 +220,7 @@ def build_features(
         "support2": round(support2, 2),
         "resistance1": round(resistance1, 2),
         "resistance2": round(resistance2, 2),
+        "atr14": round(atr14, 2),
         "foreign_net": int(_finite(inst.get("foreign"))),
         "trust_net": int(_finite(inst.get("trust"))),
         "dealer_net": int(_finite(inst.get("dealer"))),
@@ -442,6 +444,86 @@ def _performance_adjustment(
     return 0.0, 0, None
 
 
+def _entry_plan(
+    row: dict[str, Any],
+    total: float,
+    technical: float,
+    volume_score: float,
+    institution_score: float,
+    group_score: float,
+    position_score: float,
+) -> dict[str, Any]:
+    """Build a timing score and two volatility-aware entry zones.
+
+    The AI total measures overall quality; entry_score measures whether the
+    current price is attractive now. ETFs intentionally do not depend on
+    company fundamentals.
+    """
+    price = max(_finite(row.get("price")), 0.01)
+    atr = max(_finite(row.get("atr14"), price * 0.02), price * 0.005)
+    timing = (
+        _clamp(technical) * 0.30
+        + _clamp(volume_score) * 0.25
+        + _clamp(institution_score) * 0.15
+        + _clamp(position_score) * 0.20
+        + _clamp(group_score) * 0.10
+    )
+    is_etf = "ETF" in str(row.get("type", "")).upper()
+    entry_score = timing if is_etf else total * 0.55 + timing * 0.45
+
+    rsi = _finite(row.get("rsi"), 50)
+    distance = _finite(row.get("ma20_distance_pct"))
+    if rsi >= 70:
+        entry_score -= min(12.0, (rsi - 70) * 1.5)
+    if distance >= 8:
+        entry_score -= min(15.0, (distance - 8) * 1.5 + 4)
+    resistance1 = _finite(row.get("resistance1"), price)
+    if resistance1 > 0 and price >= resistance1 * 0.985:
+        entry_score -= 8
+    if _finite(row.get("volume_pace"), 1) < 0.75:
+        entry_score -= 4
+
+    below = [
+        _finite(row.get(key))
+        for key in ("support1", "ma5", "ma10", "ma20")
+        if 0 < _finite(row.get(key)) <= price
+    ]
+    first_anchor = max(below) if below else min(price, _finite(row.get("support1"), price))
+    buy_low = max(0.01, first_anchor - atr * 0.35)
+    buy_high = min(price, first_anchor + atr * 0.15)
+    if buy_high < buy_low:
+        buy_low = buy_high = min(price, first_anchor)
+
+    deeper = [
+        _finite(row.get(key))
+        for key in ("support2", "ma20", "ma60")
+        if 0 < _finite(row.get(key)) <= buy_low
+    ]
+    better_anchor = max(deeper) if deeper else min(buy_low, _finite(row.get("support2"), buy_low))
+    better_low = max(0.01, better_anchor - atr * 0.30)
+    better_high = min(buy_low, better_anchor + atr * 0.10)
+    if better_high < better_low:
+        better_low = better_high = min(buy_low, better_anchor)
+
+    if price > buy_high + atr * 0.75:
+        note = "現價高於買進區，等回測不追價"
+    elif buy_low <= price <= buy_high:
+        note = "現價進入第一買進區，可小量分批"
+    else:
+        note = "價格低於原買進區，先確認止跌與量價"
+    stop_anchor = min(better_low, _finite(row.get("support2"), better_low))
+    return {
+        "entry_score": round(_clamp(entry_score), 1),
+        "buy_zone_low": round(buy_low, 2),
+        "buy_zone_high": round(buy_high, 2),
+        "better_buy_low": round(better_low, 2),
+        "better_buy_high": round(better_high, 2),
+        "buy_price": round((buy_low + buy_high) / 2, 2),
+        "stop_price": round(max(0.01, stop_anchor - atr * 0.25), 2),
+        "entry_note": note,
+    }
+
+
 def score_candidates(
     rows: list[dict[str, Any]],
     macro_regime: dict[str, Any] | None = None,
@@ -573,8 +655,15 @@ def score_candidates(
             "score": round(total, 1),
             "theme_change_pct": round(theme_change[str(row["theme"])], 2),
         })
-        row["buy_price"] = round(min(row["price"], row["support1"] * 1.01), 2)
-        row["stop_price"] = round(row["support2"] * 0.98, 2)
+        row.update(_entry_plan(
+            row,
+            total,
+            technical,
+            volume_score,
+            institution_score,
+            group_score,
+            position_score,
+        ))
         sbl_pressure = _finite(row.get("sbl_5d_change")) / max(row["avg_volume20"] * 5, 1) * 100
         if row.get("breakdown20"):
             row["risk"] = "跌破20日低點，先避開"
@@ -600,17 +689,21 @@ def score_candidates(
         kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
         fundamental_ready = not row.get("fundamental_available") or fundamental_score >= 40
         quality_ready = not row.get("financial_quality_available") or quality_score >= 38
-        if total >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready and fundamental_ready and quality_ready:
-            row["action"] = "🟢 可分批，等回測買點"
-        elif total >= 58:
-            row["action"] = "🟡 觀察，不追高"
+        if row["entry_score"] >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready and fundamental_ready and quality_ready:
+            row["action"] = "🟢 可分批，等回測買進區"
+        elif row["entry_score"] >= 58:
+            row["action"] = "🟡 觀察，等價格進入買進區"
         else:
             row["action"] = "🔴 暫不買"
 
         row.update(_positioning_radar(row))
         row.update(_next_day_scenario(row))
 
-    ranked = sorted(rows, key=lambda r: (r["score"], r["volume_pace"], r["change_pct"]), reverse=True)
+    ranked = sorted(
+        rows,
+        key=lambda r: (r["entry_score"], r["score"], r["volume_pace"], r["change_pct"]),
+        reverse=True,
+    )
     for rank, row in enumerate(ranked, 1):
         row["rank"] = rank
     return ranked
