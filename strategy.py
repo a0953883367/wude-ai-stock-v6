@@ -423,6 +423,131 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         "scenario_data_quality": "完整" if complete else "部分資料",
     }
 
+
+def _market_outlook(row: dict[str, Any]) -> dict[str, Any]:
+    """Estimate a 1-5 session direction from available, market-aware evidence."""
+    bias = 0.0
+    reasons: list[tuple[float, str]] = []
+    available = 0
+    total = 5
+    price = _finite(row.get("price"))
+    ma5 = _finite(row.get("ma5"))
+    ma10 = _finite(row.get("ma10"))
+    ma20 = _finite(row.get("ma20"))
+    ma60 = _finite(row.get("ma60"))
+    if all(value > 0 for value in (price, ma5, ma10, ma20)):
+        available += 1
+        if price >= ma5 >= ma10 >= ma20:
+            bias += 28
+            reasons.append((28, "現價與5／10／20日線呈多頭排列"))
+        elif price >= ma10 >= ma20:
+            bias += 18
+            reasons.append((18, "現價站上10／20日線，趨勢偏多"))
+        elif price < ma5 < ma10 < ma20:
+            bias -= 28
+            reasons.append((-28, "現價與5／10／20日線呈空頭排列"))
+        elif price < ma20:
+            bias -= 18
+            reasons.append((-18, "現價跌破20日線，趨勢偏弱"))
+        else:
+            reasons.append((0, "均線交錯，趨勢尚未形成"))
+        if ma60 > 0:
+            bias += 5 if ma20 >= ma60 else -5
+
+    rsi = _finite(row.get("rsi"), -1)
+    if rsi >= 0:
+        available += 1
+        if 55 <= rsi <= 68:
+            bias += 8
+            reasons.append((8, f"RSI {rsi:.1f}，動能偏強且未過熱"))
+        elif 32 <= rsi < 45:
+            bias -= 8
+            reasons.append((-8, f"RSI {rsi:.1f}，動能偏弱"))
+        elif rsi > 72:
+            reasons.append((0, f"RSI {rsi:.1f}，偏熱不追價"))
+        elif rsi < 28:
+            reasons.append((0, f"RSI {rsi:.1f}，超賣但尚待止穩"))
+        if row.get("breakout20"):
+            bias += 10
+            reasons.append((10, "價格突破20日高點"))
+        if row.get("breakdown20"):
+            bias -= 12
+            reasons.append((-12, "價格跌破20日低點"))
+
+    volume_available = _finite(row.get("avg_volume20")) > 0 or row.get("intraday_available")
+    if volume_available:
+        available += 1
+        volume_ratio = _finite(row.get("daily_volume_ratio"), _finite(row.get("volume_pace"), 1.0))
+        change = _finite(row.get("change_pct"))
+        attack = _finite(row.get("attack_volume"))
+        if volume_ratio >= 1.2 and change > 0:
+            bias += 10
+            reasons.append((10, f"價漲量增，日量約均量 {volume_ratio:.2f} 倍"))
+        elif volume_ratio >= 1.2 and change < 0:
+            bias -= 10
+            reasons.append((-10, f"價跌量增，賣壓量約均量 {volume_ratio:.2f} 倍"))
+        elif volume_ratio < 0.7:
+            reasons.append((0, "成交量偏低，方向訊號可信度降低"))
+        if attack >= 10:
+            bias += 6
+        elif attack <= -10:
+            bias -= 6
+
+    market = str(row.get("market", "US")).upper()
+    is_etf = "ETF" in str(row.get("type", "")).upper()
+    if is_etf and row.get("etf_market_flow_score") is not None:
+        flow = _finite(row.get("etf_market_flow_score"), 50)
+        flow_available = True
+        flow_name = "ETF資金流"
+    elif market == "US":
+        flow = _finite(row.get("market_flow_score"), 50)
+        flow_available = bool(row.get("market_flow_available"))
+        flow_name = "美股市場資金流"
+    else:
+        flow = _finite(row.get("institution_score"), 50)
+        flow_available = bool(row.get("institution_available") or row.get("credit_available"))
+        flow_name = "法人與信用籌碼"
+    if flow_available:
+        available += 1
+        flow_bias = _clamp((flow - 50) * 0.35, -12, 12)
+        bias += flow_bias
+        reasons.append((flow_bias, f"{flow_name} {flow:.1f} 分"))
+
+    if row.get("news_data_available"):
+        available += 1
+        penalty = _clamp(_finite(row.get("news_penalty")) * 1.5, 0, 12)
+        bias -= penalty
+        reasons.append((-penalty, "近期負面消息已納入風險" if penalty else "未發現已確認的重大負面消息"))
+
+    bias = _clamp(bias, -100, 100)
+    if available < 3:
+        direction = "↔️ 震盪平盤"
+    elif bias >= 18:
+        direction = "📈 看漲"
+    elif bias <= -18:
+        direction = "📉 看跌"
+    else:
+        direction = "↔️ 震盪平盤"
+    confidence = _clamp(35 + abs(bias) * 0.7 + available / total * 20, 35, 95)
+    if available < 3:
+        confidence = min(confidence, 55)
+    if direction.endswith("看漲"):
+        change_condition = "跌破20日線且放量賣壓轉強，改判震盪／看跌"
+    elif direction.endswith("看跌"):
+        change_condition = "站回20日線且量價、資金同步轉強，改判震盪／看漲"
+    else:
+        change_condition = "放量突破第一壓力轉看漲；放量跌破第一支撐轉看跌"
+    ordered = sorted(reasons, key=lambda item: abs(item[0]), reverse=True)
+    return {
+        "outlook_direction": direction,
+        "outlook_bias_score": round(bias, 1),
+        "outlook_confidence": round(confidence, 1),
+        "outlook_horizon": "未來1～5個交易日",
+        "outlook_reasons": [text for _, text in ordered[:3]],
+        "outlook_change_condition": change_condition,
+        "outlook_data_quality": f"{available}/{total}",
+    }
+
 def _performance_adjustment(
     performance: dict[str, Any], signal: str
 ) -> tuple[float, int, str | None]:
@@ -1501,6 +1626,7 @@ def score_candidates(
 
         row.update(_positioning_radar(row))
         row.update(_next_day_scenario(row))
+        row.update(_market_outlook(row))
         row.update(_short_term_plan(row))
         row.update(_mid_long_term_plan(row))
 

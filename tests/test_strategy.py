@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
+from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -423,3 +423,27 @@ def test_leveraged_etf_is_excluded_from_standard_long_term_plan():
     result = _mid_long_term_plan(row)
     assert result["mid_long_eligible"] is False
     assert result["mid_long_status"] == "🔴 不列入一般中長線"
+
+
+def test_market_outlook_separates_bull_bear_and_flat():
+    bullish = _market_outlook({
+        "market": "TW", "type": "個股", "price": 110, "ma5": 108,
+        "ma10": 105, "ma20": 100, "ma60": 95, "rsi": 62,
+        "avg_volume20": 1_000_000, "daily_volume_ratio": 1.5,
+        "change_pct": 2.0, "attack_volume": 15, "breakout20": True,
+        "institution_available": 1, "institution_score": 70,
+        "news_data_available": True, "news_penalty": 0,
+    })
+    bearish = _market_outlook({
+        "market": "US", "type": "個股", "price": 90, "ma5": 92,
+        "ma10": 95, "ma20": 100, "ma60": 105, "rsi": 38,
+        "avg_volume20": 1_000_000, "daily_volume_ratio": 1.6,
+        "change_pct": -3.0, "attack_volume": -15, "breakdown20": True,
+        "market_flow_available": True, "market_flow_score": 30,
+        "news_data_available": True, "news_penalty": 4,
+    })
+    flat = _market_outlook({"market": "US", "price": 100, "rsi": 50})
+    assert bullish["outlook_direction"] == "📈 看漲"
+    assert bearish["outlook_direction"] == "📉 看跌"
+    assert flat["outlook_direction"] == "↔️ 震盪平盤"
+    assert flat["outlook_confidence"] <= 55
