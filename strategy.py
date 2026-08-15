@@ -444,6 +444,57 @@ def _performance_adjustment(
     return 0.0, 0, None
 
 
+def _price_tick(row: dict[str, Any], value: float) -> float:
+    """Return a valid market price increment for display and limit orders."""
+    if str(row.get("market", "")).upper() != "TW":
+        return 0.01
+    if "ETF" in str(row.get("type", "")).upper():
+        return 0.01
+    if value < 10:
+        return 0.01
+    if value < 50:
+        return 0.05
+    if value < 100:
+        return 0.10
+    if value < 500:
+        return 0.50
+    if value < 1000:
+        return 1.00
+    return 5.00
+
+
+def _market_price(row: dict[str, Any], value: float) -> float:
+    value = max(value, 0.01)
+    tick = _price_tick(row, value)
+    rounded = round(value / tick) * tick
+    decimals = 2 if tick < 0.1 else 1 if tick < 1 else 0
+    return round(max(rounded, tick), decimals)
+
+
+def _entry_coverage(row: dict[str, Any], is_etf: bool) -> tuple[int, int]:
+    """Count only data that was really obtained; neutral fallbacks are not coverage."""
+    technical = bool(row.get("price")) and bool(row.get("ma20")) and row.get("rsi") is not None
+    volume = _finite(row.get("avg_volume20")) > 0 and row.get("volume_pace") is not None
+    positioning = bool(
+        row.get("institution_available")
+        or row.get("us_short_volume_available")
+        or row.get("broker_available")
+    )
+    news = bool(row.get("news_data_available"))
+    if is_etf:
+        flags = (technical, volume, positioning, news)
+    else:
+        flags = (
+            technical,
+            volume,
+            positioning,
+            bool(row.get("fundamental_available")),
+            bool(row.get("financial_quality_available")),
+            news,
+        )
+    return sum(flags), len(flags)
+
+
 def _entry_plan(
     row: dict[str, Any],
     total: float,
@@ -453,14 +504,62 @@ def _entry_plan(
     group_score: float,
     position_score: float,
 ) -> dict[str, Any]:
-    """Build a timing score and two volatility-aware entry zones.
-
-    The AI total measures overall quality; entry_score measures whether the
-    current price is attractive now. ETFs intentionally do not depend on
-    company fundamentals.
-    """
+    """Build market-specific, ATR-aware and executable entry zones."""
     price = max(_finite(row.get("price")), 0.01)
-    atr = max(_finite(row.get("atr14"), price * 0.02), price * 0.005)
+    market = str(row.get("market", "")).upper()
+    is_etf = "ETF" in str(row.get("type", "")).upper()
+    raw_atr = _finite(row.get("atr14"))
+    atr_pct = raw_atr / price if raw_atr > 0 else 0.0
+
+    if is_etf:
+        profile = "ETF"
+        first_near, first_far = 0.008, 0.018
+        better_near, better_far = 0.022, 0.038
+        atr_floor, stop_gap = 0.008, 0.007
+    elif market == "TW":
+        profile = "台股個股"
+        first_near, first_far = 0.010, 0.020
+        better_near, better_far = 0.025, 0.040
+        atr_floor, stop_gap = 0.012, 0.010
+    else:
+        high_volatility = atr_pct >= 0.04
+        if high_volatility:
+            profile = "美股高波動"
+            first_near, first_far = 0.025, 0.050
+            better_near, better_far = 0.060, 0.100
+            atr_floor, stop_gap = 0.030, 0.020
+        else:
+            profile = "美股一般"
+            first_near, first_far = 0.015, 0.030
+            better_near, better_far = 0.035, 0.060
+            atr_floor, stop_gap = 0.018, 0.015
+
+    # ATR can widen a zone, but can never shrink it into a meaningless
+    # near-current-price interval.
+    effective_atr_pct = max(atr_pct, atr_floor)
+    first_near = max(first_near, min(effective_atr_pct * 0.45, first_far * 0.85))
+    first_far = max(first_far, min(effective_atr_pct * 1.05, better_near * 0.92))
+    better_near = max(better_near, first_far + max(0.004, effective_atr_pct * 0.20))
+    better_far = max(better_far, min(effective_atr_pct * 2.0, 0.12))
+    if better_far <= better_near:
+        better_far = better_near + max(0.01, effective_atr_pct * 0.5)
+
+    buy_low = _market_price(row, price * (1 - first_far))
+    buy_high = _market_price(row, price * (1 - first_near))
+    better_low = _market_price(row, price * (1 - better_far))
+    better_high = _market_price(row, price * (1 - better_near))
+
+    # Enforce ordering after market tick rounding.
+    tick = _price_tick(row, price)
+    if buy_high >= price:
+        buy_high = _market_price(row, price - tick)
+    if buy_low >= buy_high:
+        buy_low = _market_price(row, buy_high - max(tick, price * 0.005))
+    if better_high >= buy_low:
+        better_high = _market_price(row, buy_low - max(tick, price * 0.005))
+    if better_low >= better_high:
+        better_low = _market_price(row, better_high - max(tick, price * 0.01))
+
     timing = (
         _clamp(technical) * 0.30
         + _clamp(volume_score) * 0.25
@@ -468,9 +567,7 @@ def _entry_plan(
         + _clamp(position_score) * 0.20
         + _clamp(group_score) * 0.10
     )
-    is_etf = "ETF" in str(row.get("type", "")).upper()
     entry_score = timing if is_etf else total * 0.55 + timing * 0.45
-
     rsi = _finite(row.get("rsi"), 50)
     distance = _finite(row.get("ma20_distance_pct"))
     if rsi >= 70:
@@ -483,46 +580,39 @@ def _entry_plan(
     if _finite(row.get("volume_pace"), 1) < 0.75:
         entry_score -= 4
 
-    below = [
-        _finite(row.get(key))
-        for key in ("support1", "ma5", "ma10", "ma20")
-        if 0 < _finite(row.get(key)) <= price
-    ]
-    first_anchor = max(below) if below else min(price, _finite(row.get("support1"), price))
-    buy_low = max(0.01, first_anchor - atr * 0.35)
-    buy_high = min(price, first_anchor + atr * 0.15)
-    if buy_high < buy_low:
-        buy_low = buy_high = min(price, first_anchor)
-
-    deeper = [
-        _finite(row.get(key))
-        for key in ("support2", "ma20", "ma60")
-        if 0 < _finite(row.get(key)) <= buy_low
-    ]
-    better_anchor = max(deeper) if deeper else min(buy_low, _finite(row.get("support2"), buy_low))
-    better_low = max(0.01, better_anchor - atr * 0.30)
-    better_high = min(buy_low, better_anchor + atr * 0.10)
-    if better_high < better_low:
-        better_low = better_high = min(buy_low, better_anchor)
-
-    if price > buy_high + atr * 0.75:
-        note = "現價高於買進區，等回測不追價"
-    elif buy_low <= price <= buy_high:
-        note = "現價進入第一買進區，可小量分批"
+    coverage, coverage_total = _entry_coverage(row, is_etf)
+    missing = coverage_total - coverage
+    if is_etf:
+        cap = 75.0 if coverage <= 2 else 86.0 if coverage == 3 else 100.0
     else:
-        note = "價格低於原買進區，先確認止跌與量價"
-    stop_anchor = min(better_low, _finite(row.get("support2"), better_low))
+        cap = 75.0 if coverage <= 3 else 82.0 if coverage == 4 else 90.0 if coverage == 5 else 100.0
+    entry_score = min(entry_score, cap)
+
+    if missing:
+        note = f"資料涵蓋 {coverage}/{coverage_total}，僅列觀察；等價格回測且補齊資料"
+    elif price > buy_high:
+        note = f"{profile}區間：現價高於第一買進區，等待回測、不追價"
+    elif buy_low <= price <= buy_high:
+        note = f"{profile}區間：進入第一買進區，可小量分批"
+    else:
+        note = f"{profile}區間：跌破原買進區，先確認止跌與量價"
+
+    stop_distance = max(price * stop_gap, raw_atr * 0.75)
+    stop_price = _market_price(row, better_low - stop_distance)
     return {
         "entry_score": round(_clamp(entry_score), 1),
-        "buy_zone_low": round(buy_low, 2),
-        "buy_zone_high": round(buy_high, 2),
-        "better_buy_low": round(better_low, 2),
-        "better_buy_high": round(better_high, 2),
-        "buy_price": round((buy_low + buy_high) / 2, 2),
-        "stop_price": round(max(0.01, stop_anchor - atr * 0.25), 2),
+        "entry_score_cap": cap,
+        "entry_data_coverage": coverage,
+        "entry_data_total": coverage_total,
+        "entry_profile": profile,
+        "buy_zone_low": buy_low,
+        "buy_zone_high": buy_high,
+        "better_buy_low": better_low,
+        "better_buy_high": better_high,
+        "buy_price": _market_price(row, (buy_low + buy_high) / 2),
+        "stop_price": stop_price,
         "entry_note": note,
     }
-
 
 def score_candidates(
     rows: list[dict[str, Any]],
