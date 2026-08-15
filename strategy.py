@@ -618,19 +618,19 @@ def _entry_plan(
 def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     """Conservative trigger-based plan for a 1-5 trading day trade."""
     market = str(row.get("market") or "").upper()
-    is_etf = str(row.get("type") or "").upper() == "ETF"
+    is_etf = "ETF" in str(row.get("type") or "").upper()
     price, ma5, ma10, ma20 = map(lambda k: _finite(row.get(k)), ("price", "ma5", "ma10", "ma20"))
     atr = _finite(row.get("atr14"))
-    rsi = _finite(row.get("rsi14"), 50.0)
+    rsi = _finite(row.get("rsi"), 50.0)
     volume_pace = _finite(row.get("volume_pace"), 1.0)
-    attack = _finite(row.get("attack"))
+    attack = _finite(row.get("attack_volume"))
     entry_score = _finite(row.get("entry_score"), _finite(row.get("score")))
     technical = _finite(row.get("technical_score"), 50.0)
     volume_score = _finite(row.get("volume_score"), 50.0)
     positioning = _finite(row.get("positioning_score"), 50.0)
     news_penalty = _finite(row.get("news_penalty"))
-    coverage_total = int(_finite(row.get("entry_score_coverage_total")))
-    coverage_expected = int(_finite(row.get("entry_score_coverage_expected"), 4 if is_etf else 6))
+    coverage_total = int(_finite(row.get("entry_data_coverage")))
+    coverage_expected = int(_finite(row.get("entry_data_total"), 4 if is_etf else 6))
     entry_low = _finite(row.get("buy_zone_low"), _finite(row.get("better_buy_low")))
     entry_high = _finite(row.get("buy_zone_high"), _finite(row.get("better_buy_high")))
     support1 = _finite(row.get("support1"), entry_low)
@@ -659,7 +659,7 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     score = round(_clamp(score, 0.0, 100.0), 1)
 
     max_loss = (.035 if is_etf else .045) if market == "TW" else (.040 if is_etf else .055)
-    if str(row.get("entry_profile") or "") == "us_high_vol":
+    if str(row.get("entry_profile") or "") == "美股高波動":
         max_loss = .070
     tick = _tick_size(row, max(price, 1.0))
     anchors = [v for v in (entry_low, support1) if v > 0]
