@@ -38,7 +38,7 @@ def test_two_independent_trusted_sources_are_cross_verified():
 
 def test_single_untrusted_rumor_never_reduces_score():
     result = classify_news(
-        [article("Rumor says customer may cancel order", "Unknown Blog")], NOW
+        [article("Rumor claims weak demand and an order cut", "Unknown Blog")], NOW
     )
     assert result["news_risk_level"].startswith("⚪")
     assert result["news_penalty"] == 0.0
