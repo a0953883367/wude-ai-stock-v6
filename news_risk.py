@@ -16,11 +16,11 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; WudeStockRadar/6.27)"}
 TRUSTED_PUBLISHERS = (
     "reuters", "associated press", "ap news", "bloomberg", "wall street journal",
     "financial times", "cnbc", "nikkei", "barron", "marketwatch", "business wire",
-    "globenewswire", "pr newswire", "sec", "nasdaq", "nyse", "公司公告",
+    "globenewswire", "pr newswire", "u.s. securities and exchange commission", "sec filing", "nasdaq", "nyse", "公司公告",
     "公開資訊觀測站", "證券交易所", "櫃買中心", "中央社",
 )
 OFFICIAL_PUBLISHERS = (
-    "sec", "nasdaq", "nyse", "business wire", "globenewswire", "pr newswire",
+    "u.s. securities and exchange commission", "sec filing", "nasdaq", "nyse", "business wire", "globenewswire", "pr newswire",
     "公司公告", "公開資訊觀測站", "證券交易所", "櫃買中心",
 )
 SEVERE_TERMS = (
