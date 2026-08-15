@@ -614,6 +614,192 @@ def _entry_plan(
         "entry_note": note,
     }
 
+
+def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
+    """Conservative trigger-based plan for a 1-5 trading day trade."""
+    market = str(row.get("market") or "").upper()
+    is_etf = str(row.get("type") or "").upper() == "ETF"
+    price, ma5, ma10, ma20 = map(lambda k: _finite(row.get(k)), ("price", "ma5", "ma10", "ma20"))
+    atr = _finite(row.get("atr14"))
+    rsi = _finite(row.get("rsi14"), 50.0)
+    volume_pace = _finite(row.get("volume_pace"), 1.0)
+    attack = _finite(row.get("attack"))
+    entry_score = _finite(row.get("entry_score"), _finite(row.get("score")))
+    technical = _finite(row.get("technical_score"), 50.0)
+    volume_score = _finite(row.get("volume_score"), 50.0)
+    positioning = _finite(row.get("positioning_score"), 50.0)
+    news_penalty = _finite(row.get("news_penalty"))
+    coverage_total = int(_finite(row.get("entry_score_coverage_total")))
+    coverage_expected = int(_finite(row.get("entry_score_coverage_expected"), 4 if is_etf else 6))
+    entry_low = _finite(row.get("buy_zone_low"), _finite(row.get("better_buy_low")))
+    entry_high = _finite(row.get("buy_zone_high"), _finite(row.get("better_buy_high")))
+    support1 = _finite(row.get("support1"), entry_low)
+    resistance1 = _finite(row.get("resistance1"))
+    resistance2 = _finite(row.get("resistance2"))
+
+    coverage_ok = coverage_total >= min(3 if is_etf else 4, max(coverage_expected, 1))
+    technical_ok = all(v > 0 for v in (price, ma10, ma20, atr, entry_low, entry_high))
+    if ma5 > 0 and price >= ma5 >= ma10 >= ma20:
+        trend_score, setup = 88.0, "多頭回測"
+    elif price >= ma10 >= ma20:
+        trend_score, setup = 78.0, "短均線續強"
+    elif price >= ma20 * 0.99:
+        trend_score, setup = 62.0, "月線防守"
+    else:
+        trend_score, setup = 30.0, "趨勢未確認"
+
+    score = entry_score*.35 + technical*.25 + volume_score*.15 + positioning*.10 + trend_score*.15
+    if rsi >= 72:
+        score -= min(12.0, (rsi-72)*1.5+4)
+    if ma20 > 0 and price/ma20-1 >= .10:
+        score -= 8
+    score -= min(15.0, max(news_penalty, 0.0))
+    if row.get("breakdown20"):
+        score -= 15
+    score = round(_clamp(score, 0.0, 100.0), 1)
+
+    max_loss = (.035 if is_etf else .045) if market == "TW" else (.040 if is_etf else .055)
+    if str(row.get("entry_profile") or "") == "us_high_vol":
+        max_loss = .070
+    tick = _tick_size(row, max(price, 1.0))
+    anchors = [v for v in (entry_low, support1) if v > 0]
+    anchor = min(anchors) if anchors else 0.0
+    structural = anchor-atr*.35 if anchor and atr else price*(1-max_loss)
+    loss_floor = entry_high*(1-max_loss) if entry_high else price*(1-max_loss)
+    stop = _market_price(row, max(structural, loss_floor))
+    if entry_low and stop >= entry_low:
+        stop = _market_price(row, entry_low-max(atr*.35, tick))
+    risk = max(entry_high-stop, tick) if entry_high else tick
+    target1 = _market_price(row, max(resistance1, entry_high+risk*1.5))
+    target2 = _market_price(row, max(resistance2, entry_high+risk*2.3, target1+tick))
+    rr = round((target1-entry_high)/risk, 2) if risk > 0 and entry_high else 0.0
+
+    volume_ok = volume_pace >= (.70 if is_etf else .75) or attack > 0
+    eligible = bool(
+        technical_ok and coverage_ok and entry_score >= 58 and score >= 60
+        and price >= ma20*.99 and 40 <= rsi <= 72 and volume_ok
+        and not row.get("breakdown20") and news_penalty < 8
+        and price <= entry_high*(1.08 if is_etf else 1.10) and rr >= 1.5
+    )
+    if eligible:
+        status = "🟢 等待觸發"
+        trigger = ("回測進場區止穩，且前15～30分鐘攻擊量轉正才分批進場"
+                   if price > entry_high else
+                   "進場區不破支撐，出現量增紅K或突破前15分鐘高點才分批進場")
+        reason = f"{setup}｜量能合格｜風報比 {rr:.2f}"
+    elif not coverage_ok or not technical_ok:
+        status, trigger = "⚪ 資料不足", "等待均線、ATR、量能與資料完整度補齊，不先進場"
+        reason = f"資料涵蓋 {coverage_total}/{coverage_expected}，暫不列入短線首選"
+    elif rr < 1.5:
+        status, trigger = "🟡 等待更佳風報比", "現價不追，等待回測使第一停利風報比至少達1.5"
+        reason = f"目前風報比 {rr:.2f}，未達短線門檻"
+    else:
+        status, trigger = "🔴 不列入短線", "等待趨勢、量能、RSI或新聞風險重新符合條件"
+        reason = f"{setup}｜短線分數 {score:.1f}｜條件尚未齊全"
+    return {
+        "short_term_eligible": eligible, "short_term_score": score,
+        "short_term_status": status, "short_term_setup": setup,
+        "short_term_entry_low": _market_price(row, entry_low) if entry_low else None,
+        "short_term_entry_high": _market_price(row, entry_high) if entry_high else None,
+        "short_term_trigger": trigger, "short_term_stop": stop if stop > 0 else None,
+        "short_term_target1": target1 if target1 > 0 else None,
+        "short_term_target2": target2 if target2 > 0 else None,
+        "short_term_rr": rr, "short_term_holding_period": "1～5個交易日",
+        "short_term_exit_rule": "跌破停損價立即退出；第一停利減碼一半並移動停損至成本，第二停利或跌破5日線退出",
+        "short_term_reason": reason,
+        "short_term_data_quality": f"{coverage_total}/{coverage_expected}",
+    }
+
+
+
+def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
+    """Build a conservative 3-12 month accumulation plan."""
+    market = str(row.get("market") or "").upper()
+    is_etf = str(row.get("type") or "").upper() == "ETF"
+    price = _finite(row.get("price"))
+    ma20 = _finite(row.get("ma20"))
+    ma60 = _finite(row.get("ma60"), ma20)
+    atr = _finite(row.get("atr14"))
+    ai_score = _finite(row.get("score"))
+    technical = _finite(row.get("technical_score"), 50.0)
+    fundamental = _finite(row.get("fundamental_score"), 50.0)
+    quality = _finite(row.get("financial_quality_score"), 50.0)
+    growth = _finite(row.get("growth_score"), 50.0)
+    valuation = _finite(row.get("valuation_score"), 50.0)
+    news_penalty = _finite(row.get("news_penalty"))
+    better_low = _finite(row.get("better_buy_low"), _finite(row.get("buy_zone_low")))
+    better_high = _finite(row.get("better_buy_high"), _finite(row.get("buy_zone_high")))
+    support1 = _finite(row.get("support1"), better_low)
+    support2 = _finite(row.get("support2"), ma60)
+    resistance1 = _finite(row.get("resistance1"))
+    resistance2 = _finite(row.get("resistance2"))
+
+    fundamental_available = bool(row.get("fundamental_available"))
+    quality_available = bool(row.get("financial_quality_available"))
+    news_available = bool(row.get("news_data_available"))
+    technical_available = all(v > 0 for v in (price, ma20, ma60, atr))
+    available = sum((technical_available, fundamental_available, quality_available, news_available))
+    required = 2 if is_etf else 3
+    data_ok = available >= required
+
+    if is_etf:
+        long_score = ai_score*.35 + technical*.35 + valuation*.10 + growth*.10 + quality*.10
+    else:
+        long_score = ai_score*.20 + technical*.20 + fundamental*.20 + quality*.18 + growth*.12 + valuation*.10
+    if price > 0 and ma60 > 0:
+        long_score += 4 if price >= ma20 >= ma60 else (-8 if price < ma60*.90 else 0)
+    long_score -= min(15.0, max(news_penalty, 0.0))
+    long_score = round(_clamp(long_score, 0.0, 100.0), 1)
+
+    # Three batches: fair pullback, deeper support, and long-term trend defense.
+    batch1_low, batch1_high = better_low, better_high
+    batch2 = min(v for v in (support1, support2, ma60) if v > 0) if any(v > 0 for v in (support1, support2, ma60)) else 0.0
+    batch2_low = batch2-atr*.40 if batch2 > 0 else 0.0
+    batch2_high = batch2+atr*.20 if batch2 > 0 else 0.0
+    max_loss = .10 if is_etf else (.12 if market == "TW" else .15)
+    structural_stop = min(v for v in (support2, ma60) if v > 0)-atr if any(v > 0 for v in (support2, ma60)) else price*(1-max_loss)
+    stop_floor = batch1_high*(1-max_loss) if batch1_high > 0 else price*(1-max_loss)
+    stop = _market_price(row, max(structural_stop, stop_floor))
+    target1 = _market_price(row, max(resistance2, price*1.15, batch1_high*1.18))
+    target2 = _market_price(row, max(target1+_tick_size(row, max(target1, 1.0)), price*1.28, batch1_high*1.32))
+
+    trend_ok = price >= ma60*.90 if ma60 > 0 else False
+    eligible = bool(
+        data_ok and technical_available and ai_score >= 62 and long_score >= 62
+        and trend_ok and news_penalty < 10 and batch1_low > 0 and batch1_high > 0
+    )
+    if eligible:
+        status = "🟢 可分批布局" if price <= batch1_high*1.03 else "🟡 等待回測布局"
+        reason = f"中長線分數 {long_score:.1f}｜可用資料 {available}/4｜採三段資金管理"
+    elif not data_ok or not technical_available:
+        status = "⚪ 資料不足"
+        reason = f"可用資料 {available}/4，個股至少需 {required} 面向才列入"
+    elif news_penalty >= 10:
+        status = "🔴 重大風險觀察"
+        reason = f"負面新聞風險扣分 {news_penalty:.1f}，暫停新增部位"
+    else:
+        status = "🟡 暫不列入首選"
+        reason = f"中長線分數 {long_score:.1f} 或長期趨勢尚未達門檻"
+
+    return {
+        "mid_long_eligible": eligible,
+        "mid_long_score": long_score,
+        "mid_long_status": status,
+        "mid_long_period": "3～12個月",
+        "mid_long_batch1_low": _market_price(row, batch1_low) if batch1_low > 0 else None,
+        "mid_long_batch1_high": _market_price(row, batch1_high) if batch1_high > 0 else None,
+        "mid_long_batch2_low": _market_price(row, batch2_low) if batch2_low > 0 else None,
+        "mid_long_batch2_high": _market_price(row, batch2_high) if batch2_high > 0 else None,
+        "mid_long_stop": stop if stop > 0 else None,
+        "mid_long_target1": target1 if target1 > 0 else None,
+        "mid_long_target2": target2 if target2 > 0 else None,
+        "mid_long_allocation": "第一批40%｜第二批30%｜趨勢確認後30%",
+        "mid_long_exit_rule": "跌破中長線風控價且兩日未收復則減碼；基本面轉差、重大負面事件或月線轉空時重新評估",
+        "mid_long_reason": reason,
+        "mid_long_data_quality": f"{available}/4",
+    }
+
+
 def score_candidates(
     rows: list[dict[str, Any]],
     macro_regime: dict[str, Any] | None = None,
@@ -792,6 +978,8 @@ def score_candidates(
 
         row.update(_positioning_radar(row))
         row.update(_next_day_scenario(row))
+        row.update(_short_term_plan(row))
+        row.update(_mid_long_term_plan(row))
 
     ranked = sorted(
         rows,
