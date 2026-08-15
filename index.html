@@ -35,7 +35,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <body>
 <div class="shell">
   <header class="header">
-    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.24-Q2</div></div>
+    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.29-Q3</div></div>
   </header>
 
   <div class="nav-label">排行與固定清單</div>
@@ -290,28 +290,54 @@ function showShortTerm(group){
   renderStocks(rows);
 }
 
-function quantumSymbol(value){return String(value||'').toUpperCase().replace(/\.(TW|TWO)$/,'');}
+function quantumSymbol(value){return String(value||'').toUpperCase().replace(/\\.(TW|TWO)$/,'');}
+function quantumPlaceholder(item,index){
+  return [
+    '<article class="card"><div class="card-head"><div><div class="rank">追蹤 '+(index+1)+'</div>',
+    '<div class="stock">'+esc(item.name)+'</div>',
+    '<div class="ticker">'+esc(item.symbol)+' ｜ ⚛️ '+esc(item.classification||'量子概念')+'</div></div>',
+    '<div class="light">⚪</div></div>',
+    '<div class="databox"><b>'+esc(item.role||'量子產業觀察標的')+'</b><br>',
+    '此標的已列入固定量子追蹤清單；目前價格或 AI 分數尚未取得，先直接顯示，後續資料更新後會自動換成完整分析卡片。</div>',
+    '<div class="advice">⚪ 資料待補｜目前僅列入觀察，不作為立即買進依據</div>',
+    '<div class="risk">風險：量子產業仍在早期，波動與技術路線風險高</div></article>'
+  ].join('');
+}
 function showQuantum(group){
   STATE.view='QUANTUM:'+group;setActive('#quantumButtons button','data-quantum',group);clearOtherNav('#quantumButtons button');
   var cfg=STATE.quantum&&STATE.quantum.groups?STATE.quantum.groups[group]:null;
   if(!cfg){document.getElementById('title').textContent='⚛️ 量子概念股';document.getElementById('status').textContent='量子清單尚未載入';renderStocks([]);return;}
-  var found=[],missing=[];
+  var pool=STATE.normalized.concat(STATE.allLegacy.map(normalizeLegacy));
+  var seen={};
+  pool=pool.filter(function(row){
+    var key=quantumSymbol(row.symbol);
+    if(!key||seen[key])return false;
+    seen[key]=true;return true;
+  });
+  var matched=[],missing=[];
   (cfg.items||[]).forEach(function(item){
     var key=quantumSymbol(item.symbol);
-    var stock=STATE.normalized.find(function(row){return quantumSymbol(row.symbol)===key;});
+    var stock=pool.find(function(row){return quantumSymbol(row.symbol)===key;});
     if(stock){
       var copy=Object.assign({},stock);
       copy.risk=(item.classification||'量子概念')+'｜'+(item.role||copy.risk||'');
-      found.push(copy);
+      matched.push({stock:copy,item:item});
     }else missing.push(item);
   });
-  found=sortByScore(found);
+  matched.sort(function(a,b){
+    var x=Number(a.stock.entryScore),y=Number(b.stock.entryScore);
+    if(!Number.isFinite(x))x=Number(a.stock.score);
+    if(!Number.isFinite(y))y=Number(b.stock.score);
+    if(!Number.isFinite(x))x=-Infinity;
+    if(!Number.isFinite(y))y=-Infinity;
+    return y-x;
+  });
   document.getElementById('title').textContent=cfg.title;
-  document.getElementById('status').textContent='依 AI 總分由高到低｜'+(cfg.note||'量子概念觀察清單');
+  document.getElementById('status').textContent='固定清單全部顯示｜已有分數者由高到低；缺少行情者標示「資料待補」｜'+(cfg.note||'量子概念觀察清單');
   var notice='<div class="empty">⚛️ '+esc(STATE.quantum.disclaimer||'量子產業仍在早期，波動與技術路線風險高。')+'</div>';
-  var cards=found.length?found.map(stockCard).join(''):'<div class="empty">等待下一次自動分析資料。</div>';
-  var wait=missing.length?'<div class="empty">等待資料更新：'+missing.map(function(x){return esc(x.name)+'（'+esc(x.symbol)+'）';}).join('、')+'</div>':'';
-  document.getElementById('results').innerHTML=notice+cards+wait;
+  var cards=matched.map(function(entry,index){return stockCard(entry.stock,index);}).join('');
+  var placeholders=missing.map(function(item,index){return quantumPlaceholder(item,matched.length+index);}).join('');
+  document.getElementById('results').innerHTML=notice+cards+placeholders;
 }
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
