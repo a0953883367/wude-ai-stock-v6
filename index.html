@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
-<title>武得 AI 股票助理 V6.26</title>
+<title>武得 AI 股票助理 V6.27</title>
 <style>
 :root{--bg:#07111f;--panel:#111c2e;--card:#111827;--soft:#172033;--line:#263244;--muted:#94a3b8;--blue:#2563eb;--green:#22c55e;--yellow:#facc15;--red:#fb7185;--white:#f8fafc}
 *{box-sizing:border-box}
@@ -76,7 +76,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.26-Q1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.27-Q1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <script>
@@ -116,7 +116,8 @@ function normalizeLegacy(row){
 function normalizeReport(row){
   return {
     name:row.name||'—',symbol:row.symbol||'—',market:row.market||'US',type:row.type||'個股',theme:row.theme||'—',
-    score:row.score,entryScore:row.entry_score,price:row.price,change:row.change_pct,rsi:row.rsi,volume:row.volume_pace,technical:row.technical_score,volumeScore:row.volume_score,institutionScore:row.institution_score,creditScore:row.credit_score,valuationScore:row.valuation_score,growthScore:row.growth_score,financialQualityScore:row.financial_quality_score,fundamental:row.fundamental_score,news:'—',
+    score:row.score,entryScore:row.entry_score,price:row.price,change:row.change_pct,rsi:row.rsi,volume:row.volume_pace,technical:row.technical_score,volumeScore:row.volume_score,institutionScore:row.institution_score,creditScore:row.credit_score,valuationScore:row.valuation_score,growthScore:row.growth_score,financialQualityScore:row.financial_quality_score,fundamental:row.fundamental_score,news:row.news_summary||'—',
+    newsRiskLevel:row.news_risk_level,newsPenalty:row.news_penalty,newsVerified:row.news_verified,newsArticles:Array.isArray(row.news_articles)?row.news_articles:[],newsDataAvailable:row.news_data_available,
     buy:(row.buy_zone_low!=null?row.buy_zone_low+' ～ '+row.buy_zone_high:row.buy_price),better:(row.better_buy_low!=null?row.better_buy_low+' ～ '+row.better_buy_high:row.buy_price),entryNote:row.entry_note,support1:row.support1,support2:row.support2,resistance1:row.resistance1,resistance2:row.resistance2,
     ma5:row.ma5,ma10:row.ma10,ma20:row.ma20,ma60:row.ma60,
     avgVolume5:row.avg_volume5,avgVolume10:row.avg_volume10,avgVolume20:row.avg_volume20,
@@ -201,6 +202,14 @@ function stockCard(stock,index){
     positioning+='<br><span class="muted">此雷達僅顯示，不影響原本AI排名分數。</span></div>';
   }
   var scenario=stock.scenarioContinuation?'<div class="databox">📋 <b>'+esc(stock.scenarioTitle||(stock.market==='TW'?'🇹🇼 台股明日劇本':'🇺🇸 美股下個交易日劇本'))+'（'+esc(stock.scenarioQuality||'部分資料')+'）</b><br>依據：'+esc(stock.scenarioBasis||'資料不足')+'<br>🔥 '+esc(stock.scenarioContinuation)+'<br>⚠️ '+esc(stock.scenarioNoChase||'—')+'<br>🛡️ '+esc(stock.scenarioBreakdown||'—')+'</div>':'';
+  var newsLevel=stock.newsRiskLevel||'⚪ 尚未掃描';
+  var newsEffect=Number(stock.newsPenalty)>0?'影響計分：<b class="down">-'+number(stock.newsPenalty,1)+' 分</b>':'僅供觀察，不影響計分';
+  var newsLinks=(stock.newsArticles||[]).slice(0,3).map(function(item){
+    var url=String(item.url||'');
+    var title=esc(item.published_at||'—')+'｜'+esc(item.publisher||'來源未標示')+'｜'+esc(item.title||'');
+    return /^https?:\/\//i.test(url)?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+title+'</a>':title;
+  }).join('<br>');
+  var newsRadar='<div class="databox">📰 <b>負面新聞風險雷達：'+esc(newsLevel)+'</b><br>'+esc(stock.news||'本次沒有新聞摘要')+'<br>'+newsEffect+(newsLinks?'<br>'+newsLinks:'')+'</div>';
   return [
     '<article class="card"><div class="card-head"><div><div class="rank">TOP '+(index+1)+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
@@ -213,7 +222,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',analysisPanel(stock),data,positioning,scenario,
+    '</div>',analysisPanel(stock),data,positioning,scenario,newsRadar,
     '<div class="buybox">🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
