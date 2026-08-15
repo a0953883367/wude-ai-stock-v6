@@ -711,6 +711,95 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
+    """Build a conservative 3-12 month accumulation plan."""
+    market = str(row.get("market") or "").upper()
+    is_etf = str(row.get("type") or "").upper() == "ETF"
+    price = _finite(row.get("price"))
+    ma20 = _finite(row.get("ma20"))
+    ma60 = _finite(row.get("ma60"), ma20)
+    atr = _finite(row.get("atr14"))
+    ai_score = _finite(row.get("score"))
+    technical = _finite(row.get("technical_score"), 50.0)
+    fundamental = _finite(row.get("fundamental_score"), 50.0)
+    quality = _finite(row.get("financial_quality_score"), 50.0)
+    growth = _finite(row.get("growth_score"), 50.0)
+    valuation = _finite(row.get("valuation_score"), 50.0)
+    news_penalty = _finite(row.get("news_penalty"))
+    better_low = _finite(row.get("better_buy_low"), _finite(row.get("buy_zone_low")))
+    better_high = _finite(row.get("better_buy_high"), _finite(row.get("buy_zone_high")))
+    support1 = _finite(row.get("support1"), better_low)
+    support2 = _finite(row.get("support2"), ma60)
+    resistance1 = _finite(row.get("resistance1"))
+    resistance2 = _finite(row.get("resistance2"))
+
+    fundamental_available = bool(row.get("fundamental_available"))
+    quality_available = bool(row.get("financial_quality_available"))
+    news_available = bool(row.get("news_data_available"))
+    technical_available = all(v > 0 for v in (price, ma20, ma60, atr))
+    available = sum((technical_available, fundamental_available, quality_available, news_available))
+    required = 2 if is_etf else 3
+    data_ok = available >= required
+
+    if is_etf:
+        long_score = ai_score*.35 + technical*.35 + valuation*.10 + growth*.10 + quality*.10
+    else:
+        long_score = ai_score*.20 + technical*.20 + fundamental*.20 + quality*.18 + growth*.12 + valuation*.10
+    if price > 0 and ma60 > 0:
+        long_score += 4 if price >= ma20 >= ma60 else (-8 if price < ma60*.90 else 0)
+    long_score -= min(15.0, max(news_penalty, 0.0))
+    long_score = round(_clamp(long_score, 0.0, 100.0), 1)
+
+    # Three batches: fair pullback, deeper support, and long-term trend defense.
+    batch1_low, batch1_high = better_low, better_high
+    batch2 = min(v for v in (support1, support2, ma60) if v > 0) if any(v > 0 for v in (support1, support2, ma60)) else 0.0
+    batch2_low = batch2-atr*.40 if batch2 > 0 else 0.0
+    batch2_high = batch2+atr*.20 if batch2 > 0 else 0.0
+    max_loss = .10 if is_etf else (.12 if market == "TW" else .15)
+    structural_stop = min(v for v in (support2, ma60) if v > 0)-atr if any(v > 0 for v in (support2, ma60)) else price*(1-max_loss)
+    stop_floor = batch1_high*(1-max_loss) if batch1_high > 0 else price*(1-max_loss)
+    stop = _market_price(row, max(structural_stop, stop_floor))
+    target1 = _market_price(row, max(resistance2, price*1.15, batch1_high*1.18))
+    target2 = _market_price(row, max(target1+_tick_size(row, max(target1, 1.0)), price*1.28, batch1_high*1.32))
+
+    trend_ok = price >= ma60*.90 if ma60 > 0 else False
+    eligible = bool(
+        data_ok and technical_available and ai_score >= 62 and long_score >= 62
+        and trend_ok and news_penalty < 10 and batch1_low > 0 and batch1_high > 0
+    )
+    if eligible:
+        status = "🟢 可分批布局" if price <= batch1_high*1.03 else "🟡 等待回測布局"
+        reason = f"中長線分數 {long_score:.1f}｜可用資料 {available}/4｜採三段資金管理"
+    elif not data_ok or not technical_available:
+        status = "⚪ 資料不足"
+        reason = f"可用資料 {available}/4，個股至少需 {required} 面向才列入"
+    elif news_penalty >= 10:
+        status = "🔴 重大風險觀察"
+        reason = f"負面新聞風險扣分 {news_penalty:.1f}，暫停新增部位"
+    else:
+        status = "🟡 暫不列入首選"
+        reason = f"中長線分數 {long_score:.1f} 或長期趨勢尚未達門檻"
+
+    return {
+        "mid_long_eligible": eligible,
+        "mid_long_score": long_score,
+        "mid_long_status": status,
+        "mid_long_period": "3～12個月",
+        "mid_long_batch1_low": _market_price(row, batch1_low) if batch1_low > 0 else None,
+        "mid_long_batch1_high": _market_price(row, batch1_high) if batch1_high > 0 else None,
+        "mid_long_batch2_low": _market_price(row, batch2_low) if batch2_low > 0 else None,
+        "mid_long_batch2_high": _market_price(row, batch2_high) if batch2_high > 0 else None,
+        "mid_long_stop": stop if stop > 0 else None,
+        "mid_long_target1": target1 if target1 > 0 else None,
+        "mid_long_target2": target2 if target2 > 0 else None,
+        "mid_long_allocation": "第一批40%｜第二批30%｜趨勢確認後30%",
+        "mid_long_exit_rule": "跌破中長線風控價且兩日未收復則減碼；基本面轉差、重大負面事件或月線轉空時重新評估",
+        "mid_long_reason": reason,
+        "mid_long_data_quality": f"{available}/4",
+    }
+
+
 def score_candidates(
     rows: list[dict[str, Any]],
     macro_regime: dict[str, Any] | None = None,
@@ -890,6 +979,7 @@ def score_candidates(
         row.update(_positioning_radar(row))
         row.update(_next_day_scenario(row))
         row.update(_short_term_plan(row))
+        row.update(_mid_long_term_plan(row))
 
     ranked = sorted(
         rows,
