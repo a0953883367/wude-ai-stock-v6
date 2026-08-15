@@ -23,6 +23,7 @@ from data_fetcher import (
 )
 from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
+from news_risk import fetch_news_risks
 from performance import load_performance_context, update_performance
 from strategy import build_features, score_candidates
 from watchlist import load_watchlist
@@ -115,10 +116,33 @@ def main() -> int:
         fetch_macro_history(),
     )
     performance_context = load_performance_context(SETTINGS.reports_dir)
-    ranked = score_candidates(features, macro_regime, performance_context)
-    if not ranked:
+    # First pass selects a bounded set for the news scan. This keeps network
+    # usage predictable while covering every displayed TOP20 plus a buffer and
+    # every fixed-watchlist item.
+    preliminary = score_candidates(features, macro_regime, performance_context)
+    if not preliminary:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
+    news_targets_by_symbol = {
+        row["symbol"]: row
+        for group in (
+            [row for row in preliminary if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))][:25],
+            [row for row in preliminary if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:25],
+            [row for row in preliminary if "ETF" in str(row.get("type", "")).upper()][:25],
+        )
+        for row in group
+    }
+    preliminary_by_symbol = {row["symbol"]: row for row in preliminary}
+    for item in watchlist:
+        row = preliminary_by_symbol.get(item["symbol"])
+        if row:
+            news_targets_by_symbol[row["symbol"]] = row
+    news_risks = fetch_news_risks(list(news_targets_by_symbol.values()))
+    for row in features:
+        risk = news_risks.get(row.get("symbol"))
+        if risk:
+            row.update(risk)
 
+    ranked = score_candidates(features, macro_regime, performance_context)
     by_symbol = {row["symbol"]: row for row in ranked}
     watchlist_rows = sort_by_score([
         by_symbol[item["symbol"]]
@@ -177,6 +201,10 @@ def main() -> int:
             "financial_quality_count": len(financial_quality),
             "broker_count": len(broker_branches),
             "us_short_volume_count": len(us_short_volume),
+            "news_scanned_count": len(news_risks),
+            "news_verified_risk_count": sum(
+                1 for item in news_risks.values() if item.get("news_penalty", 0) > 0
+            ),
             "expected_tw_count": len(watchlist_stock_ids),
         },
         "watchlist": watchlist_rows,
