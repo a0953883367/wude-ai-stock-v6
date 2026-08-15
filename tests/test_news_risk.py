@@ -59,3 +59,27 @@ def test_one_trusted_report_is_display_only():
     assert result["news_risk_level"].startswith("🟡")
     assert result["news_verified"] is False
     assert result["news_penalty"] == 0.0
+
+
+def test_unrelated_negative_article_is_filtered_by_stock_identity():
+    result = classify_news(
+        [article(
+            "Social Security's 2027 COLA Just Got Downgraded: What Retirees Need to Know",
+            "Motley Fool",
+        )],
+        NOW,
+        identity_terms={"8222", "寶一"},
+    )
+    assert result["news_articles"] == []
+    assert result["news_penalty"] == 0.0
+    assert result["news_risk_level"].startswith("🟢")
+
+
+def test_relevant_negative_article_is_kept_by_stock_identity():
+    result = classify_news(
+        [article("Amazon faces analyst downgrade after margin pressure", "Reuters")],
+        NOW,
+        identity_terms={"amzn", "amazon"},
+    )
+    assert len(result["news_articles"]) == 1
+    assert result["news_risk_level"].startswith("🟡")

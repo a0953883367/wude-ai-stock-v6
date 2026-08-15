@@ -299,7 +299,7 @@ function showShortTerm(group){
     var eligibleDiff=Number(Boolean(b.shortTermEligible))-Number(Boolean(a.shortTermEligible));
     if(eligibleDiff!==0)return eligibleDiff;
     return Number(b.shortTermScore||0)-Number(a.shortTermScore||0);
-  }).slice(0,10);
+  }).slice(0,20);
   var titles={TW:'🇹🇼 台股短線進出場',US:'🇺🇸 美股短線進出場',ETF:'📊 ETF短線進出場'};
   document.getElementById('title').textContent=titles[group];
   document.getElementById('status').textContent='合格且資料完整者優先，再依短線分數由高到低；不合格者仍保留顯示但移至後方。須等15～30分鐘觸發，不代表開盤直接買。';

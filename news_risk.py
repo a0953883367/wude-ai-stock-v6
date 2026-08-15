@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Any
@@ -40,6 +41,32 @@ NEGATIVE_TERMS = (
     "訴訟", "罰款", "反壟斷", "放空報告",
 )
 
+GENERIC_IDENTITY_TERMS = {
+    "inc", "corp", "corporation", "company", "co", "ltd", "limited",
+    "holdings", "group", "plc", "the", "etf",
+}
+
+
+def _identity_terms(symbol: str, name: str) -> set[str]:
+    """Return conservative ticker/name terms used to reject unrelated news."""
+    raw_symbol = re.sub(r"\.(TW|TWO)$", "", symbol.upper()).casefold()
+    normalized_name = re.sub(r"[^\w\u4e00-\u9fff]+", " ", name.casefold()).strip()
+    candidates = {raw_symbol}
+    if normalized_name:
+        candidates.add(normalized_name)
+        candidates.update(normalized_name.split())
+    return {
+        term for term in candidates
+        if len(term) >= 2 and term not in GENERIC_IDENTITY_TERMS
+    }
+
+
+def _article_matches_identity(title: str, identity_terms: set[str] | None) -> bool:
+    if not identity_terms:
+        return True
+    normalized = re.sub(r"\s+", " ", title.casefold())
+    return any(term in normalized for term in identity_terms)
+
 
 def _publisher_flags(publisher: str) -> tuple[bool, bool]:
     value = publisher.casefold()
@@ -58,7 +85,9 @@ def _article_age_days(article: dict[str, Any], now: datetime) -> float:
 
 
 def classify_news(
-    articles: list[dict[str, Any]], now: datetime | None = None
+    articles: list[dict[str, Any]],
+    now: datetime | None = None,
+    identity_terms: set[str] | None = None,
 ) -> dict[str, Any]:
     """Classify recent articles; rumors and one-source claims never reduce scores."""
     now = now or datetime.now(timezone.utc)
@@ -69,6 +98,8 @@ def classify_news(
             continue
         title = str(article.get("title") or "").strip()
         if not title:
+            continue
+        if not _article_matches_identity(title, identity_terms):
             continue
         publisher = str(article.get("publisher") or article.get("provider") or "來源未標示")
         text = title.casefold()
@@ -142,7 +173,10 @@ def _fetch_symbol(row: dict[str, Any]) -> tuple[str, dict[str, Any]]:
             timeout=12,
         )
         response.raise_for_status()
-        result = classify_news(response.json().get("news") or [])
+        result = classify_news(
+            response.json().get("news") or [],
+            identity_terms=_identity_terms(symbol, str(row.get("name") or "")),
+        )
     except Exception as exc:  # network/data failure must stay neutral
         LOG.warning("news scan failed for %s: %s", symbol, exc)
         result = {

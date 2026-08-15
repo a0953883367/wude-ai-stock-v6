@@ -224,10 +224,10 @@ def test_short_term_plan_has_trigger_and_bounded_risk():
     row = {
         "market": "TW", "type": "個股", "price": 101.0,
         "ma5": 101.5, "ma10": 100.0, "ma20": 97.0, "atr14": 2.0,
-        "rsi14": 58.0, "volume_pace": 1.2, "attack": 8.0,
+        "rsi": 58.0, "volume_pace": 1.2, "attack_volume": 8.0,
         "entry_score": 82.0, "technical_score": 86.0, "volume_score": 78.0,
         "positioning_score": 70.0, "news_penalty": 0.0,
-        "entry_score_coverage_total": 6, "entry_score_coverage_expected": 6,
+        "entry_data_coverage": 6, "entry_data_total": 6,
         "buy_zone_low": 98.0, "buy_zone_high": 100.0,
         "support1": 97.0, "resistance1": 105.0, "resistance2": 110.0,
     }
@@ -243,14 +243,14 @@ def test_short_term_plan_rejects_incomplete_or_negative_news_rows():
     base = {
         "market": "US", "type": "個股", "price": 100.0,
         "ma5": 101.0, "ma10": 99.0, "ma20": 96.0, "atr14": 2.5,
-        "rsi14": 56.0, "volume_pace": 1.1,
+        "rsi": 56.0, "volume_pace": 1.1,
         "entry_score": 80.0, "technical_score": 84.0, "volume_score": 75.0,
         "positioning_score": 65.0, "buy_zone_low": 97.0, "buy_zone_high": 99.0,
         "support1": 96.0, "resistance1": 105.0, "resistance2": 110.0,
-        "entry_score_coverage_total": 2, "entry_score_coverage_expected": 6,
+        "entry_data_coverage": 2, "entry_data_total": 6,
     }
     assert _short_term_plan(base)["short_term_status"].startswith("⚪")
-    risky = dict(base, entry_score_coverage_total=6, news_penalty=12.0)
+    risky = dict(base, entry_data_coverage=6, news_penalty=12.0)
     assert _short_term_plan(risky)["short_term_eligible"] is False
 
 
