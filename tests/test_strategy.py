@@ -1,6 +1,6 @@
 import pandas as pd
 
-from strategy import _candlestick_features, _entry_plan, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
+from strategy import _available_weighted_score, _candlestick_features, _entry_plan, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, score_candidates
 
 
 def test_candidate_scoring_has_prices_and_ranking():
@@ -224,7 +224,9 @@ def test_short_term_plan_has_trigger_and_bounded_risk():
     row = {
         "market": "TW", "type": "個股", "price": 101.0,
         "ma5": 101.5, "ma10": 100.0, "ma20": 97.0, "atr14": 2.0,
-        "rsi": 58.0, "volume_pace": 1.2, "attack_volume": 8.0,
+        "rsi": 58.0, "volume_pace": 1.2, "avg_volume20": 1_000_000,
+        "attack_volume": 8.0, "institution_available": True,
+        "news_data_available": True,
         "entry_score": 82.0, "technical_score": 86.0, "volume_score": 78.0,
         "positioning_score": 70.0, "news_penalty": 0.0,
         "entry_data_coverage": 6, "entry_data_total": 6,
@@ -262,6 +264,7 @@ def test_mid_long_plan_uses_fundamentals_and_three_stage_allocation():
         "score": 80.0, "technical_score": 78.0, "fundamental_score": 82.0,
         "financial_quality_score": 84.0, "growth_score": 76.0,
         "valuation_score": 68.0, "news_penalty": 0.0,
+        "revenue_yoy_pct": 18.0, "per": 20.0, "institution_available": True,
         "fundamental_available": True, "financial_quality_available": True,
         "news_data_available": True, "better_buy_low": 99.0, "better_buy_high": 102.0,
         "support1": 98.0, "support2": 94.0, "resistance1": 110.0,
@@ -284,3 +287,23 @@ def test_mid_long_plan_blocks_incomplete_company_data():
     plan = _mid_long_term_plan(row)
     assert plan["mid_long_eligible"] is False
     assert plan["mid_long_status"].startswith("⚪")
+
+
+def test_available_weighted_score_penalizes_missing_dimensions_without_neutral_fill():
+    complete = _available_weighted_score([(90, 50, True), (70, 50, True)])
+    incomplete = _available_weighted_score([(90, 50, True), (70, 50, False)])
+    assert complete[0] == 80.0
+    assert incomplete[0] < complete[0]
+    assert incomplete[1:] == (1, 2, 50.0)
+
+
+def test_three_rank_fields_are_independent():
+    rows = [
+        {"score": 90, "short_term_score": 60, "mid_long_score": 70},
+        {"score": 70, "short_term_score": 95, "mid_long_score": 80},
+    ]
+    overall = sorted(rows, key=lambda row: row["score"], reverse=True)
+    short = sorted(rows, key=lambda row: row["short_term_score"], reverse=True)
+    long = sorted(rows, key=lambda row: row["mid_long_score"], reverse=True)
+    assert overall[0] is not short[0]
+    assert short[0] is long[0]
