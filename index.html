@@ -61,6 +61,13 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-short="ETF">📊 ETF短線</button>
   </div>
 
+  <div class="nav-label">🌳 中長線布局（3～12個月）</div>
+  <div class="buttons report" id="longButtons">
+    <button data-long="TW">🇹🇼 台股布局</button>
+    <button data-long="US">🇺🇸 美股布局</button>
+    <button data-long="ETF">📊 ETF布局</button>
+  </div>
+
   <div class="nav-label">AI 股票早中晚報</div>
   <div class="buttons report" id="reportButtons">
     <button data-period="morning">🌅 早報</button>
@@ -138,6 +145,7 @@ function normalizeReport(row){
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     scenarioTitle:row.scenario_title,scenarioMarket:row.scenario_market,scenarioQuality:row.scenario_data_quality,scenarioBasis:row.scenario_basis,scenarioContinuation:row.scenario_continuation,scenarioNoChase:row.scenario_no_chase,scenarioBreakdown:row.scenario_breakdown_text,
     shortTermEligible:row.short_term_eligible,shortTermScore:row.short_term_score,shortTermStatus:row.short_term_status,shortTermSetup:row.short_term_setup,shortTermEntryLow:row.short_term_entry_low,shortTermEntryHigh:row.short_term_entry_high,shortTermTrigger:row.short_term_trigger,shortTermStop:row.short_term_stop,shortTermTarget1:row.short_term_target1,shortTermTarget2:row.short_term_target2,shortTermRr:row.short_term_rr,shortTermPeriod:row.short_term_holding_period,shortTermExit:row.short_term_exit_rule,shortTermReason:row.short_term_reason,shortTermQuality:row.short_term_data_quality,
+    midLongEligible:row.mid_long_eligible,midLongScore:row.mid_long_score,midLongStatus:row.mid_long_status,midLongPeriod:row.mid_long_period,midLongBatch1Low:row.mid_long_batch1_low,midLongBatch1High:row.mid_long_batch1_high,midLongBatch2Low:row.mid_long_batch2_low,midLongBatch2High:row.mid_long_batch2_high,midLongStop:row.mid_long_stop,midLongTarget1:row.mid_long_target1,midLongTarget2:row.mid_long_target2,midLongAllocation:row.mid_long_allocation,midLongExit:row.mid_long_exit_rule,midLongReason:row.mid_long_reason,midLongQuality:row.mid_long_data_quality,
     stop:row.stop_price,advice:row.action||'🟡 觀察',risk:row.risk||'一般波動',light:lightFrom(row.action,row.score),source:'report'
   };
 }
@@ -175,6 +183,7 @@ function analysisPanel(stock){
   return '<details class="deep"><summary>🧠 查看六大深入分析</summary><div class="deep-body">'+conclusion+'<div class="radar-wrap">'+radarSvg(values)+'<div>'+factors.map(function(f){return '<div class="factor"><div class="factor-head"><b>'+f[0]+'</b><span>'+number(f[1],1)+'｜'+scoreTone(f[1])+'</span></div><div class="factor-track"><div class="factor-fill" style="width:'+bounded(f[1])+'%"></div></div><div class="factor-note">'+f[2]+'</div></div>';}).join('')+'</div></div>'+insightHtml+(missing.length?'<div class="neutral-note">⚠️ '+missing.join('、')+'尚未取得完整資料，目前以中性 50 分呈現，不會因此扣分。</div>':'')+'</div></details>';
 }
 function stockCard(stock,index){
+  var longPlan=stock.midLongStatus?'<div class="databox">🌳 <b>'+esc(stock.midLongStatus)+'</b>｜中長線分數 '+esc(number(stock.midLongScore,1))+'｜'+esc(stock.midLongPeriod)+'<br>第一布局區：<b>'+esc(number(stock.midLongBatch1Low,2))+' ～ '+esc(number(stock.midLongBatch1High,2))+'</b><br>第二布局區：<b>'+esc(number(stock.midLongBatch2Low,2))+' ～ '+esc(number(stock.midLongBatch2High,2))+'</b><br>資金配置：<b>'+esc(stock.midLongAllocation)+'</b><br>中長線風控：<b class="down">'+esc(number(stock.midLongStop,2))+'</b>｜第一目標：<b>'+esc(number(stock.midLongTarget1,2))+'</b>｜第二目標：<b>'+esc(number(stock.midLongTarget2,2))+'</b><br>'+esc(stock.midLongReason)+'<br>退場：'+esc(stock.midLongExit)+'</div>':'';
   var shortPlan=stock.shortTermStatus?'<div class="databox">⚡ <b>'+esc(stock.shortTermStatus)+'</b>｜短線分數 '+esc(number(stock.shortTermScore,1))+'｜'+esc(stock.shortTermPeriod)+'<br>型態：<b>'+esc(stock.shortTermSetup)+'</b>｜資料 '+esc(stock.shortTermQuality)+'<br>進場區：<b>'+esc(number(stock.shortTermEntryLow,2))+' ～ '+esc(number(stock.shortTermEntryHigh,2))+'</b><br>觸發：<b>'+esc(stock.shortTermTrigger)+'</b><br>停損：<b class="down">'+esc(number(stock.shortTermStop,2))+'</b>｜第一停利：<b>'+esc(number(stock.shortTermTarget1,2))+'</b>｜第二停利：<b>'+esc(number(stock.shortTermTarget2,2))+'</b>｜風報比 '+esc(number(stock.shortTermRr,2))+'<br>'+esc(stock.shortTermReason)+'<br>出場：'+esc(stock.shortTermExit)+'</div>':'';
   var change=Number.isFinite(Number(stock.change))?percent(stock.change):esc(stock.change);
   var volume=stock.volume==='—'?'—':number(stock.volume,2)+'x';
@@ -232,7 +241,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,
+    '</div>',analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
     '<div class="buybox">'+(stock.entryProfile?'規則：<b>'+esc(stock.entryProfile)+'</b>｜資料 '+esc(stock.entryCoverage)+'/'+esc(stock.entryDataTotal)+'｜進場分上限 '+esc(number(stock.entryScoreCap,0))+'<br>':'')+'🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
@@ -247,9 +256,25 @@ function renderStocks(stocks){
 }
 function setActive(selector,attribute,value){document.querySelectorAll(selector).forEach(function(btn){btn.classList.toggle('active',btn.getAttribute(attribute)===value);});}
 function clearOtherNav(active){
-  ['#marketButtons button','#quantumButtons button','#shortButtons button','#reportButtons button'].forEach(function(selector){
+  ['#marketButtons button','#quantumButtons button','#shortButtons button','#longButtons button','#reportButtons button'].forEach(function(selector){
     if(selector!==active)document.querySelectorAll(selector).forEach(function(b){b.classList.remove('active');});
   });
+}
+
+
+function showMidLong(group){
+  STATE.view='LONG:'+group;
+  setActive('#longButtons button','data-long',group);
+  clearOtherNav('#longButtons button');
+  var rows=STATE.normalized.filter(function(stock){
+    if(!stock.midLongEligible)return false;
+    if(group==='ETF')return String(stock.type||'').toUpperCase()==='ETF';
+    return stock.market===group&&String(stock.type||'').toUpperCase()!=='ETF';
+  }).sort(function(a,b){return Number(b.midLongScore||0)-Number(a.midLongScore||0);}).slice(0,20);
+  var titles={TW:'🇹🇼 台股中長線布局',US:'🇺🇸 美股中長線布局',ETF:'📊 ETF中長線布局'};
+  document.getElementById('title').textContent=titles[group];
+  document.getElementById('status').textContent='持有規劃3～12個月；依技術、財務品質、成長、估值及新聞風險篩選，採三批資金布局，不建議一次買滿。';
+  renderStocks(rows);
 }
 
 function showShortTerm(group){
@@ -373,6 +398,7 @@ async function loadAll(){
 }
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
 document.querySelectorAll('#quantumButtons button').forEach(function(btn){btn.addEventListener('click',function(){showQuantum(btn.getAttribute('data-quantum'));});});
+document.querySelectorAll('#longButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMidLong(btn.getAttribute('data-long'));});});
 document.querySelectorAll('#shortButtons button').forEach(function(btn){btn.addEventListener('click',function(){showShortTerm(btn.getAttribute('data-short'));});});
 document.querySelectorAll('#reportButtons button').forEach(function(btn){btn.addEventListener('click',function(){showReport(btn.getAttribute('data-period'));});});
 document.getElementById('refreshButton').addEventListener('click',function(){
