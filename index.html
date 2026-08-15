@@ -267,7 +267,6 @@ function showMidLong(group){
   setActive('#longButtons button','data-long',group);
   clearOtherNav('#longButtons button');
   var rows=STATE.normalized.filter(function(stock){
-    if(!stock.midLongEligible)return false;
     if(group==='ETF')return String(stock.type||'').toUpperCase()==='ETF';
     return stock.market===group&&String(stock.type||'').toUpperCase()!=='ETF';
   }).sort(function(a,b){return Number(b.midLongScore||0)-Number(a.midLongScore||0);}).slice(0,20);
@@ -282,7 +281,6 @@ function showShortTerm(group){
   setActive('#shortButtons button','data-short',group);
   clearOtherNav('#shortButtons button');
   var rows=STATE.normalized.filter(function(stock){
-    if(!stock.shortTermEligible)return false;
     if(group==='ETF')return String(stock.type||'').toUpperCase()==='ETF';
     return stock.market===group&&String(stock.type||'').toUpperCase()!=='ETF';
   }).sort(function(a,b){return Number(b.shortTermScore||0)-Number(a.shortTermScore||0);}).slice(0,10);
