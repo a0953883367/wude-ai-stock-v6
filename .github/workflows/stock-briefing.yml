@@ -7,17 +7,13 @@ on:
     - cron: "0 4 * * *"
     - cron: "0 12 * * *"
 
-    # Silent background refreshes during Taiwan trading hours.
-    # 09:00-13:30 Asia/Taipei, weekdays; 12:00 is covered by the fixed report.
-    - cron: "0,30 1-3 * * 1-5"
-    - cron: "30 4 * * 1-5"
-    - cron: "0,30 5 * * 1-5"
+    # Silent background refreshes every two hours during Taiwan trading hours.
+    # 09:00 / 11:00 / 13:00 Asia/Taipei, weekdays.
+    - cron: "0 1,3,5 * * 1-5"
 
-    # Silent background refreshes covering regular US trading hours.
-    # The wider UTC window safely covers both daylight-saving and standard time.
-    - cron: "30 13 * * 1-5"
-    - cron: "0,30 14-20 * * 1-5"
-    - cron: "0 21 * * 1-5"
+    # Silent background refreshes every two hours covering US trading hours.
+    # 13:30 / 15:30 / 17:30 / 19:30 / 21:30 UTC, weekdays.
+    - cron: "30 13,15,17,19,21 * * 1-5"
   workflow_dispatch:
     inputs:
       period:
@@ -60,7 +56,7 @@ jobs:
               "0 22 * * *") period="morning" ;;
               "0 4 * * *") period="noon" ;;
               "0 12 * * *") period="evening" ;;
-              "0,30 1-3 * * 1-5"|"30 4 * * 1-5"|"0,30 5 * * 1-5")
+              "0 1,3,5 * * 1-5")
                 period="noon"
                 intraday="true"
                 ;;
