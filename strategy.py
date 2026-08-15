@@ -674,7 +674,12 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     target2 = _market_price(row, max(resistance2, entry_high+risk*2.3, target1+tick))
     rr = round((target1-entry_high)/risk, 2) if risk > 0 and entry_high else 0.0
 
-    volume_ok = volume_pace >= (.70 if is_etf else .75) or attack > 0
+    market_relative_volume = _finite(row.get("market_relative_volume"), 1.0)
+    volume_ok = (
+        volume_pace >= (.70 if is_etf else .75)
+        or market_relative_volume >= 0.90
+        or attack > 0
+    )
     eligible = bool(
         technical_ok and coverage_ok and entry_score >= 58 and score >= 60
         and price >= ma20*.99 and 40 <= rsi <= 72 and volume_ok
@@ -821,7 +826,25 @@ def score_candidates(
         changes = [r["change_pct"] for r in rows if str(r["theme"]) == theme]
         theme_change[theme] = float(np.median(changes)) if changes else 0.0
 
+    # Compare each symbol with its own market on the same session.  Absolute
+    # volume alone makes an entire low-participation US session look weak.
+    market_volume_medians: dict[str, float] = {}
+    for market_name in {str(r.get("market") or "").upper() for r in rows}:
+        paces = [
+            _finite(r.get("volume_pace"))
+            for r in rows
+            if str(r.get("market") or "").upper() == market_name
+            and _finite(r.get("volume_pace")) > 0
+        ]
+        market_volume_medians[market_name] = float(np.median(paces)) if paces else 1.0
+
     for row in rows:
+        market_name = str(row.get("market") or "").upper()
+        market_volume_median = max(market_volume_medians.get(market_name, 1.0), 0.10)
+        market_relative_volume = _finite(row.get("volume_pace"), 1.0) / market_volume_median
+        row["market_volume_median"] = round(market_volume_median, 2)
+        row["market_relative_volume"] = round(market_relative_volume, 2)
+
         technical = 50.0
         technical += _clamp(row["change_pct"] * 4, -20, 20)
         technical += 7 if row["price"] >= row["ma5"] else -6
@@ -834,7 +857,16 @@ def score_candidates(
             technical += 6
         technical += (_finite(row.get("kline_score"), 50) - 50) * 0.35
 
-        volume_score = _clamp(35 + (row["volume_pace"] - 1) * 35 + row["attack_volume"] * 0.25)
+        # Blend absolute pace, same-market relative participation and attack
+        # volume.  A broad market-wide quiet session is no longer treated as
+        # symbol-specific volume failure.
+        absolute_volume = _clamp(50 + (row["volume_pace"] - 0.75) * 30)
+        relative_volume = _clamp(50 + (market_relative_volume - 1.0) * 35)
+        volume_score = _clamp(
+            absolute_volume * 0.40
+            + relative_volume * 0.40
+            + _clamp(50 + row["attack_volume"] * 0.8) * 0.20
+        )
         if row.get("institution_available"):
             participation = row["institution_5d"] / max(row["avg_volume20"] * 5, 1) * 100
             continuity = 0
@@ -959,8 +991,12 @@ def score_candidates(
             row["risk"] = "過熱，勿追高"
         elif row["price"] < row["ma20"]:
             row["risk"] = "跌破月線，等待止穩"
-        elif row["volume_pace"] < 0.65:
-            row["risk"] = "量能不足"
+        elif (
+            row["volume_pace"] < 0.65
+            and market_relative_volume < 0.80
+            and row["attack_volume"] <= 0
+        ):
+            row["risk"] = "量能明顯弱於同市場"
         else:
             row["risk"] = "一般波動"
 
