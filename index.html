@@ -152,6 +152,8 @@ function normalizeReport(row){
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
+    marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
+    extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
     scenarioTitle:row.scenario_title,scenarioMarket:row.scenario_market,scenarioQuality:row.scenario_data_quality,scenarioBasis:row.scenario_basis,scenarioContinuation:row.scenario_continuation,scenarioNoChase:row.scenario_no_chase,scenarioBreakdown:row.scenario_breakdown_text,
     outlookDirection:row.outlook_direction,outlookBias:row.outlook_bias_score,outlookConfidence:row.outlook_confidence,outlookHorizon:row.outlook_horizon,outlookReasons:Array.isArray(row.outlook_reasons)?row.outlook_reasons:[],outlookChangeCondition:row.outlook_change_condition,outlookQuality:row.outlook_data_quality,
     shortTermEligible:row.short_term_eligible,shortTermScore:row.short_term_score,shortTermStatus:row.short_term_status,shortTermSetup:row.short_term_setup,shortTermEntryLow:row.short_term_entry_low,shortTermEntryHigh:row.short_term_entry_high,shortTermTrigger:row.short_term_trigger,shortTermStop:row.short_term_stop,shortTermTarget1:row.short_term_target1,shortTermTarget2:row.short_term_target2,shortTermRr:row.short_term_rr,shortTermPeriod:row.short_term_holding_period,shortTermExit:row.short_term_exit_rule,shortTermReason:row.short_term_reason,shortTermQuality:row.short_term_data_quality,
@@ -236,6 +238,16 @@ function stockCard(stock,index){
     if(stock.positioningDisclaimer)positioning+='<br><span class="muted">註：'+esc(stock.positioningDisclaimer)+'</span>';
     positioning+='<br><span class="muted">此雷達僅顯示，不影響原本AI排名分數。</span></div>';
   }
+  var quality='';
+  if(stock.marketModelVersion){
+    var available=(stock.marketDataAvailable||[]).map(esc).join('、')||'僅基礎資料';
+    var missing=(stock.marketDataMissing||[]).map(esc).join('、')||'無';
+    quality='<div class="databox">🧭 <b>'+esc(stock.marketModelVersion)+' 市場專屬模型｜資料完整度 '+esc(number(stock.marketDataQualityScore,0))+' 分（'+esc(stock.marketDataQuality||'部分資料')+'）</b><br>已取得：'+available+'<br><span class="muted">尚缺：'+missing+'</span></div>';
+  }
+  var extended='';
+  if(stock.market==='US'&&stock.extendedAvailable){
+    extended='<div class="databox">🌙 <b>美股'+esc(stock.extendedSession||'盤前／盤後')+'：'+esc(number(stock.extendedPrice,2))+'（相對正式收盤 '+esc(percent(stock.extendedChange))+'）</b><br>延長盤成交量：'+esc(compact(stock.extendedVolume))+'<br><span class="muted">薄量延長盤只作跳空與風險提示，不直接增加 AI 分數。</span></div>';
+  }
   var scenario=stock.scenarioContinuation?'<div class="databox">📋 <b>'+esc(stock.scenarioTitle||(stock.market==='TW'?'🇹🇼 台股明日劇本':'🇺🇸 美股下個交易日劇本'))+'（'+esc(stock.scenarioQuality||'部分資料')+'）</b><br>依據：'+esc(stock.scenarioBasis||'資料不足')+'<br>🔥 '+esc(stock.scenarioContinuation)+'<br>⚠️ '+esc(stock.scenarioNoChase||'—')+'<br>🛡️ '+esc(stock.scenarioBreakdown||'—')+'</div>':'';
   var newsLevel=stock.newsRiskLevel||'⚪ 尚未掃描';
   var newsEffect=Number(stock.newsPenalty)>0?'影響計分：<b class="down">-'+number(stock.newsPenalty,1)+' 分</b>':'僅供觀察，不影響計分';
@@ -257,7 +269,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
+    '</div>',quality,extended,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
     '<div class="buybox">'+(stock.entryProfile?'規則：<b>'+esc(stock.entryProfile)+'</b>｜資料 '+esc(stock.entryCoverage)+'/'+esc(stock.entryDataTotal)+'｜進場分上限 '+esc(number(stock.entryScoreCap,0))+'<br>':'')+(stock.pricePlanQuality?'價格計畫：<b>'+esc(stock.pricePlanQuality)+'</b>｜'+esc(stock.pricePlanNote||'')+'<br>':'')+'🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
