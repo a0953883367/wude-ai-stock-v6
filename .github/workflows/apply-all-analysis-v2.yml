@@ -7,6 +7,7 @@ on:
     paths:
       - tools/patch_all_analysis_v2.py
       - .github/workflows/apply-all-analysis-v2.yml
+      - tests/test_data_fetcher.py
   workflow_dispatch:
 
 permissions:
@@ -56,4 +57,3 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Analyze full search universe for ALL"
           git push origin HEAD:agent/all-analysis-v2
-# pytest is installed explicitly because it is a test-only dependency.
