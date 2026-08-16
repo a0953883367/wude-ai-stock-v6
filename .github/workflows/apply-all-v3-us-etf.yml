@@ -1,0 +1,52 @@
+name: Apply ALL V3 US ETF data
+
+on:
+  push:
+    branches:
+      - agent/all-v3-us-etf-data
+    paths:
+      - tools/patch_all_v3_us_etf.py
+      - .github/workflows/apply-all-v3-us-etf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/all-v3-us-etf-data
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - name: Apply patch
+        run: python tools/patch_all_v3_us_etf.py
+      - name: Compile
+        run: python -m py_compile data_fetcher.py briefing.py strategy.py
+      - name: Run tests
+        run: python -m pytest tests -q
+      - name: Validate US ETF contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          df=Path('data_fetcher.py').read_text(encoding='utf-8')
+          brief=Path('briefing.py').read_text(encoding='utf-8')
+          for token in ['fetch_us_company_metadata','us_company_data_fields','financial_quality_available']:
+              assert token in df, token
+          assert 'us_company_metadata' in brief
+          assert 'fetch_etf_metadata' in brief
+          print('ALL V3 US/ETF contract OK')
+          PY
+      - name: Commit patched files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data_fetcher.py briefing.py tests/test_data_fetcher.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Add US fundamentals for ALL V3"
+          git push origin HEAD:agent/all-v3-us-etf-data
