@@ -29,14 +29,13 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
     pbr = number("priceToBook")
     dividend = _ratio_percent(info.get("dividendYield"))
     revenue_growth = _ratio_percent(info.get("revenueGrowth"))
-    earnings_growth = _ratio_percent(info.get("earningsGrowth"),) if info.get("earningsGrowth") is not None else None
+    earnings_growth = _ratio_percent(info.get("earningsGrowth")) if info.get("earningsGrowth") is not None else None
     gross_margin = _ratio_percent(info.get("grossMargins"))
     operating_margin = _ratio_percent(info.get("operatingMargins"))
     roe = _ratio_percent(info.get("returnOnEquity"))
     debt_to_equity = number("debtToEquity")
     debt_ratio = None
     if debt_to_equity is not None and debt_to_equity >= 0:
-        # Yahoo debtToEquity is commonly percentage points (e.g. 45 = 45%).
         de = debt_to_equity / 100 if debt_to_equity > 3 else debt_to_equity
         debt_ratio = de / (1 + de) * 100
     operating_cash_flow = number("operatingCashflow")
@@ -46,19 +45,13 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
               operating_margin, roe, debt_ratio, operating_cash_flow, eps, market_cap]
     available = sum(value is not None for value in fields)
     return {
-        "per": per,
-        "pbr": pbr,
-        "dividend_yield": dividend,
-        "revenue_yoy_pct": revenue_growth,
-        "eps_yoy_pct": earnings_growth,
-        "gross_margin_pct": gross_margin,
-        "operating_margin_pct": operating_margin,
-        "roe_pct": roe,
-        "debt_ratio_pct": debt_ratio,
+        "per": per, "pbr": pbr, "dividend_yield": dividend,
+        "revenue_yoy_pct": revenue_growth, "eps_yoy_pct": earnings_growth,
+        "gross_margin_pct": gross_margin, "operating_margin_pct": operating_margin,
+        "roe_pct": roe, "debt_ratio_pct": debt_ratio,
         "operating_cash_flow": operating_cash_flow,
         "operating_cash_flow_positive": None if operating_cash_flow is None else float(operating_cash_flow > 0),
-        "eps": eps,
-        "market_cap": market_cap,
+        "eps": eps, "market_cap": market_cap,
         "fundamental_available": float(any(value is not None for value in (per, pbr, dividend, revenue_growth))),
         "financial_quality_available": float(any(value is not None for value in (earnings_growth, gross_margin, operating_margin, roe, debt_ratio, operating_cash_flow))),
         "us_company_data_available": available > 0,
@@ -66,19 +59,11 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def fetch_us_company_metadata(
-    universe: list[dict[str, Any]],
-    cache_path: Path | None = None,
-) -> dict[str, dict[str, Any]]:
+def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path | None = None) -> dict[str, dict[str, Any]]:
     """Fetch US company fundamentals once daily with cache/fallback; ETFs are excluded."""
     cache_path = cache_path or (SETTINGS.reports_dir / "us_company_metadata_cache.json")
-    symbols = [
-        str(item.get("symbol") or "").upper()
-        for item in universe
-        if item.get("market") == "US"
-        and "ETF" not in str(item.get("type") or "").upper()
-        and item.get("symbol")
-    ]
+    symbols = [str(item.get("symbol") or "").upper() for item in universe
+               if item.get("market") == "US" and "ETF" not in str(item.get("type") or "").upper() and item.get("symbol")]
     if not symbols:
         return {}
     today = date.today()
@@ -86,8 +71,7 @@ def fetch_us_company_metadata(
         cached = json.loads(cache_path.read_text(encoding="utf-8")).get("companies", {})
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         cached = {}
-    output: dict[str, dict[str, Any]] = {}
-    pending: list[str] = []
+    output, pending = {}, []
     for symbol in symbols:
         item = cached.get(symbol, {})
         try:
@@ -98,15 +82,12 @@ def fetch_us_company_metadata(
             output[symbol] = {k: v for k, v in item.items() if k != "cached_at"}
         else:
             pending.append(symbol)
-
-    def fetch_one(symbol: str) -> tuple[str, dict[str, Any]]:
+    def fetch_one(symbol):
         try:
-            info = yf.Ticker(symbol).get_info() or {}
-            return symbol, _normalize_us_equity_info(info)
+            return symbol, _normalize_us_equity_info(yf.Ticker(symbol).get_info() or {})
         except Exception as exc:
             LOG.debug("US company metadata unavailable for %s: %s", symbol, exc)
             return symbol, {}
-
     with ThreadPoolExecutor(max_workers=5) as pool:
         jobs = [pool.submit(fetch_one, symbol) for symbol in pending]
         for job in as_completed(jobs):
@@ -140,24 +121,11 @@ s += r'''
 
 def test_normalize_us_equity_info_maps_company_fundamentals():
     from data_fetcher import _normalize_us_equity_info
-    result = _normalize_us_equity_info({
-        "trailingPE": 25,
-        "priceToBook": 8,
-        "dividendYield": 0.005,
-        "revenueGrowth": 0.18,
-        "earningsGrowth": 0.22,
-        "grossMargins": 0.55,
-        "operatingMargins": 0.31,
-        "returnOnEquity": 0.42,
-        "debtToEquity": 45,
-        "operatingCashflow": 123456,
-        "trailingEps": 4.2,
-        "marketCap": 1_000_000_000,
-    })
+    result = _normalize_us_equity_info({"trailingPE":25,"priceToBook":8,"dividendYield":0.005,"revenueGrowth":0.18,"earningsGrowth":0.22,"grossMargins":0.55,"operatingMargins":0.31,"returnOnEquity":0.42,"debtToEquity":45,"operatingCashflow":123456,"trailingEps":4.2,"marketCap":1_000_000_000})
     assert result["per"] == 25
-    assert result["revenue_yoy_pct"] == 18
-    assert result["eps_yoy_pct"] == 22
-    assert result["gross_margin_pct"] == 55
+    assert round(result["revenue_yoy_pct"], 6) == 18
+    assert round(result["eps_yoy_pct"], 6) == 22
+    assert round(result["gross_margin_pct"], 6) == 55
     assert result["operating_cash_flow_positive"] == 1.0
     assert result["fundamental_available"] == 1.0
     assert result["financial_quality_available"] == 1.0
