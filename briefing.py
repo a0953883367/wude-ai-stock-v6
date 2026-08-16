@@ -20,7 +20,7 @@ from data_fetcher import (
     fetch_etf_metadata,
     fetch_institutional_flows,
     fetch_us_short_volume,
-    load_taiwan_universe,
+    load_search_universe,
 )
 from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
@@ -61,12 +61,10 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     now = datetime.now(TAIPEI)
 
-    market_universe = load_taiwan_universe()
-    for item in market_universe:
-        item.setdefault("market", "TW")
+    search_universe = load_search_universe()
     watchlist = load_watchlist()
 
-    combined = {item["symbol"]: item for item in market_universe}
+    combined = {item["symbol"]: item for item in search_universe}
     combined.update({item["symbol"]: item for item in watchlist})
     universe = list(combined.values())
     symbols = list(combined)
@@ -193,7 +191,7 @@ def main() -> int:
         "period": args.period,
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "timezone": "Asia/Taipei",
-        "universe_count": len(market_universe),
+        "universe_count": len(search_universe),
         "analyzed_count": len(ranked),
         "watchlist_count": len(watchlist),
         "watchlist_analyzed_count": len(watchlist_rows),
@@ -258,6 +256,22 @@ def main() -> int:
         encoding="utf-8",
     )
     ranking_tmp.replace(ranking_path)
+
+    all_analysis_payload = {
+        "updated_at": report["updated_at"],
+        "period": args.period,
+        "candidate_count": len(universe),
+        "analyzed_count": len(ranked),
+        "unavailable_count": max(0, len(universe) - len(ranked)),
+        "data": ranked,
+    }
+    all_analysis_path = SETTINGS.reports_dir / "all_analysis.json"
+    all_analysis_tmp = SETTINGS.reports_dir / "all_analysis.tmp"
+    all_analysis_tmp.write_text(
+        json.dumps(all_analysis_payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    all_analysis_tmp.replace(all_analysis_path)
 
     delivered = False if args.no_telegram else send_telegram(markdown)
     print(markdown)
