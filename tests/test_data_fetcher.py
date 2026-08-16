@@ -118,3 +118,17 @@ def test_normalize_etf_info_calculates_premium_spread_and_ratios():
     assert result["expense_ratio_pct"] == 0.25
     assert result["etf_return_3y_pct"] == 12.0
     assert result["etf_metadata_available"] is True
+
+
+
+def test_normalize_us_equity_info_maps_company_fundamentals():
+    from data_fetcher import _normalize_us_equity_info
+    result = _normalize_us_equity_info({"trailingPE":25,"priceToBook":8,"dividendYield":0.005,"revenueGrowth":0.18,"earningsGrowth":0.22,"grossMargins":0.55,"operatingMargins":0.31,"returnOnEquity":0.42,"debtToEquity":45,"operatingCashflow":123456,"trailingEps":4.2,"marketCap":1_000_000_000})
+    assert result["per"] == 25
+    assert round(result["revenue_yoy_pct"], 6) == 18
+    assert round(result["eps_yoy_pct"], 6) == 22
+    assert round(result["gross_margin_pct"], 6) == 55
+    assert result["operating_cash_flow_positive"] == 1.0
+    assert result["fundamental_available"] == 1.0
+    assert result["financial_quality_available"] == 1.0
+    assert result["us_company_data_fields"] >= 10
