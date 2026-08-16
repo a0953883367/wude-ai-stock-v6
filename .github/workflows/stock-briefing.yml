@@ -100,6 +100,10 @@ jobs:
           FRIEND_SITE_URL: ${{ secrets.FRIEND_SITE_URL }}
           FRIEND_SITE_BYPASS_TOKEN: ${{ secrets.FRIEND_SITE_BYPASS_TOKEN }}
         run: python tools/publish_friend_data.py
+      - name: Publish complete owner-site data
+        env:
+          OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
+        run: python tools/publish_owner_data.py
       - name: Keep reports and recent archive
         shell: bash
         run: |
