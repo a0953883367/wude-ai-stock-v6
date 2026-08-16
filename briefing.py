@@ -11,6 +11,7 @@ from config import SETTINGS, TAIPEI
 from data_fetcher import (
     download_history,
     download_intraday,
+    download_us_extended_hours,
     fetch_broker_branches,
     fetch_core_market,
     fetch_macro_history,
@@ -27,6 +28,7 @@ from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
 from news_risk import fetch_news_risks
 from performance import load_performance_context, update_performance
+from market_models import assess_market_data_quality, enforce_market_contract
 import strategy
 from watchlist import load_watchlist
 
@@ -82,6 +84,7 @@ def main() -> int:
         for item in universe
         if item.get("market") == "US"
     }
+    us_extended_hours = download_us_extended_hours(list(us_symbols))
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
     institutions = fetch_institutional_flows(watchlist_stock_ids)
@@ -110,10 +113,11 @@ def main() -> int:
                 row.update(financial_quality.get(stock_id, {}))
                 row.update(broker_branches.get(stock_id, {}))
             elif item.get("market") == "US":
+                row.update(us_extended_hours.get(symbol.upper(), {}))
                 row.update(us_short_volume.get(symbol.upper(), {}))
                 if "ETF" not in str(item.get("type", "")).upper():
                     row.update(us_company_metadata.get(symbol.upper(), {}))
-            features.append(row)
+            features.append(enforce_market_contract(row))
 
     market = fetch_core_market()
     macro_regime = update_macro_regime(
@@ -149,6 +153,7 @@ def main() -> int:
         risk = news_risks.get(row.get("symbol"))
         if risk:
             row.update(risk)
+        row.update(assess_market_data_quality(row))
 
     ranked = score_candidates(features, macro_regime, performance_context)
     by_symbol = {row["symbol"]: row for row in ranked}
@@ -209,6 +214,7 @@ def main() -> int:
             "financial_quality_count": len(financial_quality),
             "broker_count": len(broker_branches),
             "us_short_volume_count": len(us_short_volume),
+            "us_extended_hours_count": len(us_extended_hours),
             "news_scanned_count": len(news_risks),
             "news_verified_risk_count": sum(
                 1 for item in news_risks.values() if item.get("news_penalty", 0) > 0
@@ -233,6 +239,8 @@ def main() -> int:
             "mid_long_term": "3至12個月；財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險獨立計分",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
+            "market_isolation": "台股TW-V3與美股US-V3使用獨立資料契約；跨市場欄位會在計分前清除",
+            "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "verified_outcome_feedback": "actual saved 1/5-day returns only; statistically shrunk and capped at +/-2 points",
         },

@@ -17,6 +17,7 @@ from typing import Any, Iterable
 import pandas as pd
 import requests
 import yfinance as yf
+from zoneinfo import ZoneInfo
 
 from config import SETTINGS
 
@@ -149,6 +150,56 @@ def download_intraday(symbols: list[str]) -> dict[str, pd.DataFrame]:
             LOG.warning("intraday batch failed (%s): %s", ",".join(chunk[:3]), exc)
         time.sleep(0.3)
     return result
+
+
+def download_us_extended_hours(symbols: list[str]) -> dict[str, dict[str, Any]]:
+    """Fetch US pre/post-market context separately from regular-session bars.
+
+    Extended-hours data is explanatory only. It is never blended into Taiwan
+    volume pace and does not replace the official regular-session close.
+    """
+    output: dict[str, dict[str, Any]] = {}
+    new_york = ZoneInfo("America/New_York")
+    for chunk in _chunks(sorted(set(symbols)), 25):
+        try:
+            raw = yf.download(
+                tickers=chunk, period="1d", interval="5m", group_by="ticker",
+                auto_adjust=False, actions=False, prepost=True, threads=True,
+                progress=False, timeout=SETTINGS.request_timeout,
+            )
+            multi = isinstance(raw.columns, pd.MultiIndex)
+            for symbol in chunk:
+                frame = _extract_frame(raw, symbol, multi)
+                if frame.empty or "close" not in frame or not isinstance(frame.index, pd.DatetimeIndex):
+                    continue
+                index = frame.index
+                if index.tz is None:
+                    index = index.tz_localize("UTC")
+                local = index.tz_convert(new_york)
+                minutes = local.hour * 60 + local.minute
+                regular_mask = (minutes >= 570) & (minutes < 960)
+                extended_mask = ((minutes >= 240) & (minutes < 570)) | ((minutes >= 960) & (minutes < 1200))
+                regular = frame.loc[regular_mask]
+                extended = frame.loc[extended_mask]
+                if regular.empty or extended.empty:
+                    continue
+                regular_close = float(regular["close"].dropna().iloc[-1])
+                extended_close = float(extended["close"].dropna().iloc[-1])
+                latest_minute = int(minutes[extended_mask][-1])
+                session = "盤前" if latest_minute < 570 else "盤後"
+                output[symbol] = {
+                    "extended_hours_available": True,
+                    "extended_session": session,
+                    "extended_price": round(extended_close, 4),
+                    "extended_change_pct": round((extended_close / regular_close - 1) * 100, 2) if regular_close else None,
+                    "extended_volume": int(extended.get("volume", pd.Series(dtype=float)).fillna(0).sum()),
+                    "extended_reference_close": round(regular_close, 4),
+                    "extended_affects_ai_score": False,
+                }
+        except Exception as exc:
+            LOG.warning("US extended-hours batch failed (%s): %s", ",".join(chunk[:3]), exc)
+        time.sleep(0.3)
+    return output
 
 
 

@@ -422,7 +422,12 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
     else:
         market_label = "🇺🇸 美股下個交易日劇本"
         # US stocks must not be judged with Taiwan foreign/trust/dealer fields.
-        flow_text = "美股不套用台股三大法人；以盤前跳空、量價與開盤攻擊量判讀"
+        if row.get("extended_hours_available"):
+            session = str(row.get("extended_session") or "盤前／盤後")
+            gap = _finite(row.get("extended_change_pct"))
+            flow_text = f"{session}相對正式收盤 {gap:+.2f}%；美股不套用台股三大法人，開盤後再用量價確認"
+        else:
+            flow_text = "美股不套用台股三大法人；以量價與開盤攻擊量判讀"
         opening_text = "美股正式開盤後15～30分鐘"
         complete = row.get("intraday_available")
 
