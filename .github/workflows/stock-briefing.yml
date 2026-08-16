@@ -97,7 +97,6 @@ jobs:
         env:
           FRIEND_SITE_URL: ${{ secrets.FRIEND_SITE_URL }}
           FRIEND_SITE_BYPASS_TOKEN: ${{ secrets.FRIEND_SITE_BYPASS_TOKEN }}
-          FRIEND_INGEST_TOKEN: ${{ secrets.FRIEND_INGEST_TOKEN }}
         run: python tools/publish_friend_data.py
       - name: Keep reports and recent archive
         shell: bash
