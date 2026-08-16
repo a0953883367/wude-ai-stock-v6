@@ -64,7 +64,7 @@ def main():
         site_url = "https://" + site_url
     site_url = site_url.rstrip("/")
     bypass_token = os.getenv("FRIEND_SITE_BYPASS_TOKEN", "")
-    ingest_token = os.getenv("FRIEND_INGEST_TOKEN", "")
+    ingest_token = bypass_token
     if not all((site_url, bypass_token, ingest_token)):
         print("Friend-site publish skipped: required secrets are not configured yet.")
         return 0
