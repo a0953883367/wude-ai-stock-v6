@@ -56,7 +56,13 @@ def sanitize(row):
 
 
 def main():
-    site_url = os.getenv("FRIEND_SITE_URL", "").rstrip("/")
+    site_url = os.getenv("FRIEND_SITE_URL", "").strip()
+    for prefix in ("網址：", "網址:", "URL：", "URL:"):
+        if site_url.startswith(prefix):
+            site_url = site_url[len(prefix):].strip()
+    if site_url and not site_url.startswith(("https://", "http://")):
+        site_url = "https://" + site_url
+    site_url = site_url.rstrip("/")
     bypass_token = os.getenv("FRIEND_SITE_BYPASS_TOKEN", "")
     ingest_token = os.getenv("FRIEND_INGEST_TOKEN", "")
     if not all((site_url, bypass_token, ingest_token)):
