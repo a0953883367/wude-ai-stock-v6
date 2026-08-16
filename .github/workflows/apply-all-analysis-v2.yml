@@ -56,3 +56,4 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Analyze full search universe for ALL"
           git push origin HEAD:agent/all-analysis-v2
+# pytest is installed explicitly because it is a test-only dependency.
