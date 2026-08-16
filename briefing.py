@@ -20,6 +20,7 @@ from data_fetcher import (
     fetch_etf_metadata,
     fetch_institutional_flows,
     fetch_us_short_volume,
+    fetch_us_company_metadata,
     load_search_universe,
 )
 from macro_regime import update_macro_regime
@@ -89,6 +90,7 @@ def main() -> int:
     financial_quality = fetch_financial_quality(watchlist_stock_ids)
     broker_branches = fetch_broker_branches(watchlist_stock_ids)
     us_short_volume = fetch_us_short_volume(us_symbols)
+    us_company_metadata = fetch_us_company_metadata(universe)
     etf_metadata = fetch_etf_metadata(universe)
 
     features = []
@@ -109,6 +111,8 @@ def main() -> int:
                 row.update(broker_branches.get(stock_id, {}))
             elif item.get("market") == "US":
                 row.update(us_short_volume.get(symbol.upper(), {}))
+                if "ETF" not in str(item.get("type", "")).upper():
+                    row.update(us_company_metadata.get(symbol.upper(), {}))
             features.append(row)
 
     market = fetch_core_market()
