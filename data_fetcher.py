@@ -38,29 +38,43 @@ CORE_MARKET = {
 }
 
 
-def load_taiwan_universe(path: Path = SETTINGS.search_data_path) -> list[dict[str, Any]]:
-    """Load every Taiwan candidate already maintained by the V6 dashboard."""
+def load_search_universe(path: Path = SETTINGS.search_data_path) -> list[dict[str, Any]]:
+    """Load every Taiwan and US candidate maintained by the V6 dashboard."""
     payload = json.loads(path.read_text(encoding="utf-8"))
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     for row in payload.get("data", []):
         symbol = str(row.get("代號", "")).strip().upper()
-        market = str(row.get("市場", ""))
-        if "台灣" not in market or not symbol or symbol in seen:
+        market_text = str(row.get("市場", ""))
+        if not symbol or symbol in seen:
             continue
-        if not (symbol.endswith(".TW") or symbol.endswith(".TWO")):
+        if "台灣" in market_text:
+            if not (symbol.endswith(".TW") or symbol.endswith(".TWO")):
+                continue
+            market = "TW"
+        elif "美國" in market_text:
+            if symbol.endswith(".TW") or symbol.endswith(".TWO"):
+                continue
+            market = "US"
+        else:
             continue
         seen.add(symbol)
         rows.append({
             "symbol": symbol,
             "name": row.get("股票", symbol),
+            "market": market,
             "type": row.get("類型", "個股"),
             "theme": row.get("主題", "其他"),
             "industry": row.get("次產業", "其他"),
         })
     if not rows:
-        raise RuntimeError("search_data.json 沒有可用的台股候選清單")
+        raise RuntimeError("search_data.json 沒有可用的股票候選清單")
     return rows
+
+
+def load_taiwan_universe(path: Path = SETTINGS.search_data_path) -> list[dict[str, Any]]:
+    """Backward-compatible Taiwan-only view of the maintained search universe."""
+    return [row for row in load_search_universe(path) if row.get("market") == "TW"]
 
 
 def _chunks(items: list[str], size: int) -> Iterable[list[str]]:

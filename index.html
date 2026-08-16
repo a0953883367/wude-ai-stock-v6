@@ -35,7 +35,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <body>
 <div class="shell">
   <header class="header">
-    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.29-ALL1</div></div>
+    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.29-ALL2</div></div>
   </header>
 
   <div class="nav-label">排行與固定清單</div>
@@ -98,12 +98,12 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.29-ALL1<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.29-ALL2<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},view:'TW'};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},view:'TW'};
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function first(obj,names,fallback){for(var i=0;i<names.length;i++){var v=obj[names[i]];if(v!==undefined&&v!==null&&v!=='')return v;}return fallback===undefined?'—':fallback;}
@@ -477,6 +477,9 @@ function buildAllAnalysisPool(){
     if(!merged[key])ordered.push(key);
     merged[key]=Object.assign({},merged[key]||{},stock);
   });
+  if(STATE.allAnalysis&&Array.isArray(STATE.allAnalysis.data)){
+    add(STATE.allAnalysis.data,normalizeReport);
+  }
   return sortByScore(ordered.map(function(key){return merged[key];}));
 }
 function searchStock(){
@@ -486,7 +489,7 @@ function searchStock(){
     STATE.view='ALL';
     clearOtherNav('');
     document.getElementById('title').textContent='📚 ALL 全部股票分析';
-    document.getElementById('status').textContent='共 '+pool.length+' 檔｜台股＋美股＋ETF｜依 AI 總分排序；資料不足欄位維持等待資料，不填假值';
+    var fullCount=STATE.allAnalysis&&Array.isArray(STATE.allAnalysis.data)?STATE.allAnalysis.data.length:0;document.getElementById('status').textContent='共 '+pool.length+' 檔｜完整分析 '+fullCount+' 檔｜台股＋美股＋ETF｜依 AI 總分排序；真正缺資料者才顯示等待資料';
     renderStocks(pool);
     return;
   }
@@ -500,10 +503,11 @@ async function loadAll(){
       fetchJSON('stock_data.json'),
       fetchJSON('reports/latest.json').catch(function(){return null;}),
       fetchJSON('quantum_watchlist.json').catch(function(){return null;}),
-      fetchJSON('optical_watchlist.json').catch(function(){return null;})
+      fetchJSON('optical_watchlist.json').catch(function(){return null;}),
+      fetchJSON('reports/all_analysis.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
     var current=live&&Array.isArray(live.data)?live.data.map(normalizeReport):[];
     var normalized=current.length?current:legacy;

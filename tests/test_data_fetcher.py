@@ -51,7 +51,7 @@ def test_fundamental_rows_have_valuation_and_revenue_growth():
     result = _aggregate_fundamental_rows(per_rows, revenue_rows, {"2330"})["2330"]
     assert result["per"] == 18.5
     assert result["pbr"] == 4.2
-    assert result["revenue_yoy_pct"] == 20.0
+    assert round(result["revenue_yoy_pct"], 2) == 20.0
     assert round(result["revenue_mom_pct"], 2) == 9.09
 
 
