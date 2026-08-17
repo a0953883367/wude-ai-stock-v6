@@ -21,6 +21,22 @@
 
 GitHub Actions 會把固定觀察清單完整列入 Telegram 報告，依代號去重；同時保留全台股背景掃描，另外列出最強 5 檔。暫時抓不到可靠行情的標的會列在「暫無可靠行情」，不會無聲消失。
 
+## 富邦本機行情自動化（Windows）
+
+富邦憑證與密碼只留在你的電腦。程式會自動讀取：
+
+- Windows 認證 `FUBON_API_WUDE`
+- Windows 認證 `FUBON_CERT_WUDE`
+- `%LOCALAPPDATA%\WudeAI\cert\fubon_cert.p12`
+
+完成上述設定及官方 Fubon Neo SDK 安裝後，在 PowerShell 執行一次：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup_fubon_windows.ps1
+```
+
+腳本會先驗證登入與 2330 唯讀行情，再建立 06:00、12:00、20:00 三個排程。電腦需在執行時間開機及連網；若錯過時間，Windows 會在下次可執行時補跑。排程不包含下單功能。
+
 ## 通知設定
 
 Repository Settings → Secrets and variables → Actions：

@@ -1,17 +1,8 @@
-"""Run Wude AI briefings with Fubon Neo as the primary Taiwan intraday source.
+r"""Run Wude AI briefings with Fubon Neo as the primary Taiwan source.
 
-This file is intentionally designed for the user's own Windows PC because the
-Fubon certificate stays on that PC. Credentials are read from environment
-variables and are never written to the repository.
-
-Required local environment variables:
-  FUBON_ID
-  FUBON_PASSWORD                 (normal login) OR FUBON_API_KEY (API-key login)
-  FUBON_CERT_PATH
-  FUBON_CERT_PASSWORD            (may be empty if the certificate uses default)
-
-Example:
-  python fubon_runner.py --period noon
+On Windows, credentials come from Credential Manager targets
+``FUBON_API_WUDE`` and ``FUBON_CERT_WUDE``. The certificate stays at
+``%LOCALAPPDATA%\WudeAI\cert\fubon_cert.p12``. Nothing secret is committed.
 """
 
 from __future__ import annotations
@@ -22,7 +13,6 @@ import os
 import subprocess
 import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -30,15 +20,9 @@ import pandas as pd
 import briefing
 from config import ROOT, TAIPEI
 from data_fetcher import download_intraday as yahoo_download_intraday
+from fubon_credentials import FubonCredentials, load_fubon_credentials
 
 LOG = logging.getLogger("fubon_runner")
-
-
-def _required(name: str) -> str:
-    value = os.getenv(name, "").strip()
-    if not value:
-        raise RuntimeError(f"缺少環境變數 {name}")
-    return value
 
 
 def _to_dict(value: Any) -> dict[str, Any]:
@@ -53,7 +37,7 @@ def _to_dict(value: Any) -> dict[str, Any]:
     raise TypeError(f"無法解析富邦回傳型別: {type(value)!r}")
 
 
-def _login_fubon():
+def _login_fubon(credentials: FubonCredentials | None = None):
     try:
         from fubon_neo.sdk import FubonSDK
     except ImportError as exc:
@@ -61,29 +45,28 @@ def _login_fubon():
             "找不到 fubon_neo SDK。請先依富邦官方 SDK 下載頁安裝 Python SDK。"
         ) from exc
 
-    personal_id = _required("FUBON_ID")
-    cert_path = _required("FUBON_CERT_PATH")
-    cert_password = os.getenv("FUBON_CERT_PASSWORD", "")
-    api_key = os.getenv("FUBON_API_KEY", "").strip()
-    password = os.getenv("FUBON_PASSWORD", "").strip()
-
+    creds = credentials or load_fubon_credentials()
     sdk = FubonSDK()
-    if api_key:
-        result = sdk.apikey_login(personal_id, api_key, cert_path, cert_password)
-        login_mode = "API_KEY"
-    else:
-        if not password:
-            raise RuntimeError("請設定 FUBON_PASSWORD 或 FUBON_API_KEY 其中一種登入方式")
-        result = sdk.login(personal_id, password, cert_path, cert_password)
-        login_mode = "PASSWORD"
-
-    success = getattr(result, "is_success", None)
-    if success is False:
-        raise RuntimeError(f"富邦登入失敗: {getattr(result, 'message', 'unknown error')}")
+    result = sdk.apikey_login(
+        creds.personal_id,
+        creds.api_key,
+        str(creds.cert_path),
+        creds.cert_password,
+    )
+    if getattr(result, "is_success", None) is False:
+        message = str(getattr(result, "message", "登入資料不正確"))
+        raise RuntimeError(f"富邦登入失敗：{message}")
 
     sdk.init_realtime()
-    LOG.info("Fubon login OK (%s), realtime initialized", login_mode)
+    LOG.info("Fubon API login OK; realtime initialized")
     return sdk
+
+
+def _check_market_data(sdk) -> None:
+    quote = sdk.marketdata.rest_client.stock.intraday.quote(symbol="2330")
+    if not quote or getattr(quote, "is_success", True) is False:
+        raise RuntimeError("富邦行情測試失敗")
+    print("FUBON_AUTOMATION_OK")
 
 
 def _candle_frame(payload: Any) -> pd.DataFrame:
@@ -109,7 +92,6 @@ def _candle_frame(payload: Any) -> pd.DataFrame:
 
     if "time" in frame and frame["time"].notna().any():
         raw = pd.to_numeric(frame["time"], errors="coerce")
-        # Fubon timestamps are epoch based; accept seconds/ms/us/ns defensively.
         median = raw.dropna().median() if raw.notna().any() else None
         unit = "ms"
         if median is not None:
@@ -128,12 +110,11 @@ def _candle_frame(payload: Any) -> pd.DataFrame:
 
     for col in ("open", "high", "low", "close", "volume"):
         frame[col] = pd.to_numeric(frame[col], errors="coerce")
-    frame = frame.drop(columns=["time"], errors="ignore").dropna(how="all")
-    return frame
+    return frame.drop(columns=["time"], errors="ignore").dropna(how="all")
 
 
 def build_fubon_intraday(sdk, symbols: list[str]) -> dict[str, pd.DataFrame]:
-    """Use Fubon for TW/TWO names and Yahoo only as fallback/for US names."""
+    """Use Fubon for Taiwan symbols and Yahoo as a resilient fallback."""
     result: dict[str, pd.DataFrame] = {}
     tw_symbols = [s for s in symbols if s.endswith(".TW") or s.endswith(".TWO")]
     non_tw = [s for s in symbols if s not in tw_symbols]
@@ -154,7 +135,6 @@ def build_fubon_intraday(sdk, symbols: list[str]) -> dict[str, pd.DataFrame]:
         except Exception as exc:
             LOG.warning("Fubon candles failed for %s: %s", symbol, exc)
 
-        # One-stock Yahoo fallback keeps the whole briefing from failing.
         fallback = yahoo_download_intraday([symbol])
         if symbol in fallback:
             result[symbol] = fallback[symbol]
@@ -164,7 +144,7 @@ def build_fubon_intraday(sdk, symbols: list[str]) -> dict[str, pd.DataFrame]:
 
 
 def _git_publish(period: str) -> None:
-    if os.getenv("FUBON_AUTO_GIT", "0").strip() not in {"1", "true", "TRUE", "yes", "YES"}:
+    if os.getenv("FUBON_AUTO_GIT", "0").strip().lower() not in {"1", "true", "yes"}:
         return
     try:
         subprocess.run(["git", "add", "reports"], cwd=ROOT, check=True)
@@ -186,21 +166,25 @@ def _git_publish(period: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--period", choices=["morning", "noon", "evening"], required=True)
+    parser.add_argument("--period", choices=["morning", "noon", "evening"])
+    parser.add_argument("--check", action="store_true", help="verify login and read-only market data")
     parser.add_argument("--no-telegram", action="store_true")
     parser.add_argument("--auto-git", action="store_true", help="commit/push generated reports")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.check and not args.period:
+        parser.error("--period is required unless --check is used")
+    return args
 
 
 def main() -> int:
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     sdk = _login_fubon()
+    if args.check:
+        _check_market_data(sdk)
+        return 0
 
-    # Patch only this process. Existing GitHub Actions remain a safe Yahoo fallback,
-    # while local scheduled runs use Fubon first for Taiwan intraday data.
     briefing.download_intraday = lambda symbols: build_fubon_intraday(sdk, symbols)
-
     argv = [sys.argv[0], "--period", args.period]
     if args.no_telegram:
         argv.append("--no-telegram")

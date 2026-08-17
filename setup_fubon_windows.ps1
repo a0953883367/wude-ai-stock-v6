@@ -1,46 +1,39 @@
-# 武得 AI 股票助理 - Fubon Neo Windows 自動更新設定
-# 請使用一般 PowerShell 執行；若建立排程失敗，再以系統管理員身分執行。
+# 武得 AI 股票助理：富邦行情一鍵自動化
+# 金鑰與憑證密碼只從 Windows 認證管理員讀取，不寫入本檔或 GitHub。
 
 $ErrorActionPreference = "Stop"
 $Repo = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Python = (Get-Command python -ErrorAction Stop).Source
+$Runner = Join-Path $Repo "run_fubon_windows.ps1"
+$Cert = Join-Path $env:LOCALAPPDATA "WudeAI\cert\fubon_cert.p12"
 
-Write-Host "=== 武得 AI 股票助理：富邦 API 自動化設定 ===" -ForegroundColor Cyan
-Write-Host "Repository: $Repo"
-Write-Host "Python: $Python"
+Write-Host "=== 武得 AI 股票助理：富邦行情一鍵設定 ===" -ForegroundColor Cyan
+if (-not (Test-Path $Cert)) { throw "找不到固定憑證：$Cert" }
 
-$id = Read-Host "請輸入富邦登入身分證字號"
-$cert = Read-Host "請輸入 .pfx 憑證完整路徑"
-$apiKey = Read-Host "請輸入 Fubon API Key（若尚未申請可先留白，之後再設定）"
+& $Python -m pip install --user "keyring>=25,<26"
+if ($LASTEXITCODE -ne 0) { throw "keyring 安裝失敗" }
 
-if (-not $id) { throw "FUBON_ID 不可空白" }
-if (-not (Test-Path $cert)) { throw "找不到憑證檔：$cert" }
+& $Python -c "import fubon_neo"
+if ($LASTEXITCODE -ne 0) { throw "找不到富邦 SDK，請先安裝官方 Windows 64 位元 SDK" }
 
-[Environment]::SetEnvironmentVariable("FUBON_ID", $id, "User")
-[Environment]::SetEnvironmentVariable("FUBON_CERT_PATH", $cert, "User")
-if ($apiKey) {
-    [Environment]::SetEnvironmentVariable("FUBON_API_KEY", $apiKey, "User")
-    Write-Host "已設定 API Key 登入模式。" -ForegroundColor Green
-} else {
-    Write-Host "尚未設定 API Key。自動排程前仍需設定 FUBON_PASSWORD 或之後補上 FUBON_API_KEY。" -ForegroundColor Yellow
+Set-Location $Repo
+& $Python "$Repo\fubon_runner.py" --check
+if ($LASTEXITCODE -ne 0) { throw "富邦登入或行情驗證失敗" }
+
+function Install-WudeTask([string]$Name, [string]$At, [string]$Period) {
+    $PowerShell = (Get-Command powershell.exe -ErrorAction Stop).Source
+    $Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$Runner`" -Period $Period"
+    $Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments -WorkingDirectory $Repo
+    $Trigger = New-ScheduledTaskTrigger -Daily -At $At
+    $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    Register-ScheduledTask -TaskName $Name -Action $Action -Trigger $Trigger -Settings $Settings -Description "武得 AI 股票助理：富邦唯讀行情更新" -Force | Out-Null
+    Write-Host "已建立 $Name（$At）" -ForegroundColor Green
 }
 
-Write-Host "憑證密碼若不是預設值，請自行設定使用者環境變數 FUBON_CERT_PASSWORD。" -ForegroundColor Yellow
-Write-Host "基於安全考量，本腳本不把登入密碼或憑證密碼寫入 GitHub。" -ForegroundColor Yellow
+Install-WudeTask "Wude-Fubon-Morning" "06:00" "morning"
+Install-WudeTask "Wude-Fubon-Noon" "12:00" "noon"
+Install-WudeTask "Wude-Fubon-Evening" "20:00" "evening"
 
-function New-WudeTask($Name, $Hour, $Period) {
-    $action = New-ScheduledTaskAction -Execute $Python -Argument "`"$Repo\fubon_runner.py`" --period $Period --auto-git" -WorkingDirectory $Repo
-    $trigger = New-ScheduledTaskTrigger -Daily -At ([datetime]::Today.AddHours($Hour))
-    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-    Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger -Settings $settings -Description "武得 AI 股票助理 Fubon Neo 自動更新" -Force | Out-Null
-    Write-Host "已建立：$Name 每日 $($Hour.ToString('00')):00" -ForegroundColor Green
-}
-
-New-WudeTask "Wude-Fubon-Morning" 6 "morning"
-New-WudeTask "Wude-Fubon-Noon" 12 "noon"
-New-WudeTask "Wude-Fubon-Evening" 20 "evening"
-
-Write-Host ""
-Write-Host "排程已建立：06:00 / 12:00 / 20:00" -ForegroundColor Green
-Write-Host "注意：電腦需開機且可上網；GitHub git push 也需已在本機登入。"
-Write-Host "第一次正式啟用前，建議先手動執行：python fubon_runner.py --period noon --no-telegram"
+Write-Host "設定完成：富邦登入、行情與三個自動排程均已啟用。" -ForegroundColor Green
+Write-Host "此程式只使用行情權限，不會自動下單。"
+Write-Host "電腦需在執行時間開機並連上網路；錯過時間會在下次開機後補跑。"
