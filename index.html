@@ -29,6 +29,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .deep-conclusion{margin:12px 0 8px;background:#12243a;border:1px solid #285077;border-radius:12px;padding:11px;line-height:1.6;font-size:13px}.deep-conclusion b{color:#7dd3fc}.insight-title{font-size:13px;font-weight:900;margin:13px 0 7px}.insight{border-left:3px solid #64748b;background:#162033;padding:8px 10px;margin:6px 0;border-radius:0 9px 9px 0;font-size:12px;line-height:1.5}.insight.good{border-color:#22c55e;color:#dcfce7}.insight.warn{border-color:#f59e0b;color:#fef3c7}.insight.bad{border-color:#fb7185;color:#ffe4e6}.coverage{display:inline-block;margin-top:5px;color:#94a3b8;font-size:11px}
 .group{font-size:18px;font-weight:900;margin:22px 3px 10px}.empty,.error{padding:18px;border-radius:15px;background:#172033;color:#cbd5e1;line-height:1.7}.error{background:#3b1720;color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:28px 0 42px;line-height:1.8}
 .live-button{width:100%;margin-top:13px;background:#164e63;border-color:#22d3ee;color:#cffafe}.live-result{margin-top:10px;background:#172554;border:1px solid #3b82f6;border-radius:13px;padding:12px;line-height:1.7;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);padding:16px;overflow:auto}.modal.open{display:block}.modal-card{max-width:620px;margin:18px auto;background:#111c2e;border:1px solid #334155;border-radius:22px;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal-title{font-size:21px;font-weight:900}.modal-close{width:46px;padding:10px}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field label{color:#cbd5e1;font-size:12px;font-weight:800}.field input{width:100%;padding:12px}.field.full{grid-column:1/-1}.form-note{color:#fbbf24;font-size:12px;line-height:1.6;margin-top:12px}.preview{display:none;max-width:100%;max-height:260px;margin-top:10px;border-radius:12px;border:1px solid #334155}.calculate{width:100%;margin-top:14px;background:var(--green);border-color:#4ade80;color:#052e16}.modal-output{margin-top:13px}.muted{color:var(--muted)}
+.capital-test{margin-top:13px;border-radius:14px;padding:13px;line-height:1.65;font-size:13px}.capital-test.eligible{background:#0b2c22;border:1px solid #22c55e;color:#dcfce7}.capital-test.blocked{background:#2a1720;border:1px solid #fb7185;color:#ffe4e6}.capital-test-title{font-size:16px;font-weight:900}.capital-test-meta{margin-top:5px;color:#cbd5e1}.capital-test-reasons{margin-top:6px;color:#fda4af}
 @media(min-width:640px){.buttons{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}}
 </style>
@@ -45,6 +46,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-view="US">🇺🇸 美股 TOP20</button>
     <button data-view="ETF">📊 ETF TOP20</button>
     <button data-view="WATCH">⭐ 我的清單</button>
+    <button data-view="TEST">🧪 2萬元實測</button>
   </div>
 
   <div class="nav-label">⚛️ 量子概念股專區</div>
@@ -124,6 +126,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   </div>
 </div>
 
+<script src="capital_test.js"></script>
 <script>
 'use strict';
 var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},view:'TW',liveStock:null};
@@ -224,6 +227,14 @@ function liveResultHtml(result){
   var cls=result.direction==='看漲'?'up':result.direction==='看跌'?'down':'muted';
   return '<div class="live-result"><b class="'+cls+'">即時補充判斷：'+esc(result.direction)+'｜'+esc(number(result.adjustedScore,1))+' 分</b><br>'+esc(result.decision)+'<br>'+result.reasons.map(function(v){return '• '+esc(v);}).join('<br>')+'<br><span class="muted">補充完整度 '+esc(result.coverage)+'/7｜'+esc(result.time)+'｜只調整即時判斷，不覆蓋每日正式排名</span></div>';
 }
+function capitalTestResult(stock){return WudeCapitalTest.evaluate(stock,getLiveResult(stock.symbol));}
+function capitalTestHtml(stock){
+  var result=capitalTestResult(stock);
+  if(result.eligible){
+    return '<div class="capital-test eligible"><div class="capital-test-title">✅ 2萬元實盤測試：符合資格</div><div class="capital-test-meta">試算 '+esc(number(result.shares,0))+' 股｜約 '+esc(number(result.estimatedCost,0))+' 元｜跌至風控價最大損失約 '+esc(number(result.estimatedLoss,0))+' 元<br>最多同時3檔、保留至少5,000元現金；帳戶累計虧損達2,000元即停止測試。<br><b>只提供試算，不會自動下單。</b></div></div>';
+  }
+  return '<div class="capital-test blocked"><div class="capital-test-title">⛔ 2萬元實盤測試：目前不合格</div><div class="capital-test-meta">通過 '+esc(result.checksPassed)+'/'+esc(result.totalChecks)+' 項</div><div class="capital-test-reasons">'+result.reasons.slice(0,6).map(function(reason){return '• '+esc(reason);}).join('<br>')+'</div><div class="capital-test-meta">補齊券商資料後會自動重算；不合格時不要投入測試金。</div></div>';
+}
 function stockCard(stock,index){
   var outlook='';
   if(stock.outlookDirection){
@@ -306,6 +317,7 @@ function stockCard(stock,index){
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
     '風控價：<b class="down">'+esc(number(stock.stop,2))+'</b></div>',
     '<div class="advice">'+esc(stock.advice)+'</div><div class="risk">風險：'+esc(stock.risk)+'</div>',
+    '<div data-capital-result="'+esc(stock.symbol)+'">'+capitalTestHtml(stock)+'</div>',
     '<button class="live-button" data-live-symbol="'+esc(stock.symbol)+'">📸 補充券商即時資料，再判斷一次</button>',
     '<div data-live-result="'+esc(stock.symbol)+'">'+liveResultHtml(savedLive)+'</div></article>'
   ].join('');
@@ -454,6 +466,13 @@ function showOptical(group){
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
   var map={TW:['🇹🇼 台股 最值得買 TOP20',STATE.tw],US:['🇺🇸 美股 最值得買 TOP20',STATE.us],ETF:['📊 ETF 最值得買 TOP20',STATE.etf]};
+  if(view==='TEST'){
+    var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
+    document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
+    document.getElementById('status').textContent='只顯示所有嚴格條件均通過的台股個股｜每筆4,000～6,000元｜單筆風險不超過200元｜最多3檔｜只試算、不自動下單';
+    if(!testRows.length){document.getElementById('results').innerHTML='<div class="empty">目前沒有符合資格的股票。這是正常的：先回台股排行補充券商即時資料，通過6/7以上且價格位於買進區後才會列入。</div>';return;}
+    renderStocks(testRows);return;
+  }
   if(view==='WATCH'){
     document.getElementById('title').textContent='⭐ 我的固定觀察清單';
     var rows=STATE.latest&&STATE.latest.watchlist?sortByScore(STATE.latest.watchlist.map(normalizeReport)):[];
@@ -631,6 +650,7 @@ document.getElementById('liveForm').addEventListener('submit',function(event){
   try{localStorage.setItem(liveStorageKey(STATE.liveStock.symbol),JSON.stringify(result));}catch(error){}
   var html=liveResultHtml(result);document.getElementById('liveOutput').innerHTML=html;
   document.querySelectorAll('[data-live-result]').forEach(function(box){if(String(box.getAttribute('data-live-result')).toUpperCase()===String(STATE.liveStock.symbol).toUpperCase())box.innerHTML=html;});
+  document.querySelectorAll('[data-capital-result]').forEach(function(box){if(String(box.getAttribute('data-capital-result')).toUpperCase()===String(STATE.liveStock.symbol).toUpperCase())box.innerHTML=capitalTestHtml(STATE.liveStock);});
 });
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
 document.querySelectorAll('#quantumButtons button').forEach(function(btn){btn.addEventListener('click',function(){showQuantum(btn.getAttribute('data-quantum'));});});

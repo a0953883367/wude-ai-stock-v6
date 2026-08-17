@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "*.py"
+      - "*.js"
+      - "*.html"
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/**"
@@ -12,6 +14,8 @@ on:
     branches: [main]
     paths:
       - "*.py"
+      - "*.js"
+      - "*.html"
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/**"
@@ -34,3 +38,5 @@ jobs:
         run: python -m pytest -q
       - name: 檢查主要程式可編譯
         run: python -m py_compile briefing.py data_fetcher.py market_models.py strategy.py
+      - name: 檢查 2 萬元實測規則
+        run: node tests/test_capital_test.js
