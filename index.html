@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
-<title>武得 AI 股票助理 V6.30-LIVE</title>
+<title>武得 AI 股票助理 V6.32-LIVE</title>
 <style>
 :root{--bg:#07111f;--panel:#111c2e;--card:#111827;--soft:#172033;--line:#263244;--muted:#94a3b8;--blue:#2563eb;--green:#22c55e;--yellow:#facc15;--red:#fb7185;--white:#f8fafc}
 *{box-sizing:border-box}
@@ -28,7 +28,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .deep{margin-top:13px;border:1px solid #33445e;border-radius:14px;background:#0d1727;overflow:hidden}.deep summary{cursor:pointer;padding:13px;color:#7dd3fc;font-weight:850;list-style:none}.deep summary::-webkit-details-marker{display:none}.deep summary:after{content:'⌄';float:right}.deep[open] summary:after{content:'⌃'}.deep-body{border-top:1px solid #26364d;padding:12px}.radar-wrap{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:center}.radar{width:170px;height:170px}.factor{margin:7px 0}.factor-head{display:flex;justify-content:space-between;gap:8px;font-size:12px}.factor-track{height:7px;border-radius:999px;background:#233047;margin-top:4px;overflow:hidden}.factor-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#38bdf8,#22c55e)}.factor-note{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}.neutral-note{font-size:11px;color:#fbbf24;margin-top:10px;line-height:1.5}
 .deep-conclusion{margin:12px 0 8px;background:#12243a;border:1px solid #285077;border-radius:12px;padding:11px;line-height:1.6;font-size:13px}.deep-conclusion b{color:#7dd3fc}.insight-title{font-size:13px;font-weight:900;margin:13px 0 7px}.insight{border-left:3px solid #64748b;background:#162033;padding:8px 10px;margin:6px 0;border-radius:0 9px 9px 0;font-size:12px;line-height:1.5}.insight.good{border-color:#22c55e;color:#dcfce7}.insight.warn{border-color:#f59e0b;color:#fef3c7}.insight.bad{border-color:#fb7185;color:#ffe4e6}.coverage{display:inline-block;margin-top:5px;color:#94a3b8;font-size:11px}
 .group{font-size:18px;font-weight:900;margin:22px 3px 10px}.empty,.error{padding:18px;border-radius:15px;background:#172033;color:#cbd5e1;line-height:1.7}.error{background:#3b1720;color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:28px 0 42px;line-height:1.8}
-.live-button{width:100%;margin-top:13px;background:#164e63;border-color:#22d3ee;color:#cffafe}.live-result{margin-top:10px;background:#172554;border:1px solid #3b82f6;border-radius:13px;padding:12px;line-height:1.7;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);padding:16px;overflow:auto}.modal.open{display:block}.modal-card{max-width:620px;margin:18px auto;background:#111c2e;border:1px solid #334155;border-radius:22px;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal-title{font-size:21px;font-weight:900}.modal-close{width:46px;padding:10px}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field label{color:#cbd5e1;font-size:12px;font-weight:800}.field input{width:100%;padding:12px}.field.full{grid-column:1/-1}.form-note{color:#fbbf24;font-size:12px;line-height:1.6;margin-top:12px}.preview{display:none;max-width:100%;max-height:260px;margin-top:10px;border-radius:12px;border:1px solid #334155}.calculate{width:100%;margin-top:14px;background:var(--green);border-color:#4ade80;color:#052e16}.modal-output{margin-top:13px}.muted{color:var(--muted)}
+.live-button{width:100%;margin-top:13px;background:#164e63;border-color:#22d3ee;color:#cffafe}.live-result{margin-top:10px;background:#172554;border:1px solid #3b82f6;border-radius:13px;padding:12px;line-height:1.7;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);padding:16px;overflow:auto}.modal.open{display:block}.modal-card{max-width:620px;margin:18px auto;background:#111c2e;border:1px solid #334155;border-radius:22px;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal-title{font-size:21px;font-weight:900}.modal-close{width:46px;padding:10px}.modal-output{margin-top:13px}.live-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.live-refresh{background:#166534;border-color:#4ade80}.live-toggle{background:#164e63;border-color:#22d3ee}.live-toggle.off{background:#334155;border-color:#64748b}.live-connection{margin-top:8px;color:#7dd3fc;font-size:12px;line-height:1.5;text-align:center}.auto-note{margin-top:12px;padding:11px 13px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#bbf7d0;font-size:13px;line-height:1.6}.auto-data{margin-top:12px;border:1px solid #334155;border-radius:13px;background:#0d1727}.auto-data summary{padding:12px;color:#7dd3fc;font-weight:800;cursor:pointer}.auto-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 12px}.auto-item{background:#172033;border-radius:10px;padding:9px}.auto-item span{display:block;color:var(--muted);font-size:11px}.auto-item b{display:block;margin-top:3px}.muted{color:var(--muted)}
 .capital-test{margin-top:13px;border-radius:14px;padding:13px;line-height:1.65;font-size:13px}.capital-test.eligible{background:#0b2c22;border:1px solid #22c55e;color:#dcfce7}.capital-test.blocked{background:#2a1720;border:1px solid #fb7185;color:#ffe4e6}.capital-test-title{font-size:16px;font-weight:900}.capital-test-meta{margin-top:5px;color:#cbd5e1}.capital-test-reasons{margin-top:6px;color:#fda4af}
 @media(min-width:640px){.buttons{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}}
@@ -37,7 +37,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <body>
 <div class="shell">
   <header class="header">
-    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.30-LIVE</div></div>
+    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.32-LIVE</div></div>
   </header>
 
   <div class="nav-label">排行與固定清單</div>
@@ -101,35 +101,28 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.30-LIVE<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.32-LIVE<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <div class="modal" id="liveModal" role="dialog" aria-modal="true" aria-labelledby="liveTitle">
   <div class="modal-card">
-    <div class="modal-head"><div><div class="modal-title" id="liveTitle">📸 補充券商即時資料</div><div class="status" id="liveStockName"></div></div><button class="modal-close" id="liveClose" aria-label="關閉">✕</button></div>
-    <form id="liveForm">
-      <div class="form-grid">
-        <div class="field"><label for="livePrice">即時價格</label><input id="livePrice" inputmode="decimal" type="number" step="any" required></div>
-        <div class="field"><label for="liveVolumeRatio">相對量（例如 1.6）</label><input id="liveVolumeRatio" inputmode="decimal" type="number" step="any" min="0"></div>
-        <div class="field"><label for="liveBid">五檔委買合計</label><input id="liveBid" inputmode="numeric" type="number" step="1" min="0"></div>
-        <div class="field"><label for="liveAsk">五檔委賣合計</label><input id="liveAsk" inputmode="numeric" type="number" step="1" min="0"></div>
-        <div class="field"><label for="liveForeign">外資今日買賣超</label><input id="liveForeign" inputmode="numeric" type="number" step="1" placeholder="賣超請填負數"></div>
-        <div class="field"><label for="liveTrust">投信今日買賣超</label><input id="liveTrust" inputmode="numeric" type="number" step="1" placeholder="賣超請填負數"></div>
-        <div class="field"><label for="liveMargin">融資增減</label><input id="liveMargin" inputmode="numeric" type="number" step="1" placeholder="減少請填負數"></div>
-        <div class="field"><label for="liveScreenshot">券商截圖（選填）</label><input id="liveScreenshot" type="file" accept="image/*"></div>
-        <div class="field full"><img class="preview" id="livePreview" alt="券商截圖預覽"></div>
-      </div>
-      <div class="form-note">截圖只在這支手機預覽，不會上傳或外流；目前請依截圖填入數字，避免圖片辨識錯一位數就造成錯誤買賣判斷。</div>
-      <button class="calculate" type="submit">🧠 重新計算即時判斷</button>
-    </form>
+    <div class="modal-head"><div><div class="modal-title" id="liveTitle">🧠 自動即時判斷</div><div class="status" id="liveStockName"></div></div><button class="modal-close" id="liveClose" aria-label="關閉">✕</button></div>
+    <div class="live-controls"><button class="live-refresh" id="liveRefresh">⚡ 立即更新</button><button class="live-toggle" id="liveToggle">🟢 即時模式開啟</button></div>
+    <div class="live-connection" id="liveConnection">正在準備即時資料…</div>
     <div class="modal-output" id="liveOutput"></div>
+    <div class="auto-note" id="liveAutoNote"></div>
+    <details class="auto-data"><summary>查看自動帶入資料</summary><div class="auto-grid" id="liveAutoGrid"></div></details>
   </div>
 </div>
 
+<script src="live_config.js?v=633"></script>
+<script src="live_client.js?v=633"></script>
+<script src="live_analysis.js?v=633"></script>
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},view:'TW',liveStock:null};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},fubonLive:null,fubonQuotes:{},view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function first(obj,names,fallback){for(var i=0;i<names.length;i++){var v=obj[names[i]];if(v!==undefined&&v!==null&&v!=='')return v;}return fallback===undefined?'—':fallback;}
@@ -171,8 +164,8 @@ function normalizeReport(row){
     buy:(row.buy_zone_low!=null?row.buy_zone_low+' ～ '+row.buy_zone_high:row.buy_price),better:(row.better_buy_low!=null?row.better_buy_low+' ～ '+row.better_buy_high:row.buy_price),entryNote:row.entry_note,pricePlanQuality:row.price_plan_quality,pricePlanNote:row.price_plan_note,support1:row.support1,support2:row.support2,resistance1:row.resistance1,resistance2:row.resistance2,
     ma5:row.ma5,ma10:row.ma10,ma20:row.ma20,ma60:row.ma60,
     avgVolume5:row.avg_volume5,avgVolume10:row.avg_volume10,avgVolume20:row.avg_volume20,
-    institutionAvailable:row.institution_available,institution1d:row.institution_1d,institution5d:row.institution_5d,institution10d:row.institution_10d,
-    creditAvailable:row.credit_available,marginBalance:row.margin_balance,margin5d:row.margin_5d_change,shortBalance:row.short_balance,short5d:row.short_5d_change,sblBalance:row.sbl_balance,sbl5d:row.sbl_5d_change,
+    institutionAvailable:row.institution_available,institution1d:row.institution_1d,institution5d:row.institution_5d,institution10d:row.institution_10d,foreignNet:row.foreign_net,trustNet:row.trust_net,
+    creditAvailable:row.credit_available,marginBalance:row.margin_balance,margin1d:row.margin_1d_change,margin5d:row.margin_5d_change,shortBalance:row.short_balance,short5d:row.short_5d_change,sblBalance:row.sbl_balance,sbl5d:row.sbl_5d_change,
     brokerAvailable:row.broker_available,topBrokersBuy:row.top_brokers_buy||[],topBrokersSell:row.top_brokers_sell||[],
     klinePattern:row.kline_pattern,klineScore:row.kline_score,dailyVolumeRatio:row.daily_volume_ratio,volumePricePattern:row.volume_price_pattern,breakout20:row.breakout20,breakdown20:row.breakdown20,
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
@@ -180,6 +173,8 @@ function normalizeReport(row){
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
+    usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
+    usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,
     scenarioTitle:row.scenario_title,scenarioMarket:row.scenario_market,scenarioQuality:row.scenario_data_quality,scenarioBasis:row.scenario_basis,scenarioContinuation:row.scenario_continuation,scenarioNoChase:row.scenario_no_chase,scenarioBreakdown:row.scenario_breakdown_text,
     outlookDirection:row.outlook_direction,outlookBias:row.outlook_bias_score,outlookConfidence:row.outlook_confidence,outlookHorizon:row.outlook_horizon,outlookReasons:Array.isArray(row.outlook_reasons)?row.outlook_reasons:[],outlookChangeCondition:row.outlook_change_condition,outlookQuality:row.outlook_data_quality,
     shortTermEligible:row.short_term_eligible,shortTermScore:row.short_term_score,shortTermStatus:row.short_term_status,shortTermSetup:row.short_term_setup,shortTermEntryLow:row.short_term_entry_low,shortTermEntryHigh:row.short_term_entry_high,shortTermTrigger:row.short_term_trigger,shortTermStop:row.short_term_stop,shortTermTarget1:row.short_term_target1,shortTermTarget2:row.short_term_target2,shortTermRr:row.short_term_rr,shortTermPeriod:row.short_term_holding_period,shortTermExit:row.short_term_exit_rule,shortTermReason:row.short_term_reason,shortTermQuality:row.short_term_data_quality,
@@ -221,19 +216,23 @@ function analysisPanel(stock){
   return '<details class="deep"><summary>🧠 查看六大深入分析</summary><div class="deep-body">'+conclusion+'<div class="radar-wrap">'+radarSvg(values)+'<div>'+factors.map(function(f){return '<div class="factor"><div class="factor-head"><b>'+f[0]+'</b><span>'+number(f[1],1)+'｜'+scoreTone(f[1])+'</span></div><div class="factor-track"><div class="factor-fill" style="width:'+bounded(f[1])+'%"></div></div><div class="factor-note">'+f[2]+'</div></div>';}).join('')+'</div></div>'+insightHtml+(missing.length?'<div class="neutral-note">⚠️ '+missing.join('、')+'尚未取得完整資料，目前以中性 50 分呈現，不會因此扣分。</div>':'')+'</div></details>';
 }
 function liveStorageKey(symbol){return 'wude-live-v1-'+String(symbol||'').toUpperCase();}
-function getLiveResult(symbol){try{return JSON.parse(localStorage.getItem(liveStorageKey(symbol))||'null');}catch(error){return null;}}
 function liveResultHtml(result){
   if(!result)return '';
   var cls=result.direction==='看漲'?'up':result.direction==='看跌'?'down':'muted';
-  return '<div class="live-result"><b class="'+cls+'">即時補充判斷：'+esc(result.direction)+'｜'+esc(number(result.adjustedScore,1))+' 分</b><br>'+esc(result.decision)+'<br>'+result.reasons.map(function(v){return '• '+esc(v);}).join('<br>')+'<br><span class="muted">補充完整度 '+esc(result.coverage)+'/7｜'+esc(result.time)+'｜只調整即時判斷，不覆蓋每日正式排名</span></div>';
+  return '<div class="live-result"><b class="'+cls+'">自動即時判斷：'+esc(result.direction)+'｜'+esc(number(result.adjustedScore,1))+' 分</b><br>'+esc(result.decision)+'<br>'+result.reasons.map(function(v){return '• '+esc(v);}).join('<br>')+'<br><span class="muted">自動資料 '+esc(result.coverage)+'/7｜'+esc(result.time)+'｜只調整即時判斷，不覆蓋每日正式排名</span></div>';
 }
-function capitalTestResult(stock){return WudeCapitalTest.evaluate(stock,getLiveResult(stock.symbol));}
+function quoteFor(symbol){return STATE.fubonQuotes[String(symbol||'').toUpperCase()]||null;}
+function automaticLiveResult(stock){
+  var inputs=WudeLiveAnalysis.buildInputs(stock,quoteFor(stock.symbol));
+  return WudeLiveAnalysis.calculate(stock,inputs);
+}
+function capitalTestResult(stock){return WudeCapitalTest.evaluate(stock,automaticLiveResult(stock));}
 function capitalTestHtml(stock){
   var result=capitalTestResult(stock);
   if(result.eligible){
     return '<div class="capital-test eligible"><div class="capital-test-title">✅ 2萬元實盤測試：符合資格</div><div class="capital-test-meta">試算 '+esc(number(result.shares,0))+' 股｜約 '+esc(number(result.estimatedCost,0))+' 元｜跌至風控價最大損失約 '+esc(number(result.estimatedLoss,0))+' 元<br>最多同時3檔、保留至少5,000元現金；帳戶累計虧損達2,000元即停止測試。<br><b>只提供試算，不會自動下單。</b></div></div>';
   }
-  return '<div class="capital-test blocked"><div class="capital-test-title">⛔ 2萬元實盤測試：目前不合格</div><div class="capital-test-meta">通過 '+esc(result.checksPassed)+'/'+esc(result.totalChecks)+' 項</div><div class="capital-test-reasons">'+result.reasons.slice(0,6).map(function(reason){return '• '+esc(reason);}).join('<br>')+'</div><div class="capital-test-meta">補齊券商資料後會自動重算；不合格時不要投入測試金。</div></div>';
+  return '<div class="capital-test blocked"><div class="capital-test-title">⛔ 2萬元實盤測試：目前不合格</div><div class="capital-test-meta">通過 '+esc(result.checksPassed)+'/'+esc(result.totalChecks)+' 項</div><div class="capital-test-reasons">'+result.reasons.slice(0,6).map(function(reason){return '• '+esc(reason);}).join('<br>')+'</div><div class="capital-test-meta">背景資料更新後會自動重算；不合格時不要投入測試金。</div></div>';
 }
 function stockCard(stock,index){
   var outlook='';
@@ -298,7 +297,6 @@ function stockCard(stock,index){
     return /^https?:\/\//i.test(url)?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+title+'</a>':title;
   }).join('<br>');
   var newsRadar='<div class="databox">📰 <b>負面新聞風險雷達：'+esc(newsLevel)+'</b><br>'+esc(stock.news||'本次沒有新聞摘要')+'<br>'+newsEffect+(newsLinks?'<br>'+newsLinks:'')+'</div>';
-  var savedLive=getLiveResult(stock.symbol);
   return [
     '<article class="card"><div class="card-head"><div><div class="rank">TOP '+(index+1)+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
@@ -318,8 +316,7 @@ function stockCard(stock,index){
     '風控價：<b class="down">'+esc(number(stock.stop,2))+'</b></div>',
     '<div class="advice">'+esc(stock.advice)+'</div><div class="risk">風險：'+esc(stock.risk)+'</div>',
     '<div data-capital-result="'+esc(stock.symbol)+'">'+capitalTestHtml(stock)+'</div>',
-    '<button class="live-button" data-live-symbol="'+esc(stock.symbol)+'">📸 補充券商即時資料，再判斷一次</button>',
-    '<div data-live-result="'+esc(stock.symbol)+'">'+liveResultHtml(savedLive)+'</div></article>'
+    '<button class="live-button" data-live-symbol="'+esc(stock.symbol)+'">🧠 查看自動即時判斷</button></article>'
   ].join('');
 }
 function renderStocks(stocks){
@@ -470,7 +467,7 @@ function showMarket(view){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
     document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
     document.getElementById('status').textContent='只顯示所有嚴格條件均通過的台股個股｜每筆4,000～6,000元｜單筆風險不超過200元｜最多3檔｜只試算、不自動下單';
-    if(!testRows.length){document.getElementById('results').innerHTML='<div class="empty">目前沒有符合資格的股票。這是正常的：先回台股排行補充券商即時資料，通過6/7以上且價格位於買進區後才會列入。</div>';return;}
+    if(!testRows.length){document.getElementById('results').innerHTML='<div class="empty">目前沒有符合資格的股票。背景資料會自動帶入；通過6/7以上且價格位於買進區後才會列入，不需要手動填寫。</div>';return;}
     renderStocks(testRows);return;
   }
   if(view==='WATCH'){
@@ -492,8 +489,9 @@ function renderPerformance(report){
   if(!h){box.innerHTML='<div class="performance">🎯 回測已啟動，累積資料後顯示命中率。</div>';return;}
   var available=['1','5','10','20'].filter(function(k){return Number((h[k]||{}).samples)>0;});
   if(!available.length){box.innerHTML='<div class="performance">🎯 已開始保存每次 TOP20；累積1個交易日後顯示第一批結果。</div>';return;}
-  var c=p.calibration||{},guard=c.status==='ready_for_review'?'🔔 已滿16個交易日，等待確認後才納入計分':'🛡️ 保護期尚差 '+number(c.remaining_trading_days,0)+' 個交易日；目前不影響AI分數';
-  box.innerHTML='<div class="performance">🎯 歷史回測（僅代表過往）<br>'+available.map(function(k){var m=h[k];return '<b>'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct);}).join('<br>')+'<br>'+guard+'</div>';
+  var c=p.calibration||{},guard=c.affects_ai_score?'✅ 已有實際結果，小幅校準最多±2分':'🛡️ 保護期尚差 '+number(c.remaining_trading_days,0)+' 個交易日；目前不影響AI分數';
+  var groups=p.groups||{},split=['TW','US'].map(function(key){var m=groups[key]&&groups[key].horizons&&groups[key].horizons['1'];return m&&Number(m.samples)>0?'<b>'+key+'隔日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct):'';}).filter(Boolean).join('<br>');
+  box.innerHTML='<div class="performance">🎯 歷史回測（僅代表過往）<br>'+available.map(function(k){var m=h[k];return '<b>'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct);}).join('<br>')+(split?'<br>'+split:'')+'<br>'+guard+'</div>';
 }
 async function fetchJSON(path){var response=await fetch(path+'?t='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);return response.json();}
 async function showReport(period){
@@ -568,10 +566,13 @@ async function loadAll(){
       fetchJSON('reports/latest.json').catch(function(){return null;}),
       fetchJSON('quantum_watchlist.json').catch(function(){return null;}),
       fetchJSON('optical_watchlist.json').catch(function(){return null;}),
-      fetchJSON('reports/all_analysis.json').catch(function(){return null;})
+      fetchJSON('reports/all_analysis.json').catch(function(){return null;}),
+      fetchJSON('reports/fubon_live.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.fubonQuotes={};
+    if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
+    if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
     var current=live&&Array.isArray(live.data)?live.data.map(normalizeReport):[];
     var normalized=current.length?current:legacy;
@@ -583,74 +584,75 @@ async function loadAll(){
     if(live&&live.updated_at)document.getElementById('status').textContent+='｜排名更新 '+live.updated_at;
   }catch(error){document.getElementById('status').textContent='❌ 資料讀取失敗';document.getElementById('results').innerHTML='<div class="error">無法讀取股票資料：'+esc(error.message)+'</div>';}
 }
-function inputNumber(id){var value=document.getElementById(id).value;return value===''?null:Number(value);}
-function closeLiveModal(){document.getElementById('liveModal').classList.remove('open');document.body.style.overflow='';}
+function stopLivePolling(){
+  if(STATE.liveTimer){window.clearInterval(STATE.liveTimer);STATE.liveTimer=null;}
+  if(STATE.liveRequest){STATE.liveRequest.abort();STATE.liveRequest=null;}
+}
+function closeLiveModal(){stopLivePolling();document.getElementById('liveModal').classList.remove('open');document.body.style.overflow='';}
+function renderLiveModal(stock,quote,connectionText){
+  var inputs=WudeLiveAnalysis.buildInputs(stock,quote),result=WudeLiveAnalysis.calculate(stock,inputs);
+  var missing=WudeLiveAnalysis.missingLabels(stock,inputs);
+  try{localStorage.setItem(liveStorageKey(stock.symbol),JSON.stringify(result));}catch(error){}
+  document.getElementById('liveOutput').innerHTML=liveResultHtml(result);
+  var source=stock.market==='US'?(stock.usLiveAvailable?(stock.usLiveSource||'美股 SIP／OPRA 自動資料'):'美股 Yahoo／SEC／FINRA 備援資料'):(quote?'富邦＋台股公開資料':'台股公開資料；等待富邦快照');
+  document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，有授權資料後會自動補上。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source;
+  var values=WudeLiveAnalysis.inputRows(stock,inputs);
+  document.getElementById('liveAutoGrid').innerHTML=values.map(function(item){return '<div class="auto-item"><span>'+esc(item.label)+'</span><b>'+esc(number(item.value,item.key==='price'?2:1))+'</b></div>';}).join('');
+  if(connectionText)document.getElementById('liveConnection').textContent=connectionText;
+}
+async function fetchCurrentLive(manual){
+  var stock=STATE.liveStock,base=String(window.WUDE_LIVE_API_BASE||'').trim();
+  if(!stock)return;
+  if(!base){
+    document.getElementById('liveConnection').textContent='目前顯示最近一次背景快照；雲端即時服務部署後會自動啟用。';
+    return;
+  }
+  if(STATE.liveRequest)STATE.liveRequest.abort();
+  var controller=new AbortController();STATE.liveRequest=controller;
+  var button=document.getElementById('liveRefresh');
+  if(manual){button.disabled=true;button.textContent='⏳ 讀取中…';}
+  document.getElementById('liveConnection').textContent='正在取得最新授權行情…';
+  try{
+    var token=WudeLiveClient.accessToken(window.localStorage);
+    var response=await fetch(WudeLiveClient.buildUrl(base,stock.symbol,stock.market),{cache:'no-store',credentials:'omit',signal:controller.signal,headers:WudeLiveClient.requestHeaders(token)});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    var payload=await response.json();if(!payload.ok)throw new Error(payload.error||'即時資料未回傳');
+    stock=WudeLiveClient.mergeStock(stock,payload);STATE.liveStock=stock;
+    var quote=stock.market==='TW'?WudeLiveClient.taiwanQuote(payload,quoteFor(stock.symbol)):null;
+    if(quote)STATE.fubonQuotes[String(stock.symbol).toUpperCase()]=quote;
+    var fetched=payload.fetched_at?new Date(payload.fetched_at).toLocaleString('zh-TW',{hour12:false}):new Date().toLocaleString('zh-TW',{hour12:false});
+    renderLiveModal(stock,quote||quoteFor(stock.symbol),'✅ 即時行情已更新｜'+fetched+(payload.cached?'｜快取':'｜最新'));
+  }catch(error){
+    if(error.name!=='AbortError')document.getElementById('liveConnection').textContent='⚠️ 即時服務暫時無法連線，已保留最近一次可靠快照。';
+  }finally{
+    if(STATE.liveRequest===controller)STATE.liveRequest=null;
+    if(manual){button.disabled=false;button.textContent='⚡ 立即更新';}
+  }
+}
+function startLivePolling(){
+  stopLivePolling();
+  if(!STATE.liveRealtime)return;
+  fetchCurrentLive(false);
+  if(String(window.WUDE_LIVE_API_BASE||'').trim())STATE.liveTimer=window.setInterval(function(){fetchCurrentLive(false);},WudeLiveClient.pollInterval(window.WUDE_LIVE_POLL_MS));
+}
 function openLiveModal(symbol){
   var stock=buildAllAnalysisPool().find(function(row){return String(row.symbol).toUpperCase()===String(symbol).toUpperCase();});
   if(!stock)return;
   STATE.liveStock=stock;
-  var saved=getLiveResult(stock.symbol),values=saved&&saved.inputs?saved.inputs:{};
   document.getElementById('liveStockName').textContent=stock.name+'（'+marketCode(stock.symbol,stock.market)+'）｜原 AI '+number(stock.score,1)+' 分';
-  document.getElementById('livePrice').value=hasValue(values.price)?values.price:(hasValue(stock.price)?stock.price:'');
-  document.getElementById('liveVolumeRatio').value=hasValue(values.volumeRatio)?values.volumeRatio:(hasValue(stock.volume)?stock.volume:'');
-  document.getElementById('liveBid').value=hasValue(values.bid)?values.bid:'';
-  document.getElementById('liveAsk').value=hasValue(values.ask)?values.ask:'';
-  document.getElementById('liveForeign').value=hasValue(values.foreign)?values.foreign:'';
-  document.getElementById('liveTrust').value=hasValue(values.trust)?values.trust:'';
-  document.getElementById('liveMargin').value=hasValue(values.margin)?values.margin:'';
-  document.getElementById('liveScreenshot').value='';
-  document.getElementById('livePreview').style.display='none';
-  document.getElementById('livePreview').removeAttribute('src');
-  document.getElementById('liveOutput').innerHTML=liveResultHtml(saved);
+  STATE.liveRealtime=true;document.getElementById('liveToggle').classList.remove('off');document.getElementById('liveToggle').textContent='🟢 即時模式開啟';
+  renderLiveModal(stock,quoteFor(stock.symbol),'正在準備即時資料…');
   document.getElementById('liveModal').classList.add('open');document.body.style.overflow='hidden';
-}
-function calculateLive(stock,inputs){
-  var base=Number(stock.score);if(!Number.isFinite(base))base=50;
-  var delta=0,reasons=[],price=inputs.price,reportPrice=Number(stock.price),support=Number(stock.support1),resistance=Number(stock.resistance1);
-  if(Number.isFinite(price)&&Number.isFinite(support)&&price<=support*1.01){delta+=3;reasons.push('價格已接近第一支撐，具備風險控制位置');}
-  if(Number.isFinite(price)&&Number.isFinite(resistance)&&price>=resistance*.99){delta-=2;reasons.push('價格接近第一壓力，不宜直接追價');}
-  if(Number.isFinite(inputs.volumeRatio)){
-    if(inputs.volumeRatio>=1.5&&Number.isFinite(reportPrice)&&price>=reportPrice){delta+=3;reasons.push('上漲配合相對量放大，攻擊量能偏多');}
-    else if(inputs.volumeRatio>=1.5&&Number.isFinite(reportPrice)&&price<reportPrice){delta-=3;reasons.push('下跌同時放量，賣壓風險升高');}
-    else if(inputs.volumeRatio<.7)reasons.push('量能不足，突破訊號可靠度較低');
-  }
-  if(Number.isFinite(inputs.bid)&&Number.isFinite(inputs.ask)&&inputs.ask>0){
-    var orderRatio=inputs.bid/inputs.ask;
-    if(orderRatio>=1.2){delta+=3;reasons.push('五檔委買大於委賣，短線承接偏強');}
-    else if(orderRatio<=.83){delta-=3;reasons.push('五檔委賣大於委買，短線上方賣壓偏重');}
-    else reasons.push('五檔買賣接近平衡');
-  }
-  var hasFlow=Number.isFinite(inputs.foreign)||Number.isFinite(inputs.trust),flow=(Number.isFinite(inputs.foreign)?inputs.foreign:0)+(Number.isFinite(inputs.trust)?inputs.trust:0);
-  if(hasFlow&&flow>0){delta+=3;reasons.push('外資與投信合計買超，法人籌碼偏多');}
-  else if(hasFlow&&flow<0){delta-=3;reasons.push('外資與投信合計賣超，法人籌碼偏空');}
-  if(Number.isFinite(inputs.margin)&&inputs.margin>0&&flow<0){delta-=2;reasons.push('法人賣超而融資增加，籌碼結構較不利');}
-  else if(Number.isFinite(inputs.margin)&&inputs.margin<0&&hasFlow&&flow>=0){delta+=1;reasons.push('融資減少且法人未轉賣，浮額壓力下降');}
-  delta=Math.max(-15,Math.min(15,delta));
-  var adjusted=Math.max(0,Math.min(100,base+delta));
-  var direction=adjusted>=65&&delta>=0?'看漲':adjusted<=45||delta<=-6?'看跌':'震盪／等待確認';
-  var decision='先觀察，不追價；等價格與量能確認後再進場。';
-  if(direction==='看漲'&&Number.isFinite(price)&&Number.isFinite(support)&&price<=support*1.03)decision='可在支撐附近小量分批，跌破風控價立即停止加碼。';
-  else if(direction==='看漲')decision='方向偏多，但目前不一定是低風險買點，等回測或有效突破再買。';
-  else if(direction==='看跌')decision='目前不建議新增部位；先等賣壓縮小並重新站回支撐。';
-  if(!reasons.length)reasons.push('補充資料仍不足，維持原模型判斷');
-  var coverage=['price','volumeRatio','bid','ask','foreign','trust','margin'].filter(function(key){return Number.isFinite(inputs[key]);}).length;
-  return {direction:direction,adjustedScore:adjusted,decision:decision,reasons:reasons,coverage:coverage,time:new Date().toLocaleString('zh-TW',{hour12:false}),inputs:inputs};
+  startLivePolling();
 }
 document.getElementById('results').addEventListener('click',function(event){var button=event.target.closest('[data-live-symbol]');if(button)openLiveModal(button.getAttribute('data-live-symbol'));});
 document.getElementById('liveClose').addEventListener('click',closeLiveModal);
 document.getElementById('liveModal').addEventListener('click',function(event){if(event.target===this)closeLiveModal();});
-document.getElementById('liveScreenshot').addEventListener('change',function(){
-  var file=this.files&&this.files[0],preview=document.getElementById('livePreview');if(!file){preview.style.display='none';return;}
-  preview.src=URL.createObjectURL(file);preview.style.display='block';
-});
-document.getElementById('liveForm').addEventListener('submit',function(event){
-  event.preventDefault();if(!STATE.liveStock)return;
-  var inputs={price:inputNumber('livePrice'),volumeRatio:inputNumber('liveVolumeRatio'),bid:inputNumber('liveBid'),ask:inputNumber('liveAsk'),foreign:inputNumber('liveForeign'),trust:inputNumber('liveTrust'),margin:inputNumber('liveMargin')};
-  var result=calculateLive(STATE.liveStock,inputs);
-  try{localStorage.setItem(liveStorageKey(STATE.liveStock.symbol),JSON.stringify(result));}catch(error){}
-  var html=liveResultHtml(result);document.getElementById('liveOutput').innerHTML=html;
-  document.querySelectorAll('[data-live-result]').forEach(function(box){if(String(box.getAttribute('data-live-result')).toUpperCase()===String(STATE.liveStock.symbol).toUpperCase())box.innerHTML=html;});
-  document.querySelectorAll('[data-capital-result]').forEach(function(box){if(String(box.getAttribute('data-capital-result')).toUpperCase()===String(STATE.liveStock.symbol).toUpperCase())box.innerHTML=capitalTestHtml(STATE.liveStock);});
+document.getElementById('liveRefresh').addEventListener('click',function(){fetchCurrentLive(true);});
+document.getElementById('liveToggle').addEventListener('click',function(){
+  STATE.liveRealtime=!STATE.liveRealtime;
+  this.classList.toggle('off',!STATE.liveRealtime);this.textContent=STATE.liveRealtime?'🟢 即時模式開啟':'⚪ 即時模式暫停';
+  if(STATE.liveRealtime)startLivePolling();else{stopLivePolling();document.getElementById('liveConnection').textContent='即時模式已暫停；可按「立即更新」單次更新。';}
 });
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
 document.querySelectorAll('#quantumButtons button').forEach(function(btn){btn.addEventListener('click',function(){showQuantum(btn.getAttribute('data-quantum'));});});

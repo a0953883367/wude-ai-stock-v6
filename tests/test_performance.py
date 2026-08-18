@@ -34,3 +34,22 @@ def test_red_signal_counts_falling_price_as_a_hit(tmp_path: Path):
         tmp_path, [_row(90)], [_row(90)], "2026-08-17 06:00:00", "morning"
     )
     assert summary["signals"]["🔴"]["1"]["win_rate_pct"] == 100.0
+
+
+def test_performance_is_split_by_market_group_and_us_feed(tmp_path: Path):
+    tw = _row(100)
+    us = {
+        **_row(200), "symbol": "NVDA", "name": "NVIDIA", "market": "US",
+        "backtest_group": "US", "us_live_feed": "sip",
+        "us_live_source": "Alpaca SIP", "us_live_data_available": True,
+    }
+    update_performance(tmp_path, [tw, us], [tw, us], "2026-08-14 20:00:00", "evening")
+    tw_next = {**tw, "price": 102}
+    us_next = {**us, "price": 210}
+    summary = update_performance(
+        tmp_path, [tw_next, us_next], [tw_next, us_next],
+        "2026-08-17 06:00:00", "morning",
+    )
+    assert summary["groups"]["TW"]["horizons"]["1"]["samples"] == 1
+    assert summary["groups"]["US"]["horizons"]["1"]["samples"] == 1
+    assert summary["us_feeds"]["sip"]["horizons"]["1"]["win_rate_pct"] == 100.0

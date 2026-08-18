@@ -8,6 +8,7 @@ On Windows, credentials come from Credential Manager targets
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import subprocess
@@ -113,8 +114,83 @@ def _candle_frame(payload: Any) -> pd.DataFrame:
     return frame.drop(columns=["time"], errors="ignore").dropna(how="all")
 
 
-def build_fubon_intraday(sdk, symbols: list[str]) -> dict[str, pd.DataFrame]:
-    """Use Fubon for Taiwan symbols and Yahoo as a resilient fallback."""
+def _quote_data(payload: Any) -> dict[str, Any]:
+    """Normalize both direct HTTP-style and SDK-wrapped quote responses."""
+    obj = _to_dict(payload)
+    nested = obj.get("data")
+    if nested is not None and not any(key in obj for key in ("lastPrice", "bids", "asks")):
+        obj = _to_dict(nested)
+    return obj
+
+
+def _number(value: Any) -> float | None:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if pd.notna(result) else None
+
+
+def _level_total(levels: Any) -> int | None:
+    if not isinstance(levels, (list, tuple)) or not levels:
+        return None
+    total = 0.0
+    found = False
+    for level in levels:
+        item = _to_dict(level)
+        size = _number(item.get("size"))
+        if size is not None:
+            total += size
+            found = True
+    return int(total) if found else None
+
+
+def parse_fubon_quote(payload: Any) -> dict[str, Any]:
+    obj = _quote_data(payload)
+    last_price = _number(obj.get("lastPrice", obj.get("closePrice")))
+    bid_total = _level_total(obj.get("bids"))
+    ask_total = _level_total(obj.get("asks"))
+    if last_price is None and bid_total is None and ask_total is None:
+        return {}
+    return {
+        "lastPrice": last_price,
+        "bidTotal": bid_total,
+        "askTotal": ask_total,
+        "fetchedAt": datetime.now(TAIPEI).isoformat(timespec="seconds"),
+    }
+
+
+def _write_fubon_snapshot(quotes: dict[str, dict[str, Any]]) -> None:
+    if not quotes:
+        LOG.warning("No Fubon quotes succeeded; keeping the previous snapshot")
+        return
+    path = ROOT / "reports" / "fubon_live.json"
+    existing: dict[str, Any] = {}
+    try:
+        existing_payload = json.loads(path.read_text(encoding="utf-8"))
+        existing = existing_payload.get("data", {})
+    except (OSError, ValueError, TypeError):
+        pass
+    existing.update(quotes)
+    now = datetime.now(TAIPEI).isoformat(timespec="seconds")
+    payload = {
+        "version": 1,
+        "updated_at": now,
+        "source": "Fubon Neo intraday.quote",
+        "data": existing,
+    }
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    tmp.replace(path)
+    LOG.info("Saved Fubon quote snapshot for %d symbols", len(quotes))
+
+
+def build_fubon_intraday(
+    sdk,
+    symbols: list[str],
+    quote_results: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, pd.DataFrame]:
+    """Use Fubon for every Taiwan symbol and Yahoo as a resilient fallback."""
     result: dict[str, pd.DataFrame] = {}
     tw_symbols = [s for s in symbols if s.endswith(".TW") or s.endswith(".TWO")]
     non_tw = [s for s in symbols if s not in tw_symbols]
@@ -125,6 +201,13 @@ def build_fubon_intraday(sdk, symbols: list[str]) -> dict[str, pd.DataFrame]:
     reststock = sdk.marketdata.rest_client.stock
     for symbol in tw_symbols:
         stock_id = symbol.split(".")[0]
+        if quote_results is not None:
+            try:
+                quote = parse_fubon_quote(reststock.intraday.quote(symbol=stock_id))
+                if quote and quote_results is not None:
+                    quote_results[symbol] = quote
+            except Exception as exc:
+                LOG.warning("Fubon quote failed for %s: %s", symbol, exc)
         try:
             payload = reststock.intraday.candles(symbol=stock_id, timeframe="5", sort="asc")
             frame = _candle_frame(payload)
@@ -184,7 +267,12 @@ def main() -> int:
         _check_market_data(sdk)
         return 0
 
-    briefing.download_intraday = lambda symbols: build_fubon_intraday(sdk, symbols)
+    quote_results: dict[str, dict[str, Any]] = {}
+    briefing.download_intraday = lambda symbols: build_fubon_intraday(
+        sdk,
+        symbols,
+        quote_results=quote_results,
+    )
     argv = [sys.argv[0], "--period", args.period]
     if args.no_telegram:
         argv.append("--no-telegram")
@@ -196,6 +284,7 @@ def main() -> int:
         sys.argv = old_argv
 
     if rc == 0:
+        _write_fubon_snapshot(quote_results)
         if args.auto_git:
             os.environ["FUBON_AUTO_GIT"] = "1"
         _git_publish(args.period)

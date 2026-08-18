@@ -17,19 +17,23 @@ def test_us_contract_removes_tw_only_fields():
 
 
 def test_tw_contract_removes_us_only_fields():
-    row = {"market": "TW", "us_short_volume_ratio_pct": 60, "extended_price": 10}
+    row = {"market": "TW", "us_short_volume_ratio_pct": 60, "us_live_price": 10, "us_option_iv_pct": 40, "extended_price": 10}
     result = enforce_market_contract(row)
     assert "us_short_volume_ratio_pct" not in result
     assert "extended_price" not in result
+    assert "us_live_price" not in result
+    assert "us_option_iv_pct" not in result
     assert result["market_model_version"] == "TW-V3"
 
 
 def test_quality_uses_different_market_checklists():
     common = {"price": 100, "avg_volume20": 1000, "intraday_available": True, "news_data_available": True}
     tw = assess_market_data_quality({**common, "market": "TW", "institution_available": True})
-    us = assess_market_data_quality({**common, "market": "US", "extended_hours_available": True, "us_short_volume_available": True, "us_company_data_available": True})
+    us = assess_market_data_quality({**common, "market": "US", "extended_hours_available": True, "us_short_volume_available": True, "us_company_data_available": True, "us_live_data_available": True, "us_option_data_available": True})
     assert "三大法人" in tw["market_data_available"]
     assert "盤前／盤後" in us["market_data_available"]
+    assert "SIP全市場行情" in us["market_data_available"]
+    assert "OPRA選擇權" in us["market_data_available"]
     assert "三大法人" not in us["market_data_available"]
 
 
