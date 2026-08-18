@@ -29,6 +29,7 @@ from notifier import render_markdown, save_report, send_telegram
 from news_risk import fetch_news_risks
 from performance import load_performance_context, update_performance
 from market_models import assess_market_data_quality, enforce_market_contract
+from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from watchlist import load_watchlist
 
@@ -84,6 +85,7 @@ def main() -> int:
         for item in universe
         if item.get("market") == "US"
     }
+    us_live = fetch_us_sip_snapshots(us_symbols, timeout=SETTINGS.request_timeout)
     us_extended_hours = download_us_extended_hours(list(us_symbols))
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
@@ -113,6 +115,7 @@ def main() -> int:
                 row.update(financial_quality.get(stock_id, {}))
                 row.update(broker_branches.get(stock_id, {}))
             elif item.get("market") == "US":
+                row.update(us_live.get(symbol.upper(), {}))
                 row.update(us_extended_hours.get(symbol.upper(), {}))
                 row.update(us_short_volume.get(symbol.upper(), {}))
                 if "ETF" not in str(item.get("type", "")).upper():
@@ -120,6 +123,23 @@ def main() -> int:
             features.append(enforce_market_contract(row))
 
     market = fetch_core_market()
+    nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
+    nasdaq_change = float(nasdaq_raw) if nasdaq_raw is not None else None
+    vix = float((market.get("VIX") or {}).get("price") or 0)
+    market_risk_score = (
+        75.0 if 0 < vix < 18 else
+        60.0 if 18 <= vix < 25 else
+        40.0 if 25 <= vix < 35 else
+        20.0 if vix >= 35 else None
+    )
+    for row in features:
+        if row.get("market") == "US":
+            row["us_market_relative_strength_pct"] = (
+                round(float(row.get("change_pct") or 0) - nasdaq_change, 2)
+                if nasdaq_change is not None else None
+            )
+            row["us_market_risk_score"] = market_risk_score
+            row["us_market_vix"] = vix or None
     macro_regime = update_macro_regime(
         SETTINGS.reports_dir,
         market,
@@ -149,6 +169,20 @@ def main() -> int:
         row = preliminary_by_symbol.get(item["symbol"])
         if row:
             news_targets_by_symbol[row["symbol"]] = row
+    option_targets = [
+        row for row in news_targets_by_symbol.values()
+        if row.get("market") == "US" and "ETF" not in str(row.get("type", "")).upper()
+    ]
+    us_options = fetch_us_opra_signals(option_targets, timeout=SETTINGS.request_timeout)
+    if us_options:
+        for row in features:
+            row.update(us_options.get(str(row.get("symbol") or "").upper(), {}))
+        preliminary = score_candidates(features, macro_regime, performance_context)
+        preliminary_by_symbol = {row["symbol"]: row for row in preliminary}
+        news_targets_by_symbol = {
+            symbol: preliminary_by_symbol.get(symbol, row)
+            for symbol, row in news_targets_by_symbol.items()
+        }
     news_risks = fetch_news_risks(list(news_targets_by_symbol.values()))
     for row in features:
         risk = news_risks.get(row.get("symbol"))
@@ -217,6 +251,8 @@ def main() -> int:
             "broker_count": len(broker_branches),
             "us_short_volume_count": len(us_short_volume),
             "us_extended_hours_count": len(us_extended_hours),
+            "us_sip_count": len(us_live),
+            "us_opra_count": len(us_options),
             "news_scanned_count": len(news_risks),
             "news_verified_risk_count": sum(
                 1 for item in news_risks.values() if item.get("news_penalty", 0) > 0
@@ -243,6 +279,7 @@ def main() -> int:
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
             "market_isolation": "台股TW-V3與美股US-V3使用獨立資料契約；跨市場欄位會在計分前清除",
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
+            "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "verified_outcome_feedback": "actual saved 1/5-day returns only; statistically shrunk and capped at +/-2 points",
         },

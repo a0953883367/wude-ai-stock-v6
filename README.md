@@ -1,4 +1,4 @@
-# 武得 AI 股票助理 V6.15
+# 武得 AI 股票助理 V6.31
 
 台股＋美股 AI 選股系統，以及每天自動執行的「AI 股票早、中、晚報」。GitHub Pages 手機版儀表板、ChatGPT 股票助理與 Telegram 使用同一份固定觀察清單。
 
@@ -44,5 +44,18 @@ Repository Settings → Secrets and variables → Actions：
 - TELEGRAM_BOT_TOKEN
 - TELEGRAM_CHAT_ID
 - FINMIND_TOKEN（選填；填入後才會加入外資、投信、自營商資料）
+
+## 美股權威即時資料（選填）
+
+美股模型不套用台股法人欄位。若要啟用全市場 SIP 與 OPRA 風險層，請在
+Repository Settings → Secrets and variables → Actions 設定：
+
+- Secret `ALPACA_API_KEY_ID`
+- Secret `ALPACA_API_SECRET_KEY`
+- Variable `ALPACA_STOCK_FEED`：`sip`
+- Variable `ALPACA_OPTION_FEED`：有 OPRA 訂閱時填 `opra`，否則留空
+
+沒有設定授權時，系統保留 Yahoo／SEC／FINRA 備援並降低資料涵蓋，不會把
+IEX、延遲或指示性報價標示成 SIP／OPRA。
 
 本系統為資料整理與風險輔助，不保證獲利，也不是代客下單建議。

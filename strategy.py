@@ -335,6 +335,26 @@ def _positioning_radar(row: dict[str, Any]) -> dict[str, Any]:
                 score -= 7
                 evidence.append("主要賣超分點集中度高於買超分點")
     else:
+        if row.get("us_live_data_available"):
+            available_groups += 1
+            imbalance = _finite(row.get("us_live_quote_imbalance_pct"))
+            vwap_distance = _finite(row.get("us_live_vwap_distance_pct"))
+            if imbalance >= 20 and vwap_distance >= 0:
+                score += 8
+                evidence.append(f"SIP報價委買量差 {imbalance:+.1f}%，且價格位於VWAP上方")
+            elif imbalance <= -20 and vwap_distance <= 0:
+                score -= 8
+                evidence.append(f"SIP報價委買量差 {imbalance:+.1f}%，且價格位於VWAP下方")
+            else:
+                evidence.append(f"SIP報價委買量差 {imbalance:+.1f}%，未達明顯失衡")
+        if row.get("us_option_data_available"):
+            available_groups += 1
+            option_safety = _finite(row.get("us_option_safety_score"), 50.0)
+            score += _clamp((option_safety - 50.0) * .20, -6, 4)
+            evidence.append(
+                f"OPRA近月價平選擇權IV { _finite(row.get('us_option_iv_pct')):.1f}%"
+                f"、風險安全分 {option_safety:.1f}"
+            )
         if row.get("us_short_volume_available"):
             available_groups += 1
             ratio = _finite(row.get("us_short_volume_ratio_pct"))
@@ -682,6 +702,15 @@ def _market_flow_score(row: dict[str, Any]) -> tuple[float, bool, str]:
         available = True
         short_ratio = _finite(row.get("us_short_volume_ratio_pct"), 45.0)
         score += _clamp((45.0 - short_ratio) * 0.45, -8, 6)
+    if row.get("us_live_data_available"):
+        available = True
+        imbalance = _finite(row.get("us_live_quote_imbalance_pct"))
+        vwap_distance = _finite(row.get("us_live_vwap_distance_pct"))
+        score += _clamp(imbalance * .12, -6, 6)
+        score += _clamp(vwap_distance * 1.5, -5, 5)
+    if row.get("us_option_data_available"):
+        available = True
+        score += _clamp((_finite(row.get("us_option_safety_score"), 50.0) - 50.0) * .15, -5, 4)
     if row.get("intraday_available"):
         available = True
         score += _clamp(attack * 0.20, -8, 8)

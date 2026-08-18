@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
-<title>武得 AI 股票助理 V6.30-LIVE</title>
+<title>武得 AI 股票助理 V6.31-LIVE</title>
 <style>
 :root{--bg:#07111f;--panel:#111c2e;--card:#111827;--soft:#172033;--line:#263244;--muted:#94a3b8;--blue:#2563eb;--green:#22c55e;--yellow:#facc15;--red:#fb7185;--white:#f8fafc}
 *{box-sizing:border-box}
@@ -37,7 +37,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <body>
 <div class="shell">
   <header class="header">
-    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.30-LIVE</div></div>
+    <div class="header-row"><div><div class="title">📱 武得 AI 股票助理 V6</div><div class="sub">台股＋美股 AI 選股與早中晚報</div></div><div class="version">V6.31-LIVE</div></div>
   </header>
 
   <div class="nav-label">排行與固定清單</div>
@@ -101,7 +101,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
-  <footer class="footer">武得 AI 股票助理 V6.30-LIVE<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+  <footer class="footer">武得 AI 股票助理 V6.31-LIVE<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
 <div class="modal" id="liveModal" role="dialog" aria-modal="true" aria-labelledby="liveTitle">
@@ -113,7 +113,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   </div>
 </div>
 
-<script src="live_analysis.js"></script>
+<script src="live_analysis.js?v=631"></script>
 <script src="capital_test.js"></script>
 <script>
 'use strict';
@@ -168,6 +168,8 @@ function normalizeReport(row){
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
+    usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
+    usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,
     scenarioTitle:row.scenario_title,scenarioMarket:row.scenario_market,scenarioQuality:row.scenario_data_quality,scenarioBasis:row.scenario_basis,scenarioContinuation:row.scenario_continuation,scenarioNoChase:row.scenario_no_chase,scenarioBreakdown:row.scenario_breakdown_text,
     outlookDirection:row.outlook_direction,outlookBias:row.outlook_bias_score,outlookConfidence:row.outlook_confidence,outlookHorizon:row.outlook_horizon,outlookReasons:Array.isArray(row.outlook_reasons)?row.outlook_reasons:[],outlookChangeCondition:row.outlook_change_condition,outlookQuality:row.outlook_data_quality,
     shortTermEligible:row.short_term_eligible,shortTermScore:row.short_term_score,shortTermStatus:row.short_term_status,shortTermSetup:row.short_term_setup,shortTermEntryLow:row.short_term_entry_low,shortTermEntryHigh:row.short_term_entry_high,shortTermTrigger:row.short_term_trigger,shortTermStop:row.short_term_stop,shortTermTarget1:row.short_term_target1,shortTermTarget2:row.short_term_target2,shortTermRr:row.short_term_rr,shortTermPeriod:row.short_term_holding_period,shortTermExit:row.short_term_exit_rule,shortTermReason:row.short_term_reason,shortTermQuality:row.short_term_data_quality,
@@ -583,12 +585,13 @@ function openLiveModal(symbol){
   STATE.liveStock=stock;
   document.getElementById('liveStockName').textContent=stock.name+'（'+marketCode(stock.symbol,stock.market)+'）｜原 AI '+number(stock.score,1)+' 分';
   var quote=quoteFor(stock.symbol),inputs=WudeLiveAnalysis.buildInputs(stock,quote),result=WudeLiveAnalysis.calculate(stock,inputs);
-  var missing=WudeLiveAnalysis.missingLabels(inputs);
+  var missing=WudeLiveAnalysis.missingLabels(stock,inputs);
   try{localStorage.setItem(liveStorageKey(stock.symbol),JSON.stringify(result));}catch(error){}
   document.getElementById('liveOutput').innerHTML=liveResultHtml(result);
-  document.getElementById('liveAutoNote').textContent=missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，有資料後排程會自動補上。':'7/7 項已全部自動帶入，不需要手動填寫。';
-  var values=[['價格',inputs.price],['相對量',inputs.volumeRatio],['五檔委買',inputs.bid],['五檔委賣',inputs.ask],['外資',inputs.foreign],['投信',inputs.trust],['融資增減',inputs.margin]];
-  document.getElementById('liveAutoGrid').innerHTML=values.map(function(item){return '<div class="auto-item"><span>'+esc(item[0])+'</span><b>'+esc(number(item[1],item[0]==='價格'||item[0]==='相對量'?2:0))+'</b></div>';}).join('');
+  var source=stock.market==='US'?(stock.usLiveAvailable?'美股SIP／OPRA自動資料':'美股Yahoo／SEC／FINRA備援資料'):(quote?'富邦＋台股公開資料':'台股公開資料；等待富邦快照');
+  document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，有授權資料後排程會自動補上。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source;
+  var values=WudeLiveAnalysis.inputRows(stock,inputs);
+  document.getElementById('liveAutoGrid').innerHTML=values.map(function(item){return '<div class="auto-item"><span>'+esc(item.label)+'</span><b>'+esc(number(item.value,item.key==='price'?2:1))+'</b></div>';}).join('');
   document.getElementById('liveModal').classList.add('open');document.body.style.overflow='hidden';
 }
 document.getElementById('results').addEventListener('click',function(event){var button=event.target.closest('[data-live-symbol]');if(button)openLiveModal(button.getAttribute('data-live-symbol'));});

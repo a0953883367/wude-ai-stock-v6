@@ -22,7 +22,6 @@ import briefing
 from config import ROOT, TAIPEI
 from data_fetcher import download_intraday as yahoo_download_intraday
 from fubon_credentials import FubonCredentials, load_fubon_credentials
-from watchlist import load_watchlist
 
 LOG = logging.getLogger("fubon_runner")
 
@@ -161,26 +160,6 @@ def parse_fubon_quote(payload: Any) -> dict[str, Any]:
     }
 
 
-def _quote_targets() -> set[str]:
-    """Cover every fixed Taiwan stock plus the currently displayed TW TOP20."""
-    targets = {
-        item["symbol"]
-        for item in load_watchlist()
-        if item.get("market") == "TW"
-    }
-    ranking_path = ROOT / "reports" / "rankings.json"
-    try:
-        payload = json.loads(ranking_path.read_text(encoding="utf-8"))
-        targets.update(
-            row["symbol"]
-            for row in payload.get("data", [])
-            if row.get("market") == "TW" and row.get("symbol")
-        )
-    except (OSError, ValueError, TypeError):
-        LOG.warning("Could not load current rankings for Fubon quote targets")
-    return targets
-
-
 def _write_fubon_snapshot(quotes: dict[str, dict[str, Any]]) -> None:
     if not quotes:
         LOG.warning("No Fubon quotes succeeded; keeping the previous snapshot")
@@ -209,10 +188,9 @@ def _write_fubon_snapshot(quotes: dict[str, dict[str, Any]]) -> None:
 def build_fubon_intraday(
     sdk,
     symbols: list[str],
-    quote_targets: set[str] | None = None,
     quote_results: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, pd.DataFrame]:
-    """Use Fubon for Taiwan symbols and Yahoo as a resilient fallback."""
+    """Use Fubon for every Taiwan symbol and Yahoo as a resilient fallback."""
     result: dict[str, pd.DataFrame] = {}
     tw_symbols = [s for s in symbols if s.endswith(".TW") or s.endswith(".TWO")]
     non_tw = [s for s in symbols if s not in tw_symbols]
@@ -223,7 +201,7 @@ def build_fubon_intraday(
     reststock = sdk.marketdata.rest_client.stock
     for symbol in tw_symbols:
         stock_id = symbol.split(".")[0]
-        if quote_targets is not None and symbol in quote_targets:
+        if quote_results is not None:
             try:
                 quote = parse_fubon_quote(reststock.intraday.quote(symbol=stock_id))
                 if quote and quote_results is not None:
@@ -290,11 +268,9 @@ def main() -> int:
         return 0
 
     quote_results: dict[str, dict[str, Any]] = {}
-    quote_targets = _quote_targets()
     briefing.download_intraday = lambda symbols: build_fubon_intraday(
         sdk,
         symbols,
-        quote_targets=quote_targets,
         quote_results=quote_results,
     )
     argv = [sys.argv[0], "--period", args.period]

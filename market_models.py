@@ -9,7 +9,7 @@ TW_ONLY_PREFIXES = (
     "foreign_", "trust_", "dealer_", "institution_", "margin_", "sbl_",
     "short_", "broker_", "top_brokers_",
 )
-US_ONLY_PREFIXES = ("us_short_", "extended_")
+US_ONLY_PREFIXES = ("us_short_", "us_live_", "us_option_", "us_market_", "extended_")
 
 
 def enforce_market_contract(row: dict[str, Any]) -> dict[str, Any]:
@@ -58,10 +58,15 @@ def assess_market_data_quality(row: dict[str, Any]) -> dict[str, Any]:
         ]
     elif market == "US":
         is_etf = "ETF" in str(row.get("type") or "").upper()
-        checks = common + [
-            ("盤前／盤後", bool(row.get("extended_hours_available")), 10),
+        checks = [
+            ("日線價量", bool(row.get("price") and row.get("avg_volume20")), 20),
+            ("盤中量價", bool(row.get("intraday_available")), 10),
+            ("新聞", bool(row.get("news_data_available")), 10),
+            ("SIP全市場行情", bool(row.get("us_live_data_available")), 15),
+            ("盤前／盤後", bool(row.get("extended_hours_available")), 5),
             ("FINRA每日放空成交", bool(row.get("us_short_volume_available")), 10),
-            ("ETF資料" if is_etf else "公司財務", bool(row.get("etf_metadata_available") if is_etf else row.get("us_company_data_available")), 20),
+            ("ETF資料" if is_etf else "公司財務", bool(row.get("etf_metadata_available") if is_etf else row.get("us_company_data_available")), 15),
+            ("OPRA選擇權", bool(row.get("us_option_data_available")), 5),
             ("美股總經環境", bool(row.get("macro_data_available", True)), 10),
         ]
     else:
