@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 from collections import deque
+import hmac
 import json
 import logging
 import os
@@ -237,9 +238,15 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         return origin if origin and origin in allowed else None
 
     def _authorized(self) -> bool:
-        token = os.getenv("LIVE_ACCESS_TOKEN", "")
+        token = os.getenv("LIVE_ACCESS_TOKEN", "").strip()
         if token:
-            return self.headers.get("Authorization", "") == f"Bearer {token}"
+            authorization = self.headers.get("Authorization", "").strip()
+            supplied = ""
+            if authorization.lower().startswith("bearer "):
+                supplied = authorization[7:].strip()
+            if not supplied:
+                supplied = self.headers.get("X-Live-Token", "").strip()
+            return bool(supplied and hmac.compare_digest(supplied, token))
         if _truthy(os.getenv("LIVE_PUBLIC_READ")):
             return True
         proxy_header = os.getenv("LIVE_TRUSTED_AUTH_HEADER", "").strip()
@@ -264,7 +271,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         origin = self._origin()
         if origin:
             self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+            self.send_header("Access-Control-Allow-Headers", "Authorization, X-Live-Token, Content-Type")
             self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
             self.send_header("Access-Control-Allow-Credentials", "true")
             self.send_header("Vary", "Origin")
