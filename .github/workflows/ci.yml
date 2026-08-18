@@ -40,3 +40,5 @@ jobs:
         run: python -m py_compile briefing.py data_fetcher.py market_models.py strategy.py
       - name: 檢查 2 萬元實測規則
         run: node tests/test_capital_test.js
+      - name: 檢查自動即時判斷
+        run: node tests/test_live_analysis.js
