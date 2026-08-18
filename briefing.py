@@ -126,6 +126,7 @@ def main() -> int:
         now.strftime("%Y-%m-%d %H:%M:%S"),
         args.period,
         fetch_macro_history(),
+        persist=not args.intraday,
     )
     performance_context = load_performance_context(SETTINGS.reports_dir)
     # First pass selects a bounded set for the news scan. This keeps network
@@ -198,6 +199,7 @@ def main() -> int:
     report = {
         "system": "武得 AI 股票助理 V6",
         "period": args.period,
+        "run_mode": "intraday_refresh" if args.intraday else "scheduled_report",
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "timezone": "Asia/Taipei",
         "universe_count": len(search_universe),
@@ -247,7 +249,11 @@ def main() -> int:
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
     markdown = render_markdown(report)
-    latest_json, latest_md = save_report(report, markdown)
+    latest_json, latest_md = save_report(
+        report,
+        markdown,
+        save_snapshot=not args.intraday,
+    )
 
     # The homepage needs current opportunity rankings, not the legacy static
     # stock_data.json scores. Keep only TOP20 per group to control repository
@@ -258,6 +264,7 @@ def main() -> int:
     ranking_payload = {
         "updated_at": report["updated_at"],
         "period": args.period,
+        "run_mode": report["run_mode"],
         "ranking_basis": "overall_ranking_score",
         "data": ranking_rows,
     }
@@ -272,6 +279,7 @@ def main() -> int:
     all_analysis_payload = {
         "updated_at": report["updated_at"],
         "period": args.period,
+        "run_mode": report["run_mode"],
         "candidate_count": len(universe),
         "analyzed_count": len(ranked),
         "unavailable_count": max(0, len(universe) - len(ranked)),

@@ -43,6 +43,25 @@ def test_same_date_replaces_snapshot_instead_of_counting_three_reports(tmp_path)
     assert len(payload["snapshots"]) == 1
 
 
+def test_intraday_macro_evaluation_does_not_replace_fixed_snapshot(tmp_path):
+    update_macro_regime(
+        tmp_path, _market(18.0), "2026-09-01 12:00:00", "noon"
+    )
+    history_path = tmp_path / "macro_history.json"
+    fixed_snapshot = history_path.read_text(encoding="utf-8")
+
+    result = update_macro_regime(
+        tmp_path,
+        _market(32.0),
+        "2026-09-01 13:00:00",
+        "noon",
+        persist=False,
+    )
+
+    assert result["score"] < 50
+    assert history_path.read_text(encoding="utf-8") == fixed_snapshot
+
+
 def test_historical_backfill_activates_without_waiting(tmp_path):
     history = [
         {"date": f"2026-07-{day:02d}", "market": _market()}
