@@ -47,7 +47,7 @@
 
   function requestHeaders(token) {
     var headers = {'Accept': 'application/json'};
-    if (String(token || '').trim()) headers.Authorization = 'Bearer ' + String(token).trim();
+    if (String(token || '').trim()) headers['X-Live-Token'] = String(token).trim();
     return headers;
   }
 

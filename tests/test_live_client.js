@@ -20,7 +20,7 @@ assert.strictEqual(client.saveTokenFromHash(
 assert.strictEqual(client.accessToken(storage), 'private-value');
 assert.strictEqual(replaced, '/wude-ai-stock-v6/?mode=owner');
 assert.deepStrictEqual(client.requestHeaders('private-value'), {
-  Accept: 'application/json', Authorization: 'Bearer private-value'
+  Accept: 'application/json', 'X-Live-Token': 'private-value'
 });
 
 const us = client.mergeStock({market: 'US', usLivePrice: 190}, {

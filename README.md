@@ -60,8 +60,8 @@ secret store，公開 GitHub Pages 只接收計算結果。服務未部署或暫
   `LIVE_TRUSTED_AUTH_HEADER`。除非已確認行情授權與流量限制，禁止設定
   `LIVE_PUBLIC_READ=1`。
 
-部署完成後，只需把後端網址寫入 `live_config.js` 的
-`WUDE_LIVE_API_BASE`。這個檔案只能放網址與更新秒數，絕對不能放任何憑證。
+正式 Railway 後端網址已寫入 `live_config.js` 的 `WUDE_LIVE_API_BASE`；只有更換
+主機時才需調整。這個檔案只能放網址與更新秒數，絕對不能放任何憑證。
 
 ### Railway 一個月完整試用
 
@@ -92,6 +92,9 @@ https://a0953883367.github.io/wude-ai-stock-v6/#live_token=<LIVE_ACCESS_TOKEN>
 手機第一次開啟會把 token 留在該裝置，隨即從網址列移除；往後不必重新輸入。
 Token 不會寫入 GitHub、`live_config.js` 或報告檔。若手機遺失，立即更換
 `LIVE_ACCESS_TOKEN` 即可讓舊連結失效。
+
+瀏覽器請求使用 `X-Live-Token` 標頭；不要改成 `Authorization: Bearer`，
+因為 Railway 的擁有者驗證會先攔截該標頭。
 
 一個月驗證期間，`performance.json` 會另外保存 `groups.TW`、`groups.US`、
 `groups.ETF` 與 `us_feeds.sip` 的 1／5／10／20 日樣本、命中率、平均報酬及
