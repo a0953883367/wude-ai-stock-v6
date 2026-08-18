@@ -1,9 +1,24 @@
 import base64
+from email.message import Message
 from types import SimpleNamespace
 
 import pytest
 
-from live_api import LiveDataService, MinuteRateLimiter, configure_fubon_certificate, normalize_symbol
+from live_api import (
+    LiveDataService,
+    LiveRequestHandler,
+    MinuteRateLimiter,
+    configure_fubon_certificate,
+    normalize_symbol,
+)
+
+
+def _handler_with_headers(**headers):
+    handler = object.__new__(LiveRequestHandler)
+    handler.headers = Message()
+    for name, value in headers.items():
+        handler.headers[name.replace("_", "-")] = value
+    return handler
 
 
 def test_normalize_symbol_by_market():
@@ -91,3 +106,21 @@ def test_rate_limiter_resets_after_one_minute():
     assert limiter.allow() is False
     now[0] += 60
     assert limiter.allow() is True
+
+
+def test_owner_auth_accepts_trimmed_bearer_token(monkeypatch):
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "  owner-token\n")
+    handler = _handler_with_headers(Authorization="  Bearer owner-token  ")
+    assert handler._authorized() is True
+
+
+def test_owner_auth_accepts_live_token_header(monkeypatch):
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-token")
+    handler = _handler_with_headers(X_Live_Token=" owner-token ")
+    assert handler._authorized() is True
+
+
+def test_owner_auth_rejects_wrong_token(monkeypatch):
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-token")
+    handler = _handler_with_headers(X_Live_Token="wrong-token")
+    assert handler._authorized() is False
