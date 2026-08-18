@@ -194,6 +194,7 @@ class LiveDataService:
         return {
             "ok": True,
             "service": "wude-live-api",
+            "auth_version": 2,
             "us_sip_configured": bool(os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY")),
             "us_opra_configured": bool(os.getenv("ALPACA_OPTION_FEED")),
             "tw_fubon_configured": bool(
