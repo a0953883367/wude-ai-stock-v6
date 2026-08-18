@@ -37,7 +37,10 @@ def _metric(returns: list[float], positive_is_hit: bool = True) -> dict[str, flo
     }
 
 
-def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+def _metric_bundle(
+    snapshots: list[dict[str, Any]],
+    predicate,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     horizons: dict[str, Any] = {}
     signals: dict[str, Any] = {"🟢": {}, "🟡": {}, "🔴": {}}
     for horizon in HORIZONS:
@@ -46,6 +49,8 @@ def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         by_signal: dict[str, list[float]] = {signal: [] for signal in signals}
         for snapshot in snapshots:
             for row in snapshot.get("predictions", []):
+                if not predicate(row):
+                    continue
                 value = row.get("outcomes", {}).get(key)
                 if value is None:
                     continue
@@ -57,6 +62,36 @@ def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         horizons[key] = _metric(all_returns)
         for signal in signals:
             signals[signal][key] = _metric(by_signal[signal], positive_is_hit=signal != "🔴")
+    return horizons, signals
+
+
+def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    horizons, signals = _metric_bundle(snapshots, lambda _row: True)
+    groups: dict[str, Any] = {}
+    for group in ("TW", "US", "ETF"):
+        group_horizons, group_signals = _metric_bundle(
+            snapshots,
+            lambda row, expected=group: str(row.get("group")) == expected,
+        )
+        groups[group] = {"horizons": group_horizons, "signals": group_signals}
+
+    us_feeds = sorted({
+        str(row.get("us_live_feed") or "fallback")
+        for snapshot in snapshots
+        for row in snapshot.get("predictions", [])
+        if str(row.get("market")) == "US"
+    })
+    feed_metrics: dict[str, Any] = {}
+    for feed in us_feeds:
+        feed_horizons, feed_signals = _metric_bundle(
+            snapshots,
+            lambda row, expected=feed: (
+                str(row.get("market")) == "US"
+                and str(row.get("us_live_feed") or "fallback") == expected
+            ),
+        )
+        feed_metrics[feed] = {"horizons": feed_horizons, "signals": feed_signals}
+
     trading_dates = sorted({
         str(snapshot.get("date"))
         for snapshot in snapshots
@@ -72,6 +107,8 @@ def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         "snapshot_count": len(snapshots),
         "horizons": horizons,
         "signals": signals,
+        "groups": groups,
+        "us_feeds": feed_metrics,
         "calibration": {
             "trading_days_collected": collected,
             "minimum_trading_days": 0,
@@ -140,6 +177,9 @@ def update_performance(
                     "name": row.get("name"),
                     "market": row.get("market"),
                     "group": row.get("backtest_group"),
+                    "us_live_feed": row.get("us_live_feed"),
+                    "us_live_source": row.get("us_live_source"),
+                    "us_live_data_available": row.get("us_live_data_available"),
                     "rank": row.get("backtest_rank"),
                     "score": row.get("score"),
                     "signal": str(row.get("action", "🟡"))[:1],

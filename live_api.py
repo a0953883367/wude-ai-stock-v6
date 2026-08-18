@@ -10,6 +10,7 @@ universe in the background.
 from __future__ import annotations
 
 import base64
+from collections import deque
 import json
 import logging
 import os
@@ -201,8 +202,29 @@ class LiveDataService:
         }
 
 
+class MinuteRateLimiter:
+    """Small in-process guard against a leaked link exhausting paid feeds."""
+
+    def __init__(self, limit: int, *, clock: Callable[[], float] = time.time) -> None:
+        self.limit = max(1, int(limit))
+        self.clock = clock
+        self.requests: deque[float] = deque()
+        self.lock = threading.Lock()
+
+    def allow(self) -> bool:
+        now = self.clock()
+        with self.lock:
+            while self.requests and now - self.requests[0] >= 60:
+                self.requests.popleft()
+            if len(self.requests) >= self.limit:
+                return False
+            self.requests.append(now)
+            return True
+
+
 class LiveRequestHandler(BaseHTTPRequestHandler):
     service = LiveDataService()
+    rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
 
     def log_message(self, fmt: str, *args: Any) -> None:
         LOG.info("%s - %s", self.address_string(), fmt % args)
@@ -258,6 +280,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             return
         if not self._authorized():
             self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "owner authentication required"})
+            return
+        if not self.rate_limiter.allow():
+            self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "live request limit reached"})
             return
         query = parse_qs(parsed.query)
         try:

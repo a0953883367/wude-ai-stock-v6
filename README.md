@@ -63,6 +63,40 @@ secret store，公開 GitHub Pages 只接收計算結果。服務未部署或暫
 部署完成後，只需把後端網址寫入 `live_config.js` 的
 `WUDE_LIVE_API_BASE`。這個檔案只能放網址與更新秒數，絕對不能放任何憑證。
 
+### Railway 一個月完整試用
+
+本專案已提供 `Dockerfile` 與 `railway.json`。Railway 會自動安裝官方 Linux
+版 Fubon Neo SDK v2.2.9，並以 `/health` 驗證服務；固定只啟動一個 replica。
+
+Railway Variables／Secrets 必須設定：
+
+- `FUBON_ID`
+- `FUBON_API_KEY`
+- `FUBON_CERT_PASSWORD`
+- `FUBON_CERT_BASE64`（既有 `.p12` 憑證的 base64；不能提交到 GitHub）
+- `ALPACA_API_KEY_ID`
+- `ALPACA_API_SECRET_KEY`
+- `ALPACA_STOCK_FEED=sip`
+- `ALPACA_OPTION_FEED=opra`
+- `LIVE_ACCESS_TOKEN`（至少32位元組的隨機值）
+- `LIVE_ALLOWED_ORIGINS=https://a0953883367.github.io`
+- `LIVE_PUBLIC_READ=0`
+- `LIVE_MAX_REQUESTS_PER_MINUTE=120`
+
+部署後建立一次性私人網址：
+
+```text
+https://a0953883367.github.io/wude-ai-stock-v6/#live_token=<LIVE_ACCESS_TOKEN>
+```
+
+手機第一次開啟會把 token 留在該裝置，隨即從網址列移除；往後不必重新輸入。
+Token 不會寫入 GitHub、`live_config.js` 或報告檔。若手機遺失，立即更換
+`LIVE_ACCESS_TOKEN` 即可讓舊連結失效。
+
+一個月驗證期間，`performance.json` 會另外保存 `groups.TW`、`groups.US`、
+`groups.ETF` 與 `us_feeds.sip` 的 1／5／10／20 日樣本、命中率、平均報酬及
+最差報酬。月底應依實際結果決定是否續訂，不以程式測試通過率代替投資績效。
+
 ## 通知設定
 
 Repository Settings → Secrets and variables → Actions：

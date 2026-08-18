@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from live_api import LiveDataService, configure_fubon_certificate, normalize_symbol
+from live_api import LiveDataService, MinuteRateLimiter, configure_fubon_certificate, normalize_symbol
 
 
 def test_normalize_symbol_by_market():
@@ -81,3 +81,13 @@ def test_taiwan_quote_uses_fubon_once_with_cache():
     assert first["quote"]["lastPrice"] == 1000
     assert second["cached"] is True
     assert calls == {"login": 1, "quote": 1}
+
+
+def test_rate_limiter_resets_after_one_minute():
+    now = [100.0]
+    limiter = MinuteRateLimiter(2, clock=lambda: now[0])
+    assert limiter.allow() is True
+    assert limiter.allow() is True
+    assert limiter.allow() is False
+    now[0] += 60
+    assert limiter.allow() is True

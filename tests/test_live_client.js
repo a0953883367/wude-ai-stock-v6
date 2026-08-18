@@ -9,6 +9,20 @@ assert.strictEqual(client.buildUrl('', 'NVDA', 'US'), '');
 assert.strictEqual(client.pollInterval(100), 3000);
 assert.strictEqual(client.pollInterval(60000), 30000);
 
+assert.strictEqual(client.tokenFromHash('#live_token=private-value'), 'private-value');
+const stored = {};
+const storage = {setItem: (key, value) => { stored[key] = value; }, getItem: key => stored[key]};
+let replaced = '';
+assert.strictEqual(client.saveTokenFromHash(
+  {hash: '#live_token=private-value', pathname: '/wude-ai-stock-v6/', search: '?mode=owner'},
+  {replaceState: (_state, _title, value) => { replaced = value; }}, storage
+), 'private-value');
+assert.strictEqual(client.accessToken(storage), 'private-value');
+assert.strictEqual(replaced, '/wude-ai-stock-v6/?mode=owner');
+assert.deepStrictEqual(client.requestHeaders('private-value'), {
+  Accept: 'application/json', Authorization: 'Bearer private-value'
+});
+
 const us = client.mergeStock({market: 'US', usLivePrice: 190}, {
   ok: true,
   source: 'Alpaca SIP',

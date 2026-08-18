@@ -23,6 +23,34 @@
     return Math.max(3000, Math.min(30000, number));
   }
 
+  function tokenFromHash(hash) {
+    var text = String(hash || '').replace(/^#/, '');
+    if (!text) return '';
+    var params = new URLSearchParams(text);
+    return String(params.get('live_token') || '').trim();
+  }
+
+  function saveTokenFromHash(locationLike, historyLike, storageLike) {
+    var token = tokenFromHash(locationLike && locationLike.hash);
+    if (!token) return '';
+    storageLike.setItem('wude-live-access-token', token);
+    if (historyLike && typeof historyLike.replaceState === 'function') {
+      historyLike.replaceState(null, '', String(locationLike.pathname || '/') + String(locationLike.search || ''));
+    }
+    return token;
+  }
+
+  function accessToken(storageLike) {
+    try { return String(storageLike.getItem('wude-live-access-token') || '').trim(); }
+    catch (error) { return ''; }
+  }
+
+  function requestHeaders(token) {
+    var headers = {'Accept': 'application/json'};
+    if (String(token || '').trim()) headers.Authorization = 'Bearer ' + String(token).trim();
+    return headers;
+  }
+
   function mergeStock(stock, payload) {
     var merged = Object.assign({}, stock || {});
     var quote = payload && payload.quote || {};
@@ -58,6 +86,10 @@
   return {
     buildUrl: buildUrl,
     pollInterval: pollInterval,
+    tokenFromHash: tokenFromHash,
+    saveTokenFromHash: saveTokenFromHash,
+    accessToken: accessToken,
+    requestHeaders: requestHeaders,
     mergeStock: mergeStock,
     taiwanQuote: taiwanQuote
   };
