@@ -1,4 +1,4 @@
-# 武得 AI 股票助理 V6.31
+# 武得 AI 股票助理 V6.32
 
 台股＋美股 AI 選股系統，以及每天自動執行的「AI 股票早、中、晚報」。GitHub Pages 手機版儀表板、ChatGPT 股票助理與 Telegram 使用同一份固定觀察清單。
 
@@ -36,6 +36,32 @@ powershell -ExecutionPolicy Bypass -File .\setup_fubon_windows.ps1
 ```
 
 腳本會先驗證登入與 2330 唯讀行情，再建立 06:00、12:00、20:00 三個排程。電腦需在執行時間開機及連網；若錯過時間，Windows 會在下次可執行時補跑。排程不包含下單功能。
+
+## 手機立即更新與即時模式
+
+手機點開個股的「自動即時判斷」後，可使用：
+
+- `立即更新`：單次取得該檔最新授權行情。
+- `即時模式`：頁面開啟期間每 3～30 秒更新一次，預設 5 秒。
+- 關閉個股視窗後會停止秒級請求；早中晚報與背景掃描仍照原排程。
+
+`live_api.py` 是獨立的 owner-only 雲端資料層。美股從 Alpaca SIP／OPRA
+取得資料；台股從 Fubon Neo 取得資料。所有金鑰及富邦憑證只能存於雲端
+secret store，公開 GitHub Pages 只接收計算結果。服務未部署或暫時失敗時，
+畫面保留最近一次背景快照，不會把舊資料偽裝成即時行情。
+
+雲端服務至少需要下列 secrets：
+
+- 台股：`FUBON_ID`、`FUBON_API_KEY`、`FUBON_CERT_PASSWORD`、
+  `FUBON_CERT_BASE64`，以及官方 Fubon Neo SDK。
+- 美股：`ALPACA_API_KEY_ID`、`ALPACA_API_SECRET_KEY`；有 OPRA 權限時再設定
+  `ALPACA_OPTION_FEED=opra`。
+- 存取保護：`LIVE_ACCESS_TOKEN` 或由私人網站／存取閘道注入
+  `LIVE_TRUSTED_AUTH_HEADER`。除非已確認行情授權與流量限制，禁止設定
+  `LIVE_PUBLIC_READ=1`。
+
+部署完成後，只需把後端網址寫入 `live_config.js` 的
+`WUDE_LIVE_API_BASE`。這個檔案只能放網址與更新秒數，絕對不能放任何憑證。
 
 ## 通知設定
 
