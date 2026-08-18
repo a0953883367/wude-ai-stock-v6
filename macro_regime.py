@@ -108,8 +108,10 @@ def update_macro_regime(
     updated_at: str,
     period: str,
     historical_snapshots: list[dict[str, Any]] | None = None,
+    *,
+    persist: bool = True,
 ) -> dict[str, Any]:
-    """Persist one latest snapshot per date and activate only after 16 valid days."""
+    """Evaluate macro risk and optionally persist one fixed snapshot per date."""
     reports_dir.mkdir(parents=True, exist_ok=True)
     history_path = reports_dir / "macro_history.json"
     try:
@@ -149,17 +151,20 @@ def update_macro_regime(
         "data_available": evaluated["data_available"],
         "indicators": evaluated["indicators"],
     }
-    snapshots = [
-        row for row in payload.get("snapshots", [])
-        if str(row.get("date")) != trade_date
-    ]
-    snapshots.append(snapshot)
+    snapshots = list(payload.get("snapshots", []))
+    if persist:
+        snapshots = [
+            row for row in snapshots
+            if str(row.get("date")) != trade_date
+        ]
+        snapshots.append(snapshot)
     snapshots = sorted(snapshots, key=lambda row: str(row.get("date", "")))[-180:]
-    payload["snapshots"] = snapshots
-    history_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    if persist:
+        payload["snapshots"] = snapshots
+        history_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     collected = len({
         str(row.get("date"))
