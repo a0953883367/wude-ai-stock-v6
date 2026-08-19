@@ -222,19 +222,26 @@ def main() -> int:
             )
             row["us_market_risk_score"] = market_risk_score
             row["us_market_vix"] = vix or None
-    macro_regime = update_macro_regime(
-        SETTINGS.reports_dir,
-        market,
-        now.strftime("%Y-%m-%d %H:%M:%S"),
-        args.period,
-        _stage("總經歷史", fetch_macro_history),
-        persist=not args.intraday,
+    macro_history = _stage("總經歷史", fetch_macro_history)
+    macro_regime = _stage(
+        "總經判斷",
+        lambda: update_macro_regime(
+            SETTINGS.reports_dir,
+            market,
+            now.strftime("%Y-%m-%d %H:%M:%S"),
+            args.period,
+            macro_history,
+            persist=not args.intraday,
+        ),
     )
     performance_context = load_performance_context(SETTINGS.reports_dir)
     # First pass selects a bounded set for the news scan. This keeps network
     # usage predictable while covering every displayed TOP20 plus a buffer and
     # every fixed-watchlist item.
-    preliminary = score_candidates(features, macro_regime, performance_context)
+    preliminary = _stage(
+        "第一次排名計算",
+        lambda: score_candidates(features, macro_regime, performance_context),
+    )
     if not preliminary:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
     news_targets_by_symbol = {
@@ -262,7 +269,10 @@ def main() -> int:
     if us_options:
         for row in features:
             row.update(us_options.get(str(row.get("symbol") or "").upper(), {}))
-        preliminary = score_candidates(features, macro_regime, performance_context)
+        preliminary = _stage(
+            "選擇權後排名重算",
+            lambda: score_candidates(features, macro_regime, performance_context),
+        )
         preliminary_by_symbol = {row["symbol"]: row for row in preliminary}
         news_targets_by_symbol = {
             symbol: preliminary_by_symbol.get(symbol, row)
@@ -277,7 +287,10 @@ def main() -> int:
             row.update(risk)
         row.update(assess_market_data_quality(row))
 
-    ranked = score_candidates(features, macro_regime, performance_context)
+    ranked = _stage(
+        "最終排名計算",
+        lambda: score_candidates(features, macro_regime, performance_context),
+    )
     by_symbol = {row["symbol"]: row for row in ranked}
     watchlist_rows = sort_by_score([
         by_symbol[item["symbol"]]
