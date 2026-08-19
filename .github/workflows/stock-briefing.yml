@@ -52,7 +52,10 @@ permissions:
 
 concurrency:
   group: stock-briefing
-  cancel-in-progress: false
+  # A newer scoring/data deployment supersedes a stale report generation.
+  # Report files are committed only after a complete run, so cancellation
+  # cannot publish a partial ranking snapshot.
+  cancel-in-progress: true
 
 jobs:
   briefing:
