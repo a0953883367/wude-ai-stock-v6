@@ -141,8 +141,6 @@ def test_finmind_per_stock_fallback_uses_bounded_timeout(monkeypatch):
 
     def fake_rows(dataset, start, end, stock_id=None, timeout=None):
         calls.append((stock_id, timeout))
-        if stock_id is None:
-            return []
         return [{"stock_id": stock_id, "date": "2026-08-19"}]
 
     monkeypatch.setattr("data_fetcher._finmind_rows", fake_rows)
@@ -150,5 +148,6 @@ def test_finmind_per_stock_fallback_uses_bounded_timeout(monkeypatch):
         "TaiwanStockPER", {"2330", "2317"}, date(2026, 8, 1), date(2026, 8, 19)
     )
     assert {row["stock_id"] for row in rows} == {"2330", "2317"}
-    assert calls[0][0] is None
+    assert all(stock_id in {"2330", "2317"} for stock_id, _ in calls)
+    assert len(calls) == 2
     assert all(timeout is not None and timeout <= 8 for _, timeout in calls)
