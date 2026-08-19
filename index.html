@@ -42,9 +42,9 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 
   <div class="nav-label">排行與固定清單</div>
   <div class="buttons" id="marketButtons">
-    <button data-view="TW" class="active">🇹🇼 台股 TOP20</button>
-    <button data-view="US">🇺🇸 美股 TOP20</button>
-    <button data-view="ETF">📊 ETF TOP20</button>
+    <button data-view="TW" class="active">🇹🇼 台股排行</button>
+    <button data-view="US">🇺🇸 美股排行</button>
+    <button data-view="ETF">📊 ETF 排行</button>
     <button data-view="WATCH">⭐ 我的清單</button>
     <button data-view="TEST">🧪 2萬元實測</button>
   </div>
@@ -96,7 +96,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button class="search" id="searchButton" aria-label="搜尋股票">🔍</button>
   </div>
 
-  <div id="title" class="section">🇹🇼 台股 最值得買 TOP20</div>
+  <div id="title" class="section">🇹🇼 台股綜合風控排名</div>
   <div id="status" class="status">正在讀取最新資料…</div>
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
@@ -303,7 +303,7 @@ function stockCard(stock,index){
   }).join('<br>');
   var newsRadar='<div class="databox">📰 <b>負面新聞風險雷達：'+esc(newsLevel)+'</b><br>'+esc(stock.news||'本次沒有新聞摘要')+'<br>'+newsEffect+(newsLinks?'<br>'+newsLinks:'')+'</div>';
   return [
-    '<article class="card"><div class="card-head"><div><div class="rank">'+esc(stock.displayRankLabel||('觀察 '+(index+1)))+'</div><div class="stock">'+esc(stock.name)+'</div>',
+    '<article class="card"><div class="card-head"><div><div class="rank">'+esc(stock.displayRankLabel||'觀察')+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
     '<div class="light">'+esc(stock.light)+'</div></div>',
     '<div class="score">AI 總分：'+esc(number(stock.score,1))+'</div><div class="score">現在進場分數：'+esc(number(stock.entryScore,1))+'</div>',
@@ -450,7 +450,7 @@ function showOptical(group){
 }
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
-  var map={TW:['🇹🇼 台股 最值得買 TOP20',STATE.tw],US:['🇺🇸 美股 最值得買 TOP20',STATE.us],ETF:['📊 ETF 最值得買 TOP20',STATE.etf]};
+  var map={TW:['🇹🇼 台股綜合風控排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 綜合風控排名',STATE.etf]};
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
     document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
@@ -477,7 +477,7 @@ function renderPerformance(report){
   var box=document.getElementById('performanceStrip'),p=report&&report.performance,h=p&&p.horizons;
   if(!h){box.innerHTML='<div class="performance">🎯 回測已啟動，累積資料後顯示命中率。</div>';return;}
   var available=['1','5','10','20'].filter(function(k){return Number((h[k]||{}).samples)>0;});
-  if(!available.length){box.innerHTML='<div class="performance">🎯 已開始保存每次 TOP20；累積1個交易日後顯示第一批結果。</div>';return;}
+  if(!available.length){box.innerHTML='<div class="performance">🎯 已開始保存每次合格首選；累積1個交易日後顯示第一批結果。</div>';return;}
   var c=p.calibration||{},guard=c.affects_ai_score?'✅ 已有實際結果，小幅校準最多±2分':'🛡️ 保護期尚差 '+number(c.remaining_trading_days,0)+' 個交易日；目前不影響AI分數';
   var groups=p.groups||{},split=['TW','US'].map(function(key){var m=groups[key]&&groups[key].horizons&&groups[key].horizons['1'];return m&&Number(m.samples)>0?'<b>'+key+'隔日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct):'';}).filter(Boolean).join('<br>');
   box.innerHTML='<div class="performance">🎯 歷史回測（僅代表過往）<br>'+available.map(function(k){var m=h[k];return '<b>'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct);}).join('<br>')+(split?'<br>'+split:'')+'<br>'+guard+'</div>';

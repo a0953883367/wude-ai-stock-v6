@@ -36,15 +36,16 @@ assert.deepStrictEqual(
 const shortLabels = ranking.labelRows('SHORT:TW', [qualified, watch, blocked]);
 assert.deepStrictEqual(
   shortLabels.map(row => row.displayRankLabel),
-  ['短線 TOP 1', '短線觀察 1', '短線阻擋 1']
+  ['短線 TOP 1', '短線觀察', '短線阻擋']
 );
 
 const noQualified = ranking.labelRows('TW', [watch, blocked]);
 assert.deepStrictEqual(
   noQualified.map(row => row.displayRankLabel),
-  ['觀察 1', '風險阻擋 1']
+  ['觀察', '風險阻擋']
 );
 assert.ok(noQualified.every(row => !row.displayRankLabel.includes('TOP')));
+assert.ok(noQualified.every(row => !/\d/.test(row.displayRankLabel)));
 
 const fallbackBlocked = {
   symbol: 'LEGACY-BLOCK', score: 100, overallEligible: true,

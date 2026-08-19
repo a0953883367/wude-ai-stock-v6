@@ -81,7 +81,7 @@
   }
 
   function labelRows(mode, rows) {
-    var counts = {qualified: 0, watch: 0, blocked: 0};
+    var qualifiedCount = 0;
     return (rows || []).map(function (stock) {
       var copy = Object.assign({}, stock), tier, prefix;
       if (String(mode).indexOf('SHORT') === 0) {
@@ -101,9 +101,14 @@
       } else {
         tier = overallTier(stock); prefix = tier === 2 ? 'TOP' : tier === 1 ? '觀察' : '風險阻擋';
       }
-      var bucket = tier === 2 ? 'qualified' : tier === 1 ? 'watch' : 'blocked';
-      counts[bucket] += 1;
-      copy.displayRankLabel = prefix + ' ' + counts[bucket];
+      // A number is a recommendation rank, so only qualified rows receive
+      // one. Observation/blocked rows stay visible but cannot look like #1.
+      if (tier === 2) {
+        qualifiedCount += 1;
+        copy.displayRankLabel = prefix + ' ' + qualifiedCount;
+      } else {
+        copy.displayRankLabel = prefix;
+      }
       return copy;
     });
   }

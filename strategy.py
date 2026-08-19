@@ -1606,22 +1606,32 @@ def _ranking_sort_key(row: dict[str, Any], horizon: str) -> tuple[float, ...]:
 
 
 def _assign_group_ranks(rows: list[dict[str, Any]]) -> None:
-    """Assign ranks inside TW, US and ETF groups instead of across markets."""
+    """Rank only qualified rows inside TW, US and ETF groups.
+
+    Observation and blocked rows remain visible after qualified rows, but a
+    numeric rank would incorrectly make the first rejected row look like the
+    market's number-one candidate.
+    """
     fields = {
-        "overall": "overall_rank",
-        "short": "short_term_rank",
-        "long": "mid_long_rank",
+        "overall": ("overall_rank", "overall_rank_tier"),
+        "short": ("short_term_rank", "short_term_rank_tier"),
+        "long": ("mid_long_rank", "mid_long_rank_tier"),
     }
     for group in ("TW", "US", "ETF"):
         group_rows = [row for row in rows if _ranking_group(row) == group]
-        for horizon, field in fields.items():
+        for horizon, (field, tier_field) in fields.items():
             ordered = sorted(
                 group_rows,
                 key=lambda row, horizon=horizon: _ranking_sort_key(row, horizon),
                 reverse=True,
             )
-            for rank, row in enumerate(ordered, 1):
-                row[field] = rank
+            qualified_rank = 0
+            for row in ordered:
+                if row.get(tier_field) == 2:
+                    qualified_rank += 1
+                    row[field] = qualified_rank
+                else:
+                    row[field] = None
 
 
 def score_candidates(
