@@ -331,6 +331,28 @@ def test_short_term_plan_has_trigger_and_bounded_risk():
     assert "15～30分鐘" in plan["short_term_trigger"]
 
 
+def test_short_term_target_rounding_cannot_loop_forever(monkeypatch):
+    import strategy
+
+    row = {
+        "market": "US", "type": "個股", "price": 101.0,
+        "ma5": 101.5, "ma10": 100.0, "ma20": 97.0, "atr14": 2.0,
+        "rsi": 58.0, "volume_pace": 1.2, "avg_volume20": 1_000_000,
+        "attack_volume": 15.0, "intraday_available": True,
+        "news_data_available": True,
+        "entry_score": 88.0, "technical_score": 92.0, "volume_score": 88.0,
+        "positioning_score": 82.0, "news_penalty": 0.0,
+        "entry_data_coverage": 6, "entry_data_total": 6,
+        "buy_zone_low": 98.0, "buy_zone_high": 100.0,
+        "support1": 97.0, "resistance1": 100.0, "resistance2": 100.0,
+    }
+    # Simulate a price formatter that cannot advance by another tick.  The
+    # previous unbounded while-loop would never return in this situation.
+    monkeypatch.setattr(strategy, "_market_price", lambda _row, _value: 100.0)
+    plan = strategy._short_term_plan(row)
+    assert plan["short_term_target1"] == 100.0
+
+
 def test_short_term_plan_rejects_incomplete_or_negative_news_rows():
     base = {
         "market": "US", "type": "個股", "price": 100.0,

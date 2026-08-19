@@ -1399,8 +1399,15 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     # 1.49. Move the first target up by valid ticks until the displayed plan
     # still meets its advertised minimum.
     if entry_high and risk > 0:
-        while (target1-entry_high)/risk < 1.5:
-            target1 = _market_price(row, target1+tick)
+        # A malformed/very large quote must never turn display rounding into
+        # an unbounded loop that blocks the complete 337-symbol report.
+        for _ in range(4):
+            if (target1-entry_high)/risk >= 1.5:
+                break
+            next_target = _market_price(row, target1+tick)
+            if next_target <= target1:
+                break
+            target1 = next_target
     target2 = _market_price(row, max(resistance2, entry_high+risk*2.3, target1+tick))
     rr = round((target1-entry_high)/risk, 2) if risk > 0 and entry_high else 0.0
 
