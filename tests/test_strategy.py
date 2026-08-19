@@ -533,6 +533,10 @@ def test_observation_and_blocked_rows_have_no_numeric_rank():
     _assign_group_ranks(rows)
 
     assert rows[0]["overall_rank"] == 1
+    assert [row["overall_display_rank"] for row in rows] == [1, 2, 3]
+    assert [row["short_term_display_rank"] for row in rows] == [1, 2, 3]
+    assert [row["mid_long_display_rank"] for row in rows] == [1, 2, 3]
+    assert all(row["ranking_group_count"] == 3 for row in rows)
     for row in rows[1:]:
         assert row["overall_rank"] is None
         assert row["short_term_rank"] is None
@@ -573,6 +577,15 @@ def test_complete_published_universe_obeys_ranking_safety_invariants():
                 range(1, len(qualified) + 1)
             )
             assert all(row[rank_field] is None for row in unqualified)
+            display_field = {
+                "overall": "overall_display_rank",
+                "short": "short_term_display_rank",
+                "long": "mid_long_display_rank",
+            }[horizon]
+            assert [row[display_field] for row in ordered] == list(
+                range(1, len(ordered) + 1)
+            )
+            assert all(row["ranking_group_count"] == len(ordered) for row in ordered)
 
 
 

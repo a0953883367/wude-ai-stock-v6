@@ -40,7 +40,9 @@ def _trend(row):
 def sanitize(row):
     market = str(row.get("market") or "")
     return {
-        "rank": _number(row.get("overall_rank")) or _number(row.get("rank")),
+        "rank": _number(row.get("overall_display_rank")) or _number(row.get("overall_rank")) or _number(row.get("rank")),
+        "qualifiedRank": _number(row.get("overall_rank")),
+        "groupCount": _number(row.get("ranking_group_count")),
         "rankTier": _number(row.get("overall_rank_tier")),
         "rankingScore": _number(row.get("overall_ranking_score")),
         "eligible": row.get("overall_eligible") is True,
