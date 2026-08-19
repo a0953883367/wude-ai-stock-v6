@@ -475,12 +475,15 @@ function renderMarketStrip(report){
 }
 function renderPerformance(report){
   var box=document.getElementById('performanceStrip'),p=report&&report.performance,h=p&&p.horizons;
-  if(!h){box.innerHTML='<div class="performance">🎯 回測已啟動，累積資料後顯示命中率。</div>';return;}
+  if(!p||Number(p.methodology_version||0)<2){box.innerHTML='<div class="performance">🧭 隔日預測 V2 校正中<br>舊回測的交易日與價格基準失真，已停止採信且不再影響AI分數。下一份正式收盤報告開始累積乾淨結果。</div>';return;}
+  if(!h){box.innerHTML='<div class="performance">🎯 隔日預測 V2 已啟動，累積資料後顯示真實命中率。</div>';return;}
   var available=['1','5','10','20'].filter(function(k){return Number((h[k]||{}).samples)>0;});
-  if(!available.length){box.innerHTML='<div class="performance">🎯 已開始保存每次合格首選；累積1個交易日後顯示第一批結果。</div>';return;}
-  var c=p.calibration||{},guard=c.affects_ai_score?'✅ 已有實際結果，小幅校準最多±2分':'🛡️ 保護期尚差 '+number(c.remaining_trading_days,0)+' 個交易日；目前不影響AI分數';
-  var groups=p.groups||{},split=['TW','US'].map(function(key){var m=groups[key]&&groups[key].horizons&&groups[key].horizons['1'];return m&&Number(m.samples)>0?'<b>'+key+'隔日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct):'';}).filter(Boolean).join('<br>');
-  box.innerHTML='<div class="performance">🎯 歷史回測（僅代表過往）<br>'+available.map(function(k){var m=h[k];return '<b>'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct);}).join('<br>')+(split?'<br>'+split:'')+'<br>'+guard+'</div>';
+  var c=p.calibration||{},leader=p.model_leaderboard||[],names={balanced:'平衡',trend:'趨勢',volume_breakout:'量價突破',market_flow:'資金流',quality_growth:'品質成長',risk_adjusted:'風險調整',mean_reversion:'回測反轉',momentum:'動能',relative_strength:'相對強勢',entry_timing:'進場時機'};
+  if(!available.length){box.innerHTML='<div class="performance">🧪 隔日預測 V2｜10個候選模型已開始公平測試<br>只用正式收盤價、同市場下一交易日、同股同日一次；目前沒有完成的隔日結果，所以不顯示假命中率，也不影響AI分數。</div>';return;}
+  var guard=c.affects_ai_score?'✅ 已達正式校正門檻':'🛡️ 仍在乾淨驗證期；尚差 '+number(c.remaining_trading_days,0)+' 個交易日，目前不影響AI分數';
+  var groups=p.groups||{},split=['TW','US','ETF'].map(function(key){var m=groups[key]&&groups[key].horizons&&groups[key].horizons['1'];return m&&Number(m.samples)>0?'<b>'+key+'隔日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct):'';}).filter(Boolean).join('<br>');
+  var leaders=leader.filter(function(x){return Number(x.samples)>0;}).slice(0,3).map(function(x,i){return (i+1)+'. '+esc(names[x.name]||x.name)+' '+number(x.win_rate_pct,1)+'%（'+x.samples+'筆／涵蓋'+number(x.coverage_pct,1)+'%）';}).join('<br>');
+  box.innerHTML='<div class="performance">🎯 實際隔日驗證 V2（正式收盤→下一正式收盤）<br>'+available.map(function(k){var m=h[k];return '<b>共識'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct)+'｜最差 '+percent(m.worst_return_pct)+'｜涵蓋 '+number(m.coverage_pct,1)+'%';}).join('<br>')+(split?'<br>'+split:'')+(leaders?'<br><b>10模型暫時排名</b><br>'+leaders:'')+'<br>'+guard+'</div>';
 }
 async function fetchJSON(path){var response=await fetch(path+'?t='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);return response.json();}
 async function showReport(period){
