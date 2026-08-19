@@ -306,9 +306,9 @@ def _positioning_radar(row: dict[str, Any]) -> dict[str, Any]:
 
         if row.get("credit_available"):
             available_groups += 1
-            short5 = _finite(row.get("short_5d_change"))
+            short5 = _tw_credit_change_shares(row.get("short_5d_change"))
             sbl5 = _finite(row.get("sbl_5d_change"))
-            margin5 = _finite(row.get("margin_5d_change"))
+            margin5 = _tw_credit_change_shares(row.get("margin_5d_change"))
             short_pressure = short5 + sbl5
             base = max(_finite(row.get("avg_volume20")) * 5, 1)
             pressure_pct = short_pressure / base * 100
@@ -587,6 +587,10 @@ def _market_outlook(row: dict[str, Any]) -> dict[str, Any]:
         direction = "📉 看跌"
     else:
         direction = "↔️ 震盪平盤"
+    guard = _trade_safety_guard(row)
+    if guard["trade_guard_blocked"] and direction == "📈 看漲":
+        direction = "📉 看跌" if guard["trade_guard_severe"] else "↔️ 震盪平盤"
+        reasons.append((-18, guard["trade_guard_reason"] or "短線安全條件未通過"))
     confidence = _clamp(35 + abs(bias) * 0.7 + available / total * 20, 35, 95)
     if available < 3:
         confidence = min(confidence, 55)
@@ -715,6 +719,99 @@ def _market_flow_score(row: dict[str, Any]) -> tuple[float, bool, str]:
         available = True
         score += _clamp(attack * 0.20, -8, 8)
     return round(_clamp(score), 1), available, "美股FINRA交易流／相對量能"
+
+
+def _tw_credit_change_shares(value: Any) -> float:
+    """Convert FinMind margin/short balance changes from lots to shares.
+
+    TaiwanStockMarginPurchaseShortSale reports margin-purchase and exchange
+    short-sale balances in trading lots, while daily volume, institutional
+    flows and SBL balances in this project are shares.  Mixing those units made
+    margin/short changes almost disappear from the score.
+    """
+    return _finite(value) * 1000.0
+
+
+def _trade_safety_guard(row: dict[str, Any]) -> dict[str, Any]:
+    """Return conservative market-specific blockers for positive trade labels.
+
+    The guard does not turn one indicator into a sell signal.  It only prevents
+    a high historical/base score from overriding material current selling,
+    incomplete live evidence, a confirmed breakdown, or verified event risk.
+    """
+    market = str(row.get("market") or "").upper()
+    avg_volume = max(_finite(row.get("avg_volume20")), 0.0)
+    blocked = False
+    severe = False
+    reasons: list[str] = []
+    one_day_ratio: float | None = None
+    three_day_ratio: float | None = None
+    five_day_ratio: float | None = None
+
+    if row.get("breakdown20"):
+        blocked = True
+        severe = True
+        reasons.append("價格已跌破20日低點")
+    if _finite(row.get("news_penalty")) >= 8:
+        blocked = True
+        severe = True
+        reasons.append("已確認的重大負面事件風險偏高")
+
+    if market == "TW" and row.get("institution_available") and avg_volume > 0:
+        one = _finite(row.get("institution_1d"))
+        three = _finite(row.get("institution_3d"))
+        five = _finite(row.get("institution_5d"))
+        one_day_ratio = one / avg_volume * 100
+        three_day_ratio = three / (avg_volume * 3) * 100
+        five_day_ratio = five / (avg_volume * 5) * 100
+        persistent_sell = one < 0 and three < 0 and five < 0
+        if one_day_ratio <= -5:
+            blocked = True
+            severe = severe or one_day_ratio <= -10 or persistent_sell
+            reasons.append(f"法人單日賣超占20日均量 {abs(one_day_ratio):.1f}%")
+        elif persistent_sell and five_day_ratio <= -2:
+            blocked = True
+            reasons.append(f"法人1／3／5日連續賣超，5日平均占均量 {abs(five_day_ratio):.1f}%")
+
+        margin_1d_shares = _tw_credit_change_shares(row.get("margin_1d_change"))
+        if one_day_ratio <= -2 and margin_1d_shares > avg_volume * .01:
+            blocked = True
+            reasons.append("法人賣超同時融資明顯增加，籌碼結構不利")
+
+    if market == "US":
+        flow_score = _finite(row.get("market_flow_score"), 50.0)
+        risk_score = _finite(row.get("us_market_risk_score"), 50.0)
+        imbalance = _finite(row.get("us_live_quote_imbalance_pct"))
+        vwap_distance = _finite(row.get("us_live_vwap_distance_pct"))
+        short_ratio = _finite(row.get("us_short_volume_ratio_pct"))
+        volume_ratio = _finite(row.get("daily_volume_ratio"), _finite(row.get("volume_pace"), 1.0))
+        change = _finite(row.get("change_pct"))
+        if row.get("market_flow_available") and flow_score <= 35:
+            blocked = True
+            severe = severe or flow_score <= 28
+            reasons.append(f"美股即時／交易流分數僅 {flow_score:.1f}")
+        if row.get("us_live_data_available") and imbalance <= -20 and vwap_distance <= -.5:
+            blocked = True
+            reasons.append("NBBO賣壓偏重且價格位於VWAP下方")
+        if row.get("us_market_risk_score") is not None and risk_score <= 40:
+            blocked = True
+            severe = severe or risk_score <= 30
+            reasons.append(f"美股市場／事件安全分僅 {risk_score:.1f}")
+        if (
+            row.get("us_short_volume_available") and short_ratio >= 60
+            and change < 0 and volume_ratio >= 1.2
+        ):
+            blocked = True
+            reasons.append("FINRA放空成交占比偏高，且股價放量下跌")
+
+    return {
+        "trade_guard_blocked": blocked,
+        "trade_guard_severe": severe,
+        "trade_guard_reason": "；".join(dict.fromkeys(reasons)),
+        "institution_flow_ratio_1d_pct": round(one_day_ratio, 2) if one_day_ratio is not None else None,
+        "institution_flow_ratio_3d_pct": round(three_day_ratio, 2) if three_day_ratio is not None else None,
+        "institution_flow_ratio_5d_pct": round(five_day_ratio, 2) if five_day_ratio is not None else None,
+    }
 
 
 def _entry_plan(
@@ -1241,7 +1338,9 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     resistance1 = _finite(row.get("resistance1"))
     resistance2 = _finite(row.get("resistance2"))
 
-    coverage_ok = coverage_total >= min(3 if is_etf else 4, max(coverage_expected, 1))
+    # A green short-term label requires every market-appropriate entry
+    # dimension.  Partial rows remain visible, but can only be observation.
+    coverage_ok = coverage_expected > 0 and coverage_total >= coverage_expected
     technical_ok = all(v > 0 for v in (price, ma10, ma20, atr, entry_low, entry_high))
     if ma5 > 0 and price >= ma5 >= ma10 >= ma20:
         trend_score, setup = 88.0, "多頭回測"
@@ -1275,6 +1374,12 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         score -= 8
     if row.get("breakdown20"):
         score -= 15
+    guard = _trade_safety_guard(row)
+    evidence_ok = short_confidence >= 75
+    if not coverage_ok or not evidence_ok:
+        score = min(score, 64.9)
+    if guard["trade_guard_blocked"]:
+        score = min(score, 64.9)
     score = round(_clamp(score, 0.0, 100.0), 1)
 
     max_loss = (.035 if is_etf else .045) if market == "TW" else (.040 if is_etf else .055)
@@ -1311,9 +1416,10 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     premium_limit = max(1.5, _finite(row.get("premium_discount_60d_std_pct")) * 2)
     premium_ok = not is_etf or not premium_available or premium <= premium_limit
     eligible = bool(
-        technical_ok and coverage_ok and entry_score >= 58 and score >= 60
+        technical_ok and coverage_ok and evidence_ok and entry_score >= 70 and score >= 75
         and price >= ma20*.99 and 40 <= rsi <= 72 and volume_ok and premium_ok
         and not row.get("breakdown20") and news_penalty < 8
+        and not guard["trade_guard_blocked"]
         and price <= entry_high*(1.08 if is_etf else 1.10) and rr >= 1.5
     )
     if eligible:
@@ -1325,9 +1431,15 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     elif not premium_ok:
         status, trigger = "🔴 淨值溢價過高", f"目前溢價 {premium:.2f}% 高於 {premium_limit:.2f}% 門檻，不追價"
         reason = "市價明顯高於基金淨值，先等溢價收斂"
-    elif not coverage_ok or not technical_ok:
+    elif guard["trade_guard_blocked"]:
+        status, trigger = "🔴 籌碼／風險阻擋", "等待明顯賣壓縮小、價格重新站穩，再重新評估"
+        reason = guard["trade_guard_reason"] or "目前存在短線安全阻擋條件"
+    elif not coverage_ok or not evidence_ok or not technical_ok:
         status, trigger = "⚪ 資料不足", "等待均線、ATR、量能與資料完整度補齊，不先進場"
-        reason = f"資料涵蓋 {coverage_total}/{coverage_expected}，暫不列入短線首選"
+        reason = (
+            f"資料涵蓋 {coverage_total}/{coverage_expected}、短線證據信心 {short_confidence:.0f}%"
+            "，暫不列入短線首選"
+        )
     elif rr < 1.5:
         status, trigger = "🟡 等待更佳風報比", "現價不追，等待回測使第一停利風報比至少達1.5"
         reason = f"目前風報比 {rr:.2f}，未達短線門檻"
@@ -1530,9 +1642,10 @@ def score_candidates(
         credit_score = 50.0
         if row.get("credit_available"):
             five_day_volume = max(row["avg_volume20"] * 5, 1)
-            margin_pressure = _finite(row.get("margin_5d_change")) / five_day_volume * 100
+            margin_pressure = _tw_credit_change_shares(row.get("margin_5d_change")) / five_day_volume * 100
             short_pressure = (
-                _finite(row.get("short_5d_change")) + _finite(row.get("sbl_5d_change"))
+                _tw_credit_change_shares(row.get("short_5d_change"))
+                + _finite(row.get("sbl_5d_change"))
             ) / five_day_volume * 100
             # Rising margin is crowded retail leverage; rising short/SBL is sell pressure.
             credit_score = _clamp(50 - margin_pressure * 1.2 - short_pressure * 1.5)
@@ -1662,6 +1775,7 @@ def score_candidates(
         # level must be derived because source data is incomplete or
         # inconsistent, its ranking confidence is reduced below.
         row.update(_complete_price_plan(row))
+        row.update(_trade_safety_guard(row))
         sbl_pressure = _finite(row.get("sbl_5d_change")) / max(row["avg_volume20"] * 5, 1) * 100
         if row.get("breakdown20"):
             row["risk"] = "跌破20日低點，先避開"
@@ -1691,8 +1805,16 @@ def score_candidates(
         kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
         fundamental_ready = not row.get("fundamental_available") or fundamental_score >= 40
         quality_ready = not row.get("financial_quality_available") or quality_score >= 38
-        if row["entry_score"] >= 70 and row["attack_volume"] > 0 and trend_ready and not_extended and kline_ready and fundamental_ready and quality_ready:
+        entry_data_complete = row.get("entry_data_coverage") == row.get("entry_data_total")
+        if (
+            row["entry_score"] >= 75 and row["attack_volume"] > 0
+            and trend_ready and not_extended and kline_ready
+            and fundamental_ready and quality_ready and entry_data_complete
+            and not row.get("trade_guard_blocked")
+        ):
             row["action"] = "🟢 可分批，等回測買進區"
+        elif row.get("trade_guard_blocked"):
+            row["action"] = "🔴 暫不買｜" + (row.get("trade_guard_reason") or "安全條件未通過")
         elif row["entry_score"] >= 58:
             row["action"] = "🟡 觀察，等價格進入買進區"
         else:
