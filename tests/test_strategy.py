@@ -508,6 +508,37 @@ def test_rank_numbers_restart_inside_tw_us_and_combined_etf_groups():
     assert rows[3]["overall_rank"] == 2
 
 
+def test_observation_and_blocked_rows_have_no_numeric_rank():
+    rows = [
+        {
+            "symbol": "SAFE.TW", "market": "TW", "type": "個股",
+            "overall_rank_tier": 2, "overall_ranking_score": 60,
+            "short_term_rank_tier": 2, "short_term_ranking_score": 60,
+            "mid_long_rank_tier": 2, "mid_long_ranking_score": 60,
+        },
+        {
+            "symbol": "WATCH.TW", "market": "TW", "type": "個股",
+            "overall_rank_tier": 1, "overall_ranking_score": 99,
+            "short_term_rank_tier": 1, "short_term_ranking_score": 99,
+            "mid_long_rank_tier": 1, "mid_long_ranking_score": 99,
+        },
+        {
+            "symbol": "BLOCK.TW", "market": "TW", "type": "個股",
+            "overall_rank_tier": 0, "overall_ranking_score": 100,
+            "short_term_rank_tier": 0, "short_term_ranking_score": 100,
+            "mid_long_rank_tier": 0, "mid_long_ranking_score": 100,
+        },
+    ]
+
+    _assign_group_ranks(rows)
+
+    assert rows[0]["overall_rank"] == 1
+    for row in rows[1:]:
+        assert row["overall_rank"] is None
+        assert row["short_term_rank"] is None
+        assert row["mid_long_rank"] is None
+
+
 def test_complete_published_universe_obeys_ranking_safety_invariants():
     payload = json.loads(Path("reports/all_analysis.json").read_text(encoding="utf-8"))
     ranked = score_candidates(payload["data"])
@@ -536,7 +567,12 @@ def test_complete_published_universe_obeys_ranking_safety_invariants():
             assert [row[tier_field] for row in ordered] == sorted(
                 (row[tier_field] for row in ordered), reverse=True
             )
-            assert [row[rank_field] for row in ordered] == list(range(1, len(ordered) + 1))
+            qualified = [row for row in ordered if row[tier_field] == 2]
+            unqualified = [row for row in ordered if row[tier_field] != 2]
+            assert [row[rank_field] for row in qualified] == list(
+                range(1, len(qualified) + 1)
+            )
+            assert all(row[rank_field] is None for row in unqualified)
 
 
 
