@@ -510,7 +510,13 @@ def fetch_institutional_flows(stock_ids: set[str]) -> dict[str, dict[str, float]
     return _aggregate_institutional_rows(rows, stock_ids)
 
 
-def _finmind_rows(dataset: str, start: date, end: date, stock_id: str | None = None) -> list[dict[str, Any]]:
+def _finmind_rows(
+    dataset: str,
+    start: date,
+    end: date,
+    stock_id: str | None = None,
+    timeout: int | None = None,
+) -> list[dict[str, Any]]:
     """Read one FinMind dataset and treat plan/rate failures as unavailable."""
     if not SETTINGS.finmind_token:
         return []
@@ -526,7 +532,9 @@ def _finmind_rows(dataset: str, start: date, end: date, stock_id: str | None = N
             "https://api.finmindtrade.com/api/v4/data",
             params=params,
             headers={"Authorization": f"Bearer {SETTINGS.finmind_token}"},
-            timeout=SETTINGS.request_timeout,
+            # A free-plan per-stock fallback can issue dozens of requests.  A
+            # single slow response must not consume the whole report runtime.
+            timeout=max(1, min(timeout or SETTINGS.request_timeout, SETTINGS.request_timeout)),
         )
         response.raise_for_status()
         payload = response.json()
@@ -540,14 +548,32 @@ def _finmind_rows(dataset: str, start: date, end: date, stock_id: str | None = N
 
 def _dataset_for_ids(dataset: str, stock_ids: set[str], start: date, end: date) -> list[dict[str, Any]]:
     """Prefer one all-market request; free plans fall back to per-stock calls."""
-    rows = _finmind_rows(dataset, start, end)
+    if not stock_ids:
+        return []
+    request_timeout = min(8, SETTINGS.request_timeout)
+    started = time.monotonic()
+    rows = _finmind_rows(dataset, start, end, timeout=request_timeout)
     if rows:
+        LOG.info("FinMind %s all-market completed in %.1fs", dataset, time.monotonic() - started)
         return [row for row in rows if str(row.get("stock_id", "")) in stock_ids]
     output: list[dict[str, Any]] = []
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        jobs = {pool.submit(_finmind_rows, dataset, start, end, sid): sid for sid in stock_ids}
+    # Twelve workers and an 8-second request cap bound even an 81-stock
+    # fallback to about one minute instead of allowing it to run for tens of
+    # minutes. Missing rows stay unavailable/neutral; they are never invented.
+    with ThreadPoolExecutor(max_workers=min(12, len(stock_ids))) as pool:
+        jobs = {
+            pool.submit(_finmind_rows, dataset, start, end, sid, request_timeout): sid
+            for sid in stock_ids
+        }
         for job in as_completed(jobs):
             output.extend(job.result())
+    LOG.info(
+        "FinMind %s per-stock fallback completed in %.1fs (%d/%d stocks returned rows)",
+        dataset,
+        time.monotonic() - started,
+        len({str(row.get("stock_id", "")) for row in output}),
+        len(stock_ids),
+    )
     return output
 
 
@@ -806,7 +832,7 @@ def fetch_broker_branches(stock_ids: set[str]) -> dict[str, dict[str, Any]]:
                 "https://api.finmindtrade.com/api/v4/taiwan_stock_trading_daily_report_secid_agg",
                 params={"data_id": sid, "start_date": start.isoformat(), "end_date": end.isoformat()},
                 headers={"Authorization": f"Bearer {SETTINGS.finmind_token}"},
-                timeout=SETTINGS.request_timeout,
+                timeout=min(8, SETTINGS.request_timeout),
             )
             response.raise_for_status()
             payload = response.json()

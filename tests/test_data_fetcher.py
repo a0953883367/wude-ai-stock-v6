@@ -2,8 +2,10 @@ from data_fetcher import (
     _aggregate_credit_rows,
     _aggregate_financial_quality_rows,
     _aggregate_fundamental_rows,
+    _dataset_for_ids,
     _parse_finra_short_volume,
 )
+from datetime import date
 
 
 def test_credit_rows_have_latest_and_five_day_changes():
@@ -132,3 +134,21 @@ def test_normalize_us_equity_info_maps_company_fundamentals():
     assert result["fundamental_available"] == 1.0
     assert result["financial_quality_available"] == 1.0
     assert result["us_company_data_fields"] >= 10
+
+
+def test_finmind_per_stock_fallback_uses_bounded_timeout(monkeypatch):
+    calls = []
+
+    def fake_rows(dataset, start, end, stock_id=None, timeout=None):
+        calls.append((stock_id, timeout))
+        if stock_id is None:
+            return []
+        return [{"stock_id": stock_id, "date": "2026-08-19"}]
+
+    monkeypatch.setattr("data_fetcher._finmind_rows", fake_rows)
+    rows = _dataset_for_ids(
+        "TaiwanStockPER", {"2330", "2317"}, date(2026, 8, 1), date(2026, 8, 19)
+    )
+    assert {row["stock_id"] for row in rows} == {"2330", "2317"}
+    assert calls[0][0] is None
+    assert all(timeout is not None and timeout <= 8 for _, timeout in calls)
