@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from model_lab import MODEL_NAMES, consensus_prediction, model_predictions
-from performance import load_performance_context, update_performance
+from performance import _summary, load_performance_context, update_performance
 
 
 def _row(
@@ -140,3 +140,31 @@ def test_ten_models_and_strict_consensus_are_recorded():
     consensus = consensus_prediction(votes)
     assert consensus["direction"] == "UP"
     assert consensus["up_votes"] >= 7
+
+
+def test_reaching_sample_gate_never_silently_changes_production_score():
+    snapshots = []
+    for day in range(60):
+        predictions = []
+        for index in range(4):
+            predictions.append({
+                "symbol": f"T{index}",
+                "group": "TW",
+                "consensus": {"direction": "UP"},
+                "model_predictions": {
+                    name: {"direction": "UP"} for name in MODEL_NAMES
+                },
+                "trade_triggered": False,
+                "outcomes": {"1": {"return_pct": 1.0}},
+            })
+        snapshots.append({
+            "market": "TW",
+            "session_date": f"2026-09-{day + 1:02d}",
+            "predictions": predictions,
+        })
+
+    summary = _summary(snapshots)
+    calibration = summary["calibration"]
+    assert calibration["eligible_one_day_samples"] == 240
+    assert calibration["ready_for_model_selection"] is True
+    assert calibration["affects_ai_score"] is False
