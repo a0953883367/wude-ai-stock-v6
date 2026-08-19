@@ -136,9 +136,9 @@ def render_markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines.append("🧪 隔日預測V2：10個模型開始公平測試；尚無完成結果，不顯示假命中率")
-    if calibration.get("affects_ai_score"):
+    if calibration.get("ready_for_model_selection"):
         samples = int(calibration.get("eligible_one_day_samples") or 0)
-        lines.append(f"✅ 實績校正：已達60交易日及200筆共識訊號門檻（目前 {samples} 筆）")
+        lines.append(f"✅ 模型遴選：已達60交易日及200筆共識訊號門檻（目前 {samples} 筆；審核前不影響正式排名）")
     else:
         lines.append("🛡️ 實績校正：未達驗收門檻前調整為0分，不讓少量結果扭曲排名")
     macro = report.get("macro_regime", {})
