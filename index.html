@@ -173,9 +173,9 @@ function normalizeReport(row){
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
-    overallEligible:row.overall_eligible,overallRankTier:row.overall_rank_tier,overallRankingScore:row.overall_ranking_score,overallRank:row.overall_rank,
-    shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,
-    midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,
+    overallEligible:row.overall_eligible,overallRankTier:row.overall_rank_tier,overallRankingScore:row.overall_ranking_score,overallRank:row.overall_rank,overallDisplayRank:row.overall_display_rank,
+    shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,shortTermDisplayRank:row.short_term_display_rank,
+    midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,midLongDisplayRank:row.mid_long_display_rank,rankingGroupCount:row.ranking_group_count,
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
     usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
     usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,usShortVolumeRatio:row.us_short_volume_ratio_pct,
@@ -349,7 +349,7 @@ function showMidLong(group){
   var titles={TW:'🇹🇼 台股中長線布局',US:'🇺🇸 美股中長線布局',ETF:'📊 ETF中長線布局'};
   document.getElementById('title').textContent=titles[group];
   var eligibleCount=rows.filter(function(stock){return WudeRanking.longTier(stock)===2;}).length;
-  document.getElementById('status').textContent='中長線合格 '+eligibleCount+' 檔｜合格者才標示 TOP；觀察與風險阻擋分開編號。持有規劃3～12個月，採三批資金布局。';
+  document.getElementById('status').textContent='中長線合格 '+eligibleCount+' 檔｜合格者顯示 TOP 名次；觀察與阻擋顯示同組分析排序，不代表可買。持有規劃3～12個月，採三批資金布局。';
   renderStocks(rows);
 }
 
@@ -365,7 +365,7 @@ function showShortTerm(group){
   var titles={TW:'🇹🇼 台股短線進出場',US:'🇺🇸 美股短線進出場',ETF:'📊 ETF短線進出場'};
   document.getElementById('title').textContent=titles[group];
   var eligibleCount=rows.filter(function(stock){return WudeRanking.shortTier(stock)===2;}).length;
-  document.getElementById('status').textContent='短線合格 '+eligibleCount+' 檔｜只有合格者標示短線 TOP；其餘顯示短線觀察或阻擋。須等15～30分鐘觸發，不代表開盤直接買。';
+  document.getElementById('status').textContent='短線合格 '+eligibleCount+' 檔｜合格者顯示短線 TOP；觀察與阻擋顯示同組分析排序，不代表可買。須等15～30分鐘觸發。';
   renderStocks(rows);
 }
 

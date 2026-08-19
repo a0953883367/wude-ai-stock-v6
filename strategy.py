@@ -1613,20 +1613,23 @@ def _assign_group_ranks(rows: list[dict[str, Any]]) -> None:
     market's number-one candidate.
     """
     fields = {
-        "overall": ("overall_rank", "overall_rank_tier"),
-        "short": ("short_term_rank", "short_term_rank_tier"),
-        "long": ("mid_long_rank", "mid_long_rank_tier"),
+        "overall": ("overall_rank", "overall_rank_tier", "overall_display_rank"),
+        "short": ("short_term_rank", "short_term_rank_tier", "short_term_display_rank"),
+        "long": ("mid_long_rank", "mid_long_rank_tier", "mid_long_display_rank"),
     }
     for group in ("TW", "US", "ETF"):
         group_rows = [row for row in rows if _ranking_group(row) == group]
-        for horizon, (field, tier_field) in fields.items():
+        group_count = len(group_rows)
+        for horizon, (field, tier_field, display_field) in fields.items():
             ordered = sorted(
                 group_rows,
                 key=lambda row, horizon=horizon: _ranking_sort_key(row, horizon),
                 reverse=True,
             )
             qualified_rank = 0
-            for row in ordered:
+            for display_rank, row in enumerate(ordered, 1):
+                row[display_field] = display_rank
+                row["ranking_group_count"] = group_count
                 if row.get(tier_field) == 2:
                     qualified_rank += 1
                     row[field] = qualified_rank
