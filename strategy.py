@@ -203,6 +203,20 @@ def build_features(
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
     market = str(item.get("market") or ("TW" if str(item.get("symbol", "")).upper().endswith(".TW") else "US")).upper()
+    # Keep an auditable official-session price for forward testing.  The
+    # dashboard may show an intraday/live price, but a next-session outcome
+    # must always compare completed daily bars from the same exchange.
+    last_daily_timestamp = pd.Timestamp(daily.index[-1])
+    if last_daily_timestamp.tzinfo is not None:
+        market_zone = ZoneInfo("Asia/Taipei" if market == "TW" else "America/New_York")
+        last_daily_timestamp = last_daily_timestamp.tz_convert(market_zone)
+    official_session_date = last_daily_timestamp.date().isoformat()
+    official_close = _finite(close.iloc[-1])
+    adjusted_close = daily.get("adj close", close).astype(float).dropna()
+    official_adjusted_close = _finite(
+        adjusted_close.iloc[-1] if len(adjusted_close) else official_close,
+        official_close,
+    )
     pace, attack, live, attack15, attack30 = _intraday_metrics(intraday, avg20, market)
     if intraday is not None and not intraday.empty and completed_volume is not volume:
         candle["daily_volume_ratio"] = round(pace, 2)
@@ -234,6 +248,9 @@ def build_features(
     return {
         **item,
         "price": round(price, 2),
+        "official_session_date": official_session_date,
+        "official_close_price": round(official_close, 4),
+        "official_adjusted_close_price": round(official_adjusted_close, 4),
         "change_pct": round(change, 2),
         "volume_pace": round(pace, 2),
         "attack_volume": round(attack, 1),

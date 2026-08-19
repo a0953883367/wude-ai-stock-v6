@@ -319,10 +319,12 @@ def main() -> int:
         "US": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
         "ETF": [row for row in ranked if "ETF" in str(row.get("type", ""))][:20],
     }
+    # The ten candidate models must see the same fixed shadow universe.  Rows
+    # that are not actual buy triggers remain useful for model comparison but
+    # are never counted as executed trade signals.
     predictions = []
     for group, rows in backtest_groups.items():
-        qualified_rows = [row for row in rows if row.get("overall_rank_tier") == 2]
-        for rank, row in enumerate(qualified_rows, 1):
+        for rank, row in enumerate(rows, 1):
             item = dict(row)
             item["backtest_group"] = group
             item["backtest_rank"] = rank
@@ -392,7 +394,7 @@ def main() -> int:
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
-            "verified_outcome_feedback": "actual saved 1/5-day returns only; statistically shrunk and capped at +/-2 points",
+            "verified_outcome_feedback": "V2 completed-session close-to-close outcomes; 10 shadow models; no score effect before 60 sessions and 200 consensus signals",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }

@@ -1,124 +1,272 @@
-"""Persist predictions and measure their later returns without look-ahead data."""
+"""Auditable forward testing for completed exchange sessions only."""
 
 from __future__ import annotations
 
 import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from model_lab import MODEL_NAMES, consensus_prediction, evaluate_direction, model_predictions
 
 
 HORIZONS = (1, 5, 10, 20)
+METHODOLOGY_VERSION = 2
+MINIMUM_TRADING_DAYS = 60
+MINIMUM_CONSENSUS_SAMPLES = 200
 
 
-def _business_days_between(start: date, end: date) -> int:
-    """Count weekdays after start through end (exchange holidays are handled on next run)."""
-    days = 0
-    current = start + timedelta(days=1)
-    while current <= end:
-        if current.weekday() < 5:
-            days += 1
-        current += timedelta(days=1)
-    return days
+def _outcome_return(value: Any) -> float | None:
+    if isinstance(value, dict):
+        value = value.get("return_pct")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
-def _metric(returns: list[float], positive_is_hit: bool = True) -> dict[str, float | int]:
-    if not returns:
-        return {"samples": 0, "win_rate_pct": 0.0, "avg_return_pct": 0.0, "worst_return_pct": 0.0}
+def _metric(records: list[tuple[float, str]], eligible: int = 0) -> dict[str, float | int]:
+    directional = [value if direction == "UP" else -value for value, direction in records]
+    if not directional:
+        return {
+            "samples": 0,
+            "eligible_samples": eligible,
+            "coverage_pct": 0.0,
+            "win_rate_pct": 0.0,
+            "avg_return_pct": 0.0,
+            "worst_return_pct": 0.0,
+        }
     return {
-        "samples": len(returns),
-        "win_rate_pct": round(
-            sum((value > 0) if positive_is_hit else (value <= 0) for value in returns)
-            / len(returns) * 100,
-            1,
-        ),
-        "avg_return_pct": round(sum(returns) / len(returns), 2),
-        "worst_return_pct": round(min(returns), 2),
+        "samples": len(directional),
+        "eligible_samples": eligible,
+        "coverage_pct": round(len(directional) / max(eligible, 1) * 100, 1),
+        "win_rate_pct": round(sum(value > 0 for value in directional) / len(directional) * 100, 1),
+        "avg_return_pct": round(sum(directional) / len(directional), 2),
+        "worst_return_pct": round(min(directional), 2),
     }
 
 
 def _metric_bundle(
     snapshots: list[dict[str, Any]],
-    predicate,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    horizons: dict[str, Any] = {}
-    signals: dict[str, Any] = {"🟢": {}, "🟡": {}, "🔴": {}}
+    predicate: Callable[[dict[str, Any]], bool],
+    direction_for: Callable[[dict[str, Any]], str],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
     for horizon in HORIZONS:
         key = str(horizon)
-        all_returns: list[float] = []
-        by_signal: dict[str, list[float]] = {signal: [] for signal in signals}
+        records: list[tuple[float, str]] = []
+        eligible = 0
         for snapshot in snapshots:
             for row in snapshot.get("predictions", []):
                 if not predicate(row):
                     continue
-                value = row.get("outcomes", {}).get(key)
+                value = _outcome_return(row.get("outcomes", {}).get(key))
                 if value is None:
                     continue
-                result = float(value)
-                all_returns.append(result)
-                signal = str(row.get("signal", "🟡"))[:1]
-                if signal in by_signal:
-                    by_signal[signal].append(result)
-        horizons[key] = _metric(all_returns)
-        for signal in signals:
-            signals[signal][key] = _metric(by_signal[signal], positive_is_hit=signal != "🔴")
-    return horizons, signals
+                eligible += 1
+                direction = direction_for(row)
+                if evaluate_direction(direction, value) is not None:
+                    records.append((value, direction))
+        result[key] = _metric(records, eligible)
+    return result
 
 
-def _summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
-    horizons, signals = _metric_bundle(snapshots, lambda _row: True)
+def _consensus_direction(row: dict[str, Any]) -> str:
+    return str(row.get("consensus", {}).get("direction") or "ABSTAIN")
+
+
+def _trade_direction(row: dict[str, Any]) -> str:
+    return "UP" if row.get("trade_triggered") else "ABSTAIN"
+
+
+def _model_direction(name: str) -> Callable[[dict[str, Any]], str]:
+    return lambda row: str(row.get("model_predictions", {}).get(name, {}).get("direction") or "ABSTAIN")
+
+
+def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dict[str, Any]:
+    horizons = _metric_bundle(snapshots, lambda _row: True, _consensus_direction)
+    trade_horizons = _metric_bundle(snapshots, lambda _row: True, _trade_direction)
+    models = {
+        name: {"horizons": _metric_bundle(snapshots, lambda _row: True, _model_direction(name))}
+        for name in MODEL_NAMES
+    }
+    leaderboard = sorted(
+        ({"name": name, **metrics["horizons"]["1"]} for name, metrics in models.items()),
+        key=lambda item: (int(item["samples"]) >= 30, float(item["win_rate_pct"]), int(item["samples"])),
+        reverse=True,
+    )
+
     groups: dict[str, Any] = {}
     for group in ("TW", "US", "ETF"):
-        group_horizons, group_signals = _metric_bundle(
-            snapshots,
-            lambda row, expected=group: str(row.get("group")) == expected,
-        )
-        groups[group] = {"horizons": group_horizons, "signals": group_signals}
+        predicate = lambda row, expected=group: str(row.get("group")) == expected
+        groups[group] = {
+            "horizons": _metric_bundle(snapshots, predicate, _consensus_direction),
+            "trade_signals": _metric_bundle(snapshots, predicate, _trade_direction),
+            "models": {
+                name: {"horizons": _metric_bundle(snapshots, predicate, _model_direction(name))}
+                for name in MODEL_NAMES
+            },
+        }
 
-    us_feeds = sorted({
-        str(row.get("us_live_feed") or "fallback")
-        for snapshot in snapshots
-        for row in snapshot.get("predictions", [])
-        if str(row.get("market")) == "US"
-    })
-    feed_metrics: dict[str, Any] = {}
-    for feed in us_feeds:
-        feed_horizons, feed_signals = _metric_bundle(
-            snapshots,
-            lambda row, expected=feed: (
-                str(row.get("market")) == "US"
-                and str(row.get("us_live_feed") or "fallback") == expected
-            ),
-        )
-        feed_metrics[feed] = {"horizons": feed_horizons, "signals": feed_signals}
-
-    trading_dates = sorted({
-        str(snapshot.get("date"))
-        for snapshot in snapshots
-        if snapshot.get("date")
-        and date.fromisoformat(str(snapshot.get("date"))).weekday() < 5
-        and snapshot.get("predictions")
-    })
-    collected = len(trading_dates)
+    session_dates = {str(item.get("session_date")) for item in snapshots if item.get("predictions")}
+    collected = len(session_dates)
     one_day_samples = int(horizons["1"]["samples"])
-    active = one_day_samples > 0
+    ready_for_model_selection = (
+        collected >= MINIMUM_TRADING_DAYS
+        and one_day_samples >= MINIMUM_CONSENSUS_SAMPLES
+    )
     return {
+        "methodology_version": METHODOLOGY_VERSION,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "snapshot_count": len(snapshots),
         "horizons": horizons,
-        "signals": signals,
+        "trade_signals": trade_horizons,
+        "models": models,
+        "model_leaderboard": leaderboard,
         "groups": groups,
-        "us_feeds": feed_metrics,
         "calibration": {
             "trading_days_collected": collected,
-            "minimum_trading_days": 0,
-            "remaining_trading_days": 0,
-            "status": "active" if active else "waiting_for_first_outcome",
-            "affects_ai_score": active,
+            "minimum_trading_days": MINIMUM_TRADING_DAYS,
+            "minimum_consensus_samples": MINIMUM_CONSENSUS_SAMPLES,
+            "remaining_trading_days": max(0, MINIMUM_TRADING_DAYS - collected),
+            "status": (
+                "ready_for_model_selection"
+                if ready_for_model_selection
+                else "collecting_clean_outcomes"
+            ),
+            # Promotion is a separate, auditable step. Reaching the sample
+            # gate only makes the leaderboard eligible for selection; it must
+            # never silently change the production ranking model.
+            "ready_for_model_selection": ready_for_model_selection,
+            "affects_ai_score": False,
             "eligible_one_day_samples": one_day_samples,
+            "legacy_history_reset": legacy_reset,
         },
-        "note": "只使用系統實際留存後產生的報酬，不偽造過去AI判斷；少量樣本以統計收縮限制影響。",
+        "note": (
+            "V2只以各市場已完成的正式交易日收盤價驗證；同市場同交易日只保存一次，"
+            "十個候選模型以相同資料向前測試，未達門檻不影響AI分數。"
+        ),
     }
+
+
+def _canonical_market(period: str) -> str | None:
+    return {"morning": "US", "evening": "TW"}.get(period)
+
+
+def _performance_price(row: dict[str, Any]) -> float:
+    for key in ("official_adjusted_close_price", "official_close_price"):
+        try:
+            value = float(row.get(key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    return 0.0
+
+
+def _session_date(row: dict[str, Any]) -> str:
+    value = str(row.get("official_session_date") or "")
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError:
+        return ""
+
+
+def _trade_triggered(row: dict[str, Any], official_price: float) -> bool:
+    try:
+        low = float(row.get("short_term_entry_low") or 0)
+        high = float(row.get("short_term_entry_high") or 0)
+    except (TypeError, ValueError):
+        return False
+    return bool(
+        row.get("short_term_eligible")
+        and not row.get("trade_guard_blocked")
+        and low > 0
+        and high >= low
+        and low <= official_price <= high
+    )
+
+
+def _new_snapshot(
+    market: str,
+    session_date: str,
+    predictions: list[dict[str, Any]],
+    updated_at: str,
+    period: str,
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in predictions:
+        if str(row.get("market")) != market or _session_date(row) != session_date:
+            continue
+        symbol = str(row.get("symbol") or "")
+        price = _performance_price(row)
+        if not symbol or symbol in seen or price <= 0:
+            continue
+        seen.add(symbol)
+        votes = model_predictions(row)
+        rows.append({
+            "symbol": symbol,
+            "name": row.get("name"),
+            "market": market,
+            "group": row.get("backtest_group"),
+            "rank": row.get("backtest_rank"),
+            "official_session_date": session_date,
+            "official_price": round(price, 4),
+            "model_predictions": votes,
+            "consensus": consensus_prediction(votes),
+            "trade_triggered": _trade_triggered(row, price),
+            "outcomes": {},
+        })
+    return {
+        "id": f"{market}:{session_date}",
+        "market": market,
+        "session_date": session_date,
+        "captured_at": updated_at,
+        "period": period,
+        "predictions": rows,
+    }
+
+
+def _evaluate_with_new_session(
+    snapshots: list[dict[str, Any]],
+    market: str,
+    session_date: str,
+    current_rows: list[dict[str, Any]],
+) -> None:
+    prices = {
+        str(row.get("symbol")): _performance_price(row)
+        for row in current_rows
+        if str(row.get("market")) == market and _session_date(row) == session_date
+    }
+    market_sessions = sorted({
+        str(item.get("session_date"))
+        for item in snapshots
+        if str(item.get("market")) == market and item.get("session_date")
+    } | {session_date})
+    positions = {value: index for index, value in enumerate(market_sessions)}
+    current_index = positions[session_date]
+    for snapshot in snapshots:
+        if str(snapshot.get("market")) != market:
+            continue
+        origin = str(snapshot.get("session_date") or "")
+        if origin not in positions or positions[origin] >= current_index:
+            continue
+        elapsed = current_index - positions[origin]
+        if elapsed not in HORIZONS:
+            continue
+        key = str(elapsed)
+        for row in snapshot.get("predictions", []):
+            symbol = str(row.get("symbol") or "")
+            base = float(row.get("official_price") or 0)
+            current = float(prices.get(symbol) or 0)
+            if base <= 0 or current <= 0 or key in row.get("outcomes", {}):
+                continue
+            row.setdefault("outcomes", {})[key] = {
+                "return_pct": round((current / base - 1) * 100, 4),
+                "evaluated_session_date": session_date,
+                "evaluated_price": round(current, 4),
+            }
 
 
 def update_performance(
@@ -128,71 +276,44 @@ def update_performance(
     updated_at: str,
     period: str,
 ) -> dict[str, Any]:
-    """Evaluate old predictions, append the current snapshot, and save summary files."""
+    """Evaluate and save only one completed-session snapshot per market."""
     reports_dir.mkdir(parents=True, exist_ok=True)
     history_path = reports_dir / "prediction_history.json"
+    legacy_reset = False
     try:
         history = json.loads(history_path.read_text(encoding="utf-8"))
-        snapshots = list(history.get("snapshots", []))
-    except (FileNotFoundError, json.JSONDecodeError, TypeError):
+        if int(history.get("version") or 0) != METHODOLOGY_VERSION:
+            snapshots: list[dict[str, Any]] = []
+            legacy_reset = bool(history.get("snapshots"))
+        else:
+            snapshots = list(history.get("snapshots", []))
+    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
         snapshots = []
 
-    current_date = date.fromisoformat(updated_at[:10])
-    prices = {
-        str(row.get("symbol")): float(row["price"])
-        for row in current_rows
-        if row.get("symbol") and row.get("price") not in (None, 0)
-    }
-    for snapshot in snapshots:
-        try:
-            snapshot_date = date.fromisoformat(str(snapshot["date"]))
-        except (KeyError, ValueError):
-            continue
-        elapsed = _business_days_between(snapshot_date, current_date)
-        for row in snapshot.get("predictions", []):
-            symbol = str(row.get("symbol", ""))
-            base_price = float(row.get("price") or 0)
-            if not base_price or symbol not in prices:
-                continue
-            outcomes = row.setdefault("outcomes", {})
-            for horizon in HORIZONS:
-                key = str(horizon)
-                if elapsed >= horizon and key not in outcomes:
-                    outcomes[key] = round((prices[symbol] / base_price - 1) * 100, 2)
+    market = _canonical_market(period)
+    if market:
+        session_dates = sorted({
+            _session_date(row)
+            for row in current_rows
+            if str(row.get("market")) == market and _session_date(row)
+        })
+        if session_dates:
+            session_date = session_dates[-1]
+            snapshot_id = f"{market}:{session_date}"
+            if not any(str(item.get("id")) == snapshot_id for item in snapshots):
+                _evaluate_with_new_session(snapshots, market, session_date, current_rows)
+                snapshot = _new_snapshot(market, session_date, predictions, updated_at, period)
+                if snapshot["predictions"]:
+                    snapshots.append(snapshot)
 
-    cutoff = current_date - timedelta(days=180)
+    cutoff = date.fromisoformat(updated_at[:10]) - timedelta(days=365)
     snapshots = [
         item for item in snapshots
-        if str(item.get("date", "")) >= cutoff.isoformat()
+        if str(item.get("session_date") or "") >= cutoff.isoformat()
     ]
-    snapshot_id = f"{updated_at}-{period}"
-    if not any(item.get("id") == snapshot_id for item in snapshots):
-        snapshots.append({
-            "id": snapshot_id,
-            "date": current_date.isoformat(),
-            "period": period,
-            "predictions": [
-                {
-                    "symbol": row.get("symbol"),
-                    "name": row.get("name"),
-                    "market": row.get("market"),
-                    "group": row.get("backtest_group"),
-                    "us_live_feed": row.get("us_live_feed"),
-                    "us_live_source": row.get("us_live_source"),
-                    "us_live_data_available": row.get("us_live_data_available"),
-                    "rank": row.get("backtest_rank"),
-                    "score": row.get("score"),
-                    "signal": str(row.get("action", "🟡"))[:1],
-                    "price": row.get("price"),
-                    "outcomes": {},
-                }
-                for row in predictions
-            ],
-        })
-
-    summary = _summary(snapshots)
+    summary = _summary(snapshots, legacy_reset=legacy_reset)
     history_path.write_text(
-        json.dumps({"version": 1, "snapshots": snapshots}, ensure_ascii=False, indent=2),
+        json.dumps({"version": METHODOLOGY_VERSION, "snapshots": snapshots}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     (reports_dir / "performance.json").write_text(
@@ -202,10 +323,11 @@ def update_performance(
 
 
 def load_performance_context(reports_dir: Path) -> dict[str, Any]:
-    """Load only verified outcomes saved by earlier briefing runs."""
+    """Load verified V2 outcomes; legacy metrics never affect scoring."""
     try:
-        return json.loads(
-            (reports_dir / "performance.json").read_text(encoding="utf-8")
-        )
+        value = json.loads((reports_dir / "performance.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):
         return {}
+    if int(value.get("methodology_version") or 0) != METHODOLOGY_VERSION:
+        return {}
+    return value
