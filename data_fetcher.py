@@ -547,15 +547,17 @@ def _finmind_rows(
 
 
 def _dataset_for_ids(dataset: str, stock_ids: set[str], start: date, end: date) -> list[dict[str, Any]]:
-    """Prefer one all-market request; free plans fall back to per-stock calls."""
+    """Fetch only requested symbols; never stream an unbounded all-market payload.
+
+    FinMind's all-market response can be extremely large.  ``requests`` uses a
+    socket inactivity timeout, so a server that keeps streaming bytes can run
+    far beyond that value.  Per-stock requests keep both payload size and total
+    runtime bounded and are supported by the configured free-plan workflow.
+    """
     if not stock_ids:
         return []
     request_timeout = min(8, SETTINGS.request_timeout)
     started = time.monotonic()
-    rows = _finmind_rows(dataset, start, end, timeout=request_timeout)
-    if rows:
-        LOG.info("FinMind %s all-market completed in %.1fs", dataset, time.monotonic() - started)
-        return [row for row in rows if str(row.get("stock_id", "")) in stock_ids]
     output: list[dict[str, Any]] = []
     # Twelve workers and an 8-second request cap bound even an 81-stock
     # fallback to about one minute instead of allowing it to run for tens of
@@ -568,7 +570,7 @@ def _dataset_for_ids(dataset: str, stock_ids: set[str], start: date, end: date) 
         for job in as_completed(jobs):
             output.extend(job.result())
     LOG.info(
-        "FinMind %s per-stock fallback completed in %.1fs (%d/%d stocks returned rows)",
+        "FinMind %s bounded per-stock fetch completed in %.1fs (%d/%d stocks returned rows)",
         dataset,
         time.monotonic() - started,
         len({str(row.get("stock_id", "")) for row in output}),
