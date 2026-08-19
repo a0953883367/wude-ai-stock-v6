@@ -128,17 +128,19 @@ def render_markdown(report: dict[str, Any]) -> str:
     performance = report.get("performance", {})
     calibration = performance.get("calibration", {})
     five_day = performance.get("horizons", {}).get("5", {})
-    if five_day.get("samples"):
+    if int(performance.get("methodology_version") or 0) < 2:
+        lines.append("🧭 隔日預測V2：舊回測已停止採信；等待正式收盤資料重新累積")
+    elif five_day.get("samples"):
         lines.append(
-            f"🎯 回測5日：{five_day['samples']}筆｜上漲命中 {five_day['win_rate_pct']:.1f}%｜平均 {_change(five_day['avg_return_pct'])}｜最差 {_change(five_day['worst_return_pct'])}"
+            f"🎯 共識模型5日：{five_day['samples']}筆｜方向命中 {five_day['win_rate_pct']:.1f}%｜平均 {_change(five_day['avg_return_pct'])}｜最差 {_change(five_day['worst_return_pct'])}"
         )
     else:
-        lines.append("🎯 回測：已開始留存排名；累積5個交易日後顯示首批命中率")
+        lines.append("🧪 隔日預測V2：10個模型開始公平測試；尚無完成結果，不顯示假命中率")
     if calibration.get("affects_ai_score"):
         samples = int(calibration.get("eligible_one_day_samples") or 0)
-        lines.append(f"✅ 實績校正：已用 {samples} 筆真實漲跌結果，小幅校正AI分數")
+        lines.append(f"✅ 實績校正：已達60交易日及200筆共識訊號門檻（目前 {samples} 筆）")
     else:
-        lines.append("🛡️ 實績校正：等待首批真實隔日漲跌；目前調整為0分")
+        lines.append("🛡️ 實績校正：未達驗收門檻前調整為0分，不讓少量結果扭曲排名")
     macro = report.get("macro_regime", {})
     macro_calibration = macro.get("calibration", {})
     if macro_calibration.get("affects_ai_score"):
