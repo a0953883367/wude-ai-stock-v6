@@ -1567,6 +1567,56 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _ranking_group(row: dict[str, Any]) -> str:
+    """Return the exact group displayed by the website ranking buttons."""
+    if "ETF" in str(row.get("type") or "").upper():
+        return "ETF"
+    return "TW" if str(row.get("market") or "").upper() == "TW" else "US"
+
+
+def _ranking_sort_key(row: dict[str, Any], horizon: str) -> tuple[float, ...]:
+    """Keep qualification ahead of score for every ranking horizon."""
+    if horizon == "short":
+        return (
+            _finite(row.get("short_term_rank_tier")),
+            _finite(row.get("short_term_ranking_score")),
+            _finite(row.get("short_term_score")),
+            _finite(row.get("entry_score")),
+        )
+    if horizon == "long":
+        return (
+            _finite(row.get("mid_long_rank_tier")),
+            _finite(row.get("mid_long_ranking_score")),
+            _finite(row.get("mid_long_score")),
+            _finite(row.get("score")),
+        )
+    return (
+        _finite(row.get("overall_rank_tier")),
+        _finite(row.get("overall_ranking_score")),
+        _finite(row.get("entry_score")),
+        _finite(row.get("score")),
+    )
+
+
+def _assign_group_ranks(rows: list[dict[str, Any]]) -> None:
+    """Assign ranks inside TW, US and ETF groups instead of across markets."""
+    fields = {
+        "overall": "overall_rank",
+        "short": "short_term_rank",
+        "long": "mid_long_rank",
+    }
+    for group in ("TW", "US", "ETF"):
+        group_rows = [row for row in rows if _ranking_group(row) == group]
+        for horizon, field in fields.items():
+            ordered = sorted(
+                group_rows,
+                key=lambda row, horizon=horizon: _ranking_sort_key(row, horizon),
+                reverse=True,
+            )
+            for rank, row in enumerate(ordered, 1):
+                row[field] = rank
+
+
 def score_candidates(
     rows: list[dict[str, Any]],
     macro_regime: dict[str, Any] | None = None,
@@ -1805,7 +1855,9 @@ def score_candidates(
         kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
         fundamental_ready = not row.get("fundamental_available") or fundamental_score >= 40
         quality_ready = not row.get("financial_quality_available") or quality_score >= 38
-        entry_data_complete = row.get("entry_data_coverage") == row.get("entry_data_total")
+        entry_coverage = int(_finite(row.get("entry_data_coverage")))
+        entry_total = int(_finite(row.get("entry_data_total")))
+        entry_data_complete = entry_total > 0 and entry_coverage >= entry_total
         if (
             row["entry_score"] >= 75 and row["attack_volume"] > 0
             and trend_ready and not_extended and kline_ready
@@ -1827,33 +1879,65 @@ def score_candidates(
         row.update(_mid_long_term_plan(row))
 
         plan_factor = _finite(row.get("price_plan_rank_factor"), 0.68)
-        coverage_factor = 0.75 + 0.25 * (_finite(row.get("overall_confidence")) / 100)
-        row["overall_ranking_score"] = round(row["score"] * plan_factor * coverage_factor, 1)
-        row["short_term_ranking_score"] = round(
-            _finite(row.get("short_term_score"))
-            * plan_factor
-            * (1.0 if row.get("short_term_eligible") else 0.82),
+        overall_confidence = _finite(row.get("overall_confidence"))
+        market_quality = _finite(row.get("market_data_quality_score"), overall_confidence)
+        confidence_factor = 0.65 + 0.20 * overall_confidence / 100 + 0.15 * market_quality / 100
+        contract_valid = row.get("market_contract_valid") is not False
+        overall_blocked = bool(row.get("trade_guard_blocked") or not contract_valid)
+        overall_eligible = bool(
+            not overall_blocked and entry_data_complete
+            and overall_confidence >= 70 and market_quality >= 50
+            and row["score"] >= 60 and row["entry_score"] >= 58
+        )
+        row["overall_eligible"] = overall_eligible
+        row["overall_rank_tier"] = 0 if overall_blocked else 2 if overall_eligible else 1
+
+        # 「最值得買」必須同時考慮公司／ETF品質與目前進場時機；
+        # 避免高歷史總分但現價、籌碼或風險不合格者仍排第一。
+        overall_blend = (
+            row["score"] * 0.45
+            + row["entry_score"] * 0.35
+            + _finite(row.get("short_term_score")) * 0.10
+            + _finite(row.get("mid_long_score")) * 0.10
+        )
+        overall_penalty = 0.45 if overall_blocked else 1.0 if overall_eligible else 0.85
+        row["overall_ranking_score"] = round(
+            overall_blend * plan_factor * confidence_factor * overall_penalty,
             1,
         )
+
+        short_data_complete = entry_data_complete and _finite(row.get("short_term_confidence")) >= 75
+        short_blocked = bool(row.get("trade_guard_blocked") or not contract_valid or not short_data_complete)
+        row["short_term_rank_tier"] = (
+            0 if short_blocked else 2 if row.get("short_term_eligible") else 1
+        )
+        short_factor = 0.70 + 0.30 * _finite(row.get("short_term_confidence")) / 100
+        short_penalty = 0.45 if short_blocked else 1.0 if row.get("short_term_eligible") else 0.85
+        row["short_term_ranking_score"] = round(
+            _finite(row.get("short_term_score")) * plan_factor * short_factor * short_penalty,
+            1,
+        )
+
+        long_blocked = bool(
+            row.get("trade_guard_severe") or not contract_valid
+            or _finite(row.get("news_penalty")) >= 10
+        )
+        row["mid_long_rank_tier"] = (
+            0 if long_blocked else 2 if row.get("mid_long_eligible") else 1
+        )
+        long_factor = 0.70 + 0.30 * _finite(row.get("mid_long_confidence")) / 100
+        long_penalty = 0.45 if long_blocked else 1.0 if row.get("mid_long_eligible") else 0.85
         row["mid_long_ranking_score"] = round(
-            _finite(row.get("mid_long_score"))
-            * plan_factor
-            * (1.0 if row.get("mid_long_eligible") else 0.82),
+            _finite(row.get("mid_long_score")) * plan_factor * long_factor * long_penalty,
             1,
         )
 
     ranked = sorted(
         rows,
-        # Overall TOP20 represents the sum of verified dimensions.  Entry
-        # timing is only a tie-breaker and no longer controls the main list.
-        key=lambda r: (r["overall_ranking_score"], r["score"], r["entry_score"]),
+        key=lambda r: _ranking_sort_key(r, "overall"),
         reverse=True,
     )
     for rank, row in enumerate(ranked, 1):
         row["rank"] = rank
-        row["overall_rank"] = rank
-    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("short_term_ranking_score", 0), reverse=True), 1):
-        row["short_term_rank"] = rank
-    for rank, row in enumerate(sorted(rows, key=lambda r: r.get("mid_long_ranking_score", 0), reverse=True), 1):
-        row["mid_long_rank"] = rank
+    _assign_group_ranks(rows)
     return ranked

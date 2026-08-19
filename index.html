@@ -118,6 +118,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="live_config.js?v=633"></script>
 <script src="live_client.js?v=633"></script>
 <script src="live_analysis.js?v=633"></script>
+<script src="ranking.js?v=634"></script>
 <script src="capital_test.js"></script>
 <script>
 'use strict';
@@ -135,7 +136,7 @@ function compactSigned(value){if(!hasValue(value))return '—';var n=Number(valu
 function range(obj,a,b){var low=first(obj,[a],'—'),high=first(obj,[b],'—');if(low==='—'&&high==='—')return '—';if(high==='—'||String(low)===String(high))return low;return low+' ～ '+high;}
 function lightFrom(text,score){text=String(text||'');if(text.indexOf('🟢')>=0)return '🟢';if(text.indexOf('🔴')>=0)return '🔴';if(text.indexOf('🟡')>=0)return '🟡';var n=Number(score);return n>=70?'🟢':n>=58?'🟡':'🔴';}
 function marketCode(symbol,market){symbol=String(symbol||'');return market==='TW'?symbol.split('.')[0]:symbol;}
-function sortByScore(rows){return rows.slice().sort(function(a,b){var x=Number(a.score),y=Number(b.score);if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;return y-x;});}
+function sortByScore(rows){return WudeRanking.sortOverall(rows);}
 
 function normalizeLegacy(row){
   var marketText=String(first(row,['市場'],''));
@@ -172,6 +173,9 @@ function normalizeReport(row){
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
+    overallEligible:row.overall_eligible,overallRankTier:row.overall_rank_tier,overallRankingScore:row.overall_ranking_score,overallRank:row.overall_rank,
+    shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,
+    midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
     usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
     usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,usShortVolumeRatio:row.us_short_volume_ratio_pct,
@@ -299,7 +303,7 @@ function stockCard(stock,index){
   }).join('<br>');
   var newsRadar='<div class="databox">📰 <b>負面新聞風險雷達：'+esc(newsLevel)+'</b><br>'+esc(stock.news||'本次沒有新聞摘要')+'<br>'+newsEffect+(newsLinks?'<br>'+newsLinks:'')+'</div>';
   return [
-    '<article class="card"><div class="card-head"><div><div class="rank">TOP '+(index+1)+'</div><div class="stock">'+esc(stock.name)+'</div>',
+    '<article class="card"><div class="card-head"><div><div class="rank">'+esc(stock.displayRankLabel||('觀察 '+(index+1)))+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
     '<div class="light">'+esc(stock.light)+'</div></div>',
     '<div class="score">AI 總分：'+esc(number(stock.score,1))+'</div><div class="score">現在進場分數：'+esc(number(stock.entryScore,1))+'</div>',
@@ -323,7 +327,7 @@ function stockCard(stock,index){
 function renderStocks(stocks){
   var box=document.getElementById('results');
   if(!stocks||!stocks.length){box.innerHTML='<div class="empty">目前沒有可顯示的股票資料。</div>';return;}
-  box.innerHTML=stocks.map(stockCard).join('');
+  box.innerHTML=WudeRanking.labelRows(STATE.view,stocks).map(stockCard).join('');
 }
 function setActive(selector,attribute,value){document.querySelectorAll(selector).forEach(function(btn){btn.classList.toggle('active',btn.getAttribute(attribute)===value);});}
 function clearOtherNav(active){
@@ -340,14 +344,12 @@ function showMidLong(group){
   var rows=STATE.normalized.filter(function(stock){
     if(group==='ETF')return String(stock.type||'').toUpperCase()==='ETF';
     return stock.market===group&&String(stock.type||'').toUpperCase()!=='ETF';
-  }).sort(function(a,b){
-    var eligibleDiff=Number(Boolean(b.midLongEligible))-Number(Boolean(a.midLongEligible));
-    if(eligibleDiff!==0)return eligibleDiff;
-    return Number(b.midLongScore||0)-Number(a.midLongScore||0);
-  }).slice(0,20);
+  });
+  rows=WudeRanking.sortLong(rows).slice(0,20);
   var titles={TW:'🇹🇼 台股中長線布局',US:'🇺🇸 美股中長線布局',ETF:'📊 ETF中長線布局'};
   document.getElementById('title').textContent=titles[group];
-  document.getElementById('status').textContent='合格且資料完整者優先，再依中長線分數由高到低；不合格者仍保留顯示但移至後方。持有規劃3～12個月，採三批資金布局。';
+  var eligibleCount=rows.filter(function(stock){return WudeRanking.longTier(stock)===2;}).length;
+  document.getElementById('status').textContent='中長線合格 '+eligibleCount+' 檔｜合格者才標示 TOP；觀察與風險阻擋分開編號。持有規劃3～12個月，採三批資金布局。';
   renderStocks(rows);
 }
 
@@ -358,14 +360,12 @@ function showShortTerm(group){
   var rows=STATE.normalized.filter(function(stock){
     if(group==='ETF')return String(stock.type||'').toUpperCase()==='ETF';
     return stock.market===group&&String(stock.type||'').toUpperCase()!=='ETF';
-  }).sort(function(a,b){
-    var eligibleDiff=Number(Boolean(b.shortTermEligible))-Number(Boolean(a.shortTermEligible));
-    if(eligibleDiff!==0)return eligibleDiff;
-    return Number(b.shortTermScore||0)-Number(a.shortTermScore||0);
-  }).slice(0,20);
+  });
+  rows=WudeRanking.sortShort(rows).slice(0,20);
   var titles={TW:'🇹🇼 台股短線進出場',US:'🇺🇸 美股短線進出場',ETF:'📊 ETF短線進出場'};
   document.getElementById('title').textContent=titles[group];
-  document.getElementById('status').textContent='合格且資料完整者優先，再依短線分數由高到低；不合格者仍保留顯示但移至後方。須等15～30分鐘觸發，不代表開盤直接買。';
+  var eligibleCount=rows.filter(function(stock){return WudeRanking.shortTier(stock)===2;}).length;
+  document.getElementById('status').textContent='短線合格 '+eligibleCount+' 檔｜只有合格者標示短線 TOP；其餘顯示短線觀察或阻擋。須等15～30分鐘觸發，不代表開盤直接買。';
   renderStocks(rows);
 }
 
@@ -403,18 +403,11 @@ function showQuantum(group){
       matched.push({stock:copy,item:item});
     }else missing.push(item);
   });
-  matched.sort(function(a,b){
-    var x=Number(a.stock.entryScore),y=Number(b.stock.entryScore);
-    if(!Number.isFinite(x))x=Number(a.stock.score);
-    if(!Number.isFinite(y))y=Number(b.stock.score);
-    if(!Number.isFinite(x))x=-Infinity;
-    if(!Number.isFinite(y))y=-Infinity;
-    return y-x;
-  });
+  matched.sort(function(a,b){return WudeRanking.compareOverall(a.stock,b.stock);});
   document.getElementById('title').textContent=cfg.title;
   document.getElementById('status').textContent='固定清單全部顯示｜已有分數者由高到低；缺少行情者標示「資料待補」｜'+(cfg.note||'量子概念觀察清單');
   var notice='<div class="empty">⚛️ '+esc(STATE.quantum.disclaimer||'量子產業仍在早期，波動與技術路線風險高。')+'</div>';
-  var cards=matched.map(function(entry,index){return stockCard(entry.stock,index);}).join('');
+  var cards=WudeRanking.labelRows(STATE.view,matched.map(function(entry){return entry.stock;})).map(stockCard).join('');
   var placeholders=missing.map(function(item,index){return quantumPlaceholder(item,matched.length+index);}).join('');
   document.getElementById('results').innerHTML=notice+cards+placeholders;
 }
@@ -447,17 +440,11 @@ function showOptical(group){
       matched.push({stock:copy,item:item});
     }else missing.push(item);
   });
-  matched.sort(function(a,b){
-    var x=Number(a.stock.entryScore),y=Number(b.stock.entryScore);
-    if(!Number.isFinite(x))x=Number(a.stock.score);
-    if(!Number.isFinite(y))y=Number(b.stock.score);
-    if(!Number.isFinite(x))x=-Infinity;if(!Number.isFinite(y))y=-Infinity;
-    return y-x;
-  });
+  matched.sort(function(a,b){return WudeRanking.compareOverall(a.stock,b.stock);});
   document.getElementById('title').textContent=cfg.title;
   document.getElementById('status').textContent='固定清單全部顯示｜已有分數者由高到低；缺少行情者標示「資料待補」｜'+(cfg.note||'光通訊概念觀察清單');
   var notice='<div class="empty">🔦 '+esc(STATE.optical.disclaimer||'光通訊產業受AI資料中心需求與庫存循環影響。')+'</div>';
-  var cards=matched.map(function(entry,index){return stockCard(entry.stock,index);}).join('');
+  var cards=WudeRanking.labelRows(STATE.view,matched.map(function(entry){return entry.stock;})).map(stockCard).join('');
   var placeholders=missing.map(function(item,index){return opticalPlaceholder(item,matched.length+index);}).join('');
   document.getElementById('results').innerHTML=notice+cards+placeholders;
 }
@@ -478,7 +465,8 @@ function showMarket(view){
     renderStocks(rows);return;
   }
   document.getElementById('title').textContent=map[view][0];
-  document.getElementById('status').textContent='✅ '+(STATE.stockData&&STATE.stockData.version?STATE.stockData.version:'V6')+'｜自動讀取最新排行';
+  var qualified=map[view][1].filter(function(stock){return WudeRanking.overallTier(stock)===2;}).length;
+  document.getElementById('status').textContent='✅ '+(STATE.stockData&&STATE.stockData.version?STATE.stockData.version:'V6')+'｜目前合格 '+qualified+' 檔｜只有合格標的列為 TOP，其餘分列觀察或風險阻擋';
   renderStocks(map[view][1]);
 }
 function renderMarketStrip(report){
@@ -496,6 +484,7 @@ function renderPerformance(report){
 }
 async function fetchJSON(path){var response=await fetch(path+'?t='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);return response.json();}
 async function showReport(period){
+  STATE.view='REPORT:'+period;
   setActive('#reportButtons button','data-period',period);document.querySelectorAll('#marketButtons button').forEach(function(b){b.classList.remove('active');});
   var names={morning:'🌅 AI 股票早報',noon:'☀️ AI 股票午報',evening:'🌙 AI 股票晚報'};
   document.getElementById('title').textContent=names[period];document.getElementById('status').textContent='正在讀取報告…';
@@ -512,9 +501,9 @@ async function showReport(period){
     renderPerformance(report);
     var tw=sortByScore(report.watchlist.filter(function(x){return x.market==='TW';}).map(normalizeReport));
     var us=sortByScore(report.watchlist.filter(function(x){return x.market==='US';}).map(normalizeReport));
-    var html='<div class="group">🇹🇼 台股固定觀察</div>'+tw.map(stockCard).join('')+'<div class="group">🇺🇸 美股與 ETF 固定觀察</div>'+us.map(stockCard).join('');
+    var html='<div class="group">🇹🇼 台股固定觀察</div>'+WudeRanking.labelRows('WATCH',tw).map(stockCard).join('')+'<div class="group">🇺🇸 美股與 ETF 固定觀察</div>'+WudeRanking.labelRows('WATCH',us).map(stockCard).join('');
     if(report.unavailable&&report.unavailable.length){html+='<div class="group">⚪ 暫無可靠行情</div><div class="empty">'+report.unavailable.map(function(x){return esc(x.name)+'('+esc(marketCode(x.symbol,x.market))+')';}).join('、')+'</div>';}
-    html+='<div class="group">🏆 全台股背景掃描最強 5 檔</div>'+sortByScore(report.top.map(normalizeReport)).map(stockCard).join('');
+    html+='<div class="group">🏆 全台股背景掃描最強 5 檔</div>'+WudeRanking.labelRows('TW',sortByScore(report.top.map(normalizeReport))).map(stockCard).join('');
     document.getElementById('results').innerHTML=html;
   }catch(error){
     if(STATE.latest&&STATE.latest.period===period){STATE.reports[period]=STATE.latest;return showReport(period);}
@@ -552,10 +541,11 @@ function searchStock(){
     STATE.view='ALL';
     clearOtherNav('');
     document.getElementById('title').textContent='📚 ALL 全部股票分析';
-    var fullCount=STATE.allAnalysis&&Array.isArray(STATE.allAnalysis.data)?STATE.allAnalysis.data.length:0;document.getElementById('status').textContent='共 '+pool.length+' 檔｜完整分析 '+fullCount+' 檔｜台股＋美股＋ETF｜依 AI 總分排序；真正缺資料者才顯示等待資料';
+    var fullCount=STATE.allAnalysis&&Array.isArray(STATE.allAnalysis.data)?STATE.allAnalysis.data.length:0;document.getElementById('status').textContent='共 '+pool.length+' 檔｜完整分析 '+fullCount+' 檔｜依合格資格、綜合排名分數與進場時機排序；阻擋標的不會列為 TOP';
     renderStocks(pool);
     return;
   }
+  STATE.view='SEARCH:'+q;
   var seen={},found=pool.filter(function(s){var key=String(s.symbol).toUpperCase();if(seen[key])return false;var hit=key===q||key===q+'.TW'||key===q+'.TWO'||String(s.name).toUpperCase().indexOf(q)>=0;if(hit)seen[key]=true;return hit;});
   document.getElementById('title').textContent='🔍 單股查詢：'+q;document.getElementById('status').textContent=found.length?'找到 '+found.length+' 檔':'找不到符合資料';renderStocks(found);
 }

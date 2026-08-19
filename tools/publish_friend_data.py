@@ -22,7 +22,13 @@ def _midpoint(row, low_key, high_key, fallback_key=None):
 def _trend(row):
     action = str(row.get("action") or "")
     score = _number(row.get("score"))
-    if "暫不買" in action or "避開" in str(row.get("risk") or ""):
+    if (
+        row.get("trade_guard_blocked") is True
+        or row.get("market_contract_valid") is False
+        or _number(row.get("overall_rank_tier")) == 0
+        or "暫不買" in action
+        or "避開" in str(row.get("risk") or "")
+    ):
         return "看跌"
     if score is not None and score >= 70:
         return "看漲"
@@ -34,7 +40,10 @@ def _trend(row):
 def sanitize(row):
     market = str(row.get("market") or "")
     return {
-        "rank": _number(row.get("rank")),
+        "rank": _number(row.get("overall_rank")) or _number(row.get("rank")),
+        "rankTier": _number(row.get("overall_rank_tier")),
+        "rankingScore": _number(row.get("overall_ranking_score")),
+        "eligible": row.get("overall_eligible") is True,
         "name": str(row.get("name") or row.get("symbol") or "—"),
         "symbol": str(row.get("symbol") or "—"),
         "market": "台灣" if market == "TW" else "美國" if market == "US" else market,

@@ -203,8 +203,9 @@ def main() -> int:
         if row.get("market") == "TW" and row.get("type") == "個股"
     ][:5]
 
-    # Save the same high-to-low TOP20 groups shown by the product. Historical
-    # outcomes never change today's score; they only measure later accuracy.
+    # Save the same qualification-first groups shown by the product.  Unsafe
+    # or incomplete rows may remain visible as observations, but they are not
+    # recorded as TOP signals for performance statistics.
     backtest_groups = {
         "TW": [row for row in ranked if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))][:20],
         "US": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
@@ -212,7 +213,8 @@ def main() -> int:
     }
     predictions = []
     for group, rows in backtest_groups.items():
-        for rank, row in enumerate(rows, 1):
+        qualified_rows = [row for row in rows if row.get("overall_rank_tier") == 2]
+        for rank, row in enumerate(qualified_rows, 1):
             item = dict(row)
             item["backtest_group"] = group
             item["backtest_rank"] = rank
@@ -273,8 +275,9 @@ def main() -> int:
                 "valuation": 0.10,
                 "news_risk": 0.10,
             },
-            "short_term": "1至5個交易日；量價、短均線與K線、籌碼、開盤攻擊量及風報比獨立計分",
-            "mid_long_term": "3至12個月；財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險獨立計分",
+            "overall_ranking": "先依合格／觀察／阻擋分層，再綜合AI總分45%、進場分35%、短線10%、中長線10%與資料信心排序",
+            "short_term": "1至5個交易日；先依合格與安全條件分層，再以量價、短均線與K線、籌碼、開盤攻擊量及風報比排序",
+            "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
             "market_isolation": "台股TW-V3與美股US-V3使用獨立資料契約；跨市場欄位會在計分前清除",
@@ -302,7 +305,7 @@ def main() -> int:
         "updated_at": report["updated_at"],
         "period": args.period,
         "run_mode": report["run_mode"],
-        "ranking_basis": "overall_ranking_score",
+        "ranking_basis": "overall_rank_tier_then_overall_ranking_score",
         "data": ranking_rows,
     }
     ranking_path = SETTINGS.reports_dir / "rankings.json"
