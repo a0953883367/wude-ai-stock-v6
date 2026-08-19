@@ -106,6 +106,17 @@ def sort_by_score(rows: list[dict]) -> list[dict]:
     return sorted(rows, key=score, reverse=True)
 
 
+def _qualified_tw_market_top(ranked: list[dict], limit: int = 5) -> list[dict]:
+    """Return only Taiwan companies that passed every overall safety gate."""
+    return [
+        row
+        for row in ranked
+        if row.get("market") == "TW"
+        and row.get("type") == "個股"
+        and row.get("overall_rank_tier") == 2
+    ][:limit]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--period", choices=["morning", "noon", "evening"], required=True)
@@ -298,10 +309,7 @@ def main() -> int:
         if item["symbol"] in by_symbol
     ])
     unavailable = [item for item in watchlist if item["symbol"] not in by_symbol]
-    market_top = [
-        row for row in ranked
-        if row.get("market") == "TW" and row.get("type") == "個股"
-    ][:5]
+    market_top = _qualified_tw_market_top(ranked)
 
     # Save the same qualification-first groups shown by the product.  Unsafe
     # or incomplete rows may remain visible as observations, but they are not

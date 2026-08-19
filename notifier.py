@@ -164,8 +164,15 @@ def render_markdown(report: dict[str, Any]) -> str:
         missing = "、".join(f"{item['name']}({_code(item)})" for item in report["unavailable"])
         lines.extend(["", "⚪ 暫無可靠行情", missing])
 
-    lines.extend(["", "🏆 全台股背景掃描最強 5 檔", ""])
-    lines.extend(_stock_block(row) + "\n" for row in report["top"])
+    if report.get("top"):
+        lines.extend(["", "🏆 全台股通過風控首選（最多 5 檔）", ""])
+        lines.extend(_stock_block(row) + "\n" for row in report["top"])
+    else:
+        lines.extend([
+            "",
+            "🛡️ 全台股背景掃描：目前沒有通過完整風控的買進首選",
+            "未合格股票只保留在觀察清單，不列為最強或買進排名。",
+        ])
     lines.extend([
         "",
         "判讀：🟢可分批｜🟡等拉回或確認｜🔴暫不買",
