@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import time
 from datetime import datetime
 
 from config import SETTINGS, TAIPEI
@@ -35,6 +36,63 @@ from watchlist import load_watchlist
 
 build_features = strategy.build_features
 score_candidates = strategy.score_candidates
+
+
+def _stage(label: str, action):
+    """Log every external-data stage so a slow provider is immediately visible."""
+    started = time.monotonic()
+    logging.info("資料階段開始：%s", label)
+    result = action()
+    logging.info("資料階段完成：%s（%.1f 秒）", label, time.monotonic() - started)
+    return result
+
+
+def _previous_rows() -> dict[str, dict]:
+    """Load the last atomic report as a safe intraday enrichment snapshot."""
+    try:
+        payload = json.loads(
+            (SETTINGS.reports_dir / "all_analysis.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    return {
+        str(row.get("symbol") or ""): row
+        for row in payload.get("data", [])
+        if row.get("symbol")
+    }
+
+
+def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict, dict]:
+    """Reuse non-intraday Taiwan fields; prices/technicals are still downloaded live."""
+    institutions: dict[str, dict] = {}
+    credit: dict[str, dict] = {}
+    fundamentals: dict[str, dict] = {}
+    brokers: dict[str, dict] = {}
+    fundamental_keys = {
+        "fundamental_available", "per", "pbr", "dividend_yield",
+        "revenue_year", "revenue_month", "monthly_revenue",
+    }
+    for symbol, row in previous.items():
+        if row.get("market") != "TW":
+            continue
+        sid = symbol.split(".")[0]
+        institutions[sid] = {
+            key: value for key, value in row.items()
+            if key == "available" or key.startswith(("foreign", "trust", "dealer", "institution_"))
+        }
+        credit[sid] = {
+            key: value for key, value in row.items()
+            if key.startswith(("credit_", "margin_", "short_", "sbl_"))
+        }
+        fundamentals[sid] = {
+            key: value for key, value in row.items()
+            if key in fundamental_keys or key.startswith("revenue_")
+        }
+        brokers[sid] = {
+            key: value for key, value in row.items()
+            if key.startswith(("broker_", "top_brokers_"))
+        }
+    return institutions, credit, fundamentals, brokers
 
 
 def sort_by_score(rows: list[dict]) -> list[dict]:
@@ -73,8 +131,8 @@ def main() -> int:
     universe = list(combined.values())
     symbols = list(combined)
 
-    history = download_history(symbols)
-    intraday = download_intraday(symbols)
+    history = _stage("日線價格", lambda: download_history(symbols))
+    intraday = _stage("盤中量價", lambda: download_intraday(symbols))
     watchlist_stock_ids = {
         item["symbol"].split(".")[0]
         for item in watchlist
@@ -85,18 +143,42 @@ def main() -> int:
         for item in universe
         if item.get("market") == "US"
     }
-    us_live = fetch_us_sip_snapshots(us_symbols, timeout=SETTINGS.request_timeout)
-    us_extended_hours = download_us_extended_hours(list(us_symbols))
+    us_live = _stage(
+        "美股即時行情",
+        lambda: fetch_us_sip_snapshots(us_symbols, timeout=SETTINGS.request_timeout),
+    )
+    us_extended_hours = _stage(
+        "美股盤前盤後", lambda: download_us_extended_hours(list(us_symbols))
+    )
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
-    institutions = fetch_institutional_flows(watchlist_stock_ids)
-    credit_flows = fetch_credit_flows(watchlist_stock_ids)
-    fundamentals = fetch_fundamentals(watchlist_stock_ids)
-    financial_quality = fetch_financial_quality(watchlist_stock_ids)
-    broker_branches = fetch_broker_branches(watchlist_stock_ids)
-    us_short_volume = fetch_us_short_volume(us_symbols)
-    us_company_metadata = fetch_us_company_metadata(universe)
-    etf_metadata = fetch_etf_metadata(universe)
+    previous = _previous_rows() if args.intraday else {}
+    if previous:
+        logging.info("盤中更新沿用上一份法人、融資、基本面與分點快照")
+        institutions, credit_flows, fundamentals, broker_branches = (
+            _tw_intraday_enrichment(previous)
+        )
+    else:
+        institutions = _stage(
+            "台股三大法人", lambda: fetch_institutional_flows(watchlist_stock_ids)
+        )
+        credit_flows = _stage(
+            "台股融資券", lambda: fetch_credit_flows(watchlist_stock_ids)
+        )
+        fundamentals = _stage(
+            "台股估值營收", lambda: fetch_fundamentals(watchlist_stock_ids)
+        )
+        broker_branches = _stage(
+            "台股券商分點", lambda: fetch_broker_branches(watchlist_stock_ids)
+        )
+    financial_quality = _stage(
+        "財務品質快取", lambda: fetch_financial_quality(watchlist_stock_ids)
+    )
+    us_short_volume = _stage("美股放空量", lambda: fetch_us_short_volume(us_symbols))
+    us_company_metadata = _stage(
+        "美股公司資料快取", lambda: fetch_us_company_metadata(universe)
+    )
+    etf_metadata = _stage("ETF 資料快取", lambda: fetch_etf_metadata(universe))
 
     features = []
     for item in universe:
@@ -122,7 +204,7 @@ def main() -> int:
                     row.update(us_company_metadata.get(symbol.upper(), {}))
             features.append(enforce_market_contract(row))
 
-    market = fetch_core_market()
+    market = _stage("核心市場", fetch_core_market)
     nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
     nasdaq_change = float(nasdaq_raw) if nasdaq_raw is not None else None
     vix = float((market.get("VIX") or {}).get("price") or 0)
@@ -145,7 +227,7 @@ def main() -> int:
         market,
         now.strftime("%Y-%m-%d %H:%M:%S"),
         args.period,
-        fetch_macro_history(),
+        _stage("總經歷史", fetch_macro_history),
         persist=not args.intraday,
     )
     performance_context = load_performance_context(SETTINGS.reports_dir)
@@ -173,7 +255,10 @@ def main() -> int:
         row for row in news_targets_by_symbol.values()
         if row.get("market") == "US" and "ETF" not in str(row.get("type", "")).upper()
     ]
-    us_options = fetch_us_opra_signals(option_targets, timeout=SETTINGS.request_timeout)
+    us_options = _stage(
+        "美股選擇權",
+        lambda: fetch_us_opra_signals(option_targets, timeout=SETTINGS.request_timeout),
+    )
     if us_options:
         for row in features:
             row.update(us_options.get(str(row.get("symbol") or "").upper(), {}))
@@ -183,7 +268,9 @@ def main() -> int:
             symbol: preliminary_by_symbol.get(symbol, row)
             for symbol, row in news_targets_by_symbol.items()
         }
-    news_risks = fetch_news_risks(list(news_targets_by_symbol.values()))
+    news_risks = _stage(
+        "候選股新聞", lambda: fetch_news_risks(list(news_targets_by_symbol.values()))
+    )
     for row in features:
         risk = news_risks.get(row.get("symbol"))
         if risk:
