@@ -111,7 +111,10 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
     session_dates = {str(item.get("session_date")) for item in snapshots if item.get("predictions")}
     collected = len(session_dates)
     one_day_samples = int(horizons["1"]["samples"])
-    active = collected >= MINIMUM_TRADING_DAYS and one_day_samples >= MINIMUM_CONSENSUS_SAMPLES
+    ready_for_model_selection = (
+        collected >= MINIMUM_TRADING_DAYS
+        and one_day_samples >= MINIMUM_CONSENSUS_SAMPLES
+    )
     return {
         "methodology_version": METHODOLOGY_VERSION,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
@@ -126,8 +129,16 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "minimum_trading_days": MINIMUM_TRADING_DAYS,
             "minimum_consensus_samples": MINIMUM_CONSENSUS_SAMPLES,
             "remaining_trading_days": max(0, MINIMUM_TRADING_DAYS - collected),
-            "status": "active" if active else "collecting_clean_outcomes",
-            "affects_ai_score": active,
+            "status": (
+                "ready_for_model_selection"
+                if ready_for_model_selection
+                else "collecting_clean_outcomes"
+            ),
+            # Promotion is a separate, auditable step. Reaching the sample
+            # gate only makes the leaderboard eligible for selection; it must
+            # never silently change the production ranking model.
+            "ready_for_model_selection": ready_for_model_selection,
+            "affects_ai_score": False,
             "eligible_one_day_samples": one_day_samples,
             "legacy_history_reset": legacy_reset,
         },
