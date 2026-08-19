@@ -1,8 +1,10 @@
 import pandas as pd
+import json
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, build_features, market_session_fraction, score_candidates
+from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, build_features, market_session_fraction, score_candidates
 
 
 def test_market_session_fraction_uses_each_markets_clock():
@@ -441,6 +443,78 @@ def test_three_rank_fields_are_independent():
     long = sorted(rows, key=lambda row: row["mid_long_score"], reverse=True)
     assert overall[0] is not short[0]
     assert short[0] is long[0]
+
+
+def test_all_rankings_put_qualified_rows_before_high_scoring_blocked_rows():
+    safe = {
+        "symbol": "SAFE.TW", "market": "TW", "type": "個股",
+        "overall_rank_tier": 2, "overall_ranking_score": 65,
+        "short_term_rank_tier": 2, "short_term_ranking_score": 62,
+        "mid_long_rank_tier": 2, "mid_long_ranking_score": 64,
+        "score": 65, "entry_score": 65,
+        "short_term_score": 62, "mid_long_score": 64,
+    }
+    blocked = {
+        "symbol": "BLOCK.TW", "market": "TW", "type": "個股",
+        "overall_rank_tier": 0, "overall_ranking_score": 99,
+        "short_term_rank_tier": 0, "short_term_ranking_score": 99,
+        "mid_long_rank_tier": 0, "mid_long_ranking_score": 99,
+        "score": 99, "entry_score": 99,
+        "short_term_score": 99, "mid_long_score": 99,
+    }
+    for horizon in ("overall", "short", "long"):
+        ordered = sorted([blocked, safe], key=lambda row: _ranking_sort_key(row, horizon), reverse=True)
+        assert ordered[0]["symbol"] == "SAFE.TW"
+
+
+def test_rank_numbers_restart_inside_tw_us_and_combined_etf_groups():
+    rows = [
+        {"symbol": "2330.TW", "market": "TW", "type": "個股"},
+        {"symbol": "NVDA", "market": "US", "type": "個股"},
+        {"symbol": "0050.TW", "market": "TW", "type": "ETF"},
+        {"symbol": "VOO", "market": "US", "type": "ETF"},
+    ]
+    for index, row in enumerate(rows):
+        row.update({
+            "overall_rank_tier": 2, "overall_ranking_score": 80-index,
+            "short_term_rank_tier": 2, "short_term_ranking_score": 80-index,
+            "mid_long_rank_tier": 2, "mid_long_ranking_score": 80-index,
+        })
+    _assign_group_ranks(rows)
+    assert rows[0]["overall_rank"] == rows[1]["overall_rank"] == 1
+    assert rows[2]["overall_rank"] == 1
+    assert rows[3]["overall_rank"] == 2
+
+
+def test_complete_published_universe_obeys_ranking_safety_invariants():
+    payload = json.loads(Path("reports/all_analysis.json").read_text(encoding="utf-8"))
+    ranked = score_candidates(payload["data"])
+    assert len(ranked) >= 300
+
+    for row in ranked:
+        if row.get("trade_guard_blocked") or row.get("market_contract_valid") is False:
+            assert row["overall_rank_tier"] == 0
+            assert row["short_term_rank_tier"] == 0
+
+    for group in ("TW", "US", "ETF"):
+        group_rows = [row for row in ranked if (
+            ("ETF" if "ETF" in str(row.get("type", "")).upper()
+             else "TW" if row.get("market") == "TW" else "US") == group
+        )]
+        for horizon, tier_field, rank_field in (
+            ("overall", "overall_rank_tier", "overall_rank"),
+            ("short", "short_term_rank_tier", "short_term_rank"),
+            ("long", "mid_long_rank_tier", "mid_long_rank"),
+        ):
+            ordered = sorted(
+                group_rows,
+                key=lambda row: _ranking_sort_key(row, horizon),
+                reverse=True,
+            )
+            assert [row[tier_field] for row in ordered] == sorted(
+                (row[tier_field] for row in ordered), reverse=True
+            )
+            assert [row[rank_field] for row in ordered] == list(range(1, len(ordered) + 1))
 
 
 

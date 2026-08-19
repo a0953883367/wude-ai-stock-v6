@@ -42,5 +42,7 @@ jobs:
         run: node tests/test_capital_test.js
       - name: 檢查自動即時判斷
         run: node tests/test_live_analysis.js
+      - name: 檢查所有排名資格與 TOP 標示
+        run: node tests/test_ranking.js
       - name: 檢查即時服務前端接線
         run: node tests/test_live_client.js
