@@ -57,7 +57,10 @@ concurrency:
 jobs:
   briefing:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The full 337-symbol universe can exceed 25 minutes when upstream market
+    # or news providers respond slowly. Keep one atomic run instead of writing
+    # a partial ranking snapshot.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
