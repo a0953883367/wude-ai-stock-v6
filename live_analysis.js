@@ -9,7 +9,7 @@
   var TW_INPUT_KEYS = ['price', 'volumeRatio', 'bid', 'ask', 'foreign', 'trust', 'margin'];
   var TW_INPUT_LABELS = {
     price: '價格', volumeRatio: '相對量', bid: '五檔委買', ask: '五檔委賣',
-    foreign: '外資', trust: '投信', margin: '融資增減'
+    foreign: '外資買賣超（張）', trust: '投信買賣超（張）', margin: '融資增減（張）'
   };
   var US_INPUT_KEYS = ['price', 'volumeRatio', 'vwapDistance', 'quoteImbalance', 'relativeStrength', 'optionScore', 'riskScore'];
   var US_INPUT_LABELS = {
@@ -80,7 +80,9 @@
     return pair[0].map(function (key) {
       var label = pair[1][key];
       if (key === 'price' && String((stock || {}).market || '').toUpperCase() === 'US' && !stock.usLiveAvailable) label = '備援價格';
-      return { key: key, label: label, value: inputs[key] };
+      var value = inputs[key];
+      if (String((stock || {}).market || '').toUpperCase() !== 'US' && (key === 'foreign' || key === 'trust') && Number.isFinite(value)) value = value / 1000;
+      return { key: key, label: label, value: value };
     });
   }
 
@@ -90,6 +92,9 @@
     var base = finite(stock.score);
     if (base === null) base = 50;
     var delta = 0, reasons = [], price = inputs.price;
+    var coverage = TW_INPUT_KEYS.filter(function (key) { return Number.isFinite(inputs[key]); }).length;
+    var dataComplete = coverage === TW_INPUT_KEYS.length;
+    var hardBlock = false, severeBlock = false, guardReasons = [];
     var reportPrice = finite(stock.price), support = finite(stock.support1), resistance = finite(stock.resistance1);
     if (Number.isFinite(price) && support !== null && price <= support * 1.01) {
       delta += 3; reasons.push('價格已接近第一支撐，具備風險控制位置');
@@ -114,6 +119,14 @@
     var flow = (Number.isFinite(inputs.foreign) ? inputs.foreign : 0) + (Number.isFinite(inputs.trust) ? inputs.trust : 0);
     if (hasFlow && flow > 0) { delta += 3; reasons.push('外資與投信合計買超，法人籌碼偏多'); }
     else if (hasFlow && flow < 0) { delta -= 3; reasons.push('外資與投信合計賣超，法人籌碼偏空'); }
+    var avgVolume = finite(stock.avgVolume20);
+    var flowRatio = hasFlow && avgVolume !== null && avgVolume > 0 ? flow / avgVolume * 100 : null;
+    if (flowRatio !== null && flowRatio <= -5) {
+      hardBlock = true;
+      severeBlock = flowRatio <= -10;
+      delta -= 3;
+      guardReasons.push('法人單日賣超約占20日均量 ' + Math.abs(flowRatio).toFixed(1) + '%，禁止短線亮綠燈');
+    }
     if (Number.isFinite(inputs.margin) && inputs.margin > 0 && flow < 0) {
       delta -= 2; reasons.push('法人賣超而融資增加，籌碼結構較不利');
     } else if (Number.isFinite(inputs.margin) && inputs.margin < 0 && hasFlow && flow >= 0) {
@@ -121,17 +134,27 @@
     }
     delta = Math.max(-15, Math.min(15, delta));
     var adjusted = Math.max(0, Math.min(100, base + delta));
-    var direction = adjusted >= 65 && delta >= 0 ? '看漲' : adjusted <= 45 || delta <= -6 ? '看跌' : '震盪／等待確認';
+    if (!dataComplete || hardBlock) adjusted = Math.min(adjusted, 64.9);
+    var direction = dataComplete && !hardBlock && adjusted >= 75 && delta > 0
+      ? '看漲' : adjusted <= 45 || delta <= -6 || severeBlock ? '看跌' : '震盪／等待確認';
     var decision = '先觀察，不追價；等價格與量能確認後再進場。';
     if (direction === '看漲' && Number.isFinite(price) && support !== null && price <= support * 1.03) {
       decision = '可在支撐附近小量分批，跌破風控價立即停止加碼。';
     } else if (direction === '看漲') decision = '方向偏多，但目前不一定是低風險買點，等回測或有效突破再買。';
     else if (direction === '看跌') decision = '目前不建議新增部位；先等賣壓縮小並重新站回支撐。';
+    if (!dataComplete) {
+      decision = '資料未達7/7，禁止顯示短線可買；先等即時資料補齊。';
+      reasons.unshift('資料只有 ' + coverage + '/7，原AI分數不能代替缺少的即時證據');
+    }
+    if (hardBlock) {
+      decision = '目前不建議新增部位；等待法人賣壓縮小並重新確認量價。';
+      reasons = guardReasons.concat(reasons);
+    }
     if (!reasons.length) reasons.push('自動資料仍不足，維持原模型判斷');
-    var coverage = TW_INPUT_KEYS.filter(function (key) { return Number.isFinite(inputs[key]); }).length;
     return {
       direction: direction, adjustedScore: adjusted, decision: decision, reasons: reasons,
-      coverage: coverage,
+      coverage: coverage, coverageRequired: TW_INPUT_KEYS.length,
+      guardBlocked: hardBlock, guardReason: guardReasons.join('；'), flowRatio: flowRatio,
       time: timeText || new Date().toLocaleString('zh-TW', { hour12: false }),
       inputs: inputs
     };
@@ -141,6 +164,9 @@
     var base = finite(stock.score);
     if (base === null) base = 50;
     var delta = 0, reasons = [], price = inputs.price;
+    var coverage = US_INPUT_KEYS.filter(function (key) { return Number.isFinite(inputs[key]); }).length;
+    var dataComplete = coverage === US_INPUT_KEYS.length;
+    var hardBlock = false, severeBlock = false, guardReasons = [];
     var support = finite(stock.support1), resistance = finite(stock.resistance1), reportPrice = finite(stock.price);
     if (Number.isFinite(price) && support !== null && price <= support * 1.01) {
       delta += 3; reasons.push('價格接近第一支撐，風險報酬位置改善');
@@ -175,17 +201,38 @@
       if (inputs.riskScore <= 40) { delta -= 4; reasons.push('VIX或事件風險偏高，降低追價評分'); }
       else if (inputs.riskScore >= 65) { delta += 1; reasons.push('市場與事件風險目前可控'); }
     }
+    if (Number.isFinite(inputs.quoteImbalance) && Number.isFinite(inputs.vwapDistance)
+        && inputs.quoteImbalance <= -20 && inputs.vwapDistance <= -.5) {
+      hardBlock = true;
+      guardReasons.push('NBBO賣壓偏重且價格位於VWAP下方，禁止短線亮綠燈');
+    }
+    if (Number.isFinite(inputs.riskScore) && inputs.riskScore <= 40) {
+      hardBlock = true;
+      severeBlock = inputs.riskScore <= 30;
+      guardReasons.push('市場／事件安全分偏低');
+    }
     delta = Math.max(-15, Math.min(15, delta));
     var adjusted = Math.max(0, Math.min(100, base + delta));
-    var direction = adjusted >= 65 && delta >= 0 ? '看漲' : adjusted <= 45 || delta <= -6 ? '看跌' : '震盪／等待確認';
+    if (!dataComplete || hardBlock) adjusted = Math.min(adjusted, 64.9);
+    var direction = dataComplete && !hardBlock && adjusted >= 75 && delta > 0
+      ? '看漲' : adjusted <= 45 || delta <= -6 || severeBlock ? '看跌' : '震盪／等待確認';
     var decision = direction === '看跌' ? '目前不建議新增部位；等待賣壓與事件風險下降。'
       : direction === '看漲' ? '方向偏多，但仍應等回測VWAP、支撐或有效突破後分批。'
       : '先觀察，不追價；等待SIP量價與市場風險共同確認。';
+    if (!dataComplete) {
+      decision = '資料未達7/7，禁止顯示短線可買；等待SIP、OPRA與市場風險資料補齊。';
+      reasons.unshift('資料只有 ' + coverage + '/7，原AI分數不能代替缺少的即時證據');
+    }
+    if (hardBlock) {
+      decision = '目前不建議新增部位；等待VWAP、委買賣與市場風險重新轉強。';
+      reasons = guardReasons.concat(reasons);
+    }
     if (!reasons.length) reasons.push('美股權威即時資料仍不足，維持原模型判斷');
-    var coverage = US_INPUT_KEYS.filter(function (key) { return Number.isFinite(inputs[key]); }).length;
     return {
       direction: direction, adjustedScore: adjusted, decision: decision, reasons: reasons,
-      coverage: coverage, time: timeText || new Date().toLocaleString('zh-TW', { hour12: false }), inputs: inputs
+      coverage: coverage, coverageRequired: US_INPUT_KEYS.length,
+      guardBlocked: hardBlock, guardReason: guardReasons.join('；'),
+      time: timeText || new Date().toLocaleString('zh-TW', { hour12: false }), inputs: inputs
     };
   }
 

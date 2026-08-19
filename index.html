@@ -164,7 +164,7 @@ function normalizeReport(row){
     buy:(row.buy_zone_low!=null?row.buy_zone_low+' ～ '+row.buy_zone_high:row.buy_price),better:(row.better_buy_low!=null?row.better_buy_low+' ～ '+row.better_buy_high:row.buy_price),entryNote:row.entry_note,pricePlanQuality:row.price_plan_quality,pricePlanNote:row.price_plan_note,support1:row.support1,support2:row.support2,resistance1:row.resistance1,resistance2:row.resistance2,
     ma5:row.ma5,ma10:row.ma10,ma20:row.ma20,ma60:row.ma60,
     avgVolume5:row.avg_volume5,avgVolume10:row.avg_volume10,avgVolume20:row.avg_volume20,
-    institutionAvailable:row.institution_available,institution1d:row.institution_1d,institution5d:row.institution_5d,institution10d:row.institution_10d,foreignNet:row.foreign_net,trustNet:row.trust_net,
+    institutionAvailable:row.institution_available,institution1d:row.institution_1d,institution3d:row.institution_3d,institution5d:row.institution_5d,institution10d:row.institution_10d,foreignNet:row.foreign_net,trustNet:row.trust_net,
     creditAvailable:row.credit_available,marginBalance:row.margin_balance,margin1d:row.margin_1d_change,margin5d:row.margin_5d_change,shortBalance:row.short_balance,short5d:row.short_5d_change,sblBalance:row.sbl_balance,sbl5d:row.sbl_5d_change,
     brokerAvailable:row.broker_available,topBrokersBuy:row.top_brokers_buy||[],topBrokersSell:row.top_brokers_sell||[],
     klinePattern:row.kline_pattern,klineScore:row.kline_score,dailyVolumeRatio:row.daily_volume_ratio,volumePricePattern:row.volume_price_pattern,breakout20:row.breakout20,breakdown20:row.breakdown20,
@@ -174,7 +174,8 @@ function normalizeReport(row){
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
     usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
-    usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,
+    usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,usShortVolumeRatio:row.us_short_volume_ratio_pct,
+    tradeGuardBlocked:row.trade_guard_blocked,tradeGuardSevere:row.trade_guard_severe,tradeGuardReason:row.trade_guard_reason,institutionFlowRatio1d:row.institution_flow_ratio_1d_pct,
     scenarioTitle:row.scenario_title,scenarioMarket:row.scenario_market,scenarioQuality:row.scenario_data_quality,scenarioBasis:row.scenario_basis,scenarioContinuation:row.scenario_continuation,scenarioNoChase:row.scenario_no_chase,scenarioBreakdown:row.scenario_breakdown_text,
     outlookDirection:row.outlook_direction,outlookBias:row.outlook_bias_score,outlookConfidence:row.outlook_confidence,outlookHorizon:row.outlook_horizon,outlookReasons:Array.isArray(row.outlook_reasons)?row.outlook_reasons:[],outlookChangeCondition:row.outlook_change_condition,outlookQuality:row.outlook_data_quality,
     shortTermEligible:row.short_term_eligible,shortTermScore:row.short_term_score,shortTermStatus:row.short_term_status,shortTermSetup:row.short_term_setup,shortTermEntryLow:row.short_term_entry_low,shortTermEntryHigh:row.short_term_entry_high,shortTermTrigger:row.short_term_trigger,shortTermStop:row.short_term_stop,shortTermTarget1:row.short_term_target1,shortTermTarget2:row.short_term_target2,shortTermRr:row.short_term_rr,shortTermPeriod:row.short_term_holding_period,shortTermExit:row.short_term_exit_rule,shortTermReason:row.short_term_reason,shortTermQuality:row.short_term_data_quality,
@@ -219,7 +220,7 @@ function liveStorageKey(symbol){return 'wude-live-v1-'+String(symbol||'').toUppe
 function liveResultHtml(result){
   if(!result)return '';
   var cls=result.direction==='看漲'?'up':result.direction==='看跌'?'down':'muted';
-  return '<div class="live-result"><b class="'+cls+'">自動即時判斷：'+esc(result.direction)+'｜'+esc(number(result.adjustedScore,1))+' 分</b><br>'+esc(result.decision)+'<br>'+result.reasons.map(function(v){return '• '+esc(v);}).join('<br>')+'<br><span class="muted">自動資料 '+esc(result.coverage)+'/7｜'+esc(result.time)+'｜只調整即時判斷，不覆蓋每日正式排名</span></div>';
+  return '<div class="live-result"><b class="'+cls+'">自動即時判斷：'+esc(result.direction)+'｜'+esc(number(result.adjustedScore,1))+' 分</b><br>'+esc(result.decision)+'<br>'+result.reasons.map(function(v){return '• '+esc(v);}).join('<br>')+'<br><span class="muted">自動資料 '+esc(result.coverage)+'/'+esc(result.coverageRequired||7)+'｜資料不足或安全阻擋時不會顯示可買｜'+esc(result.time)+'｜只調整即時判斷，不覆蓋每日正式排名</span></div>';
 }
 function quoteFor(symbol){return STATE.fubonQuotes[String(symbol||'').toUpperCase()]||null;}
 function automaticLiveResult(stock){
@@ -595,7 +596,7 @@ function renderLiveModal(stock,quote,connectionText){
   try{localStorage.setItem(liveStorageKey(stock.symbol),JSON.stringify(result));}catch(error){}
   document.getElementById('liveOutput').innerHTML=liveResultHtml(result);
   var source=stock.market==='US'?(stock.usLiveAvailable?(stock.usLiveSource||'美股 SIP／OPRA 自動資料'):'美股 Yahoo／SEC／FINRA 備援資料'):(quote?'富邦＋台股公開資料':'台股公開資料；等待富邦快照');
-  document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，有授權資料後會自動補上。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source;
+  document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，補齊前只會顯示觀察或偏空，不會顯示可買。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source;
   var values=WudeLiveAnalysis.inputRows(stock,inputs);
   document.getElementById('liveAutoGrid').innerHTML=values.map(function(item){return '<div class="auto-item"><span>'+esc(item.label)+'</span><b>'+esc(number(item.value,item.key==='price'?2:1))+'</b></div>';}).join('');
   if(connectionText)document.getElementById('liveConnection').textContent=connectionText;

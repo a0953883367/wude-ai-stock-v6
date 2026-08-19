@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, build_features, market_session_fraction, score_candidates
+from strategy import _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, build_features, market_session_fraction, score_candidates
 
 
 def test_market_session_fraction_uses_each_markets_clock():
@@ -168,6 +168,17 @@ def test_tw_positioning_radar_uses_tw_disclosures_without_changing_score():
     assert result["positioning_affects_ai_score"] is False
 
 
+def test_tw_margin_and_exchange_short_lots_are_converted_before_volume_comparison():
+    result = _positioning_radar({
+        "market": "TW", "change_pct": -1.0, "daily_volume_ratio": 1.0,
+        "credit_available": 1, "avg_volume20": 1_000_000,
+        "short_5d_change": 3_000,  # lots = 3,000,000 shares
+        "sbl_5d_change": 0, "margin_5d_change": 0,
+    })
+    assert result["positioning_score"] <= 42
+    assert any("3,000,000 股" in text for text in result["positioning_evidence"])
+
+
 def test_us_positioning_radar_labels_short_volume_as_transaction_data():
     row = {
         "market": "US", "change_pct": -3.0, "daily_volume_ratio": 1.7,
@@ -302,10 +313,10 @@ def test_short_term_plan_has_trigger_and_bounded_risk():
         "market": "TW", "type": "個股", "price": 101.0,
         "ma5": 101.5, "ma10": 100.0, "ma20": 97.0, "atr14": 2.0,
         "rsi": 58.0, "volume_pace": 1.2, "avg_volume20": 1_000_000,
-        "attack_volume": 8.0, "institution_available": True,
+        "attack_volume": 15.0, "institution_available": True,
         "news_data_available": True,
-        "entry_score": 82.0, "technical_score": 86.0, "volume_score": 78.0,
-        "positioning_score": 70.0, "news_penalty": 0.0,
+        "entry_score": 88.0, "technical_score": 92.0, "volume_score": 88.0,
+        "positioning_score": 82.0, "news_penalty": 0.0,
         "entry_data_coverage": 6, "entry_data_total": 6,
         "buy_zone_low": 98.0, "buy_zone_high": 100.0,
         "support1": 97.0, "resistance1": 105.0, "resistance2": 110.0,
@@ -331,6 +342,52 @@ def test_short_term_plan_rejects_incomplete_or_negative_news_rows():
     assert _short_term_plan(base)["short_term_status"].startswith("⚪")
     risky = dict(base, entry_data_coverage=6, news_penalty=12.0)
     assert _short_term_plan(risky)["short_term_eligible"] is False
+
+
+def test_tw_material_institutional_selling_blocks_short_term_green_label():
+    row = {
+        "market": "TW", "type": "個股", "avg_volume20": 34_597_099,
+        "institution_available": True, "institution_1d": -2_630_862,
+        "institution_3d": -4_000_000, "institution_5d": -10_766_742,
+        "margin_1d_change": -387,
+    }
+    guard = _trade_safety_guard(row)
+    assert guard["trade_guard_blocked"] is True
+    assert guard["institution_flow_ratio_1d_pct"] < -5
+    assert "法人單日賣超" in guard["trade_guard_reason"]
+    assert "融資明顯增加" not in guard["trade_guard_reason"]
+
+
+def test_us_bearish_live_flow_or_risk_blocks_positive_trade_label():
+    guard = _trade_safety_guard({
+        "market": "US", "type": "ETF", "avg_volume20": 10_000_000,
+        "market_flow_available": True, "market_flow_score": 32,
+        "us_live_data_available": True,
+        "us_live_quote_imbalance_pct": -28,
+        "us_live_vwap_distance_pct": -1.2,
+        "us_market_risk_score": 38,
+    })
+    assert guard["trade_guard_blocked"] is True
+    assert "VWAP下方" in guard["trade_guard_reason"]
+
+
+def test_short_term_green_requires_complete_market_appropriate_inputs():
+    row = {
+        "market": "TW", "type": "ETF", "price": 101.0,
+        "ma5": 101.5, "ma10": 100.0, "ma20": 97.0, "atr14": 2.0,
+        "rsi": 58.0, "volume_pace": 1.2, "avg_volume20": 1_000_000,
+        "attack_volume": 8.0, "institution_available": True,
+        "entry_score": 90.0, "technical_score": 90.0, "volume_score": 90.0,
+        "positioning_score": 80.0, "news_penalty": 0.0,
+        "entry_data_coverage": 3, "entry_data_total": 4,
+        "buy_zone_low": 98.0, "buy_zone_high": 100.0,
+        "support1": 97.0, "resistance1": 105.0, "resistance2": 110.0,
+        "premium_discount_pct": 0.1,
+    }
+    plan = _short_term_plan(row)
+    assert plan["short_term_eligible"] is False
+    assert plan["short_term_status"].startswith("⚪")
+    assert plan["short_term_score"] < 75
 
 
 
