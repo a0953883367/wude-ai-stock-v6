@@ -111,6 +111,7 @@ jobs:
           echo "intraday=$intraday" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
       - name: Generate report
+        id: generate
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -132,10 +133,15 @@ jobs:
           FRIEND_SITE_BYPASS_TOKEN: ${{ secrets.FRIEND_SITE_BYPASS_TOKEN }}
         run: python tools/publish_friend_data.py
       - name: Publish complete owner-site data
+        # The report is already complete at this point. A temporary owner-site
+        # 5xx must not prevent the verified snapshot from being committed and
+        # published through the normal report channel.
+        continue-on-error: true
         env:
           OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
         run: python tools/publish_owner_data.py
       - name: Keep reports and recent archive
+        if: ${{ steps.generate.outcome == 'success' }}
         shell: bash
         run: |
           find reports/archive -type f -name '*.json' -mtime +45 -delete 2>/dev/null || true

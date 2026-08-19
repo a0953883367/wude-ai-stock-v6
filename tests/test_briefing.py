@@ -1,4 +1,4 @@
-from briefing import _tw_intraday_enrichment
+from briefing import _qualified_tw_market_top, _tw_intraday_enrichment
 
 
 def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
@@ -33,3 +33,19 @@ def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
     assert "price" not in institutions["6116"]
     assert "rsi" not in institutions["6116"]
     assert "AAPL" not in institutions
+
+
+def test_market_top_excludes_observation_blocked_etf_and_us_rows():
+    qualified = {
+        "symbol": "2330.TW", "market": "TW", "type": "個股",
+        "overall_rank_tier": 2,
+    }
+    rows = [
+        {"symbol": "6116.TW", "market": "TW", "type": "個股", "overall_rank_tier": 0},
+        {"symbol": "2002.TW", "market": "TW", "type": "個股", "overall_rank_tier": 1},
+        {"symbol": "0050.TW", "market": "TW", "type": "ETF", "overall_rank_tier": 2},
+        {"symbol": "AAPL", "market": "US", "type": "個股", "overall_rank_tier": 2},
+        qualified,
+    ]
+
+    assert _qualified_tw_market_top(rows) == [qualified]

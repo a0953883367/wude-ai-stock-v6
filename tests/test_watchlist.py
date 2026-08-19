@@ -27,3 +27,16 @@ def test_mobile_report_has_no_raw_markdown_headings():
     assert "國巨 2327" in text
     assert "🟢" in text
     assert all(len(chunk) <= 3800 for chunk in _telegram_chunks(text))
+
+
+def test_mobile_report_does_not_call_empty_or_unqualified_top_list_best():
+    report = {
+        "period": "evening", "updated_at": "2026-08-19 20:00:00",
+        "watchlist_analyzed_count": 0, "watchlist_count": 0, "universe_count": 337,
+        "market": {}, "watchlist": [], "unavailable": [], "top": [],
+    }
+
+    text = render_markdown(report)
+
+    assert "目前沒有通過完整風控" in text
+    assert "最強 5 檔" not in text
