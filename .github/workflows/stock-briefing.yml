@@ -80,6 +80,9 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             period="${{ inputs.period }}"
             commit_message="更新 AI 股票${period}報"
+          elif [[ "${{ github.event.head_commit.message }}" == *"[run-morning]"* ]]; then
+            period="morning"
+            commit_message="更新 AI 股票morning報"
           else
             case "${{ github.event.schedule }}" in
               "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;
