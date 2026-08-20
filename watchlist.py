@@ -738,6 +738,74 @@ WATCHLIST: list[dict[str, Any]] = [
 ]
 
 
+# Power-demand watchlist added for the AI data-center / grid-expansion theme.
+# Keep generators, grid equipment, nuclear supply, and power management as
+# separate themes so the ranking model does not treat them as one industry.
+_POWER_AND_FRIEND_ADDITIONS = (
+    # Taiwan: heavy electrical equipment and grid construction.
+    ("1519.TW", "華城", "TW", "重電／電網", "重電設備"),
+    ("1513.TW", "中興電", "TW", "重電／電網", "重電設備"),
+    ("1503.TW", "士電", "TW", "重電／電網", "重電設備"),
+    ("1514.TW", "亞力", "TW", "重電／電網", "重電設備"),
+    ("2371.TW", "大同", "TW", "重電／電網", "重電設備"),
+    # Taiwan: generation, renewables, storage, and power management.
+    ("8926.TW", "台汽電", "TW", "發電／售電", "電力事業"),
+    ("6806.TW", "森崴能源", "TW", "再生能源", "綠能工程"),
+    ("6873.TW", "泓德能源", "TW", "再生能源", "綠能售電"),
+    ("6869.TW", "雲豹能源", "TW", "再生能源", "綠能售電"),
+    ("3713.TW", "新晶投控", "TW", "再生能源", "太陽能"),
+    ("2308.TW", "台達電", "TW", "AI資料中心電力", "電源管理"),
+    ("6781.TW", "AES-KY", "TW", "儲能", "電池模組"),
+    ("3027.TW", "盛達", "TW", "儲能", "能源管理"),
+    # Taiwan: transmission cable and grid materials.
+    ("1605.TW", "華新", "TW", "輸配電", "電線電纜"),
+    ("1609.TW", "大亞", "TW", "輸配電", "電線電纜"),
+    ("1618.TW", "合機", "TW", "輸配電", "電線電纜"),
+    ("1612.TW", "宏泰", "TW", "輸配電", "電線電纜"),
+    # Friend-requested Taiwan memory stock; fixed-list status enables richer
+    # institutional, credit, and fundamental enrichment before publication.
+    ("2337.TW", "旺宏", "TW", "記憶體", "半導體"),
+    # United States: generators and regulated utilities.
+    ("CEG", "Constellation Energy", "US", "核能／電力", "電力事業"),
+    ("VST", "Vistra", "US", "發電／售電", "電力事業"),
+    ("NEE", "NextEra Energy", "US", "公用電力／再生能源", "公用事業"),
+    ("DUK", "Duke Energy", "US", "公用電力", "公用事業"),
+    ("SO", "Southern Company", "US", "公用電力", "公用事業"),
+    ("AEP", "American Electric Power", "US", "公用電力／電網", "公用事業"),
+    ("EXC", "Exelon", "US", "公用電力／電網", "公用事業"),
+    ("ETR", "Entergy", "US", "核能／公用電力", "公用事業"),
+    ("D", "Dominion Energy", "US", "公用電力", "公用事業"),
+    ("PCG", "PG&E", "US", "公用電力", "公用事業"),
+    # United States: grid and AI data-center power infrastructure.
+    ("GEV", "GE Vernova", "US", "發電／電網設備", "電力設備"),
+    ("ETN", "Eaton", "US", "AI資料中心電力", "電源管理"),
+    ("PWR", "Quanta Services", "US", "電網基礎建設", "電力工程"),
+    ("HUBB", "Hubbell", "US", "電網設備", "電力設備"),
+    ("VRT", "Vertiv", "US", "AI資料中心電力", "電源與散熱"),
+    # United States: nuclear fuel and advanced-reactor supply chain.
+    ("CCJ", "Cameco", "US", "核能供應鏈", "核燃料"),
+    ("BWXT", "BWX Technologies", "US", "核能供應鏈", "核能設備"),
+    ("LEU", "Centrus Energy", "US", "核能供應鏈", "核燃料"),
+    ("OKLO", "Oklo", "US", "先進核能", "小型核反應爐"),
+    ("SMR", "NuScale Power", "US", "先進核能", "小型核反應爐"),
+)
+
+_BASE_WATCHLIST_COUNT = len(WATCHLIST)
+WATCHLIST.extend(
+    {
+        "symbol": symbol,
+        "name": name,
+        "market": market,
+        "type": "個股",
+        "theme": theme,
+        "industry": industry,
+        "order": _BASE_WATCHLIST_COUNT + offset,
+    }
+    for offset, (symbol, name, market, theme, industry)
+    in enumerate(_POWER_AND_FRIEND_ADDITIONS, start=1)
+)
+
+
 def load_watchlist() -> list[dict[str, Any]]:
     """Return a defensive copy so scoring can safely add derived fields."""
     return [dict(item) for item in WATCHLIST]

@@ -10,6 +10,27 @@ def test_watchlist_is_deduplicated_and_contains_core_symbols():
         assert symbol in symbols
 
 
+def test_power_theme_and_friend_requested_mxic_are_in_fixed_watchlist():
+    rows = load_watchlist()
+    by_symbol = {row["symbol"]: row for row in rows}
+
+    expected_us = {
+        "CEG", "VST", "NEE", "DUK", "SO", "AEP", "EXC", "ETR", "D",
+        "PCG", "GEV", "ETN", "PWR", "HUBB", "VRT", "CCJ", "BWXT",
+        "LEU", "OKLO", "SMR",
+    }
+    expected_tw = {
+        "1519.TW", "1513.TW", "1503.TW", "1514.TW", "2371.TW",
+        "8926.TW", "6806.TW", "6873.TW", "6869.TW", "3713.TW",
+        "1605.TW", "1609.TW", "1618.TW", "1612.TW", "2308.TW",
+        "6781.TW", "3027.TW", "2337.TW",
+    }
+    assert expected_us <= by_symbol.keys()
+    assert expected_tw <= by_symbol.keys()
+    assert by_symbol["2337.TW"]["name"] == "旺宏"
+    assert by_symbol["2337.TW"]["theme"] == "記憶體"
+
+
 def test_mobile_report_has_no_raw_markdown_headings():
     row = {
         "symbol": "2327.TW", "name": "國巨", "market": "TW", "price": 100,
