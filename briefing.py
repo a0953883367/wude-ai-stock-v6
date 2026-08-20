@@ -30,6 +30,7 @@ from notifier import render_markdown, save_report, send_telegram
 from news_risk import fetch_news_risks
 from performance import load_performance_context, update_performance
 from market_models import assess_market_data_quality, enforce_market_contract
+from model_lab import track_predictions
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from watchlist import load_watchlist
@@ -45,6 +46,27 @@ def _stage(label: str, action):
     result = action()
     logging.info("資料階段完成：%s（%.1f 秒）", label, time.monotonic() - started)
     return result
+
+
+def _attach_next_session_predictions(rows: list[dict]) -> None:
+    """Attach shadow predictions without changing ranking or action fields."""
+    labels = {"UP": "📈 看漲", "DOWN": "📉 看跌", "ABSTAIN": "⚪ 棄權"}
+    for row in rows:
+        shadow = track_predictions(row)
+        compact_tracks = {track: bundle["consensus"] for track, bundle in shadow.items()}
+        full_day = compact_tracks["full_day"]
+        row["next_session_model_version"] = "V4-shadow"
+        row["next_session_direction"] = labels[full_day["direction"]]
+        row["next_session_confidence"] = full_day["confidence"]
+        row["next_session_up_votes"] = full_day["up_votes"]
+        row["next_session_down_votes"] = full_day["down_votes"]
+        row["next_session_abstain_votes"] = full_day["abstain_votes"]
+        row["next_session_tracks"] = compact_tracks
+        row["next_session_note"] = (
+            "棄權代表證據未達高信心門檻，不代表預測平盤。"
+            if full_day["direction"] == "ABSTAIN"
+            else "影子預測尚在向前驗證，不影響綜合排名或自動下單。"
+        )
 
 
 def _previous_rows() -> dict[str, dict]:
@@ -302,6 +324,7 @@ def main() -> int:
         "最終排名計算",
         lambda: score_candidates(features, macro_regime, performance_context),
     )
+    _attach_next_session_predictions(ranked)
     by_symbol = {row["symbol"]: row for row in ranked}
     watchlist_rows = sort_by_score([
         by_symbol[item["symbol"]]
@@ -315,9 +338,10 @@ def main() -> int:
     # or incomplete rows may remain visible as observations, but they are not
     # recorded as TOP signals for performance statistics.
     backtest_groups = {
-        "TW": [row for row in ranked if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))][:20],
-        "US": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
-        "ETF": [row for row in ranked if "ETF" in str(row.get("type", ""))][:20],
+        "TW_STOCK": [row for row in ranked if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))][:20],
+        "TW_ETF": [row for row in ranked if row.get("market") == "TW" and "ETF" in str(row.get("type", ""))][:20],
+        "US_STOCK": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
+        "US_ETF": [row for row in ranked if row.get("market") == "US" and "ETF" in str(row.get("type", ""))][:20],
     }
     # The ten candidate models must see the same fixed shadow universe.  Rows
     # that are not actual buy triggers remain useful for model comparison but
@@ -387,6 +411,7 @@ def main() -> int:
             },
             "overall_ranking": "先依合格／觀察／阻擋分層，再綜合AI總分45%、進場分35%、短線10%、中長線10%與資料信心排序",
             "short_term": "1至5個交易日；先依合格與安全條件分層，再以量價、短均線與K線、籌碼、開盤攻擊量及風報比排序",
+            "next_session": "V4隔日影子預測；綜合排名與1至5日趨勢不等於明日漲跌。隔夜、盤中、全天各自投票，資料不足、追高、資金流偏空或大盤風險高時優先棄權",
             "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
@@ -394,7 +419,7 @@ def main() -> int:
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
-            "verified_outcome_feedback": "V3 completed-session close-to-open, open-to-close, and close-to-close outcomes; 10 shadow models; no automatic score effect",
+            "verified_outcome_feedback": "V4 track-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
@@ -409,7 +434,7 @@ def main() -> int:
     # stock_data.json scores. Keep only TOP20 per group to control repository
     # growth during the two-hour background refresh.
     ranking_rows = []
-    for group in ("TW", "US", "ETF"):
+    for group in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
         ranking_rows.extend(backtest_groups[group])
     ranking_payload = {
         "updated_at": report["updated_at"],

@@ -7,11 +7,11 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
-from model_lab import MODEL_NAMES, consensus_prediction, evaluate_direction, model_predictions
+from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 
 HORIZONS = (1, 5, 10, 20)
-METHODOLOGY_VERSION = 3
+METHODOLOGY_VERSION = 4
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
 RETURN_TRACKS = {
@@ -79,7 +79,7 @@ def _metric_bundle(
 def _track_bundle(
     snapshots: list[dict[str, Any]],
     predicate: Callable[[dict[str, Any]], bool],
-    direction_for: Callable[[dict[str, Any]], str],
+    direction_for: Callable[[dict[str, Any], str], str],
 ) -> dict[str, Any]:
     """Score the three auditable components of the next completed session."""
     result: dict[str, Any] = {}
@@ -94,7 +94,7 @@ def _track_bundle(
                 if value is None:
                     continue
                 eligible += 1
-                direction = direction_for(row)
+                direction = direction_for(row, track)
                 if evaluate_direction(direction, value) is not None:
                     records.append((value, direction))
         result[track] = _metric(records, eligible)
@@ -102,26 +102,58 @@ def _track_bundle(
 
 
 def _consensus_direction(row: dict[str, Any]) -> str:
-    return str(row.get("consensus", {}).get("direction") or "ABSTAIN")
+    return _track_consensus_direction(row, "full_day")
+
+
+def _track_consensus_direction(row: dict[str, Any], track: str) -> str:
+    return str(
+        row.get("track_predictions", {})
+        .get(track, {})
+        .get("consensus", {})
+        .get("direction")
+        or "ABSTAIN"
+    )
 
 
 def _trade_direction(row: dict[str, Any]) -> str:
     return "UP" if row.get("trade_triggered") else "ABSTAIN"
 
 
+def _track_trade_direction(row: dict[str, Any], _track: str) -> str:
+    return _trade_direction(row)
+
+
 def _model_direction(name: str) -> Callable[[dict[str, Any]], str]:
-    return lambda row: str(row.get("model_predictions", {}).get(name, {}).get("direction") or "ABSTAIN")
+    return lambda row: _track_model_direction(row, "full_day", name)
+
+
+def _track_model_direction(row: dict[str, Any], track: str, name: str) -> str:
+    return str(
+        row.get("track_predictions", {})
+        .get(track, {})
+        .get("models", {})
+        .get(name, {})
+        .get("direction")
+        or "ABSTAIN"
+    )
 
 
 def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dict[str, Any]:
     horizons = _metric_bundle(snapshots, lambda _row: True, _consensus_direction)
-    tracks = _track_bundle(snapshots, lambda _row: True, _consensus_direction)
+    tracks = _track_bundle(snapshots, lambda _row: True, _track_consensus_direction)
     trade_horizons = _metric_bundle(snapshots, lambda _row: True, _trade_direction)
-    trade_tracks = _track_bundle(snapshots, lambda _row: True, _trade_direction)
+    trade_tracks = _track_bundle(snapshots, lambda _row: True, _track_trade_direction)
     models = {
         name: {
             "horizons": _metric_bundle(snapshots, lambda _row: True, _model_direction(name)),
-            "tracks": _track_bundle(snapshots, lambda _row: True, _model_direction(name)),
+            "tracks": {
+                track: _track_bundle(
+                    snapshots,
+                    lambda _row: True,
+                    lambda row, requested, model=name: _track_model_direction(row, requested, model),
+                )[track]
+                for track in RETURN_TRACKS
+            },
         }
         for name in MODEL_NAMES
     }
@@ -139,17 +171,24 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
     }
 
     groups: dict[str, Any] = {}
-    for group in ("TW", "US", "ETF"):
-        predicate = lambda row, expected=group: str(row.get("group")) == expected
+    for group in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
+        predicate = lambda row, expected=group: str(row.get("cohort")) == expected
         groups[group] = {
             "horizons": _metric_bundle(snapshots, predicate, _consensus_direction),
-            "tracks": _track_bundle(snapshots, predicate, _consensus_direction),
+            "tracks": _track_bundle(snapshots, predicate, _track_consensus_direction),
             "trade_signals": _metric_bundle(snapshots, predicate, _trade_direction),
-            "trade_tracks": _track_bundle(snapshots, predicate, _trade_direction),
+            "trade_tracks": _track_bundle(snapshots, predicate, _track_trade_direction),
             "models": {
                 name: {
                     "horizons": _metric_bundle(snapshots, predicate, _model_direction(name)),
-                    "tracks": _track_bundle(snapshots, predicate, _model_direction(name)),
+                    "tracks": {
+                        track: _track_bundle(
+                            snapshots,
+                            predicate,
+                            lambda row, requested, model=name: _track_model_direction(row, requested, model),
+                        )[track]
+                        for track in RETURN_TRACKS
+                    },
                 }
                 for name in MODEL_NAMES
             },
@@ -193,8 +232,8 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "legacy_history_reset": legacy_reset,
         },
         "note": (
-            "V3以各市場已完成的正式交易日開盤與收盤價，分別驗證隔夜、盤中及全天；"
-            "同市場同交易日只保存一次，十個候選模型以相同資料向前測試。"
+            "V4將綜合排名、1至5日趨勢與隔日預測分離；隔夜、盤中及全天各自投票驗證，"
+            "並將台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
         ),
     }
 
@@ -265,17 +304,23 @@ def _new_snapshot(
         if not symbol or symbol in seen or price <= 0:
             continue
         seen.add(symbol)
-        votes = model_predictions(row)
+        tracks = track_predictions(row)
+        full_day = tracks["full_day"]
+        is_etf = "ETF" in str(row.get("type", "")) or str(row.get("backtest_group", "")).endswith("ETF")
+        cohort = f"{market}_{'ETF' if is_etf else 'STOCK'}"
         rows.append({
             "symbol": symbol,
             "name": row.get("name"),
             "market": market,
             "group": row.get("backtest_group"),
+            "cohort": cohort,
             "rank": row.get("backtest_rank"),
             "official_session_date": session_date,
             "official_price": round(price, 4),
-            "model_predictions": votes,
-            "consensus": consensus_prediction(votes),
+            "track_predictions": tracks,
+            # Compatibility aliases are explicitly the full-day prediction.
+            "model_predictions": full_day["models"],
+            "consensus": full_day["consensus"],
             "trade_triggered": _trade_triggered(row, price),
             "outcomes": {},
         })
@@ -329,7 +374,7 @@ def _evaluate_with_new_session(
             close_to_close = round((current_close / base - 1) * 100, 4)
             outcome = {
                 # Keep return_pct as a compatibility alias for downstream
-                # readers while V3 exposes the exact comparison explicitly.
+                # readers while V4 exposes the exact comparison explicitly.
                 "return_pct": close_to_close,
                 "close_to_close_return_pct": close_to_close,
                 "evaluated_session_date": session_date,
@@ -399,7 +444,7 @@ def update_performance(
 
 
 def load_performance_context(reports_dir: Path) -> dict[str, Any]:
-    """Load verified V3 outcomes; legacy metrics never affect scoring."""
+    """Load verified V4 outcomes; legacy metrics never affect scoring."""
     try:
         value = json.loads((reports_dir / "performance.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):
