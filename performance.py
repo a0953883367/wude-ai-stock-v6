@@ -11,14 +11,19 @@ from model_lab import MODEL_NAMES, consensus_prediction, evaluate_direction, mod
 
 
 HORIZONS = (1, 5, 10, 20)
-METHODOLOGY_VERSION = 2
+METHODOLOGY_VERSION = 3
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
+RETURN_TRACKS = {
+    "overnight": "close_to_open_return_pct",
+    "session": "open_to_close_return_pct",
+    "full_day": "close_to_close_return_pct",
+}
 
 
-def _outcome_return(value: Any) -> float | None:
+def _outcome_return(value: Any, field: str = "close_to_close_return_pct") -> float | None:
     if isinstance(value, dict):
-        value = value.get("return_pct")
+        value = value.get(field, value.get("return_pct") if field == "close_to_close_return_pct" else None)
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -71,6 +76,31 @@ def _metric_bundle(
     return result
 
 
+def _track_bundle(
+    snapshots: list[dict[str, Any]],
+    predicate: Callable[[dict[str, Any]], bool],
+    direction_for: Callable[[dict[str, Any]], str],
+) -> dict[str, Any]:
+    """Score the three auditable components of the next completed session."""
+    result: dict[str, Any] = {}
+    for track, field in RETURN_TRACKS.items():
+        records: list[tuple[float, str]] = []
+        eligible = 0
+        for snapshot in snapshots:
+            for row in snapshot.get("predictions", []):
+                if not predicate(row):
+                    continue
+                value = _outcome_return(row.get("outcomes", {}).get("1"), field)
+                if value is None:
+                    continue
+                eligible += 1
+                direction = direction_for(row)
+                if evaluate_direction(direction, value) is not None:
+                    records.append((value, direction))
+        result[track] = _metric(records, eligible)
+    return result
+
+
 def _consensus_direction(row: dict[str, Any]) -> str:
     return str(row.get("consensus", {}).get("direction") or "ABSTAIN")
 
@@ -85,25 +115,42 @@ def _model_direction(name: str) -> Callable[[dict[str, Any]], str]:
 
 def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dict[str, Any]:
     horizons = _metric_bundle(snapshots, lambda _row: True, _consensus_direction)
+    tracks = _track_bundle(snapshots, lambda _row: True, _consensus_direction)
     trade_horizons = _metric_bundle(snapshots, lambda _row: True, _trade_direction)
+    trade_tracks = _track_bundle(snapshots, lambda _row: True, _trade_direction)
     models = {
-        name: {"horizons": _metric_bundle(snapshots, lambda _row: True, _model_direction(name))}
+        name: {
+            "horizons": _metric_bundle(snapshots, lambda _row: True, _model_direction(name)),
+            "tracks": _track_bundle(snapshots, lambda _row: True, _model_direction(name)),
+        }
         for name in MODEL_NAMES
     }
-    leaderboard = sorted(
-        ({"name": name, **metrics["horizons"]["1"]} for name, metrics in models.items()),
-        key=lambda item: (int(item["samples"]) >= 30, float(item["win_rate_pct"]), int(item["samples"])),
-        reverse=True,
-    )
+    leaderboards = {
+        track: sorted(
+            ({"name": name, **metrics["tracks"][track]} for name, metrics in models.items()),
+            key=lambda item: (
+                int(item["samples"]) >= 30,
+                float(item["win_rate_pct"]),
+                int(item["samples"]),
+            ),
+            reverse=True,
+        )
+        for track in RETURN_TRACKS
+    }
 
     groups: dict[str, Any] = {}
     for group in ("TW", "US", "ETF"):
         predicate = lambda row, expected=group: str(row.get("group")) == expected
         groups[group] = {
             "horizons": _metric_bundle(snapshots, predicate, _consensus_direction),
+            "tracks": _track_bundle(snapshots, predicate, _consensus_direction),
             "trade_signals": _metric_bundle(snapshots, predicate, _trade_direction),
+            "trade_tracks": _track_bundle(snapshots, predicate, _trade_direction),
             "models": {
-                name: {"horizons": _metric_bundle(snapshots, predicate, _model_direction(name))}
+                name: {
+                    "horizons": _metric_bundle(snapshots, predicate, _model_direction(name)),
+                    "tracks": _track_bundle(snapshots, predicate, _model_direction(name)),
+                }
                 for name in MODEL_NAMES
             },
         }
@@ -120,9 +167,12 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "snapshot_count": len(snapshots),
         "horizons": horizons,
+        "tracks": tracks,
         "trade_signals": trade_horizons,
+        "trade_tracks": trade_tracks,
         "models": models,
-        "model_leaderboard": leaderboard,
+        "model_leaderboard": leaderboards["full_day"],
+        "model_leaderboards": leaderboards,
         "groups": groups,
         "calibration": {
             "trading_days_collected": collected,
@@ -143,8 +193,8 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "legacy_history_reset": legacy_reset,
         },
         "note": (
-            "V2只以各市場已完成的正式交易日收盤價驗證；同市場同交易日只保存一次，"
-            "十個候選模型以相同資料向前測試，未達門檻不影響AI分數。"
+            "V3以各市場已完成的正式交易日開盤與收盤價，分別驗證隔夜、盤中及全天；"
+            "同市場同交易日只保存一次，十個候選模型以相同資料向前測試。"
         ),
     }
 
@@ -155,6 +205,17 @@ def _canonical_market(period: str) -> str | None:
 
 def _performance_price(row: dict[str, Any]) -> float:
     for key in ("official_adjusted_close_price", "official_close_price"):
+        try:
+            value = float(row.get(key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    return 0.0
+
+
+def _performance_open_price(row: dict[str, Any]) -> float:
+    for key in ("official_adjusted_open_price", "official_open_price"):
         try:
             value = float(row.get(key) or 0)
         except (TypeError, ValueError):
@@ -235,7 +296,10 @@ def _evaluate_with_new_session(
     current_rows: list[dict[str, Any]],
 ) -> None:
     prices = {
-        str(row.get("symbol")): _performance_price(row)
+        str(row.get("symbol")): (
+            _performance_open_price(row),
+            _performance_price(row),
+        )
         for row in current_rows
         if str(row.get("market")) == market and _session_date(row) == session_date
     }
@@ -259,14 +323,26 @@ def _evaluate_with_new_session(
         for row in snapshot.get("predictions", []):
             symbol = str(row.get("symbol") or "")
             base = float(row.get("official_price") or 0)
-            current = float(prices.get(symbol) or 0)
-            if base <= 0 or current <= 0 or key in row.get("outcomes", {}):
+            current_open, current_close = prices.get(symbol, (0.0, 0.0))
+            if base <= 0 or current_close <= 0 or key in row.get("outcomes", {}):
                 continue
-            row.setdefault("outcomes", {})[key] = {
-                "return_pct": round((current / base - 1) * 100, 4),
+            close_to_close = round((current_close / base - 1) * 100, 4)
+            outcome = {
+                # Keep return_pct as a compatibility alias for downstream
+                # readers while V3 exposes the exact comparison explicitly.
+                "return_pct": close_to_close,
+                "close_to_close_return_pct": close_to_close,
                 "evaluated_session_date": session_date,
-                "evaluated_price": round(current, 4),
+                "evaluated_price": round(current_close, 4),
+                "evaluated_close_price": round(current_close, 4),
             }
+            if elapsed == 1 and current_open > 0:
+                outcome.update({
+                    "close_to_open_return_pct": round((current_open / base - 1) * 100, 4),
+                    "open_to_close_return_pct": round((current_close / current_open - 1) * 100, 4),
+                    "evaluated_open_price": round(current_open, 4),
+                })
+            row.setdefault("outcomes", {})[key] = outcome
 
 
 def update_performance(
@@ -323,7 +399,7 @@ def update_performance(
 
 
 def load_performance_context(reports_dir: Path) -> dict[str, Any]:
-    """Load verified V2 outcomes; legacy metrics never affect scoring."""
+    """Load verified V3 outcomes; legacy metrics never affect scoring."""
     try:
         value = json.loads((reports_dir / "performance.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):

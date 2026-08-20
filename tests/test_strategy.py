@@ -39,6 +39,27 @@ def test_us_intraday_volume_is_not_scaled_by_taiwan_session():
     assert 0.9 <= result["volume_pace"] <= 1.1
 
 
+def test_build_features_exposes_split_adjusted_official_open_and_close():
+    dates = pd.date_range("2026-05-01", periods=30, freq="B")
+    daily = pd.DataFrame({
+        "close": [100.0] * 30,
+        "adj close": [50.0] * 30,
+        "open": [99.0] * 30,
+        "high": [101.0] * 30,
+        "low": [98.0] * 30,
+        "volume": [1_000_000] * 30,
+    }, index=dates)
+    result = build_features(
+        {"symbol": "TEST", "market": "US", "name": "Test", "type": "個股", "theme": "Test"},
+        daily, None, None,
+    )
+    assert result is not None
+    assert result["official_open_price"] == 99.0
+    assert result["official_close_price"] == 100.0
+    assert result["official_adjusted_open_price"] == 49.5
+    assert result["official_adjusted_close_price"] == 50.0
+
+
 def test_candidate_scoring_has_prices_and_ranking():
     dates = pd.date_range("2026-01-01", periods=65, freq="B")
     daily = pd.DataFrame({

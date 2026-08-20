@@ -127,15 +127,26 @@ def render_markdown(report: dict[str, Any]) -> str:
             lines.append(f"ℹ️ 財務品質：已快取 {quality_count}/{expected_count} 檔；為避免免費額度超限，每次最多補30檔")
     performance = report.get("performance", {})
     calibration = performance.get("calibration", {})
+    tracks = performance.get("tracks", {})
     five_day = performance.get("horizons", {}).get("5", {})
-    if int(performance.get("methodology_version") or 0) < 2:
-        lines.append("🧭 隔日預測V2：舊回測已停止採信；等待正式收盤資料重新累積")
-    elif five_day.get("samples"):
+    if int(performance.get("methodology_version") or 0) < 3:
+        lines.append("🧭 隔日預測V3：舊版只比較收盤到收盤；等待開盤與收盤資料重新累積")
+    elif any(int((tracks.get(key) or {}).get("samples") or 0) for key in ("overnight", "session", "full_day")):
+        labels = {"overnight": "隔夜", "session": "盤中", "full_day": "全天"}
+        parts = []
+        for key in ("overnight", "session", "full_day"):
+            metric = tracks.get(key, {})
+            if int(metric.get("samples") or 0):
+                parts.append(
+                    f"{labels[key]} {metric['win_rate_pct']:.1f}%/{metric['samples']}筆"
+                )
+        lines.append("🎯 隔日三段實測：" + "｜".join(parts))
+    else:
+        lines.append("🧪 隔日預測V3：10個模型開始公平測試；尚無完成結果，不顯示假命中率")
+    if five_day.get("samples"):
         lines.append(
             f"🎯 共識模型5日：{five_day['samples']}筆｜方向命中 {five_day['win_rate_pct']:.1f}%｜平均 {_change(five_day['avg_return_pct'])}｜最差 {_change(five_day['worst_return_pct'])}"
         )
-    else:
-        lines.append("🧪 隔日預測V2：10個模型開始公平測試；尚無完成結果，不顯示假命中率")
     if calibration.get("ready_for_model_selection"):
         samples = int(calibration.get("eligible_one_day_samples") or 0)
         lines.append(f"✅ 模型遴選：已達60交易日及200筆共識訊號門檻（目前 {samples} 筆；審核前不影響正式排名）")
