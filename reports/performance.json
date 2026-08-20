@@ -1,7 +1,7 @@
 {
-  "methodology_version": 4,
-  "updated_at": "2026-08-20T05:19:55",
-  "snapshot_count": 0,
+  "methodology_version": 5,
+  "updated_at": "2026-08-20T14:11:21",
+  "snapshot_count": 1,
   "horizons": {
     "1": {
       "samples": 0,
@@ -4093,15 +4093,15 @@
     }
   },
   "calibration": {
-    "trading_days_collected": 0,
+    "trading_days_collected": 1,
     "minimum_trading_days": 60,
     "minimum_consensus_samples": 200,
-    "remaining_trading_days": 60,
+    "remaining_trading_days": 59,
     "status": "collecting_clean_outcomes",
     "ready_for_model_selection": false,
     "affects_ai_score": false,
     "eligible_one_day_samples": 0,
-    "legacy_history_reset": true
+    "legacy_history_reset": false
   },
-  "note": "V4將綜合排名、1至5日趨勢與隔日預測分離；隔夜、盤中及全天各自投票驗證，並將台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
+  "note": "V5延續三段分離驗證，並將台股與美股改為不同權重及收盤檢查點；台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
 }
