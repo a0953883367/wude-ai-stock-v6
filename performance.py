@@ -11,7 +11,7 @@ from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 
 HORIZONS = (1, 5, 10, 20)
-METHODOLOGY_VERSION = 4
+METHODOLOGY_VERSION = 5
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
 RETURN_TRACKS = {
@@ -232,8 +232,8 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "legacy_history_reset": legacy_reset,
         },
         "note": (
-            "V4將綜合排名、1至5日趨勢與隔日預測分離；隔夜、盤中及全天各自投票驗證，"
-            "並將台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
+            "V5延續三段分離驗證，並將台股與美股改為不同權重及收盤檢查點；"
+            "台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
         ),
     }
 
@@ -374,7 +374,7 @@ def _evaluate_with_new_session(
             close_to_close = round((current_close / base - 1) * 100, 4)
             outcome = {
                 # Keep return_pct as a compatibility alias for downstream
-                # readers while V4 exposes the exact comparison explicitly.
+                # readers while V5 exposes the exact comparison explicitly.
                 "return_pct": close_to_close,
                 "close_to_close_return_pct": close_to_close,
                 "evaluated_session_date": session_date,
@@ -444,7 +444,7 @@ def update_performance(
 
 
 def load_performance_context(reports_dir: Path) -> dict[str, Any]:
-    """Load verified V4 outcomes; legacy metrics never affect scoring."""
+    """Load verified V5 outcomes; legacy metrics never affect scoring."""
     try:
         value = json.loads((reports_dir / "performance.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):
