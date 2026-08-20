@@ -1,4 +1,8 @@
-from briefing import _qualified_tw_market_top, _tw_intraday_enrichment
+from briefing import (
+    _attach_next_session_predictions,
+    _qualified_tw_market_top,
+    _tw_intraday_enrichment,
+)
 
 
 def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
@@ -49,3 +53,19 @@ def test_market_top_excludes_observation_blocked_etf_and_us_rows():
     ]
 
     assert _qualified_tw_market_top(rows) == [qualified]
+
+
+def test_next_session_shadow_fields_do_not_change_ranking_or_action():
+    row = {
+        "symbol": "HOT", "action": "🟢 可買", "overall_rank": 1,
+        "market_data_quality_score": 90, "market_contract_valid": True,
+        "technical_score": 90, "volume_score": 90, "market_flow_score": 85,
+        "positioning_score": 80, "group_score": 80, "entry_score": 90,
+        "macro_score": 55, "rsi": 84, "change_pct": 8,
+        "daily_volume_ratio": .7, "breakout20": True,
+    }
+    _attach_next_session_predictions([row])
+    assert row["action"] == "🟢 可買"
+    assert row["overall_rank"] == 1
+    assert row["next_session_direction"] == "⚪ 棄權"
+    assert set(row["next_session_tracks"]) == {"overnight", "session", "full_day"}

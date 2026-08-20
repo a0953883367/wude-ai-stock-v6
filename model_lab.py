@@ -1,161 +1,136 @@
-"""Transparent candidate models for auditable next-session direction tests.
+"""Auditable scorecards for the next completed exchange session.
 
-These are deliberately small, deterministic scorecards rather than ten opaque
-models trained on the same tiny sample.  They run in shadow mode until enough
-strictly forward outcomes exist to compare them fairly.
+Ranking and the 1--5 day outlook answer different questions.  This module uses
+only short-horizon evidence, predicts overnight/session/full-day separately,
+and abstains when the evidence is weak or contradictory.
 """
-
 from __future__ import annotations
-
 from typing import Any
 
-
+TRACK_NAMES = ("overnight", "session", "full_day")
 MODEL_NAMES = (
-    "balanced",
-    "trend",
-    "volume_breakout",
-    "market_flow",
-    "quality_growth",
-    "risk_adjusted",
-    "mean_reversion",
-    "momentum",
-    "relative_strength",
-    "entry_timing",
+    "balanced_next", "price_trend", "volume_confirmation", "market_flow",
+    "macro_risk", "exhaustion_guard", "mean_reversion",
+    "momentum_confirmed", "relative_strength", "entry_timing",
 )
 
-
 def _number(value: Any, default: float = 50.0) -> float:
-    try:
-        result = float(value)
-    except (TypeError, ValueError):
-        return default
+    try: result = float(value)
+    except (TypeError, ValueError): return default
     return max(0.0, min(100.0, result))
 
+def _float(value: Any, default: float = 0.0) -> float:
+    try: return float(value)
+    except (TypeError, ValueError): return default
 
-def _weighted(row: dict[str, Any], weights: dict[str, float]) -> float:
-    values: list[tuple[float, float]] = []
-    for key, weight in weights.items():
-        if row.get(key) is None:
-            continue
-        values.append((_number(row.get(key)), weight))
-    if not values:
-        return 50.0
-    return sum(value * weight for value, weight in values) / sum(weight for _, weight in values)
+def _blend(parts: list[tuple[float, float]]) -> float:
+    total = sum(weight for _, weight in parts)
+    return sum(value * weight for value, weight in parts) / total if total else 50.0
 
-
-def _rsi_reversion(row: dict[str, Any]) -> float:
-    rsi = _number(row.get("rsi"), 50.0)
-    # A controlled pullback near neutral is preferred; oversold alone is not
-    # treated as bullish because falling knives would otherwise dominate.
-    if 42 <= rsi <= 58:
-        return 75.0
-    if 35 <= rsi < 42 or 58 < rsi <= 65:
-        return 62.0
-    if rsi < 25 or rsi > 78:
-        return 25.0
-    return 48.0
-
-
-def _momentum_score(row: dict[str, Any]) -> float:
-    score = _number(row.get("technical_score"))
-    if row.get("breakout20"):
-        score += 15
-    if row.get("breakdown20"):
-        score -= 20
-    change = float(row.get("change_pct") or 0.0)
-    score += max(-10.0, min(10.0, change * 2.0))
-    return max(0.0, min(100.0, score))
-
-
-def _attack_score(row: dict[str, Any]) -> float:
-    attack = float(row.get("attack_volume") or 0.0)
-    return max(0.0, min(100.0, 50.0 + attack * 0.8))
-
-
-def _candidate_scores(row: dict[str, Any]) -> dict[str, float]:
+def _inputs(row: dict[str, Any]) -> dict[str, float]:
     technical = _number(row.get("technical_score"))
     volume = _number(row.get("volume_score"))
     flow = _number(row.get("market_flow_score"), _number(row.get("institution_score")))
     positioning = _number(row.get("positioning_score"))
-    quality = _number(row.get("financial_quality_score"))
-    growth = _number(row.get("growth_score"))
-    valuation = _number(row.get("valuation_score"))
     group = _number(row.get("group_score"))
     entry = _number(row.get("entry_score"))
-    short = _number(row.get("short_term_score"))
-    overall = _number(row.get("score"))
-    confidence = _number(row.get("overall_confidence"))
     macro = _number(row.get("macro_score"))
-    attack = _attack_score(row)
-    reversion = _rsi_reversion(row)
-    momentum = _momentum_score(row)
-    news = max(0.0, 100.0 - float(row.get("news_penalty") or 0.0) * 6.0)
-
-    scores = {
-        "balanced": _weighted(row, {
-            "technical_score": 20, "volume_score": 15,
-            "market_flow_score": 15, "entry_score": 20,
-            "financial_quality_score": 15, "score": 15,
-        }),
-        "trend": technical * .40 + momentum * .30 + volume * .15 + group * .15,
-        "volume_breakout": volume * .35 + momentum * .25 + attack * .25 + technical * .15,
-        "market_flow": flow * .35 + positioning * .25 + volume * .20 + technical * .20,
-        "quality_growth": quality * .30 + growth * .20 + valuation * .15 + technical * .20 + entry * .15,
-        "risk_adjusted": overall * .20 + entry * .20 + short * .20 + technical * .15 + confidence * .15 + news * .10,
-        "mean_reversion": reversion * .35 + entry * .25 + technical * .15 + volume * .10 + quality * .15,
-        "momentum": momentum * .40 + technical * .20 + volume * .20 + attack * .10 + group * .10,
-        "relative_strength": group * .25 + flow * .20 + technical * .20 + volume * .15 + macro * .10 + overall * .10,
-        "entry_timing": entry * .35 + short * .25 + technical * .15 + volume * .15 + positioning * .10,
+    rsi = _number(row.get("rsi"))
+    change = _float(row.get("change_pct"))
+    relative_volume = _float(row.get("daily_volume_ratio"), _float(row.get("relative_volume"), 1.0))
+    attack = max(0.0, min(100.0, 50.0 + _float(row.get("attack_volume")) * .8))
+    extended = max(0.0, min(100.0, 50.0 + _float(row.get("extended_change")) * 6.0))
+    news = max(0.0, 100.0 - _float(row.get("news_penalty")) * 7.0)
+    exhaustion = 75.0
+    if rsi >= 78: exhaustion -= 45.0
+    elif rsi >= 72: exhaustion -= 28.0
+    elif rsi <= 25: exhaustion -= 25.0
+    if change >= 5: exhaustion -= 32.0
+    elif change >= 3: exhaustion -= 18.0
+    if row.get("breakout20") and relative_volume < 1.15: exhaustion -= 28.0
+    if row.get("breakdown20"): exhaustion -= 30.0
+    reversion = 68.0 if 38 <= rsi <= 55 else 55.0 if 32 <= rsi < 38 else 42.0
+    momentum = technical + (10.0 if row.get("breakout20") else 0.0)
+    momentum += max(-12.0, min(8.0, change * 1.5))
+    if relative_volume < .8: momentum -= 10.0
+    return {
+        "technical": technical, "volume": volume, "flow": flow,
+        "positioning": positioning, "group": group, "entry": entry,
+        "macro": macro, "attack": attack, "extended": extended, "news": news,
+        "exhaustion": max(0.0, min(100.0, exhaustion)), "reversion": reversion,
+        "momentum": max(0.0, min(100.0, momentum)),
     }
-    if row.get("trade_guard_blocked") or row.get("market_contract_valid") is False:
-        scores = {name: min(score, 44.0) for name, score in scores.items()}
-    if row.get("breakdown20"):
-        scores = {name: score - 8.0 for name, score in scores.items()}
-    return {name: round(max(0.0, min(100.0, score)), 1) for name, score in scores.items()}
 
+def _track_scores(row: dict[str, Any], track: str) -> dict[str, float]:
+    if track not in TRACK_NAMES: raise ValueError(f"unknown return track: {track}")
+    x = _inputs(row)
+    overnight = {
+        "balanced_next": _blend([(x["macro"],28),(x["flow"],20),(x["news"],17),(x["extended"],15),(x["exhaustion"],20)]),
+        "price_trend": _blend([(x["technical"],25),(x["macro"],30),(x["extended"],20),(x["exhaustion"],25)]),
+        "volume_confirmation": _blend([(x["volume"],20),(x["flow"],20),(x["macro"],30),(x["exhaustion"],30)]),
+        "market_flow": _blend([(x["flow"],40),(x["positioning"],20),(x["macro"],30),(x["news"],10)]),
+        "macro_risk": _blend([(x["macro"],60),(x["news"],25),(x["extended"],15)]),
+        "exhaustion_guard": _blend([(x["exhaustion"],55),(x["macro"],25),(x["flow"],20)]),
+        "mean_reversion": _blend([(x["reversion"],35),(x["macro"],30),(x["exhaustion"],25),(x["flow"],10)]),
+        "momentum_confirmed": _blend([(x["momentum"],25),(x["macro"],30),(x["flow"],20),(x["exhaustion"],25)]),
+        "relative_strength": _blend([(x["group"],25),(x["flow"],20),(x["macro"],35),(x["exhaustion"],20)]),
+        "entry_timing": _blend([(x["entry"],20),(x["macro"],30),(x["extended"],20),(x["exhaustion"],30)]),
+    }
+    session = {
+        "balanced_next": _blend([(x["technical"],22),(x["volume"],18),(x["flow"],18),(x["macro"],17),(x["exhaustion"],25)]),
+        "price_trend": _blend([(x["technical"],40),(x["momentum"],20),(x["group"],15),(x["exhaustion"],25)]),
+        "volume_confirmation": _blend([(x["volume"],35),(x["attack"],25),(x["momentum"],15),(x["flow"],15),(x["exhaustion"],10)]),
+        "market_flow": _blend([(x["flow"],35),(x["positioning"],25),(x["volume"],15),(x["macro"],15),(x["exhaustion"],10)]),
+        "macro_risk": _blend([(x["macro"],45),(x["group"],25),(x["flow"],20),(x["news"],10)]),
+        "exhaustion_guard": _blend([(x["exhaustion"],50),(x["technical"],15),(x["volume"],15),(x["macro"],20)]),
+        "mean_reversion": _blend([(x["reversion"],35),(x["entry"],25),(x["volume"],10),(x["macro"],15),(x["exhaustion"],15)]),
+        "momentum_confirmed": _blend([(x["momentum"],35),(x["volume"],20),(x["attack"],15),(x["flow"],15),(x["exhaustion"],15)]),
+        "relative_strength": _blend([(x["group"],30),(x["technical"],20),(x["flow"],20),(x["macro"],15),(x["exhaustion"],15)]),
+        "entry_timing": _blend([(x["entry"],35),(x["volume"],15),(x["technical"],15),(x["flow"],15),(x["exhaustion"],20)]),
+    }
+    scores = ({name: overnight[name]*.45 + session[name]*.55 for name in MODEL_NAMES}
+              if track == "full_day" else overnight if track == "overnight" else session)
+    hard_block = row.get("trade_guard_blocked") or row.get("market_contract_valid") is False
+    weak_market = x["macro"] <= 38
+    heavy_selling = x["flow"] <= 32 and x["positioning"] <= 40
+    overextended = x["exhaustion"] <= 35
+    for name, score in list(scores.items()):
+        if hard_block: score = min(score, 45.0)
+        if weak_market:
+            score = min(score, 60.0)
+            if x["macro"] <= 28: score -= 10.0
+        if heavy_selling: score = min(score, 58.0)
+        if overextended: score = min(score, 62.0)
+        if row.get("breakdown20"): score -= 8.0
+        scores[name] = round(max(0.0, min(100.0, score)), 1)
+    return scores
 
-def model_predictions(row: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Return high-confidence UP/DOWN votes; uncertain models abstain."""
-    output: dict[str, dict[str, Any]] = {}
-    data_quality = _number(row.get("market_data_quality_score"), 0.0)
-    for name, score in _candidate_scores(row).items():
-        if data_quality < 50:
-            direction = "ABSTAIN"
-        elif score >= 68:
-            direction = "UP"
-        elif score <= 32:
-            direction = "DOWN"
-        else:
-            direction = "ABSTAIN"
-        confidence = round(50.0 + abs(score - 50.0), 1)
-        output[name] = {"direction": direction, "score": score, "confidence": confidence}
+def model_predictions(row: dict[str, Any], track: str = "full_day") -> dict[str, dict[str, Any]]:
+    output = {}
+    quality = _number(row.get("market_data_quality_score"), 0.0)
+    for name, score in _track_scores(row, track).items():
+        direction = "ABSTAIN" if quality < 65 else "UP" if score >= 70 else "DOWN" if score <= 30 else "ABSTAIN"
+        output[name] = {"direction": direction, "score": score, "confidence": round(50 + abs(score-50), 1)}
     return output
 
+def track_predictions(row: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    result = {}
+    for track in TRACK_NAMES:
+        votes = model_predictions(row, track)
+        result[track] = {"models": votes, "consensus": consensus_prediction(votes)}
+    return result
 
 def consensus_prediction(votes: dict[str, dict[str, Any]]) -> dict[str, Any]:
     up = [v for v in votes.values() if v.get("direction") == "UP"]
     down = [v for v in votes.values() if v.get("direction") == "DOWN"]
-    direction = "ABSTAIN"
-    winning: list[dict[str, Any]] = []
-    # Require a strong majority of all ten candidates, not merely a majority
-    # among models that happened to vote.
-    if len(up) >= 7 and len(up) >= len(down) + 3:
-        direction, winning = "UP", up
-    elif len(down) >= 7 and len(down) >= len(up) + 3:
-        direction, winning = "DOWN", down
-    confidence = round(sum(float(v["confidence"]) for v in winning) / len(winning), 1) if winning else 0.0
-    return {
-        "direction": direction,
-        "confidence": confidence,
-        "up_votes": len(up),
-        "down_votes": len(down),
-        "abstain_votes": len(votes) - len(up) - len(down),
-    }
-
+    direction, winning = "ABSTAIN", []
+    if len(up) >= 7 and len(up) >= len(down)+3: direction, winning = "UP", up
+    elif len(down) >= 7 and len(down) >= len(up)+3: direction, winning = "DOWN", down
+    confidence = round(sum(float(v["confidence"]) for v in winning)/len(winning), 1) if winning else 0.0
+    return {"direction": direction, "confidence": confidence, "up_votes": len(up),
+            "down_votes": len(down), "abstain_votes": len(votes)-len(up)-len(down)}
 
 def evaluate_direction(direction: str, return_pct: float) -> bool | None:
-    if direction == "UP":
-        return return_pct > 0
-    if direction == "DOWN":
-        return return_pct < 0
+    if direction == "UP": return return_pct > 0
+    if direction == "DOWN": return return_pct < 0
     return None
