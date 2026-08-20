@@ -11,7 +11,9 @@ def _row(
     market: str = "TW",
     symbol: str = "2330.TW",
     group: str = "TW",
+    open_price: float | None = None,
 ) -> dict:
+    open_price = price if open_price is None else open_price
     return {
         "symbol": symbol,
         "name": symbol,
@@ -20,7 +22,9 @@ def _row(
         "backtest_group": group,
         "backtest_rank": 1,
         "official_session_date": session,
+        "official_open_price": open_price,
         "official_close_price": price,
+        "official_adjusted_open_price": open_price,
         "official_adjusted_close_price": price,
         "market_data_quality_score": 90,
         "market_contract_valid": True,
@@ -64,21 +68,29 @@ def test_taiwan_uses_evening_completed_sessions_and_auditable_prices(tmp_path: P
     assert noon_summary["snapshot_count"] == 1
     assert noon_summary["horizons"]["1"]["samples"] == 0
 
-    second = _row(110, "2026-08-19")
+    second = _row(110, "2026-08-19", open_price=105)
     summary = update_performance(
         tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
     )
-    assert summary["methodology_version"] == 2
+    assert summary["methodology_version"] == 3
     assert summary["horizons"]["1"]["samples"] == 1
     assert summary["horizons"]["1"]["win_rate_pct"] == 100.0
+    assert summary["tracks"]["overnight"]["win_rate_pct"] == 100.0
+    assert summary["tracks"]["session"]["win_rate_pct"] == 100.0
+    assert summary["tracks"]["full_day"]["win_rate_pct"] == 100.0
     assert summary["calibration"]["affects_ai_score"] is False
 
     history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
     outcome = history["snapshots"][0]["predictions"][0]["outcomes"]["1"]
     assert outcome == {
         "return_pct": 10.0,
+        "close_to_close_return_pct": 10.0,
+        "close_to_open_return_pct": 5.0,
+        "open_to_close_return_pct": 4.7619,
         "evaluated_session_date": "2026-08-19",
         "evaluated_price": 110.0,
+        "evaluated_open_price": 105.0,
+        "evaluated_close_price": 110.0,
     }
 
 
@@ -119,6 +131,20 @@ def test_trade_metric_only_counts_real_entry_zone_trigger(tmp_path: Path):
     assert summary["trade_signals"]["1"]["samples"] == 0
 
 
+def test_missing_open_price_never_fabricates_overnight_or_session_accuracy(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+    second = _row(110, "2026-08-19")
+    second["official_open_price"] = None
+    second["official_adjusted_open_price"] = None
+    summary = update_performance(
+        tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
+    )
+    assert summary["tracks"]["overnight"]["samples"] == 0
+    assert summary["tracks"]["session"]["samples"] == 0
+    assert summary["tracks"]["full_day"]["samples"] == 1
+
+
 def test_legacy_history_is_reset_and_cannot_affect_score(tmp_path: Path):
     (tmp_path / "prediction_history.json").write_text(
         json.dumps({"version": 1, "snapshots": [{"id": "bad"}]}), encoding="utf-8"
@@ -129,7 +155,7 @@ def test_legacy_history_is_reset_and_cannot_affect_score(tmp_path: Path):
     )
     assert summary["calibration"]["legacy_history_reset"] is True
     assert summary["calibration"]["affects_ai_score"] is False
-    assert load_performance_context(tmp_path)["methodology_version"] == 2
+    assert load_performance_context(tmp_path)["methodology_version"] == 3
 
 
 def test_ten_models_and_strict_consensus_are_recorded():
