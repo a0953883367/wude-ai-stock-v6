@@ -394,7 +394,7 @@ def main() -> int:
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
-            "verified_outcome_feedback": "V2 completed-session close-to-close outcomes; 10 shadow models; no score effect before 60 sessions and 200 consensus signals",
+            "verified_outcome_feedback": "V3 completed-session close-to-open, open-to-close, and close-to-close outcomes; 10 shadow models; no automatic score effect",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
