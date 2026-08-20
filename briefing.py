@@ -48,24 +48,98 @@ def _stage(label: str, action):
     return result
 
 
-def _attach_next_session_predictions(rows: list[dict]) -> None:
-    """Attach shadow predictions without changing ranking or action fields."""
+_NEXT_SESSION_FIELDS = (
+    "next_session_model_version", "next_session_market_model",
+    "next_session_direction", "next_session_confidence",
+    "next_session_up_votes", "next_session_down_votes",
+    "next_session_abstain_votes", "next_session_tracks",
+    "next_session_note", "next_session_source_session_date",
+    "next_session_generated_at",
+)
+
+
+def _prediction_checkpoint_ready(row: dict, period: str | None, intraday: bool) -> bool:
+    """Only freeze a forecast after that market's regular session completed."""
+    if period is None:  # Unit/API callers that explicitly request a prediction.
+        return True
+    if intraday:
+        return False
+    market = str(row.get("market") or "").upper()
+    return (market == "TW" and period == "evening") or (
+        market == "US" and period == "morning"
+    )
+
+
+def _attach_next_session_predictions(
+    rows: list[dict],
+    period: str | None = None,
+    intraday: bool = False,
+    previous: dict[str, dict] | None = None,
+    generated_at: str = "",
+) -> None:
+    """Attach fixed-close shadow predictions without changing rank/actions.
+
+    TW forecasts are frozen by the evening report and US forecasts by the
+    morning report. Noon/intraday refreshes carry that exact forecast forward
+    rather than recomputing it with an unfinished candle.
+    """
     labels = {"UP": "📈 看漲", "DOWN": "📉 看跌", "ABSTAIN": "⚪ 棄權"}
+    previous = previous or {}
     for row in rows:
+        source_date = str(row.get("official_session_date") or "")
+        if not _prediction_checkpoint_ready(row, period, intraday):
+            prior = previous.get(str(row.get("symbol") or ""), {})
+            same_close = (
+                prior.get("next_session_model_version") == "V5-shadow"
+                and str(prior.get("next_session_source_session_date") or "") == source_date
+            )
+            if same_close:
+                for field in _NEXT_SESSION_FIELDS:
+                    if field in prior:
+                        row[field] = prior[field]
+                row["next_session_note"] = (
+                    f"沿用 {source_date} 收盤後固定預測；盤中與其他時段不重新配分。"
+                )
+                continue
+            row.update({
+                "next_session_model_version": "V5-shadow",
+                "next_session_market_model": (
+                    "TW-NEXT-V5" if row.get("market") == "TW" else "US-NEXT-V5"
+                ),
+                "next_session_direction": "🕒 等待收盤",
+                "next_session_confidence": 0.0,
+                "next_session_up_votes": 0,
+                "next_session_down_votes": 0,
+                "next_session_abstain_votes": 10,
+                "next_session_tracks": {},
+                "next_session_note": (
+                    "台股等待晚報使用完整收盤資料計算。"
+                    if row.get("market") == "TW"
+                    else "美股等待早報使用完整收盤、盤後與市場資料計算。"
+                ),
+                "next_session_source_session_date": source_date,
+                "next_session_generated_at": "",
+            })
+            continue
         shadow = track_predictions(row)
         compact_tracks = {track: bundle["consensus"] for track, bundle in shadow.items()}
         full_day = compact_tracks["full_day"]
-        row["next_session_model_version"] = "V4-shadow"
+        row["next_session_model_version"] = "V5-shadow"
+        row["next_session_market_model"] = (
+            "TW-NEXT-V5" if row.get("market") == "TW" else "US-NEXT-V5"
+        )
         row["next_session_direction"] = labels[full_day["direction"]]
         row["next_session_confidence"] = full_day["confidence"]
         row["next_session_up_votes"] = full_day["up_votes"]
         row["next_session_down_votes"] = full_day["down_votes"]
         row["next_session_abstain_votes"] = full_day["abstain_votes"]
         row["next_session_tracks"] = compact_tracks
+        row["next_session_source_session_date"] = source_date
+        row["next_session_generated_at"] = generated_at
         row["next_session_note"] = (
-            "棄權代表證據未達高信心門檻，不代表預測平盤。"
+            "棄權代表證據未達75分及7/10模型共識，不代表預測平盤。"
             if full_day["direction"] == "ABSTAIN"
-            else "影子預測尚在向前驗證，不影響綜合排名或自動下單。"
+            else "75分是模型證據門檻，不是保證75%命中；仍須向前驗證。"
         )
 
 
@@ -185,7 +259,8 @@ def main() -> int:
     )
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
-    previous = _previous_rows() if args.intraday else {}
+    previous_rows = _previous_rows()
+    previous = previous_rows if args.intraday else {}
     if previous:
         logging.info("盤中更新沿用上一份法人、融資、基本面與分點快照")
         institutions, credit_flows, fundamentals, broker_branches = (
@@ -324,7 +399,13 @@ def main() -> int:
         "最終排名計算",
         lambda: score_candidates(features, macro_regime, performance_context),
     )
-    _attach_next_session_predictions(ranked)
+    _attach_next_session_predictions(
+        ranked,
+        period=args.period,
+        intraday=args.intraday,
+        previous=previous_rows,
+        generated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
+    )
     by_symbol = {row["symbol"]: row for row in ranked}
     watchlist_rows = sort_by_score([
         by_symbol[item["symbol"]]
@@ -411,7 +492,7 @@ def main() -> int:
             },
             "overall_ranking": "先依合格／觀察／阻擋分層，再綜合AI總分45%、進場分35%、短線10%、中長線10%與資料信心排序",
             "short_term": "1至5個交易日；先依合格與安全條件分層，再以量價、短均線與K線、籌碼、開盤攻擊量及風報比排序",
-            "next_session": "V4隔日影子預測；綜合排名與1至5日趨勢不等於明日漲跌。隔夜、盤中、全天各自投票，資料不足、追高、資金流偏空或大盤風險高時優先棄權",
+            "next_session": "V5市場分流隔日影子預測；台股晚報、美股早報才以完整收盤資料固定預測。兩市場採不同權重，隔夜、盤中、全天各自投票，資料不足、追高、資金流偏空或大盤風險高時優先棄權",
             "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
@@ -419,7 +500,7 @@ def main() -> int:
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
-            "verified_outcome_feedback": "V4 track-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
+            "verified_outcome_feedback": "V5 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }

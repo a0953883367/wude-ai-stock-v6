@@ -28,6 +28,17 @@ def _row(
         "official_adjusted_close_price": price,
         "market_data_quality_score": 90,
         "market_contract_valid": True,
+        "price": price,
+        "avg_volume20": 1_000_000,
+        "daily_volume_ratio": 1.4,
+        "news_data_available": True,
+        "institution_available": market == "TW",
+        "credit_available": market == "TW",
+        "broker_available": market == "TW",
+        "us_live_data_available": market == "US",
+        "us_short_volume_available": market == "US",
+        "extended_hours_available": market == "US",
+        "extended_change_pct": 1.0 if market == "US" else None,
         "trade_guard_blocked": False,
         "short_term_eligible": True,
         "short_term_entry_low": price * .98,
@@ -72,12 +83,12 @@ def test_taiwan_uses_evening_completed_sessions_and_auditable_prices(tmp_path: P
     summary = update_performance(
         tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
     )
-    assert summary["methodology_version"] == 4
+    assert summary["methodology_version"] == 5
     assert summary["horizons"]["1"]["samples"] == 1
     assert summary["horizons"]["1"]["win_rate_pct"] == 100.0
-    # Overnight correctly abstains for this fixture while the session/full-day
-    # models have enough evidence to vote UP.
-    assert summary["tracks"]["overnight"]["samples"] == 0
+    # The deliberately strong complete fixture is independently accepted by
+    # all three V5 tracks.
+    assert summary["tracks"]["overnight"]["win_rate_pct"] == 100.0
     assert summary["tracks"]["session"]["win_rate_pct"] == 100.0
     assert summary["tracks"]["full_day"]["win_rate_pct"] == 100.0
     assert summary["calibration"]["affects_ai_score"] is False
@@ -157,7 +168,7 @@ def test_legacy_history_is_reset_and_cannot_affect_score(tmp_path: Path):
     )
     assert summary["calibration"]["legacy_history_reset"] is True
     assert summary["calibration"]["affects_ai_score"] is False
-    assert load_performance_context(tmp_path)["methodology_version"] == 4
+    assert load_performance_context(tmp_path)["methodology_version"] == 5
 
 
 def test_ten_models_and_strict_consensus_are_recorded():
@@ -174,9 +185,13 @@ def test_three_return_tracks_vote_independently():
     row = _row(100, "2026-08-18")
     predictions = track_predictions(row)
     assert tuple(predictions) == ("overnight", "session", "full_day")
-    assert predictions["overnight"]["consensus"]["direction"] == "ABSTAIN"
+    assert predictions["overnight"]["consensus"]["direction"] == "UP"
     assert predictions["session"]["consensus"]["direction"] == "UP"
     assert predictions["full_day"]["consensus"]["direction"] == "UP"
+    assert (
+        predictions["overnight"]["models"]["balanced_next"]["score"]
+        != predictions["session"]["models"]["balanced_next"]["score"]
+    )
 
 
 def test_overextended_or_weak_market_does_not_become_tomorrow_buy():
@@ -186,6 +201,43 @@ def test_overextended_or_weak_market_does_not_become_tomorrow_buy():
     weak = _row(100, "2026-08-18")
     weak.update({"macro_score": 25, "market_flow_score": 25, "positioning_score": 25})
     assert consensus_prediction(model_predictions(weak))["direction"] != "UP"
+
+
+def test_market_specific_profiles_and_missing_evidence_are_explicit():
+    tw = _row(100, "2026-08-18")
+    us = _row(100, "2026-08-18", "US", "NVDA", "US")
+    tw_votes = model_predictions(tw, "overnight")
+    us_votes = model_predictions(us, "overnight")
+    assert tw_votes["balanced_next"]["score"] != us_votes["balanced_next"]["score"]
+    assert us_votes["balanced_next"]["evidence_coverage_pct"] == 90.0
+
+    missing_us = dict(us)
+    missing_us.update({
+        "us_live_data_available": False,
+        "us_short_volume_available": False,
+        "extended_hours_available": False,
+        "intraday_available": False,
+        "us_option_data_available": False,
+    })
+    missing_votes = model_predictions(missing_us, "overnight")
+    assert all(vote["direction"] == "ABSTAIN" for vote in missing_votes.values())
+    assert missing_votes["balanced_next"]["evidence_coverage_pct"] < 75
+
+
+def test_high_volume_upper_wick_never_becomes_next_day_buy():
+    row = _row(100, "2026-08-18")
+    row.update({
+        "technical_score": 95,
+        "volume_score": 95,
+        "market_flow_score": 90,
+        "positioning_score": 90,
+        "entry_score": 90,
+        "kline_pattern": "上影壓力",
+        "kline_score": 35,
+        "daily_volume_ratio": 5.5,
+        "change_pct": 4.0,
+    })
+    assert consensus_prediction(model_predictions(row))["direction"] == "ABSTAIN"
 
 
 def test_tw_and_us_etfs_are_never_combined(tmp_path: Path):
