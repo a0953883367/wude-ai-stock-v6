@@ -109,6 +109,7 @@ def _attach_next_session_predictions(
         is_tw = str(row.get("market") or "").upper() == "TW"
         verified_close = bool(
             same_close
+            # A mutable report with the same date is not evidence of fixation.
             and str(prior.get("next_session_data_mode") or "")
             == "固定快照（雜湊驗證通過）"
         )
