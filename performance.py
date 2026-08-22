@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
@@ -12,8 +13,10 @@ from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 HORIZONS = (1, 5, 10, 20)
 METHODOLOGY_VERSION = 5
+AUDIT_SCHEMA_VERSION = 1
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
+TOP_K = (5, 10, 20)
 RETURN_TRACKS = {
     "overnight": "close_to_open_return_pct",
     "session": "open_to_close_return_pct",
@@ -36,19 +39,39 @@ def _metric(records: list[tuple[float, str]], eligible: int = 0) -> dict[str, fl
         return {
             "samples": 0,
             "eligible_samples": eligible,
+            "abstain_samples": eligible,
             "coverage_pct": 0.0,
             "win_rate_pct": 0.0,
             "avg_return_pct": 0.0,
             "worst_return_pct": 0.0,
+            "sample_status": _sample_status(0),
         }
     return {
         "samples": len(directional),
         "eligible_samples": eligible,
+        "abstain_samples": max(0, eligible - len(directional)),
         "coverage_pct": round(len(directional) / max(eligible, 1) * 100, 1),
         "win_rate_pct": round(sum(value > 0 for value in directional) / len(directional) * 100, 1),
         "avg_return_pct": round(sum(directional) / len(directional), 2),
         "worst_return_pct": round(min(directional), 2),
+        "sample_status": _sample_status(len(directional)),
     }
+
+
+def _sample_status(samples: int) -> str:
+    if samples < 20:
+        return "樣本不足"
+    if samples < 60:
+        return "初步參考"
+    return "較具參考性"
+
+
+def _within_rank(row: dict[str, Any], maximum: int) -> bool:
+    try:
+        rank = int(row.get("rank") or 0)
+    except (TypeError, ValueError):
+        return False
+    return 0 < rank <= maximum
 
 
 def _metric_bundle(
@@ -192,6 +215,25 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
                 }
                 for name in MODEL_NAMES
             },
+            "top_k": {
+                str(limit): {
+                    "tracks": _track_bundle(
+                        snapshots,
+                        lambda row, base=predicate, maximum=limit: (
+                            base(row) and _within_rank(row, maximum)
+                        ),
+                        _track_consensus_direction,
+                    ),
+                    "horizons": _metric_bundle(
+                        snapshots,
+                        lambda row, base=predicate, maximum=limit: (
+                            base(row) and _within_rank(row, maximum)
+                        ),
+                        _consensus_direction,
+                    ),
+                }
+                for limit in TOP_K
+            },
         }
 
     session_dates = {str(item.get("session_date")) for item in snapshots if item.get("predictions")}
@@ -264,6 +306,17 @@ def _performance_open_price(row: dict[str, Any]) -> float:
     return 0.0
 
 
+def _performance_session_price(row: dict[str, Any], kind: str) -> float:
+    for key in (f"official_adjusted_{kind}_price", f"official_{kind}_price"):
+        try:
+            value = float(row.get(key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    return 0.0
+
+
 def _session_date(row: dict[str, Any]) -> str:
     value = str(row.get("official_session_date") or "")
     try:
@@ -315,8 +368,15 @@ def _new_snapshot(
             "group": row.get("backtest_group"),
             "cohort": cohort,
             "rank": row.get("backtest_rank"),
+            "model_version": row.get("next_session_model_version") or "V5-shadow",
+            "market_model": row.get("next_session_market_model") or row.get("market_model_version"),
             "official_session_date": session_date,
             "official_price": round(price, 4),
+            "entry_low": row.get("short_term_entry_low"),
+            "entry_high": row.get("short_term_entry_high"),
+            "stop_price": row.get("short_term_stop"),
+            "target1_price": row.get("short_term_target1"),
+            "target2_price": row.get("short_term_target2"),
             "track_predictions": tracks,
             # Compatibility aliases are explicitly the full-day prediction.
             "model_predictions": full_day["models"],
@@ -324,14 +384,51 @@ def _new_snapshot(
             "trade_triggered": _trade_triggered(row, price),
             "outcomes": {},
         })
-    return {
+    snapshot = {
         "id": f"{market}:{session_date}",
+        "audit_schema_version": AUDIT_SCHEMA_VERSION,
         "market": market,
         "session_date": session_date,
         "captured_at": updated_at,
         "period": period,
         "predictions": rows,
     }
+    snapshot["integrity_sha256"] = _snapshot_hash(snapshot)
+    return snapshot
+
+
+def _immutable_snapshot_payload(snapshot: dict[str, Any]) -> dict[str, Any]:
+    predictions = []
+    for row in snapshot.get("predictions", []):
+        if not isinstance(row, dict):
+            continue
+        predictions.append({key: value for key, value in row.items() if key != "outcomes"})
+    return {
+        "id": snapshot.get("id"),
+        "audit_schema_version": snapshot.get("audit_schema_version"),
+        "market": snapshot.get("market"),
+        "session_date": snapshot.get("session_date"),
+        "captured_at": snapshot.get("captured_at"),
+        "period": snapshot.get("period"),
+        "predictions": predictions,
+    }
+
+
+def _snapshot_hash(snapshot: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        _immutable_snapshot_payload(snapshot),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _snapshot_integrity(snapshot: dict[str, Any]) -> str:
+    recorded = str(snapshot.get("integrity_sha256") or "")
+    if not recorded:
+        return "legacy_unverified"
+    return "verified" if recorded == _snapshot_hash(snapshot) else "mismatch"
 
 
 def _evaluate_with_new_session(
@@ -344,6 +441,8 @@ def _evaluate_with_new_session(
         str(row.get("symbol")): (
             _performance_open_price(row),
             _performance_price(row),
+            _performance_session_price(row, "high"),
+            _performance_session_price(row, "low"),
         )
         for row in current_rows
         if str(row.get("market")) == market and _session_date(row) == session_date
@@ -368,7 +467,9 @@ def _evaluate_with_new_session(
         for row in snapshot.get("predictions", []):
             symbol = str(row.get("symbol") or "")
             base = float(row.get("official_price") or 0)
-            current_open, current_close = prices.get(symbol, (0.0, 0.0))
+            current_open, current_close, current_high, current_low = prices.get(
+                symbol, (0.0, 0.0, 0.0, 0.0)
+            )
             if base <= 0 or current_close <= 0 or key in row.get("outcomes", {}):
                 continue
             close_to_close = round((current_close / base - 1) * 100, 4)
@@ -387,7 +488,90 @@ def _evaluate_with_new_session(
                     "open_to_close_return_pct": round((current_close / current_open - 1) * 100, 4),
                     "evaluated_open_price": round(current_open, 4),
                 })
+            if elapsed == 1 and current_high > 0 and current_low > 0:
+                outcome.update({
+                    "evaluated_high_price": round(current_high, 4),
+                    "evaluated_low_price": round(current_low, 4),
+                    "stop_touched": bool(
+                        float(row.get("stop_price") or 0) > 0
+                        and current_low <= float(row.get("stop_price") or 0)
+                    ),
+                    "target1_touched": bool(
+                        float(row.get("target1_price") or 0) > 0
+                        and current_high >= float(row.get("target1_price") or 0)
+                    ),
+                    "target2_touched": bool(
+                        float(row.get("target2_price") or 0) > 0
+                        and current_high >= float(row.get("target2_price") or 0)
+                    ),
+                })
             row.setdefault("outcomes", {})[key] = outcome
+
+
+def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) -> dict[str, Any]:
+    integrity = {"verified": 0, "legacy_unverified": 0, "mismatch": 0}
+    for snapshot in snapshots:
+        integrity[_snapshot_integrity(snapshot)] += 1
+    recent: list[dict[str, Any]] = []
+    for snapshot in reversed(snapshots):
+        status = _snapshot_integrity(snapshot)
+        if status == "mismatch":
+            continue
+        for row in snapshot.get("predictions", []):
+            outcome = row.get("outcomes", {}).get("1")
+            if not isinstance(outcome, dict):
+                continue
+            tracks = row.get("track_predictions", {})
+            track_results = {}
+            for track, field in RETURN_TRACKS.items():
+                actual = _outcome_return(outcome, field)
+                direction = _track_consensus_direction(row, track)
+                track_results[track] = {
+                    "direction": direction,
+                    "confidence": (tracks.get(track, {}).get("consensus", {}) or {}).get("confidence"),
+                    "actual_return_pct": actual,
+                    "hit": evaluate_direction(direction, actual) if actual is not None else None,
+                }
+            recent.append({
+                "snapshot_id": snapshot.get("id"),
+                "integrity": status,
+                "captured_at": snapshot.get("captured_at"),
+                "source_session_date": snapshot.get("session_date"),
+                "evaluated_session_date": outcome.get("evaluated_session_date"),
+                "symbol": row.get("symbol"),
+                "name": row.get("name"),
+                "cohort": row.get("cohort"),
+                "rank": row.get("rank"),
+                "model_version": row.get("model_version"),
+                "market_model": row.get("market_model"),
+                "source_close_price": row.get("official_price"),
+                "actual_open_price": outcome.get("evaluated_open_price"),
+                "actual_high_price": outcome.get("evaluated_high_price"),
+                "actual_low_price": outcome.get("evaluated_low_price"),
+                "actual_close_price": outcome.get("evaluated_close_price"),
+                "tracks": track_results,
+                "stop_touched": outcome.get("stop_touched"),
+                "target1_touched": outcome.get("target1_touched"),
+                "target2_touched": outcome.get("target2_touched"),
+            })
+    public_groups = {
+        key: {
+            "tracks": value.get("tracks", {}),
+            "top_k": value.get("top_k", {}),
+        }
+        for key, value in summary.get("groups", {}).items()
+    }
+    return {
+        "audit_schema_version": AUDIT_SCHEMA_VERSION,
+        "methodology_version": METHODOLOGY_VERSION,
+        "updated_at": summary.get("updated_at"),
+        "immutable_rule": "同一市場與交易日只建立一次預測；結果只追加，不覆寫預測內容。",
+        "integrity": integrity,
+        "calibration": summary.get("calibration", {}),
+        "groups": public_groups,
+        "tracks": summary.get("tracks", {}),
+        "recent": recent[:200],
+    }
 
 
 def update_performance(
@@ -432,13 +616,18 @@ def update_performance(
         item for item in snapshots
         if str(item.get("session_date") or "") >= cutoff.isoformat()
     ]
-    summary = _summary(snapshots, legacy_reset=legacy_reset)
+    valid_snapshots = [item for item in snapshots if _snapshot_integrity(item) != "mismatch"]
+    summary = _summary(valid_snapshots, legacy_reset=legacy_reset)
     history_path.write_text(
         json.dumps({"version": METHODOLOGY_VERSION, "snapshots": snapshots}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     (reports_dir / "performance.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (reports_dir / "accuracy.json").write_text(
+        json.dumps(_accuracy_audit(snapshots, summary), ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
     return summary
 
