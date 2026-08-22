@@ -106,10 +106,18 @@ def _attach_next_session_predictions(
             and str(prior.get("next_session_generated_at") or "").strip()
             and completed_direction in labels.values()
         )
+        is_tw = str(row.get("market") or "").upper() == "TW"
+        verified_close = bool(
+            same_close
+            # A mutable report with the same date is not evidence of fixation.
+            and str(prior.get("next_session_data_mode") or "")
+            == "固定快照（雜湊驗證通過）"
+        )
+        carry_close = verified_close if is_tw else same_close
         # Taiwan's immutable close snapshot is authoritative even when the
         # same evening report is re-run on a weekend or provider outage. US is
         # intentionally left on its existing behavior.
-        if same_close and str(row.get("market") or "").upper() == "TW":
+        if verified_close and is_tw:
             for field in _NEXT_SESSION_FIELDS:
                 if field in prior:
                     row[field] = prior[field]
@@ -118,7 +126,7 @@ def _attach_next_session_predictions(
             )
             continue
         if not _prediction_checkpoint_ready(row, period, intraday):
-            if same_close:
+            if carry_close:
                 for field in _NEXT_SESSION_FIELDS:
                     if field in prior:
                         row[field] = prior[field]
