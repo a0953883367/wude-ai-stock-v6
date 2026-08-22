@@ -150,6 +150,7 @@ def test_predictions_are_frozen_at_each_markets_completed_close_checkpoint():
 def test_intraday_refresh_carries_same_completed_close_forecast():
     prior = _complete_shadow_row("TW")
     _attach_next_session_predictions([prior], period="evening", generated_at="2026-08-20 20:00:00")
+    prior["next_session_data_mode"] = "固定快照（雜湊驗證通過）"
     current = _complete_shadow_row("TW")
     current["price"] = 101
     _attach_next_session_predictions(
@@ -169,6 +170,7 @@ def test_repeated_tw_evening_uses_same_fixed_forecast():
     _attach_next_session_predictions(
         [prior], period="evening", generated_at="2026-08-20 20:00:00"
     )
+    prior["next_session_data_mode"] = "固定快照（雜湊驗證通過）"
     current = _complete_shadow_row("TW")
     current.update({"technical_score": 10, "volume_score": 10, "market_flow_score": 10})
     _attach_next_session_predictions(
@@ -179,6 +181,23 @@ def test_repeated_tw_evening_uses_same_fixed_forecast():
     assert current["next_session_up_votes"] == prior["next_session_up_votes"]
     assert current["next_session_generated_at"] == "2026-08-20 20:00:00"
     assert "重新整理不重新配分" in current["next_session_note"]
+
+
+def test_unverified_mutable_tw_report_is_recomputed_at_formal_evening():
+    prior = _complete_shadow_row("TW")
+    _attach_next_session_predictions(
+        [prior], period="evening", generated_at="2026-08-20 20:00:00"
+    )
+    assert prior["next_session_data_mode"] == "主要資料完整"
+
+    current = _complete_shadow_row("TW")
+    _attach_next_session_predictions(
+        [current], period="evening", previous={current["symbol"]: prior},
+        generated_at="2026-08-20 21:00:00",
+    )
+
+    assert current["next_session_generated_at"] == "2026-08-20 21:00:00"
+    assert "next_session_model_votes" in current
 
 
 def test_waiting_placeholder_is_never_mislabeled_as_a_frozen_forecast():
