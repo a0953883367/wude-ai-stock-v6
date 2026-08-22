@@ -1731,60 +1731,128 @@ def _assign_group_ranks(rows: list[dict[str, Any]]) -> None:
 
 
 def apply_tw_buy_candidate_ranking(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Turn Taiwan's overall list into a genuine buy-condition ranking.
+    """Build a three-stage Taiwan buy workflow without changing US ranking.
 
-    The base score is still useful for research, but a Taiwan symbol receives
-    an overall numeric rank only after the completed next-session forecast and
-    the entry plan agree.  US rows deliberately retain their existing ranking
-    semantics and weights.
+    A useful candidate list cannot require the price to already be inside the
+    entry zone: that would collapse research, timing and live execution into a
+    single gate.  Taiwan rows therefore move through three explicit stages:
+
+    1. ``buy_setup_eligible``: a complete, liquid and risk-controlled setup.
+    2. ``buy_trigger_ready``: the price is in the entry zone and the fixed
+       next-session forecast confirms the direction.
+    3. Live execution remains locked until Fubon 7/7 data confirms the book.
+
+    US rows deliberately retain their existing ranking semantics and weights.
     """
     for row in rows:
         if str(row.get("market") or "").upper() != "TW":
+            row.setdefault("buy_setup_eligible", None)
+            row.setdefault("buy_trigger_ready", None)
+            row.setdefault("live_buy_required", None)
             row.setdefault("buy_candidate_eligible", None)
             row.setdefault("buy_candidate_status", "美股沿用既有排名")
             row.setdefault("buy_candidate_reasons", [])
             continue
 
+        is_etf = "ETF" in str(row.get("type") or "").upper()
         price = _finite(row.get("price"))
         entry_low = _finite(row.get("short_term_entry_low"))
         entry_high = _finite(row.get("short_term_entry_high"))
+        stop = _finite(row.get("short_term_stop"))
+        target = _finite(row.get("short_term_target1"))
+        rr = _finite(row.get("short_term_rr"))
+        short_score = _finite(row.get("short_term_score"))
+        entry_score = _finite(row.get("entry_score"))
+        technical_score = _finite(row.get("technical_score"))
+        data_quality = _finite(row.get("market_data_quality_score"))
+        coverage = _finite(row.get("entry_data_coverage"))
+        coverage_total = _finite(row.get("entry_data_total"))
+        volume_ratio = _finite(row.get("daily_volume_ratio"))
+        rsi = _finite(row.get("rsi"))
         contract_valid = row.get("market_contract_valid") is not False
         hard_blocked = bool(row.get("trade_guard_blocked") or not contract_valid)
         reasons: list[str] = []
 
-        if not row.get("short_term_eligible"):
-            reasons.append("短線趨勢、量能、資料或風報比尚未全部通過")
-        if not (entry_low > 0 and entry_high >= entry_low and entry_low <= price <= entry_high):
-            reasons.append("現價尚未進入買進區")
-        if row.get("next_session_direction") != "📈 看漲":
-            reasons.append("隔日模型尚未確認看漲")
-        if _finite(row.get("next_session_data_quality")) < 75:
-            reasons.append("隔日資料完整度未達75分")
-        if str(row.get("next_session_signal_level") or "") not in {"RESEARCH", "STRONG"}:
-            reasons.append("隔日訊號尚未達研究門檻")
+        plan_valid = bool(
+            price > 0
+            and entry_low > 0
+            and entry_high >= entry_low
+            and stop > 0
+            and target > entry_high
+            and rr >= 1.5
+        )
+        required_coverage = coverage_total if is_etf else max(0, coverage_total - 1)
+        strong_bearish = bool(
+            row.get("next_session_direction") == "📉 看跌"
+            and str(row.get("next_session_signal_level") or "") in {"RESEARCH", "STRONG"}
+            and _finite(row.get("next_session_confidence")) >= 65
+        )
 
-        eligible = bool(not hard_blocked and not reasons)
+        if not plan_valid:
+            reasons.append("買進區、停損、目標或風報比不完整")
+        if short_score < (62 if is_etf else 60):
+            reasons.append("1至5日趨勢分不足")
+        if entry_score < 48:
+            reasons.append("進場條件分不足")
+        if technical_score < 50:
+            reasons.append("技術結構未達候選門檻")
+        if data_quality < 75 or coverage < required_coverage:
+            reasons.append("資料完整度不足")
+        if volume_ratio < 0.30:
+            reasons.append("成交量過低")
+        if not (38 <= rsi <= 72):
+            reasons.append("RSI過熱或弱勢")
+        if entry_high > 0 and price > entry_high * 1.04:
+            reasons.append("現價距買進區過遠，避免追價")
+        if entry_low > 0 and price < entry_low * 0.96:
+            reasons.append("現價已跌離原買進結構")
+        if row.get("breakdown20"):
+            reasons.append("已跌破20日結構")
+        if _finite(row.get("news_penalty")) >= 8:
+            reasons.append("重大新聞風險未解除")
+        if strong_bearish:
+            reasons.append("隔日模型高信心看跌")
+
+        setup_eligible = bool(not hard_blocked and not reasons)
+        in_entry_zone = bool(entry_low <= price <= entry_high) if plan_valid else False
+        forecast_confirmed = bool(
+            row.get("next_session_direction") == "📈 看漲"
+            and _finite(row.get("next_session_data_quality")) >= 75
+            and str(row.get("next_session_signal_level") or "") in {"RESEARCH", "STRONG"}
+        )
+        trigger_ready = bool(setup_eligible and in_entry_zone and forecast_confirmed)
+
         row["quality_eligible_before_buy_filter"] = bool(row.get("overall_eligible"))
-        row["buy_candidate_eligible"] = eligible
+        row["buy_setup_eligible"] = setup_eligible
+        row["buy_trigger_ready"] = trigger_ready
+        row["live_buy_required"] = bool(setup_eligible)
+        # Backwards-compatible name used by the current homepage.  It now
+        # means a ranked setup candidate, never an instruction to trade.
+        row["buy_candidate_eligible"] = setup_eligible
         row["buy_candidate_reasons"] = reasons
         if hard_blocked:
             row["buy_candidate_status"] = "🔴 安全阻擋"
-        elif eligible:
-            row["buy_candidate_status"] = "🟢 買進條件成立，等待盤中觸發"
+        elif trigger_ready:
+            row["buy_candidate_status"] = "🟢 已達觸發區｜等待盤中富邦7/7確認"
+        elif setup_eligible and in_entry_zone:
+            row["buy_candidate_status"] = "🟡 買進候選｜已進買進區，等待隔日方向確認"
+        elif setup_eligible:
+            row["buy_candidate_status"] = "🟡 買進候選｜等待回測買進區"
         else:
             row["buy_candidate_status"] = "🟡 觀察｜" + "；".join(reasons)
 
-        # For Taiwan the headline rank now means buy conditions, not merely
-        # business quality.  Observation rows remain searchable without a
-        # misleading numeric position.
-        row["overall_eligible"] = eligible
-        row["overall_rank_tier"] = 0 if hard_blocked else 2 if eligible else 1
+        # Taiwan's headline rank is a setup-candidate rank.  It does not mean
+        # the current price can be bought, and it never bypasses live 7/7.
+        row["overall_eligible"] = setup_eligible
+        row["overall_rank_tier"] = 0 if hard_blocked else 2 if setup_eligible else 1
         next_confidence = _finite(row.get("next_session_confidence"))
+        next_bonus = next_confidence if row.get("next_session_direction") == "📈 看漲" else 0.0
         row["overall_ranking_score"] = round(
-            _finite(row.get("short_term_score")) * 0.35
-            + _finite(row.get("entry_score")) * 0.25
-            + next_confidence * 0.20
-            + _finite(row.get("score")) * 0.20,
+            short_score * 0.30
+            + entry_score * 0.25
+            + technical_score * 0.15
+            + _finite(row.get("score")) * 0.20
+            + next_bonus * 0.10,
             1,
         )
 

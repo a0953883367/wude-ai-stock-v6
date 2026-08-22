@@ -98,7 +98,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button class="search" id="searchButton" aria-label="搜尋股票">🔍</button>
   </div>
 
-  <div id="title" class="section">🇹🇼 台股綜合風控排名</div>
+  <div id="title" class="section">🇹🇼 台股買進候選排名</div>
   <div id="status" class="status">正在讀取最新資料…</div>
   <div id="marketStrip" class="market-strip"></div>
   <div id="performanceStrip"></div>
@@ -183,6 +183,7 @@ function normalizeReport(row){
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
     overallEligible:row.overall_eligible,overallRankTier:row.overall_rank_tier,overallRankingScore:row.overall_ranking_score,overallRank:row.overall_rank,overallDisplayRank:row.overall_display_rank,
+    buySetupEligible:row.buy_setup_eligible,buyTriggerReady:row.buy_trigger_ready,liveBuyRequired:row.live_buy_required,
     buyCandidateEligible:row.buy_candidate_eligible,buyCandidateStatus:row.buy_candidate_status,buyCandidateReasons:Array.isArray(row.buy_candidate_reasons)?row.buy_candidate_reasons:[],
     shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,shortTermDisplayRank:row.short_term_display_rank,
     midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,midLongDisplayRank:row.mid_long_display_rank,rankingGroupCount:row.ranking_group_count,
@@ -325,7 +326,7 @@ function stockCard(stock,index){
   }).join('<br>');
   var newsRadar='<div class="databox">📰 <b>負面新聞風險雷達：'+esc(newsLevel)+'</b><br>'+esc(stock.news||'本次沒有新聞摘要')+'<br>'+newsEffect+(newsLinks?'<br>'+newsLinks:'')+'</div>';
   var buyQualification=stock.market==='TW'&&stock.buyCandidateStatus
-    ?'<div class="databox">🎯 <b>台股買進資格：'+esc(stock.buyCandidateStatus)+'</b></div>'
+    ?'<div class="databox">🎯 <b>台股三階段：'+esc(stock.buyCandidateStatus)+'</b><br><span class="muted">候選排名 → 進入買進區 → 盤中富邦7/7確認；只有最後一關通過才是可買。</span></div>'
     :'';
   return [
     '<article class="card"><div class="card-head"><div><div class="rank">'+esc(stock.displayRankLabel||'觀察')+'</div><div class="stock">'+esc(stock.name)+'</div>',
@@ -475,7 +476,7 @@ function showOptical(group){
 }
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
-  var map={TW:['🇹🇼 台股買進條件排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 買進／風控排名',STATE.etf]};
+  var map={TW:['🇹🇼 台股買進候選排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 買進／風控排名',STATE.etf]};
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
     document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
@@ -491,8 +492,9 @@ function showMarket(view){
   }
   document.getElementById('title').textContent=map[view][0];
   var qualified=map[view][1].filter(function(stock){return WudeRanking.overallTier(stock)===2;}).length;
+  var triggered=view==='TW'?map[view][1].filter(function(stock){return stock.buyTriggerReady===true;}).length:0;
   document.getElementById('status').textContent=(view==='TW'
-    ?'✅ 目前符合買進條件 '+qualified+' 檔｜須同時通過短線條件、進入買進區、隔日看漲與資料完整度；不符合者只列觀察且沒有名次'
+    ?'🎯 買進候選 '+qualified+' 檔｜已進觸發區 '+triggered+' 檔｜候選不等於可買；須進入買進區且盤中富邦7/7確認後才可執行'
     :'✅ '+(STATE.stockData&&STATE.stockData.version?STATE.stockData.version:'V6')+'｜目前合格 '+qualified+' 檔｜只有合格標的列為 TOP，其餘分列觀察或風險阻擋');
   renderStocks(map[view][1]);
 }
