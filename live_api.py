@@ -19,18 +19,57 @@ import re
 import tempfile
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, time as wall_time, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
+from zoneinfo import ZoneInfo
 
 from fubon_runner import _login_fubon, parse_fubon_quote
+from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 
 LOG = logging.getLogger("live_api")
 SYMBOL_PATTERN = re.compile(r"^[A-Z0-9.^-]{1,20}(?:\.(?:TW|TWO))?$")
+NEW_YORK = ZoneInfo("America/New_York")
+
+
+def _trading_state_path() -> Path:
+    configured = os.getenv("TRADE_STATE_PATH", "").strip()
+    if configured:
+        return Path(configured)
+    return Path("/data/paper_trading_state.json") if Path("/data").is_dir() else Path("/tmp/wude-paper_trading_state.json")
+
+
+def _paper_engine(service: "LiveDataService") -> PaperTradingEngine:
+    root = Path(__file__).resolve().parent
+    return PaperTradingEngine(
+        JsonTradingStateStore(_trading_state_path(), initial_cash=20_000),
+        report_path=root / "reports" / "all_analysis.json",
+        quote_fetcher=lambda symbol, market: service.fetch(symbol, market, include_options=False),
+    )
+
+
+def _tw_market_open(now: datetime | None = None) -> bool:
+    current = now or datetime.now(TAIPEI)
+    return current.weekday() < 5 and wall_time(9, 0) <= current.time().replace(tzinfo=None) <= wall_time(13, 30)
+
+
+def _us_market_open(now: datetime | None = None) -> bool:
+    current = (now or datetime.now(timezone.utc)).astimezone(NEW_YORK)
+    return current.weekday() < 5 and wall_time(9, 30) <= current.time().replace(tzinfo=None) <= wall_time(16, 0)
+
+
+def _open_market_sessions(now: datetime | None = None) -> list[tuple[str, str]]:
+    current = now or datetime.now(timezone.utc)
+    result: list[tuple[str, str]] = []
+    if _tw_market_open(current.astimezone(TAIPEI)):
+        result.append(("TW", current.astimezone(TAIPEI).date().isoformat()))
+    if _us_market_open(current):
+        result.append(("US", current.astimezone(NEW_YORK).date().isoformat()))
+    return result
 
 
 def _truthy(value: str | None) -> bool:
@@ -226,6 +265,7 @@ class MinuteRateLimiter:
 
 class LiveRequestHandler(BaseHTTPRequestHandler):
     service = LiveDataService()
+    trading_engine = _paper_engine(service)
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
 
     def log_message(self, fmt: str, *args: Any) -> None:
@@ -238,7 +278,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         ).split(",") if value.strip()}
         return origin if origin and origin in allowed else None
 
-    def _authorized(self) -> bool:
+    def _owner_authorized(self) -> bool:
         token = os.getenv("LIVE_ACCESS_TOKEN", "").strip()
         if token:
             authorization = self.headers.get("Authorization", "").strip()
@@ -248,10 +288,11 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             if not supplied:
                 supplied = self.headers.get("X-Live-Token", "").strip()
             return bool(supplied and hmac.compare_digest(supplied, token))
-        if _truthy(os.getenv("LIVE_PUBLIC_READ")):
-            return True
         proxy_header = os.getenv("LIVE_TRUSTED_AUTH_HEADER", "").strip()
         return bool(proxy_header and self.headers.get(proxy_header))
+
+    def _authorized(self) -> bool:
+        return self._owner_authorized() or _truthy(os.getenv("LIVE_PUBLIC_READ"))
 
     def _send(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -273,7 +314,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         if origin:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Access-Control-Allow-Headers", "Authorization, X-Live-Token, Content-Type")
-            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Credentials", "true")
             self.send_header("Vary", "Origin")
         self.end_headers()
@@ -283,15 +324,23 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/health":
             self._send(HTTPStatus.OK, self.service.health())
             return
-        if parsed.path != "/api/live":
+        if parsed.path not in {"/api/live", "/api/trading/status", "/api/trading/preview"}:
             self._send(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
-        if not self._authorized():
+        requires_owner = parsed.path.startswith("/api/trading/")
+        if not (self._owner_authorized() if requires_owner else self._authorized()):
             self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "owner authentication required"})
             return
         if not self.rate_limiter.allow():
             self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "live request limit reached"})
             return
+        if parsed.path == "/api/trading/status":
+            self._send(HTTPStatus.OK, {"ok": True, **self.trading_engine.status()})
+            return
+        if parsed.path == "/api/trading/preview":
+            self._send(HTTPStatus.OK, {"ok": True, **self.trading_engine.preview()})
+            return
+
         query = parse_qs(parsed.query)
         try:
             result = self.service.fetch(
@@ -307,14 +356,93 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         else:
             self._send(HTTPStatus.OK, result)
 
+    def _read_json(self) -> dict[str, Any]:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as exc:
+            raise ValueError("invalid content length") from exc
+        if length <= 0 or length > 65_536:
+            raise ValueError("JSON body must be between 1 and 65536 bytes")
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("invalid JSON body") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("JSON body must be an object")
+        return payload
+
+    def do_POST(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        if parsed.path not in {"/api/trading/config", "/api/trading/run"}:
+            self._send(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
+            return
+        if not self._owner_authorized():
+            self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "owner authentication required"})
+            return
+        if not self.rate_limiter.allow():
+            self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "request limit reached"})
+            return
+        try:
+            payload = self._read_json()
+            if parsed.path == "/api/trading/config":
+                state = self.trading_engine.configure(
+                    selected=list(payload.get("selected") or []),
+                    cash_limit=int(payload.get("cash_limit", 20_000)),
+                    enabled=payload.get("enabled"),
+                    emergency_stop=payload.get("emergency_stop"),
+                )
+                result = {"ok": True, "state": state, "preview": self.trading_engine.preview()}
+            else:
+                sessions = _open_market_sessions()
+                if not sessions:
+                    result = {
+                        "ok": True,
+                        "state": self.trading_engine.status(),
+                        "skipped": True,
+                        "message": "目前非台股或美股正常交易時段；設定已保留，下一個市場開盤後才會執行模擬撮合",
+                    }
+                else:
+                    state = None
+                    for market, session_date in sessions:
+                        state = self.trading_engine.run_cycle(session_date=session_date, markets={market})
+                    result = {"ok": True, "state": state, "skipped": False}
+        except (TypeError, ValueError) as exc:
+            self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+        except Exception as exc:
+            LOG.exception("trading request failed: %s", exc)
+            self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "trading service temporarily unavailable"})
+        else:
+            self._send(HTTPStatus.OK, result)
+
+
+def _paper_monitor(handler: type[LiveRequestHandler], stop: threading.Event) -> None:
+    interval = max(15.0, float(os.getenv("PAPER_TRADING_INTERVAL_SECONDS", "60")))
+    while not stop.wait(interval):
+        for market, session_date in _open_market_sessions():
+            try:
+                handler.trading_engine.run_cycle(session_date=session_date, markets={market})
+            except Exception:
+                LOG.exception("%s paper trading monitor cycle failed", market)
+
 
 def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8080"))
     server = ThreadingHTTPServer((host, port), LiveRequestHandler)
+    monitor_stop = threading.Event()
+    monitor = threading.Thread(
+        target=_paper_monitor,
+        args=(LiveRequestHandler, monitor_stop),
+        name="paper-trading-monitor",
+        daemon=True,
+    )
+    monitor.start()
     LOG.info("Wude live API listening on %s:%s", host, port)
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        monitor_stop.set()
 
 
 if __name__ == "__main__":

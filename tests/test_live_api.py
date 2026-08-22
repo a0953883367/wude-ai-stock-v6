@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 from email.message import Message
 from types import SimpleNamespace
 
@@ -10,6 +11,7 @@ from live_api import (
     MinuteRateLimiter,
     configure_fubon_certificate,
     normalize_symbol,
+    _open_market_sessions,
 )
 
 
@@ -108,6 +110,13 @@ def test_rate_limiter_resets_after_one_minute():
     assert limiter.allow() is True
 
 
+def test_market_sessions_are_separated():
+    # 01:00 UTC is 09:00 Taipei and the previous evening in New York.
+    assert _open_market_sessions(datetime(2026, 8, 24, 1, 0, tzinfo=timezone.utc)) == [("TW", "2026-08-24")]
+    # 14:00 UTC is 10:00 New York during daylight-saving time.
+    assert _open_market_sessions(datetime(2026, 8, 24, 14, 0, tzinfo=timezone.utc)) == [("US", "2026-08-24")]
+
+
 def test_owner_auth_accepts_trimmed_bearer_token(monkeypatch):
     monkeypatch.setenv("LIVE_ACCESS_TOKEN", "  owner-token\n")
     handler = _handler_with_headers(Authorization="  Bearer owner-token  ")
@@ -124,3 +133,12 @@ def test_owner_auth_rejects_wrong_token(monkeypatch):
     monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-token")
     handler = _handler_with_headers(X_Live_Token="wrong-token")
     assert handler._authorized() is False
+
+
+def test_public_read_never_counts_as_owner_auth(monkeypatch):
+    monkeypatch.delenv("LIVE_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("LIVE_TRUSTED_AUTH_HEADER", raising=False)
+    monkeypatch.setenv("LIVE_PUBLIC_READ", "1")
+    handler = _handler_with_headers()
+    assert handler._authorized() is True
+    assert handler._owner_authorized() is False
