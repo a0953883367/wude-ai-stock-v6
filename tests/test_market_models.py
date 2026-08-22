@@ -63,6 +63,24 @@ def test_tw_validation_rejects_even_one_session_date_mismatch():
     assert "法人資料交易日不一致" in result["tw_data_validation_issues"]
 
 
+def test_tw_validation_rejects_stale_or_undated_broker_branches():
+    stale = validate_taiwan_data({
+        "market": "TW", "tw_official_session_date": "2026-08-21",
+        "tw_official_price_available": True, "tw_price_unit": "TWD/shares",
+        "broker_available": True, "broker_date": "2026-08-20",
+    })
+    undated = validate_taiwan_data({
+        "market": "TW", "tw_official_session_date": "2026-08-21",
+        "tw_official_price_available": True, "tw_price_unit": "TWD/shares",
+        "broker_available": True,
+    })
+
+    assert stale["broker_available"] is False
+    assert "券商分點交易日不一致" in stale["tw_data_validation_issues"]
+    assert undated["broker_available"] is False
+    assert "券商分點缺日期" in undated["tw_data_validation_issues"]
+
+
 def test_tw_flow_without_official_session_is_not_ranked_as_current():
     result = validate_taiwan_data({
         "market": "TW", "institution_available": True,

@@ -195,10 +195,15 @@ def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict
             key: value for key, value in row.items()
             if key in fundamental_keys or key.startswith("revenue_")
         }
-        brokers[sid] = {
+        broker_snapshot = {
             key: value for key, value in row.items()
             if key.startswith(("broker_", "top_brokers_"))
         }
+        # Do not turn an empty/stale previous row into a seemingly available
+        # broker-branch record.  The live status counter and scoring must only
+        # see records that were actually fetched and dated.
+        if broker_snapshot.get("broker_available") and broker_snapshot.get("broker_date"):
+            brokers[sid] = broker_snapshot
     return institutions, credit, fundamentals, brokers
 
 
@@ -529,7 +534,10 @@ def main() -> int:
             "tw_official_fundamental_count": len(tw_official.get("fundamentals", {})),
             "tw_official_announcement_count": len(tw_official.get("announcements", {})),
             "financial_quality_count": len(financial_quality),
-            "broker_count": len(broker_branches),
+            "broker_count": sum(
+                1 for item in broker_branches.values()
+                if item.get("broker_available") and item.get("broker_date")
+            ),
             "us_short_volume_count": len(us_short_volume),
             "us_extended_hours_count": len(us_extended_hours),
             "us_sip_count": len(us_live),
