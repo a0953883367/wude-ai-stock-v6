@@ -1,4 +1,4 @@
-from tools.publish_friend_data import sanitize
+from tools.publish_friend_data import sanitize, sanitize_accuracy
 
 
 def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
@@ -20,3 +20,25 @@ def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
     assert result["score"] == 72.5
     assert result["timing"] == 64.0
     assert not ({"account", "inventory", "api_key", "certificate"} & result.keys())
+
+
+def test_friend_accuracy_only_contains_aggregate_metrics():
+    value = {
+        "methodology_version": 5,
+        "updated_at": "2026-08-22 20:00:00",
+        "immutable_rule": "固定後不覆寫",
+        "integrity": {"verified": 1},
+        "calibration": {"trading_days_collected": 2},
+        "groups": {
+            "TW_STOCK": {
+                "tracks": {"full_day": {"samples": 3}},
+                "top_k": {"5": {"tracks": {"full_day": {"samples": 2}}}},
+                "models": {"private": "omit"},
+            }
+        },
+        "recent": [{"symbol": "2330.TW", "prediction": "private-row"}],
+    }
+    result = sanitize_accuracy(value)
+    assert result["groups"]["TW_STOCK"]["tracks"]["full_day"]["samples"] == 3
+    assert "recent" not in result
+    assert "models" not in result["groups"]["TW_STOCK"]
