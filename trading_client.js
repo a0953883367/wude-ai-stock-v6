@@ -67,6 +67,39 @@
     symbol = normalize(symbol);
     return load().some(function (item) { return normalize(item.symbol) === symbol; });
   }
+  function pickerRows(rows, query, selectedRows) {
+    var term = String(query || '').trim().toUpperCase();
+    var selectedSymbols = (selectedRows || []).map(function (row) { return normalize(row.symbol); });
+    var seen = {};
+    var result = (Array.isArray(rows) ? rows : []).filter(function (row) {
+      var symbol = normalize(row && row.symbol);
+      if (!symbol || seen[symbol]) return false;
+      seen[symbol] = true;
+      if (!term) return true;
+      return symbol.indexOf(term) >= 0 || String(row.name || '').toUpperCase().indexOf(term) >= 0;
+    });
+    result.sort(function (a, b) {
+      var aSelected = selectedSymbols.indexOf(normalize(a.symbol)) >= 0 ? 1 : 0;
+      var bSelected = selectedSymbols.indexOf(normalize(b.symbol)) >= 0 ? 1 : 0;
+      return bSelected - aSelected;
+    });
+    return result.slice(0, 40);
+  }
+  function renderPicker() {
+    var box = root.document.getElementById('tradePicker');
+    if (!box) return;
+    var input = root.document.getElementById('tradeTickerSearch');
+    var rows = pickerRows((root.STATE && root.STATE.normalized) || [], input ? input.value : '', load());
+    if (!rows.length) {
+      box.innerHTML = '<div class="trade-empty">找不到股票。請先等待資料載入，或輸入正確的股票代號／名稱。</div>';
+      return;
+    }
+    box.innerHTML = rows.map(function (row) {
+      var active = selected(row.symbol);
+      var price = Number(row.price);
+      return '<button type="button" class="trade-pick trade-select'+(active?' selected':'')+'" data-trade-symbol="'+esc(row.symbol)+'" data-trade-name="'+esc(row.name||row.symbol)+'" data-trade-market="'+esc(row.market||'TW')+'"><b>'+(active?'✅ ':'＋ ')+esc(row.name||row.symbol)+'</b><span>'+esc(row.symbol)+(Number.isFinite(price)?'｜現價 '+esc(price):'')+'</span></button>';
+    }).join('');
+  }
   function refreshButtons() {
     var rows = load();
     root.document.querySelectorAll('[data-trade-symbol]').forEach(function (button) {
@@ -90,6 +123,7 @@
       ? '總上限 '+money(split.cash)+' 元｜預留 '+money(split.reserve)+' 元｜每檔上限約 '+money(split.perSymbol)+' 元'
       : '總資金硬上限20,000元；最多勾選3檔。';
     refreshButtons();
+    renderPicker();
   }
   function renderPreview(payload) {
     var box = root.document.getElementById('tradePreview');
@@ -188,16 +222,16 @@
         syncArmedSelection();
       } catch (error) { root.alert(error.message); }
     });
-    root.document.getElementById('openTrading').addEventListener('click', open);
     root.document.getElementById('tradeClose').addEventListener('click', close);
     root.document.getElementById('tradePreviewButton').addEventListener('click', preview);
     root.document.getElementById('tradeStartButton').addEventListener('click', start);
     root.document.getElementById('tradeStopButton').addEventListener('click', stop);
     root.document.getElementById('tradeCash').addEventListener('input', renderSelection);
+    root.document.getElementById('tradeTickerSearch').addEventListener('input', renderPicker);
     root.document.getElementById('tradingModal').addEventListener('click', function(event){if(event.target===this)close();});
     new MutationObserver(refreshButtons).observe(root.document.getElementById('results'),{childList:true,subtree:true});
     refreshButtons();
   }
   if (root.document) root.document.addEventListener('DOMContentLoaded', init);
-  return {HARD_CAP:HARD_CAP,MAX_SELECTIONS:MAX_SELECTIONS,normalize:normalize,load:load,toggle:toggle,allocation:allocation,selected:selected};
+  return {HARD_CAP:HARD_CAP,MAX_SELECTIONS:MAX_SELECTIONS,normalize:normalize,load:load,toggle:toggle,allocation:allocation,selected:selected,pickerRows:pickerRows,open:open};
 }));
