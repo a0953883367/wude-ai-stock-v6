@@ -66,6 +66,27 @@ def sanitize(row):
     }
 
 
+def sanitize_accuracy(value):
+    """Publish aggregate verification only; never expose owner-side records."""
+    if not isinstance(value, dict):
+        return {}
+    groups = {}
+    for key in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
+        source = value.get("groups", {}).get(key, {})
+        groups[key] = {
+            "tracks": source.get("tracks", {}),
+            "top_k": source.get("top_k", {}),
+        }
+    return {
+        "methodology_version": value.get("methodology_version"),
+        "updated_at": value.get("updated_at"),
+        "immutable_rule": value.get("immutable_rule"),
+        "integrity": value.get("integrity", {}),
+        "calibration": value.get("calibration", {}),
+        "groups": groups,
+    }
+
+
 def main():
     site_url = os.getenv("FRIEND_SITE_URL", "").strip()
     for prefix in ("網址：", "網址:", "URL：", "URL:"):
@@ -85,8 +106,13 @@ def main():
     if not isinstance(rows, list) or not rows:
         raise RuntimeError("reports/all_analysis.json has no publishable rows")
     stocks = [sanitize(row) for row in rows if isinstance(row, dict)]
+    try:
+        accuracy = json.loads(Path("reports/accuracy.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, TypeError):
+        accuracy = {}
     payload = json.dumps({
         "stocks": stocks,
+        "accuracy": sanitize_accuracy(accuracy),
         "updated": source.get("updated_at", "等待更新"),
         "version": "AI股票助理・朋友版",
     }, ensure_ascii=False).encode("utf-8")
