@@ -145,6 +145,15 @@ def _level_total(levels: Any) -> int | None:
     return int(total) if found else None
 
 
+def _first_level_price(levels: Any) -> float | None:
+    if not isinstance(levels, (list, tuple)) or not levels:
+        return None
+    try:
+        return _number(_to_dict(levels[0]).get("price"))
+    except (TypeError, ValueError):
+        return None
+
+
 def parse_fubon_quote(payload: Any) -> dict[str, Any]:
     obj = _quote_data(payload)
     last_price = _number(obj.get("lastPrice", obj.get("closePrice")))
@@ -154,6 +163,8 @@ def parse_fubon_quote(payload: Any) -> dict[str, Any]:
         return {}
     return {
         "lastPrice": last_price,
+        "bidPrice": _first_level_price(obj.get("bids")),
+        "askPrice": _first_level_price(obj.get("asks")),
         "bidTotal": bid_total,
         "askTotal": ask_total,
         "fetchedAt": datetime.now(TAIPEI).isoformat(timespec="seconds"),

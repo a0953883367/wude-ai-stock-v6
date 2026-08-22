@@ -8,6 +8,9 @@
   var STORAGE_KEY = 'wude-trading-selection-v1';
   var MAX_SELECTIONS = 3;
   var HARD_CAP = 20000;
+  var LIVE_ARM_PHRASE = '我確認使用真錢下單';
+  var currentMode = 'paper';
+  var liveArmed = false;
 
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
@@ -99,11 +102,12 @@
         '分配 '+money(plan.budget)+' 元｜試算 '+esc(plan.quantity)+' 股｜'+esc(plan.currency)+' '+esc(plan.price)+'<br><span>'+esc(reason)+'</span></div>';
     }).join('') : '<div class="trade-empty">尚無預覽資料。</div>';
   }
-  async function submitConfig(enabled, emergency) {
+  async function submitConfig(enabled, emergency, confirmation) {
     var rows = load(), cash = Math.min(HARD_CAP, Math.max(1000, Number(root.document.getElementById('tradeCash').value) || HARD_CAP));
     var body = {selected:rows.map(function(row){return row.symbol;}),cash_limit:cash};
     if (enabled !== undefined) body.enabled = enabled;
     if (emergency !== undefined) body.emergency_stop = emergency;
+    if (confirmation) body.live_confirmation = confirmation;
     return request('/api/trading/config',{method:'POST',body:JSON.stringify(body)});
   }
   function message(text, bad) {
@@ -117,17 +121,39 @@
     catch (error) { message(error.message, true); }
   }
   async function start() {
-    if (!load().length) { message('請先勾選至少1檔股票。', true); return; }
+    if (currentMode !== 'live' && !load().length) { message('請先勾選至少1檔股票。', true); return; }
     try {
-      message('正在啟用模擬監控…');
-      var payload = await submitConfig(true, false); renderPreview(payload);
+      var confirmation;
+      if (currentMode === 'live') {
+        if (!root.confirm('這會開啟富邦真實下單。總資金最多20,000元，勾選股票通過條件後會直接送出買單，成交後也會自動賣出。確定開啟嗎？')) return;
+        confirmation = LIVE_ARM_PHRASE;
+        message('正在開啟富邦真實下單總開關…');
+      } else message('正在啟用模擬監控…');
+      var payload = await submitConfig(true, false, confirmation); renderPreview(payload);
+      liveArmed = currentMode === 'live';
       var run = await request('/api/trading/run',{method:'POST',body:'{}'});
-      message(run.message || '模擬監控已啟用；真實委託仍為0筆。');
+      message(run.message || (currentMode === 'live'
+        ? '🔴 真實下單已開啟；現在勾選股票，合格時會直接送到富邦。'
+        : '模擬監控已啟用；真實委託仍為0筆。'));
     } catch (error) { message(error.message, true); }
   }
   async function stop() {
-    try { await submitConfig(false, true); message('緊急停止已開啟；不會新增任何委託。'); }
+    try {
+      await submitConfig(false, true); liveArmed=false;
+      await request('/api/trading/run',{method:'POST',body:'{}'});
+      message('緊急停止已開啟；不會新增委託，待成交委託已要求取消。');
+    }
     catch (error) { message(error.message, true); }
+  }
+  async function syncArmedSelection() {
+    if (!liveArmed || currentMode !== 'live') return;
+    try {
+      message('正在把勾選清單送入富邦交易檢查…');
+      var payload = await submitConfig();
+      renderPreview(payload);
+      var run = await request('/api/trading/run',{method:'POST',body:'{}'});
+      message(run.message || '已完成真單檢查；合格標的已送出限價委託，不合格標的保留現金。');
+    } catch (error) { message(error.message, true); }
   }
   async function open() {
     renderSelection();
@@ -135,8 +161,19 @@
     root.document.body.style.overflow = 'hidden';
     try {
       var payload = await request('/api/trading/status');
+      currentMode = payload.mode === 'live' ? 'live' : 'paper';
+      liveArmed = currentMode === 'live' && Boolean(payload.enabled) && !payload.emergency_stop;
       var positions = Object.keys(payload.positions || {}).length;
-      message('目前：模擬模式｜持倉 '+positions+' 檔｜真實委託 '+Number(payload.real_orders_sent || 0)+' 筆');
+      var startButton=root.document.getElementById('tradeStartButton');
+      var warning=root.document.getElementById('tradeWarning');
+      if(currentMode==='live'){
+        startButton.textContent=liveArmed?'🔴 真實下單已開啟':'🔴 開啟真實下單';
+        warning.innerHTML='<b>富邦真實下單模式</b><br>先按一次總開關，之後勾選股票；只有通過進場與風控條件才會送出限價買單，成交後自動監控賣出。';
+      }else{
+        startButton.textContent='▶ 啟用模擬監控';
+        warning.innerHTML='<b>目前只開放模擬模式</b><br>真實資金硬上限為20,000元；在成交核對、持倉與緊急停止完成驗證前，不會送出富邦真實委託。美股真單尚待券商官方介面確認。';
+      }
+      message('目前：'+(currentMode==='live'?'富邦真實模式':'模擬模式')+'｜持倉 '+positions+' 檔｜真實委託 '+Number(payload.real_orders_sent || 0)+' 筆'+(payload.broker_lock_reason?'｜鎖定：'+payload.broker_lock_reason:''));
     } catch (error) { message(error.message, true); }
   }
   function close() { root.document.getElementById('tradingModal').classList.remove('open'); root.document.body.style.overflow=''; }
@@ -148,6 +185,7 @@
       try {
         toggle({symbol:button.getAttribute('data-trade-symbol'),name:button.getAttribute('data-trade-name'),market:button.getAttribute('data-trade-market')});
         renderSelection();
+        syncArmedSelection();
       } catch (error) { root.alert(error.message); }
     });
     root.document.getElementById('openTrading').addEventListener('click', open);

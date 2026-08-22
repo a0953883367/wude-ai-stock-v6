@@ -28,6 +28,8 @@ from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
 from fubon_runner import _login_fubon, parse_fubon_quote
+from fubon_broker import FubonTradingSession
+from live_trade_engine import LiveTradingEngine
 from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 
@@ -40,7 +42,9 @@ def _trading_state_path() -> Path:
     configured = os.getenv("TRADE_STATE_PATH", "").strip()
     if configured:
         return Path(configured)
-    return Path("/data/paper_trading_state.json") if Path("/data").is_dir() else Path("/tmp/wude-paper_trading_state.json")
+    live = os.getenv("TRADING_MODE", "paper").strip().lower() == "live"
+    filename = "live_trading_state.json" if live else "paper_trading_state.json"
+    return Path("/data") / filename if Path("/data").is_dir() else Path("/tmp") / f"wude-{filename}"
 
 
 def _paper_engine(service: "LiveDataService") -> PaperTradingEngine:
@@ -49,6 +53,24 @@ def _paper_engine(service: "LiveDataService") -> PaperTradingEngine:
         JsonTradingStateStore(_trading_state_path(), initial_cash=20_000),
         report_path=root / "reports" / "all_analysis.json",
         quote_fetcher=lambda symbol, market: service.fetch(symbol, market, include_options=False),
+    )
+
+
+def _trading_engine(service: "LiveDataService") -> PaperTradingEngine:
+    if os.getenv("TRADING_MODE", "paper").strip().lower() != "live":
+        return _paper_engine(service)
+
+    def broker_factory() -> FubonTradingSession:
+        configure_fubon_certificate()
+        return FubonTradingSession.login()
+
+    root = Path(__file__).resolve().parent
+    return LiveTradingEngine(
+        JsonTradingStateStore(_trading_state_path(), initial_cash=20_000, mode="live"),
+        report_path=str(root / "reports" / "all_analysis.json"),
+        quote_fetcher=lambda symbol, market: service.fetch(symbol, market, include_options=False),
+        broker_factory=broker_factory,
+        stale_order_seconds=int(os.getenv("LIVE_ORDER_TIMEOUT_SECONDS", "180")),
     )
 
 
@@ -265,7 +287,7 @@ class MinuteRateLimiter:
 
 class LiveRequestHandler(BaseHTTPRequestHandler):
     service = LiveDataService()
-    trading_engine = _paper_engine(service)
+    trading_engine = _trading_engine(service)
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
 
     def log_message(self, fmt: str, *args: Any) -> None:
@@ -385,27 +407,35 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         try:
             payload = self._read_json()
             if parsed.path == "/api/trading/config":
+                config_args: dict[str, Any] = {
+                    "selected": list(payload.get("selected") or []),
+                    "cash_limit": int(payload.get("cash_limit", 20_000)),
+                    "enabled": payload.get("enabled"),
+                    "emergency_stop": payload.get("emergency_stop"),
+                }
+                if isinstance(self.trading_engine, LiveTradingEngine):
+                    config_args["live_confirmation"] = payload.get("live_confirmation")
                 state = self.trading_engine.configure(
-                    selected=list(payload.get("selected") or []),
-                    cash_limit=int(payload.get("cash_limit", 20_000)),
-                    enabled=payload.get("enabled"),
-                    emergency_stop=payload.get("emergency_stop"),
+                    **config_args,
                 )
                 result = {"ok": True, "state": state, "preview": self.trading_engine.preview()}
             else:
                 sessions = _open_market_sessions()
                 if not sessions:
+                    mode_label = "真實下單" if isinstance(self.trading_engine, LiveTradingEngine) else "模擬撮合"
                     result = {
                         "ok": True,
                         "state": self.trading_engine.status(),
                         "skipped": True,
-                        "message": "目前非台股或美股正常交易時段；設定已保留，下一個市場開盤後才會執行模擬撮合",
+                        "message": f"目前非台股或美股正常交易時段；設定已保留，下一個市場開盤後才會執行{mode_label}",
                     }
                 else:
                     state = None
                     for market, session_date in sessions:
                         state = self.trading_engine.run_cycle(session_date=session_date, markets={market})
                     result = {"ok": True, "state": state, "skipped": False}
+        except PermissionError as exc:
+            self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": str(exc)})
         except (TypeError, ValueError) as exc:
             self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
         except Exception as exc:
@@ -415,14 +445,17 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, result)
 
 
-def _paper_monitor(handler: type[LiveRequestHandler], stop: threading.Event) -> None:
-    interval = max(15.0, float(os.getenv("PAPER_TRADING_INTERVAL_SECONDS", "60")))
+def _trading_monitor(handler: type[LiveRequestHandler], stop: threading.Event) -> None:
+    interval = max(15.0, float(os.getenv(
+        "TRADING_INTERVAL_SECONDS",
+        os.getenv("PAPER_TRADING_INTERVAL_SECONDS", "60"),
+    )))
     while not stop.wait(interval):
         for market, session_date in _open_market_sessions():
             try:
                 handler.trading_engine.run_cycle(session_date=session_date, markets={market})
             except Exception:
-                LOG.exception("%s paper trading monitor cycle failed", market)
+                LOG.exception("%s trading monitor cycle failed", market)
 
 
 def main() -> None:
@@ -432,9 +465,9 @@ def main() -> None:
     server = ThreadingHTTPServer((host, port), LiveRequestHandler)
     monitor_stop = threading.Event()
     monitor = threading.Thread(
-        target=_paper_monitor,
+        target=_trading_monitor,
         args=(LiveRequestHandler, monitor_stop),
-        name="paper-trading-monitor",
+        name="trading-monitor",
         daemon=True,
     )
     monitor.start()

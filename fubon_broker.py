@@ -18,6 +18,7 @@ from fubon_credentials import load_fubon_credentials
 
 
 HARD_CAP_TWD = 20_000
+TERMINAL_ORDER_STATUSES = {30, 40, 50, 90}
 
 
 def _rows(value: Any) -> list[Any]:
@@ -31,6 +32,48 @@ def _value(value: Any, name: str, default: Any = None) -> Any:
     if isinstance(value, dict):
         return value.get(name, default)
     return getattr(value, name, default)
+
+
+def _enum_text(value: Any) -> str:
+    if value is None:
+        return ""
+    name = getattr(value, "name", None)
+    return str(name if name is not None else value).split(".")[-1]
+
+
+def normalize_order_result(value: Any) -> dict[str, Any]:
+    """Convert a Fubon OrderResult into JSON-safe fields used by the engine."""
+    status = int(_value(value, "status", 0) or 0)
+    side_text = _enum_text(_value(value, "buy_sell", "")).upper()
+    side = "BUY" if "BUY" in side_text else "SELL" if "SELL" in side_text else side_text
+    order_no = str(_value(value, "order_no", "") or "")
+    seq_no = str(_value(value, "seq_no", "") or "")
+    return {
+        "order_no": order_no,
+        "seq_no": seq_no,
+        "broker_id": order_no or seq_no,
+        "symbol": str(_value(value, "stock_no", "") or ""),
+        "side": side,
+        "market_type": _enum_text(_value(value, "market_type", "")),
+        "price": float(_value(value, "price", 0) or 0),
+        "after_price": float(_value(value, "after_price", _value(value, "price", 0)) or 0),
+        "quantity": int(_value(value, "quantity", 0) or 0),
+        "after_qty": int(_value(value, "after_qty", 0) or 0),
+        "filled_qty": int(_value(value, "filled_qty", 0) or 0),
+        "filled_money": float(_value(value, "filled_money", 0) or 0),
+        "status_code": status,
+        "terminal": status in TERMINAL_ORDER_STATUSES,
+        "failed": status == 90,
+        "last_time": str(_value(value, "last_time", "") or ""),
+        "error": str(_value(value, "error_message", "") or ""),
+        "user_def": str(_value(value, "user_def", "") or ""),
+    }
+
+
+def normalize_order_response(response: Any) -> list[dict[str, Any]]:
+    if _value(response, "is_success", True) is False:
+        raise RuntimeError(f"富邦委託操作失敗：{_value(response, 'message', 'unknown error')}")
+    return [normalize_order_result(row) for row in _rows(response)]
 
 
 def split_market_quantities(quantity: int) -> list[tuple[str, int]]:
@@ -57,6 +100,8 @@ def live_order_unlock_reason(environ: dict[str, str] | None = None) -> str | Non
     state_path = str(env.get("TRADE_STATE_PATH", "")).strip()
     if not state_path.startswith("/data/"):
         return "尚未掛載永久交易狀態磁碟"
+    if "paper" in os.path.basename(state_path).lower():
+        return "真單與模擬交易必須使用不同狀態檔"
     expected = str(env.get("LIVE_TRADING_CONFIRMATION", "")).strip()
     supplied = str(env.get("LIVE_TRADING_CONFIRMATION_INPUT", "")).strip()
     if not expected or not supplied or not hmac.compare_digest(expected, supplied):
@@ -109,12 +154,15 @@ class FubonTradingSession:
         for row in _rows(response):
             result.append({
                 "symbol": str(_value(row, "stock_no", _value(row, "symbol", ""))),
-                "quantity": int(_value(row, "today_qty", _value(row, "qty", 0)) or 0),
+                # Sell safety must use the broker's actually tradable quantity,
+                # not merely today's inventory balance.
+                "quantity": int(_value(row, "tradable_qty", _value(row, "today_qty", _value(row, "qty", 0))) or 0),
+                "today_quantity": int(_value(row, "today_qty", _value(row, "qty", 0)) or 0),
                 "raw": row,
             })
         return result
 
-    def place_limit_order(self, *, symbol: str, side: str, quantity: int, price: float) -> list[Any]:
+    def place_limit_order(self, *, symbol: str, side: str, quantity: int, price: float) -> list[dict[str, Any]]:
         reason = live_order_unlock_reason()
         if reason:
             raise PermissionError(f"真實下單已鎖定：{reason}")
@@ -134,7 +182,7 @@ class FubonTradingSession:
         from fubon_neo.sdk import Order  # type: ignore[import-not-found]
 
         action = BSAction.Buy if side.upper() == "BUY" else BSAction.Sell
-        results: list[Any] = []
+        results: list[dict[str, Any]] = []
         for market_name, part_quantity in split_market_quantities(quantity):
             market_type = MarketType.Common if market_name == "Common" else MarketType.IntradayOdd
             order = Order(
@@ -151,11 +199,30 @@ class FubonTradingSession:
             response = self.sdk.stock.place_order(self.account, order)
             if _value(response, "is_success", True) is False:
                 raise RuntimeError(f"富邦拒絕委託：{_value(response, 'message', 'unknown error')}")
-            results.append(response)
+            normalized = normalize_order_response(response)
+            if not normalized or not any(item.get("broker_id") for item in normalized):
+                raise RuntimeError("富邦已接受請求，但沒有回傳可核對的委託編號")
+            results.extend(normalized)
         return results
 
-    def order_results(self) -> list[Any]:
+    def order_results(self) -> list[dict[str, Any]]:
         response = self.sdk.stock.get_order_results(self.account)
         if _value(response, "is_success", True) is False:
             raise RuntimeError(f"無法核對委託成交：{_value(response, 'message', 'unknown error')}")
-        return _rows(response)
+        return [normalize_order_result(row) for row in _rows(response)]
+
+    def cancel_order(self, order_no: str) -> list[dict[str, Any]]:
+        reason = live_order_unlock_reason()
+        if reason:
+            raise PermissionError(f"真實下單已鎖定：{reason}")
+        order_no = str(order_no or "").strip()
+        if not order_no:
+            raise ValueError("缺少富邦委託書號")
+        response = self.sdk.stock.get_order_results(self.account)
+        if _value(response, "is_success", True) is False:
+            raise RuntimeError(f"刪單前無法查詢委託：{_value(response, 'message', 'unknown error')}")
+        target = next((row for row in _rows(response) if str(_value(row, "order_no", "")) == order_no), None)
+        if target is None:
+            raise RuntimeError("找不到要取消的富邦委託")
+        result = self.sdk.stock.cancel_order(self.account, target)
+        return normalize_order_response(result)

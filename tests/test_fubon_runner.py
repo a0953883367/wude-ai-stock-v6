@@ -13,6 +13,8 @@ def test_parse_direct_fubon_quote_sums_five_levels():
     result = parse_fubon_quote(payload)
 
     assert result["lastPrice"] == 1060
+    assert result["bidPrice"] == 1055
+    assert result["askPrice"] == 1060
     assert result["bidTotal"] == 180
     assert result["askTotal"] == 100
     assert result["fetchedAt"].endswith("+08:00")

@@ -91,10 +91,12 @@ class TradingPolicy:
     max_cash_limit: int = 20_000
 
 
-def default_state(cash_limit: int = 20_000) -> dict[str, Any]:
+def default_state(cash_limit: int = 20_000, *, mode: str = "paper") -> dict[str, Any]:
+    if mode not in {"paper", "live"}:
+        raise ValueError("交易模式只允許 paper 或 live")
     return {
-        "version": 1,
-        "mode": "paper",
+        "version": 2,
+        "mode": mode,
         "enabled": False,
         "emergency_stop": False,
         "cash_limit": int(cash_limit),
@@ -114,20 +116,29 @@ def default_state(cash_limit: int = 20_000) -> dict[str, Any]:
 class JsonTradingStateStore:
     """Atomic JSON state store suitable for a single Railway replica."""
 
-    def __init__(self, path: str | Path, *, initial_cash: int = 20_000) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        initial_cash: int = 20_000,
+        mode: str = "paper",
+    ) -> None:
+        if mode not in {"paper", "live"}:
+            raise ValueError("交易模式只允許 paper 或 live")
         self.path = Path(path)
         self.initial_cash = initial_cash
+        self.mode = mode
         self.lock = threading.RLock()
 
     def load(self) -> dict[str, Any]:
         with self.lock:
             try:
                 data = json.loads(self.path.read_text(encoding="utf-8"))
-                if isinstance(data, dict) and data.get("mode") == "paper":
+                if isinstance(data, dict) and data.get("mode") == self.mode:
                     return data
             except (OSError, ValueError, TypeError):
                 pass
-            return default_state(self.initial_cash)
+            return default_state(self.initial_cash, mode=self.mode)
 
     def save(self, state: dict[str, Any]) -> dict[str, Any]:
         with self.lock:
