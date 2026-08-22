@@ -30,8 +30,10 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .group{font-size:18px;font-weight:900;margin:22px 3px 10px}.empty,.error{padding:18px;border-radius:15px;background:#172033;color:#cbd5e1;line-height:1.7}.error{background:#3b1720;color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:28px 0 42px;line-height:1.8}
 .live-button{width:100%;margin-top:13px;background:#164e63;border-color:#22d3ee;color:#cffafe}.live-result{margin-top:10px;background:#172554;border:1px solid #3b82f6;border-radius:13px;padding:12px;line-height:1.7;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);padding:16px;overflow:auto}.modal.open{display:block}.modal-card{max-width:620px;margin:18px auto;background:#111c2e;border:1px solid #334155;border-radius:22px;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal-title{font-size:21px;font-weight:900}.modal-close{width:46px;padding:10px}.modal-output{margin-top:13px}.live-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.live-refresh{background:#166534;border-color:#4ade80}.live-toggle{background:#164e63;border-color:#22d3ee}.live-toggle.off{background:#334155;border-color:#64748b}.live-connection{margin-top:8px;color:#7dd3fc;font-size:12px;line-height:1.5;text-align:center}.auto-note{margin-top:12px;padding:11px 13px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#bbf7d0;font-size:13px;line-height:1.6}.auto-data{margin-top:12px;border:1px solid #334155;border-radius:13px;background:#0d1727}.auto-data summary{padding:12px;color:#7dd3fc;font-weight:800;cursor:pointer}.auto-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 12px}.auto-item{background:#172033;border-radius:10px;padding:9px}.auto-item span{display:block;color:var(--muted);font-size:11px}.auto-item b{display:block;margin-top:3px}.muted{color:var(--muted)}
 .capital-test{margin-top:13px;border-radius:14px;padding:13px;line-height:1.65;font-size:13px}.capital-test.eligible{background:#0b2c22;border:1px solid #22c55e;color:#dcfce7}.capital-test.blocked{background:#2a1720;border:1px solid #fb7185;color:#ffe4e6}.capital-test-title{font-size:16px;font-weight:900}.capital-test-meta{margin-top:5px;color:#cbd5e1}.capital-test-reasons{margin-top:6px;color:#fda4af}
+.million-grid{display:grid;grid-template-columns:1fr;gap:14px}.million-market{background:#0f1b2d;border:1px solid #334155;border-radius:18px;padding:15px}.million-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.million-title{font-size:20px;font-weight:900}.million-progress{color:#7dd3fc;font-size:13px;font-weight:850;margin-top:4px}.million-total{text-align:right;font-size:18px;font-weight:900}.million-note{margin:12px 0;padding:11px;border-radius:12px;background:#172033;color:#cbd5e1;font-size:12px;line-height:1.65}.million-table-wrap{overflow:auto}.million-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px}.million-table th,.million-table td{padding:9px 7px;border-bottom:1px solid #263244;text-align:right}.million-table th:first-child,.million-table td:first-child{text-align:left}.million-strategies{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}.million-strategy{background:#111827;border:1px solid #263244;border-radius:13px;padding:11px}.million-strategy h3{margin:0 0 7px;font-size:15px}.million-picks{color:#cbd5e1;font-size:12px;line-height:1.75}.million-pick-observe{color:#facc15}.million-day-details{margin-top:10px;border:1px solid #263244;border-radius:12px;background:#0d1727}.million-day-details summary{cursor:pointer;padding:10px;color:#7dd3fc;font-weight:800}.million-empty{color:#94a3b8;font-size:13px;line-height:1.7;padding:8px 0}.million-policy{background:#10261e;border:1px solid #24553d;border-radius:14px;padding:13px;margin-bottom:14px;color:#d1fae5;font-size:13px;line-height:1.7}
 .accuracy-entry{width:100%;margin:10px 0 15px;background:#155e75;border-color:#22d3ee;color:#ecfeff}.accuracy-note{margin:12px 0;padding:12px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#d1fae5;font-size:13px;line-height:1.65}.accuracy-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.accuracy-card{background:#172033;border:1px solid #334155;border-radius:14px;padding:12px}.accuracy-card h3{font-size:16px;margin:0 0 8px}.accuracy-line{font-size:12px;line-height:1.65;color:#cbd5e1}.accuracy-line b{color:#4ade80}.accuracy-recent{margin-top:15px}.accuracy-row{background:#0d1727;border:1px solid #26364d;border-radius:13px;padding:11px;margin:8px 0}.accuracy-row-head{display:flex;justify-content:space-between;gap:8px;font-weight:850}.accuracy-row-meta{color:#94a3b8;font-size:11px;margin-top:5px;line-height:1.5}.accuracy-row-result{font-size:13px;margin-top:7px;line-height:1.55}.accuracy-ok{color:#4ade80}.accuracy-bad{color:#fb7185}.accuracy-wait{color:#facc15}
 @media(min-width:640px){.buttons{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:700px){.million-grid,.million-strategies{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}.accuracy-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -48,6 +50,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-view="ETF">📊 ETF 排行</button>
     <button data-view="WATCH">⭐ 我的清單</button>
     <button data-view="TEST">🧪 2萬元實測</button>
+    <button data-view="MILLION">💰 100萬元5日試走</button>
   </div>
 
   <div class="nav-label">⚛️ 量子概念股專區</div>
@@ -131,7 +134,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
@@ -474,9 +477,60 @@ function showOptical(group){
   var placeholders=missing.map(function(item,index){return opticalPlaceholder(item,matched.length+index);}).join('');
   document.getElementById('results').innerHTML=notice+cards+placeholders;
 }
+function millionMoney(value){
+  var amount=Number(value||0),sign=amount>0?'+':'';
+  return sign+Math.round(amount).toLocaleString('zh-TW')+' 元';
+}
+function millionProfitClass(value){return Number(value||0)>=0?'up':'down';}
+function millionPendingStrategy(title,picks){
+  picks=Array.isArray(picks)?picks:[];
+  return '<div class="million-strategy"><h3>'+esc(title)+'｜'+picks.length+'檔 × 5萬元</h3><div class="million-picks">'+(picks.length?picks.map(function(pick){
+    var qualified=Number(pick.rank_tier)===2;
+    return '<div class="'+(qualified?'':'million-pick-observe')+'">'+esc(pick.rank)+'. '+esc(pick.name)+'（'+esc(marketCode(pick.symbol))+'）｜排名分 '+esc(number(pick.ranking_score,1))+(qualified?'':'｜觀察層也納入純排名試驗')+'</div>';
+  }).join(''):'等待完成交易日排名快照')+'</div></div>';
+}
+function millionPositionDetails(day){
+  var strategies=day.strategies||{},definitions=[['overall','綜合排名'],['short','短線排名']];
+  return definitions.map(function(definition){
+    var result=strategies[definition[0]]||{},positions=Array.isArray(result.positions)?result.positions:[];
+    var rows=positions.map(function(position){
+      var available=position.data_available===true;
+      return '<tr><td>'+esc(position.rank)+'. '+esc(position.name)+'（'+esc(marketCode(position.symbol))+'）</td><td>'+esc(available?number(position.open_price,4):'缺資料')+'</td><td>'+esc(available?number(position.sell_price,4):'缺資料')+'</td><td class="'+millionProfitClass(position.gross_profit_twd)+'">'+esc(available?millionMoney(position.gross_profit_twd):'0 元')+'</td></tr>';
+    }).join('');
+    return '<div class="million-strategy"><h3>'+esc(definition[1])+'｜'+millionMoney(result.gross_profit_twd)+'</h3><div class="million-table-wrap"><table class="million-table"><thead><tr><th>標的</th><th>開盤買入</th><th>收盤賣出</th><th>損益</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }).join('');
+}
+function millionMarketHtml(market){
+  market=market||{};var days=Array.isArray(market.days)?market.days:[],cumulative=0;
+  var dayRows=days.map(function(day){
+    cumulative+=Number(day.gross_profit_twd||0);
+    var strategies=day.strategies||{},overall=strategies.overall||{},short=strategies.short||{};
+    return '<tr><td>第'+esc(day.day)+'日｜'+esc(day.session_date)+'</td><td class="'+millionProfitClass(overall.gross_profit_twd)+'">'+esc(millionMoney(overall.gross_profit_twd))+'</td><td class="'+millionProfitClass(short.gross_profit_twd)+'">'+esc(millionMoney(short.gross_profit_twd))+'</td><td class="'+millionProfitClass(day.gross_profit_twd)+'">'+esc(millionMoney(day.gross_profit_twd))+'</td><td class="'+millionProfitClass(cumulative)+'">'+esc(millionMoney(cumulative))+'</td></tr>';
+  }).join('');
+  var details=days.map(function(day){return '<details class="million-day-details"><summary>查看第'+esc(day.day)+'日20筆模擬買賣明細</summary><div class="million-strategies">'+millionPositionDetails(day)+'</div></details>';}).join('');
+  var pending=market.pending||{},pendingStrategies=pending.strategies||{};
+  var pendingHtml=market.status==='complete'
+    ?'<div class="million-empty">五個交易日已完成，不再新增部位。</div>'
+    :'<div class="million-note">下一次模擬買進使用 '+esc(pending.signal_session_date||'等待中')+' 的完成排名快照；下一交易日開盤買進、收盤價代理收盤前賣出。</div><div class="million-strategies">'+millionPendingStrategy('綜合排名前10名',pendingStrategies.overall)+millionPendingStrategy('短線排名前10名',pendingStrategies.short)+'</div>';
+  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(market.label||market.market)+'｜100萬元</div><div class="million-progress">已完成 '+esc(market.completed_days||0)+' / '+esc(market.target_trading_days||5)+' 個交易日</div></div><div class="million-total '+millionProfitClass(market.cumulative_gross_profit_twd)+'">累計<br>'+esc(millionMoney(market.cumulative_gross_profit_twd))+'</div></div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>交易日</th><th>綜合前10</th><th>短線前10</th><th>當日合計</th><th>累計</th></tr></thead><tbody>'+(dayRows||'<tr><td>等待下週一開始</td><td>—</td><td>—</td><td>—</td><td>0 元</td></tr>')+'</tbody></table></div>'+details+'<div class="group">下一交易日名單</div>'+pendingHtml+'</section>';
+}
+function showMillionSimulation(){
+  STATE.view='MILLION';setActive('#marketButtons button','data-view','MILLION');clearOtherNav('#marketButtons button');
+  document.getElementById('title').textContent='💰 台股＋美股各100萬元｜5日自動試走';
+  var simulation=STATE.millionSimulation;
+  if(!simulation||!simulation.markets){
+    document.getElementById('status').textContent='模擬帳本會在下一次完成報告後自動建立';
+    document.getElementById('results').innerHTML='<div class="empty">已設定從2026-08-24開始。等待第一份收盤後排名快照，不會連接券商或送出真單。</div>';return;
+  }
+  var policy=simulation.policy||{};
+  document.getElementById('status').textContent='開始日 '+esc(policy.start_date||'2026-08-24')+'｜帳本更新 '+esc(simulation.updated_at||'等待中')+'｜純網頁影子交易';
+  var policyHtml='<div class="million-policy"><b>固定規則：</b>台股與美股各100萬元；綜合前10名各5萬元＋短線前10名各5萬元。同股重複視為兩個策略部位。使用前一個完成交易日排名，下一交易日開盤模擬買入，官方收盤價代理收盤前賣出，連續5個交易日。<br><b>目前顯示毛損益，尚未扣手續費、台股證交稅及美股匯差；全程不送券商訂單。</b></div>';
+  document.getElementById('results').innerHTML=policyHtml+'<div class="million-grid">'+millionMarketHtml(simulation.markets.TW)+millionMarketHtml(simulation.markets.US)+'</div>';
+}
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
   var map={TW:['🇹🇼 台股買進候選排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 買進／風控排名',STATE.etf]};
+  if(view==='MILLION'){showMillionSimulation();return;}
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
     document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
@@ -631,10 +685,11 @@ async function loadAll(){
       fetchJSON('quantum_watchlist.json').catch(function(){return null;}),
       fetchJSON('optical_watchlist.json').catch(function(){return null;}),
       fetchJSON('reports/all_analysis.json').catch(function(){return null;}),
-      fetchJSON('reports/fubon_live.json').catch(function(){return null;})
+      fetchJSON('reports/fubon_live.json').catch(function(){return null;}),
+      fetchJSON('reports/million_simulation.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.fubonQuotes={};
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.fubonQuotes={};
     if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
     if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
