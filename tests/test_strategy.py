@@ -564,12 +564,17 @@ def test_observation_and_blocked_rows_have_no_numeric_rank():
         assert row["mid_long_rank"] is None
 
 
-def test_tw_overall_rank_requires_actual_buy_conditions_after_forecast():
+def test_tw_buy_ranking_separates_setup_trigger_and_live_confirmation():
     ready = {
         "symbol": "READY.TW", "market": "TW", "type": "個股",
         "price": 100, "short_term_entry_low": 99, "short_term_entry_high": 101,
-        "short_term_eligible": True, "short_term_score": 82,
-        "entry_score": 80, "score": 76,
+        "short_term_stop": 96, "short_term_target1": 108, "short_term_rr": 2,
+        "short_term_eligible": True, "short_term_score": 72,
+        "entry_score": 65, "technical_score": 68, "score": 66,
+        "market_data_quality_score": 90,
+        "entry_data_coverage": 6, "entry_data_total": 6,
+        "daily_volume_ratio": .9, "rsi": 58, "breakdown20": False,
+        "news_penalty": 0,
         "next_session_direction": "📈 看漲", "next_session_confidence": 70,
         "next_session_data_quality": 90, "next_session_signal_level": "RESEARCH",
         "market_contract_valid": True, "trade_guard_blocked": False,
@@ -577,7 +582,7 @@ def test_tw_overall_rank_requires_actual_buy_conditions_after_forecast():
         "short_term_rank_tier": 2, "short_term_ranking_score": 82,
         "mid_long_rank_tier": 1, "mid_long_ranking_score": 70,
     }
-    outside_zone = dict(ready, symbol="WAIT.TW", price=105, score=90)
+    outside_zone = dict(ready, symbol="WAIT.TW", price=103, score=90)
     abstain = dict(
         ready, symbol="ABSTAIN.TW", score=95,
         next_session_direction="⚪ 棄權", next_session_signal_level="ABSTAIN",
@@ -585,13 +590,42 @@ def test_tw_overall_rank_requires_actual_buy_conditions_after_forecast():
 
     ranked = apply_tw_buy_candidate_ranking([outside_zone, abstain, ready])
 
-    assert ranked[0]["symbol"] == "READY.TW"
+    assert ranked[0]["symbol"] == "WAIT.TW"
     assert ready["buy_candidate_eligible"] is True
-    assert ready["overall_rank"] == 1
-    assert outside_zone["overall_rank"] is None
-    assert abstain["overall_rank"] is None
-    assert "現價尚未進入買進區" in outside_zone["buy_candidate_reasons"]
-    assert "隔日模型尚未確認看漲" in abstain["buy_candidate_reasons"]
+    assert ready["buy_setup_eligible"] is True
+    assert ready["buy_trigger_ready"] is True
+    assert ready["live_buy_required"] is True
+    assert outside_zone["buy_setup_eligible"] is True
+    assert outside_zone["buy_trigger_ready"] is False
+    assert outside_zone["overall_rank"] is not None
+    assert abstain["buy_setup_eligible"] is True
+    assert abstain["buy_trigger_ready"] is False
+    assert abstain["overall_rank"] is not None
+    assert "等待回測買進區" in outside_zone["buy_candidate_status"]
+    assert "等待隔日方向確認" in abstain["buy_candidate_status"]
+
+
+def test_tw_strong_bearish_forecast_vetoes_setup_candidate():
+    row = {
+        "symbol": "DOWN.TW", "market": "TW", "type": "個股",
+        "price": 100, "short_term_entry_low": 99, "short_term_entry_high": 101,
+        "short_term_stop": 96, "short_term_target1": 108, "short_term_rr": 2,
+        "short_term_score": 72, "entry_score": 65, "technical_score": 68,
+        "score": 66, "market_data_quality_score": 90,
+        "entry_data_coverage": 6, "entry_data_total": 6,
+        "daily_volume_ratio": .9, "rsi": 58, "news_penalty": 0,
+        "next_session_direction": "📉 看跌", "next_session_confidence": 72,
+        "next_session_signal_level": "RESEARCH", "next_session_data_quality": 90,
+        "market_contract_valid": True, "trade_guard_blocked": False,
+        "overall_eligible": True, "short_term_rank_tier": 2,
+        "short_term_ranking_score": 72, "mid_long_rank_tier": 1,
+        "mid_long_ranking_score": 60,
+    }
+    apply_tw_buy_candidate_ranking([row])
+    assert row["buy_setup_eligible"] is False
+    assert row["buy_trigger_ready"] is False
+    assert row["overall_rank"] is None
+    assert "隔日模型高信心看跌" in row["buy_candidate_reasons"]
 
 
 def test_tw_buy_filter_does_not_change_us_existing_ranking_fields():
@@ -606,6 +640,8 @@ def test_tw_buy_filter_does_not_change_us_existing_ranking_fields():
     assert us["overall_rank_tier"] == 2
     assert us["overall_ranking_score"] == 88
     assert us["buy_candidate_eligible"] is None
+    assert us["buy_setup_eligible"] is None
+    assert us["buy_trigger_ready"] is None
 
 
 def test_complete_published_universe_obeys_ranking_safety_invariants():
