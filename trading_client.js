@@ -191,8 +191,9 @@
   }
   async function open() {
     renderSelection();
-    root.document.getElementById('tradingModal').classList.add('open');
-    root.document.body.style.overflow = 'hidden';
+    var panel = root.document.getElementById('tradingModal');
+    panel.classList.add('open');
+    if (typeof panel.scrollIntoView === 'function') panel.scrollIntoView({behavior:'smooth',block:'start'});
     try {
       var payload = await request('/api/trading/status');
       currentMode = payload.mode === 'live' ? 'live' : 'paper';
@@ -210,7 +211,7 @@
       message('目前：'+(currentMode==='live'?'富邦真實模式':'模擬模式')+'｜持倉 '+positions+' 檔｜真實委託 '+Number(payload.real_orders_sent || 0)+' 筆'+(payload.broker_lock_reason?'｜鎖定：'+payload.broker_lock_reason:''));
     } catch (error) { message(error.message, true); }
   }
-  function close() { root.document.getElementById('tradingModal').classList.remove('open'); root.document.body.style.overflow=''; }
+  function close() { root.document.getElementById('tradingModal').classList.remove('open'); }
   function init() {
     if (!root.document) return;
     root.document.addEventListener('click', function (event) {
@@ -228,7 +229,6 @@
     root.document.getElementById('tradeStopButton').addEventListener('click', stop);
     root.document.getElementById('tradeCash').addEventListener('input', renderSelection);
     root.document.getElementById('tradeTickerSearch').addEventListener('input', renderPicker);
-    root.document.getElementById('tradingModal').addEventListener('click', function(event){if(event.target===this)close();});
     new MutationObserver(refreshButtons).observe(root.document.getElementById('results'),{childList:true,subtree:true});
     refreshButtons();
   }
