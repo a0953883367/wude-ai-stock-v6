@@ -42,6 +42,7 @@ from tw_official_data import (
     merge_official_with_fallback,
     overlay_official_daily,
 )
+from tw_market_context import build_tw_market_context
 from watchlist import load_watchlist
 
 build_features = strategy.build_features
@@ -135,9 +136,11 @@ def _attach_next_session_predictions(
                 )
                 continue
             row.update({
-                "next_session_model_version": "V6-shadow",
+                "next_session_model_version": (
+                    "V7-shadow" if row.get("market") == "TW" else "V6-shadow"
+                ),
                 "next_session_market_model": (
-                    "TW-NEXT-V6" if row.get("market") == "TW" else "US-NEXT-V6"
+                    "TW-NEXT-V7" if row.get("market") == "TW" else "US-NEXT-V6"
                 ),
                 "next_session_direction": "🕒 等待收盤",
                 "next_session_confidence": 0.0,
@@ -160,9 +163,11 @@ def _attach_next_session_predictions(
         shadow = track_predictions(row)
         compact_tracks = {track: bundle["consensus"] for track, bundle in shadow.items()}
         full_day = compact_tracks["full_day"]
-        row["next_session_model_version"] = "V6-shadow"
+        row["next_session_model_version"] = (
+            "V7-shadow" if row.get("market") == "TW" else "V6-shadow"
+        )
         row["next_session_market_model"] = (
-            "TW-NEXT-V6" if row.get("market") == "TW" else "US-NEXT-V6"
+            "TW-NEXT-V7" if row.get("market") == "TW" else "US-NEXT-V6"
         )
         row["next_session_direction"] = labels[full_day["direction"]]
         row["next_session_confidence"] = full_day["confidence"]
@@ -436,6 +441,7 @@ def main() -> int:
             features.append(enforce_market_contract(row))
 
     market = _stage("核心市場", fetch_core_market)
+    tw_market_context = build_tw_market_context(features, market)
     nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
     nasdaq_change = float(nasdaq_raw) if nasdaq_raw is not None else None
     vix = float((market.get("VIX") or {}).get("price") or 0)
@@ -471,7 +477,9 @@ def main() -> int:
     # every fixed-watchlist item.
     preliminary = _stage(
         "第一次排名計算",
-        lambda: score_candidates(features, macro_regime, performance_context),
+        lambda: score_candidates(
+            features, macro_regime, performance_context, tw_market_context
+        ),
     )
     if not preliminary:
         raise RuntimeError("本次沒有任何股票取得足夠資料，保留上一份報告")
@@ -502,7 +510,9 @@ def main() -> int:
             row.update(us_options.get(str(row.get("symbol") or "").upper(), {}))
         preliminary = _stage(
             "選擇權後排名重算",
-            lambda: score_candidates(features, macro_regime, performance_context),
+            lambda: score_candidates(
+                features, macro_regime, performance_context, tw_market_context
+            ),
         )
         preliminary_by_symbol = {row["symbol"]: row for row in preliminary}
         news_targets_by_symbol = {
@@ -529,7 +539,9 @@ def main() -> int:
 
     ranked = _stage(
         "最終排名計算",
-        lambda: score_candidates(features, macro_regime, performance_context),
+        lambda: score_candidates(
+            features, macro_regime, performance_context, tw_market_context
+        ),
     )
     _attach_next_session_predictions(
         ranked,
@@ -591,6 +603,7 @@ def main() -> int:
         "watchlist_analyzed_count": len(watchlist_rows),
         "market": market,
         "macro_regime": macro_regime,
+        "tw_market_context": tw_market_context,
         "data_status": {
             "finmind_configured": bool(SETTINGS.finmind_token),
             "institutional_count": len(institutions),
@@ -636,7 +649,8 @@ def main() -> int:
             "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
-            "market_isolation": "台股個股TW-STOCK-V4、台灣ETF TW-ETF-V4與美股US-V3使用獨立資料契約；跨市場欄位會在計分前清除",
+            "market_isolation": "台股個股TW-STOCK-V5、台灣ETF TW-ETF-V5與美股US-V3使用獨立資料契約；台股採個股／同族群／台股市場分層校正，跨市場欄位會在計分前清除",
+            "tw_layered_context": "台股個股以個股70%、同族群20%、台股市場10%計分；台灣ETF提高市場層比重。缺少背景資料時不以中性值冒充，且不影響US-V3",
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",

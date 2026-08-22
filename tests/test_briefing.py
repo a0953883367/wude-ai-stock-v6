@@ -132,8 +132,8 @@ def test_predictions_are_frozen_at_each_markets_completed_close_checkpoint():
 
     tw_evening = _complete_shadow_row("TW")
     _attach_next_session_predictions([tw_evening], period="evening", generated_at="2026-08-20 20:00:00")
-    assert tw_evening["next_session_model_version"] == "V6-shadow"
-    assert tw_evening["next_session_market_model"] == "TW-NEXT-V6"
+    assert tw_evening["next_session_model_version"] == "V7-shadow"
+    assert tw_evening["next_session_market_model"] == "TW-NEXT-V7"
     assert tw_evening["next_session_generated_at"] == "2026-08-20 20:00:00"
     assert len(tw_evening["next_session_model_votes"]) == 10
 

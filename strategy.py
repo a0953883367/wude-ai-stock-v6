@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from config import TAIPEI
+from tw_market_context import attach_tw_context
 
 
 NEW_YORK = ZoneInfo("America/New_York")
@@ -1018,6 +1019,41 @@ def _available_weighted_score(
     return round(_clamp(adjusted), 1), count, total, round(coverage * 100, 1)
 
 
+def _tw_layered_score(
+    individual_score: float,
+    sector_score: float,
+    market_score: float,
+    *,
+    is_etf: bool,
+    sector_available: bool,
+    market_available: bool,
+) -> tuple[float, dict[str, int]]:
+    """Keep Taiwan symbol evidence primary and never fabricate context."""
+    if is_etf:
+        if sector_available and market_available:
+            weights = {"individual": 60, "sector": 15, "market": 25}
+        elif market_available:
+            weights = {"individual": 75, "sector": 0, "market": 25}
+        elif sector_available:
+            weights = {"individual": 85, "sector": 15, "market": 0}
+        else:
+            weights = {"individual": 100, "sector": 0, "market": 0}
+    elif sector_available and market_available:
+        weights = {"individual": 70, "sector": 20, "market": 10}
+    elif sector_available:
+        weights = {"individual": 80, "sector": 20, "market": 0}
+    elif market_available:
+        weights = {"individual": 90, "sector": 0, "market": 10}
+    else:
+        weights = {"individual": 100, "sector": 0, "market": 0}
+    score = (
+        _clamp(individual_score) * weights["individual"]
+        + _clamp(sector_score) * weights["sector"]
+        + _clamp(market_score) * weights["market"]
+    ) / 100.0
+    return round(_clamp(score), 1), weights
+
+
 def _complete_price_plan(row: dict[str, Any]) -> dict[str, Any]:
     """Return a complete, sanity-checked price plan and its ranking quality.
 
@@ -1698,11 +1734,13 @@ def score_candidates(
     rows: list[dict[str, Any]],
     macro_regime: dict[str, Any] | None = None,
     performance: dict[str, Any] | None = None,
+    tw_market_context: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     if not rows:
         return []
     macro_regime = macro_regime or {}
     performance = performance or {}
+    attach_tw_context(rows, tw_market_context)
     macro_score = _finite(macro_regime.get("score"), 50.0)
     macro_active = bool(
         macro_regime.get("calibration", {}).get("affects_ai_score")
@@ -1797,7 +1835,10 @@ def score_candidates(
         market_flow_score, market_flow_available, market_flow_model = _market_flow_score(row)
         if market_name == "US":
             institution_score = market_flow_score
-        group_score = _clamp(50 + theme_change[str(row["theme"])] * 10)
+        if market_name == "TW" and row.get("tw_sector_context_available"):
+            group_score = _finite(row.get("tw_sector_context_score"), 50.0)
+        else:
+            group_score = _clamp(50 + theme_change[str(row["theme"])] * 10)
         position_score = 65 if row["price"] <= row["support1"] * 1.03 else 52
         if row["price"] >= row["resistance2"] * 0.995:
             position_score -= 12
@@ -1870,7 +1911,24 @@ def score_candidates(
                 (news_score, 10, bool(row.get("news_data_available"))),
             ])
             row["score_model"] = "美股個股獨立模型" if market_name == "US" else "台股個股獨立模型"
-        base_total += macro_adjustment
+        individual_total = base_total
+        layered_weights = {"individual": 100, "sector": 0, "market": 0}
+        if market_name == "TW":
+            sector_available = bool(row.get("tw_sector_context_available"))
+            tw_market_available = bool(row.get("tw_market_context_available"))
+            sector_context_score = _finite(row.get("tw_sector_context_score"), 50.0)
+            tw_context_score = _finite(row.get("tw_market_context_score"), 50.0)
+            base_total, layered_weights = _tw_layered_score(
+                individual_total,
+                sector_context_score,
+                tw_context_score,
+                is_etf=_is_etf(row),
+                sector_available=sector_available,
+                market_available=tw_market_available,
+            )
+        else:
+            # Preserve the established US-V3 behaviour exactly.
+            base_total += macro_adjustment
         preliminary_signal = "🟢" if base_total >= 70 else "🟡" if base_total >= 58 else "🔴"
         performance_adjustment, performance_samples, performance_horizon = (
             _performance_adjustment(performance, preliminary_signal)
@@ -1897,8 +1955,10 @@ def score_candidates(
             "overall_data_quality": f"{overall_available}/{overall_total}",
             "overall_confidence": overall_confidence,
             "macro_score": round(macro_score, 1),
-            "macro_adjustment": round(macro_adjustment, 1),
-            "macro_affects_score": macro_active,
+            "macro_adjustment": round(macro_adjustment, 1) if market_name == "US" else 0.0,
+            "macro_affects_score": bool(macro_active and market_name == "US"),
+            "individual_score_before_context": round(individual_total, 1),
+            "layered_score_weights": layered_weights,
             "performance_adjustment": round(performance_adjustment, 2),
             "performance_samples": performance_samples,
             "performance_horizon": performance_horizon,

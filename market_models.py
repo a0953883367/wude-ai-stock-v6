@@ -105,8 +105,8 @@ def enforce_market_contract(row: dict[str, Any]) -> dict[str, Any]:
         row["us_short_volume_available"] = False
         row["extended_hours_available"] = False
         row["market_model_version"] = (
-            "TW-ETF-V4" if "ETF" in str(row.get("type") or "").upper()
-            else "TW-STOCK-V4"
+            "TW-ETF-V5" if "ETF" in str(row.get("type") or "").upper()
+            else "TW-STOCK-V5"
         )
     else:
         row["institution_available"] = False
