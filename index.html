@@ -650,7 +650,8 @@ function renderLiveModal(stock,quote,connectionText){
   var missing=WudeLiveAnalysis.missingLabels(stock,inputs);
   try{localStorage.setItem(liveStorageKey(stock.symbol),JSON.stringify(result));}catch(error){}
   document.getElementById('liveOutput').innerHTML=liveResultHtml(result);
-  var source=stock.market==='US'?(stock.usLiveAvailable?(stock.usLiveSource||'美股 SIP／OPRA 自動資料'):'美股 Yahoo／SEC／FINRA 備援資料'):(quote?'富邦＋台股公開資料':'台股公開資料；等待富邦快照');
+  var twSource=quote?(quote.orderBookComplete?(quote.orderBookType==='oddlot'?'富邦盤中零股五檔＋台股公開資料':'富邦普通交易五檔＋台股公開資料'):'富邦即時價格（五檔未回傳）＋台股公開資料'):'台股公開資料；等待富邦快照';
+  var source=stock.market==='US'?(stock.usLiveAvailable?(stock.usLiveSource||'美股 SIP／OPRA 自動資料'):'美股 Yahoo／SEC／FINRA 備援資料'):twSource;
   document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，補齊前只會顯示觀察或偏空，不會顯示可買。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source;
   var values=WudeLiveAnalysis.inputRows(stock,inputs);
   document.getElementById('liveAutoGrid').innerHTML=values.map(function(item){return '<div class="auto-item"><span>'+esc(item.label)+'</span><b>'+esc(number(item.value,item.key==='price'?2:1))+'</b></div>';}).join('');
@@ -671,15 +672,16 @@ async function fetchCurrentLive(manual){
   try{
     var token=WudeLiveClient.accessToken(window.localStorage);
     var response=await fetch(WudeLiveClient.buildUrl(base,stock.symbol,stock.market),{cache:'no-store',credentials:'omit',signal:controller.signal,headers:WudeLiveClient.requestHeaders(token)});
-    if(!response.ok)throw new Error('HTTP '+response.status);
-    var payload=await response.json();if(!payload.ok)throw new Error(payload.error||'即時資料未回傳');
+    var payload={};try{payload=await response.json();}catch(parseError){}
+    if(!response.ok){var requestError=new Error(payload.error||('HTTP '+response.status));requestError.status=response.status;throw requestError;}
+    if(!payload.ok)throw new Error(payload.error||'即時資料未回傳');
     stock=WudeLiveClient.mergeStock(stock,payload);STATE.liveStock=stock;
     var quote=stock.market==='TW'?WudeLiveClient.taiwanQuote(payload,quoteFor(stock.symbol)):null;
     if(quote)STATE.fubonQuotes[String(stock.symbol).toUpperCase()]=quote;
     var fetched=payload.fetched_at?new Date(payload.fetched_at).toLocaleString('zh-TW',{hour12:false}):new Date().toLocaleString('zh-TW',{hour12:false});
     renderLiveModal(stock,quote||quoteFor(stock.symbol),'✅ 即時行情已更新｜'+fetched+(payload.cached?'｜快取':'｜最新'));
   }catch(error){
-    if(error.name!=='AbortError')document.getElementById('liveConnection').textContent='⚠️ 即時服務暫時無法連線，已保留最近一次可靠快照。';
+    if(error.name!=='AbortError')document.getElementById('liveConnection').textContent=WudeLiveClient.errorMessage(error);
   }finally{
     if(STATE.liveRequest===controller)STATE.liveRequest=null;
     if(manual){button.disabled=false;button.textContent='⚡ 立即更新';}

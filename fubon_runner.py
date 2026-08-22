@@ -167,6 +167,12 @@ def parse_fubon_quote(payload: Any) -> dict[str, Any]:
         "askPrice": _first_level_price(obj.get("asks")),
         "bidTotal": bid_total,
         "askTotal": ask_total,
+        "quoteDate": obj.get("date"),
+        "quoteType": obj.get("type"),
+        "quoteMarket": obj.get("market"),
+        "isOpen": obj.get("isOpen"),
+        "isClose": obj.get("isClose"),
+        "lastUpdated": obj.get("lastUpdated"),
         "fetchedAt": datetime.now(TAIPEI).isoformat(timespec="seconds"),
     }
 

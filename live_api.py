@@ -191,14 +191,34 @@ class LiveDataService:
             sdk = self._fubon_sdk
         stock_id = symbol.split(".", 1)[0]
         try:
-            payload = sdk.marketdata.rest_client.stock.intraday.quote(symbol=stock_id)
+            intraday = sdk.marketdata.rest_client.stock.intraday
+            payload = intraday.quote(symbol=stock_id)
             quote = parse_fubon_quote(payload)
+            if not quote:
+                raise RuntimeError("Fubon returned no quote")
+            quote["orderBookType"] = "regular"
         except Exception:
             with self._lock:
                 self._fubon_sdk = None
             raise
-        if not quote:
-            raise RuntimeError("Fubon returned no quote")
+
+        # The owner trades a small TWD account, so actual orders will often be
+        # intraday odd lots. Some symbols can have no regular-lot depth even
+        # while the market is open. Fubon exposes a separate odd-lot five-level
+        # book; use it only when the regular book is incomplete. A failed
+        # fallback must not discard an otherwise valid regular-lot price.
+        if quote.get("bidTotal") is None or quote.get("askTotal") is None:
+            try:
+                odd_payload = intraday.quote(symbol=stock_id, type="oddlot")
+                odd_quote = parse_fubon_quote(odd_payload)
+                if odd_quote.get("bidTotal") is not None and odd_quote.get("askTotal") is not None:
+                    quote = odd_quote
+                    quote["orderBookType"] = "oddlot"
+            except Exception as exc:
+                LOG.warning("Fubon odd-lot book fallback failed for %s: %s", stock_id, exc)
+        quote["orderBookComplete"] = (
+            quote.get("bidTotal") is not None and quote.get("askTotal") is not None
+        )
         return {
             "ok": True,
             "symbol": symbol,
@@ -206,6 +226,7 @@ class LiveDataService:
             "source": "Fubon Neo",
             "fetched_at": quote.get("fetchedAt") or datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "quote": quote,
+            "quote_status": "complete" if quote["orderBookComplete"] else "order_book_missing",
             "options": {},
             "cached": False,
         }

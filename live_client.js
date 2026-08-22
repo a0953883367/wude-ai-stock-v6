@@ -79,8 +79,18 @@
       lastPrice: quote.lastPrice,
       bidTotal: quote.bidTotal,
       askTotal: quote.askTotal,
+      orderBookType: quote.orderBookType,
+      orderBookComplete: quote.orderBookComplete,
       fetchedAt: payload.fetched_at || quote.fetchedAt
     };
+  }
+
+  function errorMessage(error) {
+    var status = Number(error && error.status);
+    if (status === 401) return '🔒 此瀏覽器尚未取得私人即時行情授權；目前只保留背景資料。';
+    if (status === 429) return '⏱️ 即時行情更新過於頻繁，請稍後再試。';
+    if (status === 503) return '⚠️ 富邦行情登入或報價服務未回應；目前只保留背景資料。';
+    return '⚠️ 即時服務暫時無法連線，已保留最近一次可靠快照。';
   }
 
   return {
@@ -91,6 +101,7 @@
     accessToken: accessToken,
     requestHeaders: requestHeaders,
     mergeStock: mergeStock,
-    taiwanQuote: taiwanQuote
+    taiwanQuote: taiwanQuote,
+    errorMessage: errorMessage
   };
 }));
