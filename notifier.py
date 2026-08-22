@@ -129,8 +129,8 @@ def render_markdown(report: dict[str, Any]) -> str:
     calibration = performance.get("calibration", {})
     tracks = performance.get("tracks", {})
     five_day = performance.get("horizons", {}).get("5", {})
-    if int(performance.get("methodology_version") or 0) < 5:
-        lines.append("🧭 隔日預測V5：台／美股分開配分；等待各市場正式開盤與收盤結果")
+    if int(performance.get("methodology_version") or 0) < 6:
+        lines.append("🧭 隔日預測V6：台／美股分開配分；等待各市場正式開盤與收盤結果")
     elif any(int((tracks.get(key) or {}).get("samples") or 0) for key in ("overnight", "session", "full_day")):
         labels = {"overnight": "隔夜", "session": "盤中", "full_day": "全天"}
         parts = []
@@ -142,7 +142,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 )
         lines.append("🎯 隔日三段實測：" + "｜".join(parts))
     else:
-        lines.append("🧪 隔日預測V5：市場分流、三段各自投票；尚無完成結果，不顯示假命中率")
+        lines.append("🧪 隔日預測V6：市場分流、三段各自投票；尚無完成結果，不顯示假命中率")
     if five_day.get("samples"):
         lines.append(
             f"🎯 共識模型5日：{five_day['samples']}筆｜方向命中 {five_day['win_rate_pct']:.1f}%｜平均 {_change(five_day['avg_return_pct'])}｜最差 {_change(five_day['worst_return_pct'])}"

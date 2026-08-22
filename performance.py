@@ -12,7 +12,7 @@ from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 
 HORIZONS = (1, 5, 10, 20)
-METHODOLOGY_VERSION = 5
+METHODOLOGY_VERSION = 6
 AUDIT_SCHEMA_VERSION = 1
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
@@ -274,7 +274,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "legacy_history_reset": legacy_reset,
         },
         "note": (
-            "V5延續三段分離驗證，並將台股與美股改為不同權重及收盤檢查點；"
+            "V6延續三段分離驗證，分開研究方向與強訊號，並使用台美股各自收盤檢查點；"
             "台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
         ),
     }
@@ -368,7 +368,7 @@ def _new_snapshot(
             "group": row.get("backtest_group"),
             "cohort": cohort,
             "rank": row.get("backtest_rank"),
-            "model_version": row.get("next_session_model_version") or "V5-shadow",
+            "model_version": row.get("next_session_model_version") or "V6-shadow",
             "market_model": row.get("next_session_market_model") or row.get("market_model_version"),
             "official_session_date": session_date,
             "official_price": round(price, 4),
@@ -475,7 +475,7 @@ def _evaluate_with_new_session(
             close_to_close = round((current_close / base - 1) * 100, 4)
             outcome = {
                 # Keep return_pct as a compatibility alias for downstream
-                # readers while V5 exposes the exact comparison explicitly.
+                # readers while V6 exposes the exact comparison explicitly.
                 "return_pct": close_to_close,
                 "close_to_close_return_pct": close_to_close,
                 "evaluated_session_date": session_date,
@@ -633,7 +633,7 @@ def update_performance(
 
 
 def load_performance_context(reports_dir: Path) -> dict[str, Any]:
-    """Load verified V5 outcomes; legacy metrics never affect scoring."""
+    """Load verified V6 outcomes; legacy metrics never affect scoring."""
     try:
         value = json.loads((reports_dir / "performance.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):
