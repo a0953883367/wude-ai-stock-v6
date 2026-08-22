@@ -183,6 +183,7 @@ function normalizeReport(row){
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
     marketModelVersion:row.market_model_version,marketContractValid:row.market_contract_valid,marketDataQualityScore:row.market_data_quality_score,marketDataQuality:row.market_data_quality,marketDataAvailable:Array.isArray(row.market_data_available)?row.market_data_available:[],marketDataMissing:Array.isArray(row.market_data_missing)?row.market_data_missing:[],
     overallEligible:row.overall_eligible,overallRankTier:row.overall_rank_tier,overallRankingScore:row.overall_ranking_score,overallRank:row.overall_rank,overallDisplayRank:row.overall_display_rank,
+    buyCandidateEligible:row.buy_candidate_eligible,buyCandidateStatus:row.buy_candidate_status,buyCandidateReasons:Array.isArray(row.buy_candidate_reasons)?row.buy_candidate_reasons:[],
     shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,shortTermDisplayRank:row.short_term_display_rank,
     midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,midLongDisplayRank:row.mid_long_display_rank,rankingGroupCount:row.ranking_group_count,
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
@@ -323,6 +324,9 @@ function stockCard(stock,index){
     return /^https?:\/\//i.test(url)?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+title+'</a>':title;
   }).join('<br>');
   var newsRadar='<div class="databox">📰 <b>負面新聞風險雷達：'+esc(newsLevel)+'</b><br>'+esc(stock.news||'本次沒有新聞摘要')+'<br>'+newsEffect+(newsLinks?'<br>'+newsLinks:'')+'</div>';
+  var buyQualification=stock.market==='TW'&&stock.buyCandidateStatus
+    ?'<div class="databox">🎯 <b>台股買進資格：'+esc(stock.buyCandidateStatus)+'</b></div>'
+    :'';
   return [
     '<article class="card"><div class="card-head"><div><div class="rank">'+esc(stock.displayRankLabel||'觀察')+'</div><div class="stock">'+esc(stock.name)+'</div>',
     '<div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+' ｜ '+(stock.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+' ｜ '+esc(stock.theme)+'</div></div>',
@@ -335,7 +339,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',quality,extended,nextSession,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
+    '</div>',buyQualification,quality,extended,nextSession,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
     '<div class="buybox">'+(stock.entryProfile?'規則：<b>'+esc(stock.entryProfile)+'</b>｜資料 '+esc(stock.entryCoverage)+'/'+esc(stock.entryDataTotal)+'｜進場分上限 '+esc(number(stock.entryScoreCap,0))+'<br>':'')+(stock.pricePlanQuality?'價格計畫：<b>'+esc(stock.pricePlanQuality)+'</b>｜'+esc(stock.pricePlanNote||'')+'<br>':'')+'🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
@@ -471,7 +475,7 @@ function showOptical(group){
 }
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
-  var map={TW:['🇹🇼 台股綜合風控排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 綜合風控排名',STATE.etf]};
+  var map={TW:['🇹🇼 台股買進條件排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 買進／風控排名',STATE.etf]};
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
     document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
@@ -487,7 +491,9 @@ function showMarket(view){
   }
   document.getElementById('title').textContent=map[view][0];
   var qualified=map[view][1].filter(function(stock){return WudeRanking.overallTier(stock)===2;}).length;
-  document.getElementById('status').textContent='✅ '+(STATE.stockData&&STATE.stockData.version?STATE.stockData.version:'V6')+'｜目前合格 '+qualified+' 檔｜只有合格標的列為 TOP，其餘分列觀察或風險阻擋';
+  document.getElementById('status').textContent=(view==='TW'
+    ?'✅ 目前符合買進條件 '+qualified+' 檔｜須同時通過短線條件、進入買進區、隔日看漲與資料完整度；不符合者只列觀察且沒有名次'
+    :'✅ '+(STATE.stockData&&STATE.stockData.version?STATE.stockData.version:'V6')+'｜目前合格 '+qualified+' 檔｜只有合格標的列為 TOP，其餘分列觀察或風險阻擋');
   renderStocks(map[view][1]);
 }
 function renderMarketStrip(report){

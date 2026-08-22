@@ -107,7 +107,11 @@
         qualifiedRank = number(stock.overallRank, 0);
         displayRank = number(stock.overallDisplayRank, index + 1);
       } else {
-        tier = overallTier(stock); prefix = tier === 2 ? 'TOP' : tier === 1 ? '觀察' : '風險阻擋';
+        tier = overallTier(stock);
+        var isTaiwanBuyList = String(mode) === 'TW';
+        prefix = isTaiwanBuyList
+          ? (tier === 2 ? '買進候選' : tier === 1 ? '尚未符合買進條件' : '風險阻擋')
+          : (tier === 2 ? 'TOP' : tier === 1 ? '觀察' : '風險阻擋');
         qualifiedRank = number(stock.overallRank, 0);
         displayRank = number(stock.overallDisplayRank, index + 1);
       }
@@ -116,7 +120,9 @@
         copy.displayRankLabel = prefix + ' ' + (qualifiedRank || qualifiedCount);
       } else {
         var total = number(stock.rankingGroupCount, (rows || []).length);
-        copy.displayRankLabel = prefix + '｜同組排序 ' + displayRank + '/' + total;
+        copy.displayRankLabel = isTaiwanBuyList
+          ? prefix
+          : prefix + '｜同組排序 ' + displayRank + '/' + total;
       }
       return copy;
     });
