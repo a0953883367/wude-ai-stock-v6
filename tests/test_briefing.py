@@ -21,6 +21,7 @@ def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
             "per": 12.5,
             "revenue_yoy_pct": 7.2,
             "broker_available": True,
+            "broker_date": "2026-08-21",
             "top_brokers_buy": [{"name": "A", "net": 10}],
         },
         "AAPL": {"symbol": "AAPL", "market": "US", "foreign": 999},
@@ -37,6 +38,23 @@ def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
     assert "price" not in institutions["6116"]
     assert "rsi" not in institutions["6116"]
     assert "AAPL" not in institutions
+
+
+def test_intraday_snapshot_does_not_count_empty_broker_placeholders():
+    previous = {
+        "2330.TW": {
+            "symbol": "2330.TW", "market": "TW",
+            "institution_available": True,
+        },
+        "2317.TW": {
+            "symbol": "2317.TW", "market": "TW",
+            "broker_available": False,
+        },
+    }
+
+    _, _, _, brokers = _tw_intraday_enrichment(previous)
+
+    assert brokers == {}
 
 
 def test_market_top_excludes_observation_blocked_etf_and_us_rows():

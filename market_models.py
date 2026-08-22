@@ -69,6 +69,18 @@ def validate_taiwan_data(row: dict[str, Any]) -> dict[str, Any]:
             row["credit_available"] = False
             issues.append("融資券資料交易日不一致")
 
+    broker_date = _date_value(row.get("broker_date"))
+    if row.get("broker_available"):
+        if not reference_session:
+            row["broker_available"] = False
+            issues.append("券商分點缺官方交易日基準")
+        elif not broker_date:
+            row["broker_available"] = False
+            issues.append("券商分點缺日期")
+        elif broker_date != reference_session:
+            row["broker_available"] = False
+            issues.append("券商分點交易日不一致")
+
     row["tw_data_validation_issues"] = issues
     row["tw_data_valid"] = not issues
     row["tw_official_session_available"] = bool(reference_session)
