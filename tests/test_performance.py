@@ -88,11 +88,11 @@ def test_taiwan_uses_evening_completed_sessions_and_auditable_prices(tmp_path: P
     summary = update_performance(
         tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
     )
-    assert summary["methodology_version"] == 5
+    assert summary["methodology_version"] == 6
     assert summary["horizons"]["1"]["samples"] == 1
     assert summary["horizons"]["1"]["win_rate_pct"] == 100.0
     # The deliberately strong complete fixture is independently accepted by
-    # all three V5 tracks.
+    # all three V6 tracks.
     assert summary["tracks"]["overnight"]["win_rate_pct"] == 100.0
     assert summary["tracks"]["session"]["win_rate_pct"] == 100.0
     assert summary["tracks"]["full_day"]["win_rate_pct"] == 100.0
@@ -173,7 +173,7 @@ def test_legacy_history_is_reset_and_cannot_affect_score(tmp_path: Path):
     )
     assert summary["calibration"]["legacy_history_reset"] is True
     assert summary["calibration"]["affects_ai_score"] is False
-    assert load_performance_context(tmp_path)["methodology_version"] == 5
+    assert load_performance_context(tmp_path)["methodology_version"] == 6
 
 
 def test_ten_models_and_strict_consensus_are_recorded():
@@ -184,6 +184,20 @@ def test_ten_models_and_strict_consensus_are_recorded():
     consensus = consensus_prediction(votes)
     assert consensus["direction"] == "UP"
     assert consensus["up_votes"] >= 7
+    assert consensus["signal_level"] == "STRONG"
+
+
+def test_research_direction_is_separate_from_strong_signal():
+    votes = {
+        name: {
+            "direction": "UP" if index < 6 else "ABSTAIN",
+            "confidence": 64,
+        }
+        for index, name in enumerate(MODEL_NAMES)
+    }
+    consensus = consensus_prediction(votes)
+    assert consensus["direction"] == "UP"
+    assert consensus["signal_level"] == "RESEARCH"
 
 
 def test_three_return_tracks_vote_independently():

@@ -132,8 +132,8 @@ def test_predictions_are_frozen_at_each_markets_completed_close_checkpoint():
 
     tw_evening = _complete_shadow_row("TW")
     _attach_next_session_predictions([tw_evening], period="evening", generated_at="2026-08-20 20:00:00")
-    assert tw_evening["next_session_model_version"] == "V5-shadow"
-    assert tw_evening["next_session_market_model"] == "TW-NEXT-V5"
+    assert tw_evening["next_session_model_version"] == "V6-shadow"
+    assert tw_evening["next_session_market_model"] == "TW-NEXT-V6"
     assert tw_evening["next_session_generated_at"] == "2026-08-20 20:00:00"
 
     us_evening = _complete_shadow_row("US")
@@ -142,7 +142,7 @@ def test_predictions_are_frozen_at_each_markets_completed_close_checkpoint():
 
     us_morning = _complete_shadow_row("US")
     _attach_next_session_predictions([us_morning], period="morning", generated_at="2026-08-21 06:00:00")
-    assert us_morning["next_session_market_model"] == "US-NEXT-V5"
+    assert us_morning["next_session_market_model"] == "US-NEXT-V6"
     assert us_morning["next_session_generated_at"] == "2026-08-21 06:00:00"
 
 
@@ -161,3 +161,46 @@ def test_intraday_refresh_carries_same_completed_close_forecast():
     assert current["next_session_generated_at"] == "2026-08-20 20:00:00"
     assert current["next_session_direction"] == prior["next_session_direction"]
     assert "不重新配分" in current["next_session_note"]
+
+
+def test_waiting_placeholder_is_never_mislabeled_as_a_frozen_forecast():
+    prior = _complete_shadow_row("TW")
+    _attach_next_session_predictions(
+        [prior], period="noon", intraday=True,
+        generated_at="2026-08-20 12:00:00",
+    )
+    assert prior["next_session_direction"] == "🕒 等待收盤"
+    assert prior["next_session_generated_at"] == ""
+
+    current = _complete_shadow_row("TW")
+    _attach_next_session_predictions(
+        [current], period="noon", intraday=True,
+        previous={current["symbol"]: prior},
+        generated_at="2026-08-20 13:00:00",
+    )
+
+    assert current["next_session_direction"] == "🕒 等待收盤"
+    assert current["next_session_signal_level"] == "WAITING"
+    assert "沿用" not in current["next_session_note"]
+
+
+def test_us_fallback_feed_is_explicit_without_changing_ranking_fields():
+    row = _complete_shadow_row("US")
+    row.update({
+        "action": "🟢 可買", "score": 71.2,
+        "overall_rank": 1, "overall_ranking_score": 69.8,
+        "us_live_data_available": False,
+        "us_option_data_available": False,
+    })
+    ranking_before = {
+        key: row[key]
+        for key in ("action", "score", "overall_rank", "overall_ranking_score")
+    }
+
+    _attach_next_session_predictions(
+        [row], period="morning", generated_at="2026-08-21 06:00:00"
+    )
+
+    assert {key: row[key] for key in ranking_before} == ranking_before
+    assert row["next_session_data_mode"] == "FINRA／盤前盤後備援（SIP未取得）"
+    assert row["next_session_signal_level"] in {"RESEARCH", "STRONG", "ABSTAIN"}

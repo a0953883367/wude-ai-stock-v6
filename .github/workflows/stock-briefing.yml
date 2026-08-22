@@ -12,6 +12,9 @@ on:
     paths:
       - strategy.py
       - briefing.py
+      - model_lab.py
+      - performance.py
+      - index.html
       - data_fetcher.py
       - macro_regime.py
       - market_models.py
@@ -85,6 +88,12 @@ jobs:
           elif [[ "${{ github.event.head_commit.message }}" == *"[run-morning]"* ]]; then
             period="morning"
             commit_message="更新 AI 股票morning報"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # A scoring/code deployment is a completed-report checkpoint, not
+            # an intraday refresh.  Treating it as intraday used to preserve a
+            # waiting placeholder and could overwrite the visible report.
+            period="evening"
+            commit_message="更新 AI 股票evening報"
           else
             case "${{ github.event.schedule }}" in
               "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;

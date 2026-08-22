@@ -16,6 +16,18 @@ MODEL_NAMES = (
     "momentum_confirmed", "relative_strength", "entry_timing",
 )
 
+# These are research-forecast thresholds, not trading thresholds and not a
+# claimed realised win rate.  Requiring every model to reach 75 previously
+# made the production universe abstain almost completely, which prevented any
+# forward validation.  Strong signals remain a stricter, separately labelled
+# subset of the research forecasts.
+MIN_EVIDENCE_COVERAGE = 75.0
+MODEL_DIRECTION_THRESHOLD = 60.0
+MIN_RESEARCH_VOTES = 6
+MIN_STRONG_VOTES = 7
+MIN_RESEARCH_STRENGTH = 60.0
+MIN_STRONG_STRENGTH = 75.0
+
 def _number(value: Any, default: float = 50.0) -> float:
     try: result = float(value)
     except (TypeError, ValueError): return default
@@ -157,11 +169,12 @@ def _track_scores(row: dict[str, Any], track: str) -> dict[str, float]:
     for name, score in list(scores.items()):
         if hard_block: score = min(score, 45.0)
         if weak_market:
-            score = min(score, 60.0)
+            # A weak broad market must stay below the research-UP threshold.
+            score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
             if x["macro"] <= 28: score -= 10.0
         if heavy_selling: score = min(score, 58.0)
-        if overextended: score = min(score, 62.0)
-        if distribution_spike: score = min(score, 60.0)
+        if overextended: score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
+        if distribution_spike: score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
         if row.get("breakdown20"): score -= 8.0
         scores[name] = round(max(0.0, min(100.0, score)), 1)
     return scores
@@ -200,9 +213,15 @@ def model_predictions(row: dict[str, Any], track: str = "full_day") -> dict[str,
         _evidence_coverage(row, track),
     )
     for name, score in _track_scores(row, track).items():
-        # 75 is a model evidence threshold, not a promise of 75% realised
-        # accuracy. Verified forward outcomes remain the source of accuracy.
-        direction = "ABSTAIN" if quality < 75 else "UP" if score >= 75 else "DOWN" if score <= 25 else "ABSTAIN"
+        # The per-model direction is intentionally wider than a trade signal:
+        # it creates an auditable research forecast.  Consensus strength and
+        # verified forward outcomes determine whether it can later be promoted.
+        direction = (
+            "ABSTAIN" if quality < MIN_EVIDENCE_COVERAGE
+            else "UP" if score >= MODEL_DIRECTION_THRESHOLD
+            else "DOWN" if score <= 100.0 - MODEL_DIRECTION_THRESHOLD
+            else "ABSTAIN"
+        )
         output[name] = {
             "direction": direction,
             "score": score,
@@ -222,13 +241,21 @@ def consensus_prediction(votes: dict[str, dict[str, Any]]) -> dict[str, Any]:
     up = [v for v in votes.values() if v.get("direction") == "UP"]
     down = [v for v in votes.values() if v.get("direction") == "DOWN"]
     direction, winning = "ABSTAIN", []
-    if len(up) >= 7 and len(up) >= len(down)+3: direction, winning = "UP", up
-    elif len(down) >= 7 and len(down) >= len(up)+3: direction, winning = "DOWN", down
+    if len(up) >= MIN_RESEARCH_VOTES and len(up) >= len(down)+3: direction, winning = "UP", up
+    elif len(down) >= MIN_RESEARCH_VOTES and len(down) >= len(up)+3: direction, winning = "DOWN", down
     confidence = round(sum(float(v["confidence"]) for v in winning)/len(winning), 1) if winning else 0.0
-    if confidence < 75:
+    if confidence < MIN_RESEARCH_STRENGTH:
         direction, winning, confidence = "ABSTAIN", [], 0.0
+    signal_level = (
+        "STRONG"
+        if direction != "ABSTAIN"
+        and len(winning) >= MIN_STRONG_VOTES
+        and confidence >= MIN_STRONG_STRENGTH
+        else "RESEARCH" if direction != "ABSTAIN" else "ABSTAIN"
+    )
     return {"direction": direction, "confidence": confidence, "up_votes": len(up),
-            "down_votes": len(down), "abstain_votes": len(votes)-len(up)-len(down)}
+            "down_votes": len(down), "abstain_votes": len(votes)-len(up)-len(down),
+            "signal_level": signal_level}
 
 def evaluate_direction(direction: str, return_pct: float) -> bool | None:
     if direction == "UP": return return_pct > 0
