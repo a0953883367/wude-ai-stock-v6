@@ -212,6 +212,8 @@ def build_features(
         last_daily_timestamp = last_daily_timestamp.tz_convert(market_zone)
     official_session_date = last_daily_timestamp.date().isoformat()
     official_open = _finite(open_.iloc[-1], _finite(close.iloc[-1]))
+    official_high = _finite(high.iloc[-1], official_open)
+    official_low = _finite(low.iloc[-1], official_open)
     official_close = _finite(close.iloc[-1])
     adjusted_close = daily.get("adj close", close).astype(float).dropna()
     official_adjusted_close = _finite(
@@ -222,6 +224,8 @@ def build_features(
         official_adjusted_close / official_close if official_close > 0 else 1.0
     )
     official_adjusted_open = official_open * adjustment_factor
+    official_adjusted_high = official_high * adjustment_factor
+    official_adjusted_low = official_low * adjustment_factor
     pace, attack, live, attack15, attack30 = _intraday_metrics(intraday, avg20, market)
     if intraday is not None and not intraday.empty and completed_volume is not volume:
         candle["daily_volume_ratio"] = round(pace, 2)
@@ -255,8 +259,12 @@ def build_features(
         "price": round(price, 2),
         "official_session_date": official_session_date,
         "official_open_price": round(official_open, 4),
+        "official_high_price": round(official_high, 4),
+        "official_low_price": round(official_low, 4),
         "official_close_price": round(official_close, 4),
         "official_adjusted_open_price": round(official_adjusted_open, 4),
+        "official_adjusted_high_price": round(official_adjusted_high, 4),
+        "official_adjusted_low_price": round(official_adjusted_low, 4),
         "official_adjusted_close_price": round(official_adjusted_close, 4),
         "change_pct": round(change, 2),
         "volume_pace": round(pace, 2),

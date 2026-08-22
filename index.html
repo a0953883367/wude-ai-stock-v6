@@ -30,8 +30,9 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .group{font-size:18px;font-weight:900;margin:22px 3px 10px}.empty,.error{padding:18px;border-radius:15px;background:#172033;color:#cbd5e1;line-height:1.7}.error{background:#3b1720;color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:28px 0 42px;line-height:1.8}
 .live-button{width:100%;margin-top:13px;background:#164e63;border-color:#22d3ee;color:#cffafe}.live-result{margin-top:10px;background:#172554;border:1px solid #3b82f6;border-radius:13px;padding:12px;line-height:1.7;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);padding:16px;overflow:auto}.modal.open{display:block}.modal-card{max-width:620px;margin:18px auto;background:#111c2e;border:1px solid #334155;border-radius:22px;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal-title{font-size:21px;font-weight:900}.modal-close{width:46px;padding:10px}.modal-output{margin-top:13px}.live-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.live-refresh{background:#166534;border-color:#4ade80}.live-toggle{background:#164e63;border-color:#22d3ee}.live-toggle.off{background:#334155;border-color:#64748b}.live-connection{margin-top:8px;color:#7dd3fc;font-size:12px;line-height:1.5;text-align:center}.auto-note{margin-top:12px;padding:11px 13px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#bbf7d0;font-size:13px;line-height:1.6}.auto-data{margin-top:12px;border:1px solid #334155;border-radius:13px;background:#0d1727}.auto-data summary{padding:12px;color:#7dd3fc;font-weight:800;cursor:pointer}.auto-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 12px}.auto-item{background:#172033;border-radius:10px;padding:9px}.auto-item span{display:block;color:var(--muted);font-size:11px}.auto-item b{display:block;margin-top:3px}.muted{color:var(--muted)}
 .capital-test{margin-top:13px;border-radius:14px;padding:13px;line-height:1.65;font-size:13px}.capital-test.eligible{background:#0b2c22;border:1px solid #22c55e;color:#dcfce7}.capital-test.blocked{background:#2a1720;border:1px solid #fb7185;color:#ffe4e6}.capital-test-title{font-size:16px;font-weight:900}.capital-test-meta{margin-top:5px;color:#cbd5e1}.capital-test-reasons{margin-top:6px;color:#fda4af}
+.accuracy-entry{width:100%;margin:10px 0 15px;background:#155e75;border-color:#22d3ee;color:#ecfeff}.accuracy-note{margin:12px 0;padding:12px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#d1fae5;font-size:13px;line-height:1.65}.accuracy-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.accuracy-card{background:#172033;border:1px solid #334155;border-radius:14px;padding:12px}.accuracy-card h3{font-size:16px;margin:0 0 8px}.accuracy-line{font-size:12px;line-height:1.65;color:#cbd5e1}.accuracy-line b{color:#4ade80}.accuracy-recent{margin-top:15px}.accuracy-row{background:#0d1727;border:1px solid #26364d;border-radius:13px;padding:11px;margin:8px 0}.accuracy-row-head{display:flex;justify-content:space-between;gap:8px;font-weight:850}.accuracy-row-meta{color:#94a3b8;font-size:11px;margin-top:5px;line-height:1.5}.accuracy-row-result{font-size:13px;margin-top:7px;line-height:1.55}.accuracy-ok{color:#4ade80}.accuracy-bad{color:#fb7185}.accuracy-wait{color:#facc15}
 @media(min-width:640px){.buttons{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}}
+@media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}.accuracy-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -85,6 +86,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-period="noon">☀️ 午報</button>
     <button data-period="evening">🌙 晚報</button>
   </div>
+  <button class="accuracy-entry" id="accuracyButton">🎯 查看預測準確度與逐筆驗證</button>
 
   <div class="refresh-panel">
     <button class="refresh-button" id="refreshButton">🔄 重新整理最新資料</button>
@@ -102,6 +104,13 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <div id="performanceStrip"></div>
   <main id="results" aria-live="polite"></main>
   <footer class="footer">武得 AI 股票助理 V6.32-LIVE<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
+</div>
+
+<div class="modal" id="accuracyModal" role="dialog" aria-modal="true" aria-labelledby="accuracyTitle">
+  <div class="modal-card">
+    <div class="modal-head"><div><div class="modal-title" id="accuracyTitle">🎯 預測準確度驗證</div><div class="status">台股、美股與 ETF 分開計算</div></div><button class="modal-close" id="accuracyClose" aria-label="關閉">✕</button></div>
+    <div id="accuracyOutput"></div>
+  </div>
 </div>
 
 <div class="modal" id="liveModal" role="dialog" aria-modal="true" aria-labelledby="liveTitle">
@@ -122,7 +131,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},fubonLive:null,fubonQuotes:{},view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
@@ -497,6 +506,31 @@ function renderPerformance(report){
   var longer=availableHorizons.map(function(k){var m=h[k];return '<b>收盤至收盤'+k+'日</b>：'+m.samples+'筆｜命中 '+number(m.win_rate_pct,1)+'%｜平均 '+percent(m.avg_return_pct);}).join('<br>');
   box.innerHTML='<div class="performance">🎯 實際隔日驗證 V5（市場分流／三段各自預測）<br>'+trackLines+(split?'<br>'+split:'')+(leaders?'<br><b>10模型暫時排名</b><br>'+leaders:'')+(longer?'<br>'+longer:'')+'<br>'+guard+'<br><span class="muted">綜合排名與1～5日趨勢不等於隔日漲跌；V5未達樣本門檻前不會接管排名或自動下單。</span></div>';
 }
+function accuracyMetric(metric,label){
+  metric=metric||{};var samples=Number(metric.samples||0),eligible=Number(metric.eligible_samples||0);
+  if(!eligible&&!samples)return '<div class="accuracy-line">'+label+'：等待完成結果</div>';
+  return '<div class="accuracy-line"><b>'+label+'</b>：'+samples+'筆｜命中 '+number(metric.win_rate_pct,1)+'%｜平均 '+percent(metric.avg_return_pct)+'｜涵蓋 '+number(metric.coverage_pct,1)+'%｜'+esc(metric.sample_status||'樣本不足')+'</div>';
+}
+function renderAccuracy(){
+  var box=document.getElementById('accuracyOutput'),a=STATE.accuracy;
+  if(!a){box.innerHTML='<div class="empty">尚未產生驗證檔。下一次台股晚報或美股早報完成後會自動建立。</div>';return;}
+  var labels={TW_STOCK:'🇹🇼 台股',TW_ETF:'🇹🇼 台灣 ETF',US_STOCK:'🇺🇸 美股',US_ETF:'🇺🇸 美國 ETF'},groups=a.groups||{},cards='';
+  ['TW_STOCK','TW_ETF','US_STOCK','US_ETF'].forEach(function(key){
+    var group=groups[key]||{},tracks=group.tracks||{},top=group.top_k||{};
+    cards+='<div class="accuracy-card"><h3>'+labels[key]+'</h3>'+accuracyMetric(tracks.overnight,'隔夜')+accuracyMetric(tracks.session,'盤中')+accuracyMetric(tracks.full_day,'全天');
+    ['5','10','20'].forEach(function(limit){cards+=accuracyMetric((((top[limit]||{}).tracks||{}).full_day),'前 '+limit+' 名全天');});
+    cards+='</div>';
+  });
+  var integrity=a.integrity||{},cal=a.calibration||{},note='<div class="accuracy-note">🔒 '+esc(a.immutable_rule||'預測固定後不覆寫')+'<br>可驗證快照 '+Number(integrity.verified||0)+' 份｜舊版未加密 '+Number(integrity.legacy_unverified||0)+' 份｜異常隔離 '+Number(integrity.mismatch||0)+' 份<br>目前累積 '+Number(cal.trading_days_collected||0)+' 個交易日；樣本少於20筆只顯示「樣本不足」，棄權不算命中。此頁只做驗證，不會修改排名或啟用下單。</div>';
+  var recent=(a.recent||[]).slice(0,40),rows=recent.map(function(row){var full=(row.tracks||{}).full_day||{},hit=full.hit,cls=hit===true?'accuracy-ok':hit===false?'accuracy-bad':'accuracy-wait',icon=hit===true?'✅':hit===false?'❌':'⚪';return '<div class="accuracy-row"><div class="accuracy-row-head"><span>'+esc(row.name||row.symbol)+'（'+esc(row.symbol)+'）</span><span class="'+cls+'">'+icon+' '+esc(full.direction||'ABSTAIN')+'</span></div><div class="accuracy-row-meta">'+esc(labels[row.cohort]||row.cohort)+'｜當日排名 '+esc(row.rank)+'｜預測 '+esc(row.source_session_date)+' → 驗證 '+esc(row.evaluated_session_date)+'｜'+(row.integrity==='verified'?'雜湊驗證通過':'舊版紀錄')+'</div><div class="accuracy-row-result">收盤→開盤 '+percent(((row.tracks||{}).overnight||{}).actual_return_pct)+'｜開盤→收盤 '+percent(((row.tracks||{}).session||{}).actual_return_pct)+'｜收盤→收盤 <b class="'+cls+'">'+percent(full.actual_return_pct)+'</b></div></div>';}).join('');
+  box.innerHTML=note+'<div class="accuracy-grid">'+cards+'</div><div class="accuracy-recent"><div class="group">最近完成的逐筆驗證</div>'+(rows||'<div class="empty">目前尚無下一交易日完成結果。</div>')+'</div>';
+}
+async function openAccuracy(){
+  document.getElementById('accuracyModal').classList.add('open');document.body.style.overflow='hidden';
+  if(!STATE.accuracy){document.getElementById('accuracyOutput').innerHTML='<div class="empty">正在讀取驗證紀錄…</div>';try{STATE.accuracy=await fetchJSON('reports/accuracy.json');}catch(error){STATE.accuracy=null;}}
+  renderAccuracy();
+}
+function closeAccuracy(){document.getElementById('accuracyModal').classList.remove('open');document.body.style.overflow='';}
 async function fetchJSON(path){var response=await fetch(path+'?t='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);return response.json();}
 async function showReport(period){
   STATE.view='REPORT:'+period;
@@ -660,6 +694,9 @@ document.getElementById('liveToggle').addEventListener('click',function(){
   this.classList.toggle('off',!STATE.liveRealtime);this.textContent=STATE.liveRealtime?'🟢 即時模式開啟':'⚪ 即時模式暫停';
   if(STATE.liveRealtime)startLivePolling();else{stopLivePolling();document.getElementById('liveConnection').textContent='即時模式已暫停；可按「立即更新」單次更新。';}
 });
+document.getElementById('accuracyButton').addEventListener('click',openAccuracy);
+document.getElementById('accuracyClose').addEventListener('click',closeAccuracy);
+document.getElementById('accuracyModal').addEventListener('click',function(event){if(event.target===this)closeAccuracy();});
 document.querySelectorAll('#marketButtons button').forEach(function(btn){btn.addEventListener('click',function(){showMarket(btn.getAttribute('data-view'));});});
 document.querySelectorAll('#quantumButtons button').forEach(function(btn){btn.addEventListener('click',function(){showQuantum(btn.getAttribute('data-quantum'));});});
 document.querySelectorAll('#opticalButtons button').forEach(function(btn){btn.addEventListener('click',function(){showOptical(btn.getAttribute('data-optical'));});});

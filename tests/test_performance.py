@@ -2,7 +2,12 @@ import json
 from pathlib import Path
 
 from model_lab import MODEL_NAMES, consensus_prediction, model_predictions, track_predictions
-from performance import _summary, load_performance_context, update_performance
+from performance import (
+    _snapshot_integrity,
+    _summary,
+    load_performance_context,
+    update_performance,
+)
 
 
 def _row(
@@ -281,3 +286,87 @@ def test_reaching_sample_gate_never_silently_changes_production_score():
     assert calibration["eligible_one_day_samples"] == 240
     assert calibration["ready_for_model_selection"] is True
     assert calibration["affects_ai_score"] is False
+
+
+def test_snapshot_is_hashed_and_same_session_cannot_be_rewritten(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    snapshot = history["snapshots"][0]
+    original_hash = snapshot["integrity_sha256"]
+    original_price = snapshot["predictions"][0]["official_price"]
+    assert _snapshot_integrity(snapshot) == "verified"
+
+    changed = _row(999, "2026-08-18")
+    update_performance(tmp_path, [changed], [changed], "2026-08-18 21:00:00", "evening")
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    frozen = history["snapshots"][0]
+    assert frozen["integrity_sha256"] == original_hash
+    assert frozen["predictions"][0]["official_price"] == original_price
+
+
+def test_tampered_snapshot_is_quarantined_from_accuracy(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+    history_path = tmp_path / "prediction_history.json"
+    history = json.loads(history_path.read_text(encoding="utf-8"))
+    history["snapshots"][0]["predictions"][0]["official_price"] = 1
+    history_path.write_text(json.dumps(history), encoding="utf-8")
+
+    second = _row(110, "2026-08-19")
+    summary = update_performance(
+        tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
+    )
+    accuracy = json.loads((tmp_path / "accuracy.json").read_text(encoding="utf-8"))
+    assert summary["horizons"]["1"]["samples"] == 0
+    assert accuracy["integrity"]["mismatch"] == 1
+
+
+def test_accuracy_groups_top_k_and_abstentions_are_explicit(tmp_path: Path):
+    predictions = []
+    for rank in range(1, 7):
+        row = _row(100, "2026-08-18", symbol=f"T{rank}.TW")
+        row["backtest_rank"] = rank
+        if rank == 6:
+            row.update({"market_data_quality_score": 20, "technical_score": 20})
+        predictions.append(row)
+    update_performance(
+        tmp_path, predictions, predictions, "2026-08-18 20:00:00", "evening"
+    )
+    current = []
+    for rank in range(1, 7):
+        row = _row(101, "2026-08-19", symbol=f"T{rank}.TW", open_price=100.5)
+        row["backtest_rank"] = rank
+        current.append(row)
+    summary = update_performance(
+        tmp_path, current, current, "2026-08-19 20:00:00", "evening"
+    )
+    top5 = summary["groups"]["TW_STOCK"]["top_k"]["5"]["tracks"]["full_day"]
+    top20 = summary["groups"]["TW_STOCK"]["top_k"]["20"]["tracks"]["full_day"]
+    assert top5["eligible_samples"] == 5
+    assert top20["eligible_samples"] == 6
+    assert top20["abstain_samples"] >= 1
+    assert top5["sample_status"] == "樣本不足"
+
+
+def test_accuracy_records_actual_high_low_and_target_touch(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    first["short_term_stop"] = 95
+    first["short_term_target1"] = 108
+    first["short_term_target2"] = 115
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+    second = _row(106, "2026-08-19", open_price=102)
+    second.update({
+        "official_high_price": 110,
+        "official_low_price": 98,
+        "official_adjusted_high_price": 110,
+        "official_adjusted_low_price": 98,
+    })
+    update_performance(tmp_path, [second], [second], "2026-08-19 20:00:00", "evening")
+    accuracy = json.loads((tmp_path / "accuracy.json").read_text(encoding="utf-8"))
+    record = accuracy["recent"][0]
+    assert record["actual_high_price"] == 110.0
+    assert record["actual_low_price"] == 98.0
+    assert record["target1_touched"] is True
+    assert record["target2_touched"] is False
+    assert record["stop_touched"] is False
