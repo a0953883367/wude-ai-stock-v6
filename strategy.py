@@ -316,7 +316,14 @@ def _positioning_radar(row: dict[str, Any]) -> dict[str, Any]:
             available_groups += 1
             one = _finite(row.get("institution_1d"))
             five = _finite(row.get("institution_5d"))
-            if one > 0 and five > 0:
+            institution_multiday = bool(row.get(
+                "institution_multiday_available",
+                row.get("institution_5d") is not None,
+            ))
+            if not institution_multiday:
+                score += 8 if one > 0 else -8 if one < 0 else 0
+                evidence.append(f"三大法人最新一日 {one:+,.0f} 股；多日資料尚未對齊")
+            elif one > 0 and five > 0:
                 score += 16
                 evidence.append(f"三大法人1日與5日同步買超（{one:+,.0f}／{five:+,.0f}股）")
             elif one < 0 and five < 0:
@@ -330,19 +337,31 @@ def _positioning_radar(row: dict[str, Any]) -> dict[str, Any]:
 
         if row.get("credit_available"):
             available_groups += 1
-            short5 = _tw_credit_change_shares(row.get("short_5d_change"))
-            sbl5 = _finite(row.get("sbl_5d_change"))
-            margin5 = _tw_credit_change_shares(row.get("margin_5d_change"))
-            short_pressure = short5 + sbl5
-            base = max(_finite(row.get("avg_volume20")) * 5, 1)
+            multiday = bool(row.get(
+                "credit_multiday_available",
+                any(row.get(key) is not None for key in (
+                    "margin_5d_change", "short_5d_change", "sbl_5d_change"
+                )),
+            ))
+            short_change = _tw_credit_change_shares(
+                row.get("short_5d_change") if multiday else row.get("short_1d_change")
+            )
+            sbl_change = _finite(
+                row.get("sbl_5d_change") if multiday else row.get("sbl_1d_change")
+            )
+            margin_change = _tw_credit_change_shares(
+                row.get("margin_5d_change") if multiday else row.get("margin_1d_change")
+            )
+            short_pressure = short_change + sbl_change
+            base = max(_finite(row.get("avg_volume20")) * (5 if multiday else 1), 1)
             pressure_pct = short_pressure / base * 100
             if pressure_pct >= 2:
                 score -= 12
-                evidence.append(f"融券＋借券賣出5日增加 {short_pressure:+,.0f} 股，空方壓力升高")
+                evidence.append(f"融券＋借券賣出{'5日' if multiday else '1日'}增加 {short_pressure:+,.0f} 股，空方壓力升高")
             elif pressure_pct <= -2:
                 score += 9
-                evidence.append(f"融券＋借券賣出5日減少 {short_pressure:+,.0f} 股，空單回補")
-            elif margin5 > base * 0.03 and change < 0:
+                evidence.append(f"融券＋借券賣出{'5日' if multiday else '1日'}減少 {short_pressure:+,.0f} 股，空單回補")
+            elif margin_change > base * 0.03 and change < 0:
                 score -= 7
                 evidence.append("股價偏弱但融資增加，籌碼擁擠需留意")
             else:
@@ -1200,11 +1219,17 @@ def _etf_score_bundle(
     flow_available = flow is not None
     flow_label = "基金資金流"
     if market == "TW" and row.get("institution_available"):
-        participation = _finite(row.get("institution_5d")) / max(_finite(row.get("avg_volume20")) * 5, 1) * 100
+        multiday = bool(row.get(
+            "institution_multiday_available",
+            row.get("institution_5d") is not None,
+        ))
+        participation = _finite(
+            row.get("institution_5d") if multiday else row.get("institution_1d")
+        ) / max(_finite(row.get("avg_volume20")) * (5 if multiday else 1), 1) * 100
         continuity = 0.0
-        if all(_finite(row.get(key)) > 0 for key in ("institution_1d", "institution_3d", "institution_5d")):
+        if multiday and all(_finite(row.get(key)) > 0 for key in ("institution_1d", "institution_3d", "institution_5d")):
             continuity = 8.0
-        elif all(_finite(row.get(key)) < 0 for key in ("institution_1d", "institution_3d", "institution_5d")):
+        elif multiday and all(_finite(row.get(key)) < 0 for key in ("institution_1d", "institution_3d", "institution_5d")):
             continuity = -8.0
         institutional_flow = _clamp(50 + participation * 2 + continuity)
         flow = float(np.mean([_finite(flow), institutional_flow])) if flow_available else institutional_flow
@@ -1724,23 +1749,39 @@ def score_candidates(
             + _clamp(50 + row["attack_volume"] * 0.8) * 0.20
         )
         if row.get("institution_available"):
-            participation = row["institution_5d"] / max(row["avg_volume20"] * 5, 1) * 100
+            multiday = bool(row.get(
+                "institution_multiday_available",
+                row.get("institution_5d") is not None,
+            ))
+            participation = _finite(
+                row.get("institution_5d") if multiday else row.get("institution_1d")
+            ) / max(row["avg_volume20"] * (5 if multiday else 1), 1) * 100
             continuity = 0
-            if row["institution_1d"] > 0 and row["institution_3d"] > 0 and row["institution_5d"] > 0:
+            if multiday and row["institution_1d"] > 0 and row["institution_3d"] > 0 and row["institution_5d"] > 0:
                 continuity = 8
-            elif row["institution_1d"] < 0 and row["institution_3d"] < 0 and row["institution_5d"] < 0:
+            elif multiday and row["institution_1d"] < 0 and row["institution_3d"] < 0 and row["institution_5d"] < 0:
                 continuity = -8
             institution_score = _clamp(50 + participation * 2 + continuity)
         else:
             institution_score = 50.0
         credit_score = 50.0
         if row.get("credit_available"):
-            five_day_volume = max(row["avg_volume20"] * 5, 1)
-            margin_pressure = _tw_credit_change_shares(row.get("margin_5d_change")) / five_day_volume * 100
+            multiday = bool(row.get(
+                "credit_multiday_available",
+                any(row.get(key) is not None for key in (
+                    "margin_5d_change", "short_5d_change", "sbl_5d_change"
+                )),
+            ))
+            flow_volume = max(row["avg_volume20"] * (5 if multiday else 1), 1)
+            margin_pressure = _tw_credit_change_shares(
+                row.get("margin_5d_change") if multiday else row.get("margin_1d_change")
+            ) / flow_volume * 100
             short_pressure = (
-                _tw_credit_change_shares(row.get("short_5d_change"))
-                + _finite(row.get("sbl_5d_change"))
-            ) / five_day_volume * 100
+                _tw_credit_change_shares(
+                    row.get("short_5d_change") if multiday else row.get("short_1d_change")
+                )
+                + _finite(row.get("sbl_5d_change") if multiday else row.get("sbl_1d_change"))
+            ) / flow_volume * 100
             # Rising margin is crowded retail leverage; rising short/SBL is sell pressure.
             credit_score = _clamp(50 - margin_pressure * 1.2 - short_pressure * 1.5)
             institution_score = institution_score * 0.72 + credit_score * 0.28

@@ -27,12 +27,21 @@ from data_fetcher import (
 )
 from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
-from news_risk import fetch_news_risks
+from news_risk import fetch_news_risks, merge_official_announcements
 from performance import load_performance_context, update_performance
-from market_models import assess_market_data_quality, enforce_market_contract
+from market_models import (
+    assess_market_data_quality,
+    enforce_market_contract,
+    validate_taiwan_data,
+)
 from model_lab import track_predictions
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
+from tw_official_data import (
+    fetch_taiwan_official_data,
+    merge_official_with_fallback,
+    overlay_official_daily,
+)
 from watchlist import load_watchlist
 
 build_features = strategy.build_features
@@ -167,6 +176,8 @@ def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict
     fundamental_keys = {
         "fundamental_available", "per", "pbr", "dividend_yield",
         "revenue_year", "revenue_month", "monthly_revenue",
+        "valuation_date", "valuation_source", "valuation_official",
+        "revenue_date", "revenue_source", "revenue_unit", "revenue_official",
     }
     for symbol, row in previous.items():
         if row.get("market") != "TW":
@@ -279,6 +290,21 @@ def main() -> int:
         broker_branches = _stage(
             "台股券商分點", lambda: fetch_broker_branches(watchlist_stock_ids)
         )
+    # Official exchange data is fetched once for the entire Taiwan universe.
+    # It replaces Taiwan fields only; US inputs and scoring stay untouched.
+    # FinMind/previous snapshots remain fallbacks for multi-session history.
+    tw_official = _stage(
+        "台股官方資料", lambda: fetch_taiwan_official_data(universe)
+    )
+    institutions = merge_official_with_fallback(
+        institutions, tw_official.get("institutions", {}), kind="institution"
+    )
+    credit_flows = merge_official_with_fallback(
+        credit_flows, tw_official.get("credit", {}), kind="credit"
+    )
+    fundamentals = merge_official_with_fallback(
+        fundamentals, tw_official.get("fundamentals", {}), kind="fundamental"
+    )
     financial_quality = _stage(
         "財務品質快取", lambda: fetch_financial_quality(watchlist_stock_ids)
     )
@@ -292,6 +318,10 @@ def main() -> int:
     for item in universe:
         symbol = item["symbol"]
         daily = history.get(symbol)
+        official_price = None
+        if item.get("market") == "TW":
+            official_price = tw_official.get("prices", {}).get(symbol.split(".")[0])
+            daily = overlay_official_daily(daily, official_price)
         if daily is None:
             continue
         stock_id = symbol.split(".")[0]
@@ -300,6 +330,24 @@ def main() -> int:
         if row:
             row.update(etf_metadata.get(symbol, {}))
             if item.get("market") == "TW":
+                if official_price:
+                    row.update({
+                        "tw_official_price_available": bool(
+                            official_price.get("tw_official_price_available")
+                        ),
+                        "tw_official_session_date": official_price.get("date"),
+                        "tw_price_source": official_price.get("tw_price_source"),
+                        "tw_price_unit": official_price.get("tw_price_unit"),
+                    })
+                if institution:
+                    row.update({
+                        key: value for key, value in institution.items()
+                        if key in {
+                            "institution_date", "institution_source",
+                            "institution_unit", "institution_official",
+                            "institution_multiday_available",
+                        }
+                    })
                 row.update(credit_flows.get(stock_id, {}))
                 row.update(fundamentals.get(stock_id, {}))
                 row.update(financial_quality.get(stock_id, {}))
@@ -310,6 +358,8 @@ def main() -> int:
                 row.update(us_short_volume.get(symbol.upper(), {}))
                 if "ETF" not in str(item.get("type", "")).upper():
                     row.update(us_company_metadata.get(symbol.upper(), {}))
+            if item.get("market") == "TW":
+                row = validate_taiwan_data(row)
             features.append(enforce_market_contract(row))
 
     market = _stage("核心市場", fetch_core_market)
@@ -393,6 +443,15 @@ def main() -> int:
         risk = news_risks.get(row.get("symbol"))
         if risk:
             row.update(risk)
+        if row.get("market") == "TW":
+            sid = str(row.get("symbol") or "").split(".")[0]
+            announcements = tw_official.get("announcements", {}).get(sid, [])
+            if announcements:
+                row.update(merge_official_announcements(
+                    risk or {}, announcements,
+                    symbol=str(row.get("symbol") or ""),
+                    name=str(row.get("name") or ""),
+                ))
         row.update(assess_market_data_quality(row))
 
     ranked = _stage(
@@ -464,6 +523,11 @@ def main() -> int:
             "institutional_count": len(institutions),
             "credit_count": len(credit_flows),
             "fundamental_count": len(fundamentals),
+            "tw_official_price_count": len(tw_official.get("prices", {})),
+            "tw_official_institution_count": len(tw_official.get("institutions", {})),
+            "tw_official_credit_count": len(tw_official.get("credit", {})),
+            "tw_official_fundamental_count": len(tw_official.get("fundamentals", {})),
+            "tw_official_announcement_count": len(tw_official.get("announcements", {})),
             "financial_quality_count": len(financial_quality),
             "broker_count": len(broker_branches),
             "us_short_volume_count": len(us_short_volume),
@@ -496,7 +560,7 @@ def main() -> int:
             "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
             "missing_data": "缺少的維度不以中性50分補入排名；降低資料信心並依門檻限制資格",
-            "market_isolation": "台股TW-V3與美股US-V3使用獨立資料契約；跨市場欄位會在計分前清除",
+            "market_isolation": "台股個股TW-STOCK-V4、台灣ETF TW-ETF-V4與美股US-V3使用獨立資料契約；跨市場欄位會在計分前清除",
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",

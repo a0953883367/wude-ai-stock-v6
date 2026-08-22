@@ -2,6 +2,7 @@ from data_fetcher import (
     _aggregate_credit_rows,
     _aggregate_financial_quality_rows,
     _aggregate_fundamental_rows,
+    _aggregate_institutional_rows,
     _dataset_for_ids,
     _parse_finra_short_volume,
 )
@@ -38,6 +39,20 @@ def test_credit_rows_have_latest_and_five_day_changes():
     assert result["margin_5d_change"] == 300
     assert result["short_5d_change"] == -60
     assert result["sbl_5d_change"] == 100
+    assert result["credit_date"] == "2026-08-14"
+    assert result["credit_unit"] == "lots"
+    assert result["sbl_unit"] == "shares"
+
+
+def test_institution_rows_include_date_source_and_share_unit():
+    result = _aggregate_institutional_rows([
+        {"date": "2026-08-21", "stock_id": "2330", "name": "Foreign_Investor", "buy": 10, "sell": 30},
+        {"date": "2026-08-21", "stock_id": "2330", "name": "Investment_Trust", "buy": 5, "sell": 0},
+    ], {"2330"})["2330"]
+    assert result["institution_1d"] == -15
+    assert result["institution_date"] == "2026-08-21"
+    assert result["institution_source"] == "FinMind"
+    assert result["institution_unit"] == "shares"
 
 
 def test_fundamental_rows_have_valuation_and_revenue_growth():

@@ -28,7 +28,7 @@ SEVERE_TERMS = (
     "bankruptcy", "chapter 11", "default", "fraud", "accounting irregular",
     "restatement", "subpoena", "criminal investigation", "regulatory investigation",
     "delisting", "trading halt", "suspension", "recall", "cyber breach",
-    "data breach", "guidance cut", "cuts guidance", "profit warning", "重大訊息",
+    "data breach", "guidance cut", "cuts guidance", "profit warning",
     "破產", "違約", "財報不實", "重編財報", "搜索", "起訴", "調查",
     "下市", "停止交易", "暫停交易", "召回", "資安事件", "下修財測",
 )
@@ -201,3 +201,40 @@ def fetch_news_risks(rows: list[dict[str, Any]], workers: int = 8) -> dict[str, 
             symbol, result = future.result()
             results[symbol] = result
     return results
+
+
+def merge_official_announcements(
+    base: dict[str, Any],
+    announcements: list[dict[str, Any]],
+    *,
+    symbol: str,
+    name: str,
+) -> dict[str, Any]:
+    """Add MOPS announcements without treating every announcement as bad news."""
+    articles: list[dict[str, Any]] = []
+    for item in announcements:
+        try:
+            published = datetime.fromisoformat(str(item.get("date"))).replace(
+                tzinfo=timezone.utc
+            )
+        except (TypeError, ValueError):
+            continue
+        articles.append({
+            "title": f"{name} {str(item.get('title') or '').strip()}",
+            "publisher": "公開資訊觀測站",
+            "providerPublishTime": published.timestamp(),
+            "link": "",
+        })
+    official = classify_news(
+        articles,
+        identity_terms=_identity_terms(symbol, name),
+    )
+    output = dict(base)
+    output["official_announcement_count"] = len(announcements)
+    output["official_announcement_source"] = "MOPS"
+    output["news_data_available"] = bool(base.get("news_data_available") or articles)
+    if float(official.get("news_penalty") or 0) > float(base.get("news_penalty") or 0):
+        output.update(official)
+        output["official_announcement_count"] = len(announcements)
+        output["official_announcement_source"] = "MOPS"
+    return output

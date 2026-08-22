@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 
@@ -10,6 +11,68 @@ TW_ONLY_PREFIXES = (
     "short_", "broker_", "top_brokers_",
 )
 US_ONLY_PREFIXES = ("us_short_", "us_live_", "us_option_", "us_market_", "extended_")
+
+
+def _date_value(value: Any) -> date | None:
+    try:
+        return date.fromisoformat(str(value or ""))
+    except ValueError:
+        return None
+
+
+def validate_taiwan_data(row: dict[str, Any]) -> dict[str, Any]:
+    """Validate Taiwan source dates and units before any score is calculated.
+
+    Invalid data remains visible for diagnosis, but its availability flag is
+    disabled so it cannot silently improve or damage a ranking.
+    """
+    if str(row.get("market") or "").upper() != "TW":
+        return row
+
+    issues: list[str] = []
+    session = _date_value(row.get("tw_official_session_date"))
+    price_unit = str(row.get("tw_price_unit") or "")
+    official_price = bool(row.get("tw_official_price_available"))
+    if official_price and price_unit != "TWD/shares":
+        row["tw_official_price_available"] = False
+        official_price = False
+        issues.append("官方價量單位不符")
+    reference_session = session if official_price else None
+
+    institution_date = _date_value(row.get("institution_date"))
+    if row.get("institution_available"):
+        if not reference_session:
+            row["institution_available"] = False
+            issues.append("法人資料缺官方交易日基準")
+        elif str(row.get("institution_unit") or "") != "shares":
+            row["institution_available"] = False
+            issues.append("法人單位不是股")
+        elif not institution_date:
+            row["institution_available"] = False
+            issues.append("法人資料缺日期")
+        elif institution_date != reference_session:
+            row["institution_available"] = False
+            issues.append("法人資料交易日不一致")
+
+    credit_date = _date_value(row.get("credit_date"))
+    if row.get("credit_available"):
+        if not reference_session:
+            row["credit_available"] = False
+            issues.append("融資券資料缺官方交易日基準")
+        elif str(row.get("credit_unit") or "") != "lots":
+            row["credit_available"] = False
+            issues.append("融資券單位不是張")
+        elif not credit_date:
+            row["credit_available"] = False
+            issues.append("融資券資料缺日期")
+        elif credit_date != reference_session:
+            row["credit_available"] = False
+            issues.append("融資券資料交易日不一致")
+
+    row["tw_data_validation_issues"] = issues
+    row["tw_data_valid"] = not issues
+    row["tw_official_session_available"] = bool(reference_session)
+    return row
 
 
 def enforce_market_contract(row: dict[str, Any]) -> dict[str, Any]:
@@ -29,7 +92,10 @@ def enforce_market_contract(row: dict[str, Any]) -> dict[str, Any]:
     if market == "TW":
         row["us_short_volume_available"] = False
         row["extended_hours_available"] = False
-        row["market_model_version"] = "TW-V3"
+        row["market_model_version"] = (
+            "TW-ETF-V4" if "ETF" in str(row.get("type") or "").upper()
+            else "TW-STOCK-V4"
+        )
     else:
         row["institution_available"] = False
         row["credit_available"] = False
@@ -43,13 +109,12 @@ def enforce_market_contract(row: dict[str, Any]) -> dict[str, Any]:
 def assess_market_data_quality(row: dict[str, Any]) -> dict[str, Any]:
     """Return a market-aware coverage score; missing data never becomes 50."""
     market = str(row.get("market") or "").upper()
-    common = [
-        ("日線價量", bool(row.get("price") and row.get("avg_volume20")), 25),
-        ("盤中量價", bool(row.get("intraday_available")), 15),
-        ("新聞", bool(row.get("news_data_available")), 10),
-    ]
     if market == "TW":
-        checks = common + [
+        checks = [
+            ("日線價量", bool(row.get("price") and row.get("avg_volume20")), 20),
+            ("官方收盤", bool(row.get("tw_official_session_available")), 10),
+            ("盤中量價", bool(row.get("intraday_available")), 10),
+            ("新聞", bool(row.get("news_data_available")), 10),
             ("三大法人", bool(row.get("institution_available")), 15),
             ("融資融券／借券", bool(row.get("credit_available")), 10),
             ("估值／營收", bool(row.get("fundamental_available")), 10),

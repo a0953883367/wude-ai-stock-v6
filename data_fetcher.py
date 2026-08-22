@@ -453,7 +453,7 @@ def fetch_macro_history(period: str = "3mo") -> list[dict[str, Any]]:
 
 def _aggregate_institutional_rows(
     rows: list[dict[str, Any]], stock_ids: set[str]
-) -> dict[str, dict[str, float]]:
+) -> dict[str, dict[str, Any]]:
     """Aggregate institutional flows over 1/3/5/10 available sessions."""
     daily: dict[str, dict[str, dict[str, float]]] = {}
     for row in rows:
@@ -473,17 +473,22 @@ def _aggregate_institutional_rows(
         elif name in {"Dealer", "Dealer_self", "Dealer_Hedging"}:
             item["dealer"] += net
 
-    output: dict[str, dict[str, float]] = {}
+    output: dict[str, dict[str, Any]] = {}
     for sid, by_date in daily.items():
         dates = sorted(by_date, reverse=True)
         if not dates:
             continue
         latest = by_date[dates[0]]
-        item: dict[str, float] = {
+        item: dict[str, Any] = {
             "foreign": latest["foreign"],
             "trust": latest["trust"],
             "dealer": latest["dealer"],
             "available": 1.0,
+            "institution_date": dates[0],
+            "institution_source": "FinMind",
+            "institution_unit": "shares",
+            "institution_official": False,
+            "institution_multiday_available": len(dates) >= 5,
         }
         for window in (1, 3, 5, 10):
             selected = dates[:window]
@@ -581,7 +586,7 @@ def _dataset_for_ids(dataset: str, stock_ids: set[str], start: date, end: date) 
 
 def _aggregate_credit_rows(
     margin_rows: list[dict[str, Any]], short_rows: list[dict[str, Any]], stock_ids: set[str]
-) -> dict[str, dict[str, float]]:
+) -> dict[str, dict[str, Any]]:
     """Build latest and 5-session changes for margin, short sale and SBL balances."""
     by_sid: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
     for kind, rows in (("margin", margin_rows), ("short", short_rows)):
@@ -591,9 +596,9 @@ def _aggregate_credit_rows(
                 continue
             by_sid.setdefault(sid, {}).setdefault(kind, {})[str(row.get("date", ""))] = row
 
-    output: dict[str, dict[str, float]] = {}
+    output: dict[str, dict[str, Any]] = {}
     for sid, kinds in by_sid.items():
-        item: dict[str, float] = {}
+        item: dict[str, Any] = {}
         margin_dates = sorted(kinds.get("margin", {}), reverse=True)
         if margin_dates:
             latest = kinds["margin"][margin_dates[0]]
@@ -602,6 +607,10 @@ def _aggregate_credit_rows(
             short_balance = float(latest.get("ShortSaleTodayBalance", 0) or 0)
             item.update({
                 "credit_available": 1.0,
+                "credit_date": margin_dates[0],
+                "credit_source": "FinMind",
+                "credit_unit": "lots",
+                "credit_official": False,
                 "margin_balance": margin_balance,
                 "margin_1d_change": margin_balance - float(latest.get("MarginPurchaseYesterdayBalance", 0) or 0),
                 "margin_5d_change": margin_balance - float(oldest.get("MarginPurchaseYesterdayBalance", 0) or 0),
@@ -616,11 +625,19 @@ def _aggregate_credit_rows(
             sbl_balance = float(latest.get("SBLShortSalesCurrentDayBalance", 0) or 0)
             item.update({
                 "credit_available": 1.0,
+                "credit_date": max(str(item.get("credit_date") or ""), short_dates[0]),
+                "credit_source": "FinMind",
+                "credit_official": False,
+                "sbl_unit": "shares",
                 "sbl_balance": sbl_balance,
                 "sbl_1d_change": sbl_balance - float(latest.get("SBLShortSalesPreviousDayBalance", 0) or 0),
                 "sbl_5d_change": sbl_balance - float(oldest.get("SBLShortSalesPreviousDayBalance", 0) or 0),
             })
         if item:
+            item["credit_multiday_available"] = bool(
+                (not margin_dates or len(margin_dates) >= 5)
+                and (not short_dates or len(short_dates) >= 5)
+            )
             output[sid] = item
     return output
 
