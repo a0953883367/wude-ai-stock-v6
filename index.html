@@ -30,7 +30,6 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .group{font-size:18px;font-weight:900;margin:22px 3px 10px}.empty,.error{padding:18px;border-radius:15px;background:#172033;color:#cbd5e1;line-height:1.7}.error{background:#3b1720;color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:28px 0 42px;line-height:1.8}
 .live-button{width:100%;margin-top:13px;background:#164e63;border-color:#22d3ee;color:#cffafe}.live-result{margin-top:10px;background:#172554;border:1px solid #3b82f6;border-radius:13px;padding:12px;line-height:1.7;font-size:13px}.modal{display:none;position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);padding:16px;overflow:auto}.modal.open{display:block}.modal-card{max-width:620px;margin:18px auto;background:#111c2e;border:1px solid #334155;border-radius:22px;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal-title{font-size:21px;font-weight:900}.modal-close{width:46px;padding:10px}.modal-output{margin-top:13px}.live-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.live-refresh{background:#166534;border-color:#4ade80}.live-toggle{background:#164e63;border-color:#22d3ee}.live-toggle.off{background:#334155;border-color:#64748b}.live-connection{margin-top:8px;color:#7dd3fc;font-size:12px;line-height:1.5;text-align:center}.auto-note{margin-top:12px;padding:11px 13px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#bbf7d0;font-size:13px;line-height:1.6}.auto-data{margin-top:12px;border:1px solid #334155;border-radius:13px;background:#0d1727}.auto-data summary{padding:12px;color:#7dd3fc;font-weight:800;cursor:pointer}.auto-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 12px}.auto-item{background:#172033;border-radius:10px;padding:9px}.auto-item span{display:block;color:var(--muted);font-size:11px}.auto-item b{display:block;margin-top:3px}.muted{color:var(--muted)}
 .capital-test{margin-top:13px;border-radius:14px;padding:13px;line-height:1.65;font-size:13px}.capital-test.eligible{background:#0b2c22;border:1px solid #22c55e;color:#dcfce7}.capital-test.blocked{background:#2a1720;border:1px solid #fb7185;color:#ffe4e6}.capital-test-title{font-size:16px;font-weight:900}.capital-test-meta{margin-top:5px;color:#cbd5e1}.capital-test-reasons{margin-top:6px;color:#fda4af}
-.trade-open{width:100%;margin-top:10px;background:#854d0e;border-color:#facc15;color:#fef9c3}.trade-select{width:100%;margin-top:9px;background:#1e3a5f;border-color:#60a5fa;color:#dbeafe}.trade-select.selected{background:#14532d;border-color:#4ade80;color:#dcfce7}.trade-warning{background:#2a1720;border:1px solid #fb7185;color:#ffe4e6;border-radius:13px;padding:12px;line-height:1.6;margin:12px 0}.trade-cash{display:block;width:100%;margin-top:7px}.trade-selections{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.trade-chip,.trade-plan{background:#172033;border:1px solid #334155;border-radius:12px;padding:10px;line-height:1.55}.trade-chip span,.trade-plan span{display:block;color:var(--muted);font-size:12px}.trade-empty{color:var(--muted);padding:12px}.trade-allocation,.trade-message{margin-top:10px;color:#bfdbfe;line-height:1.55}.trade-message.bad{color:#fda4af}.trade-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.trade-actions .stop{background:#7f1d1d;border-color:#fb7185}.trade-preview{margin-top:12px}.trade-plan{margin-top:8px}.trade-plan.ok{border-color:#22c55e}.trade-plan.blocked{border-color:#fb7185}
 @media(min-width:640px){.buttons{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}}
 </style>
@@ -49,7 +48,6 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-view="WATCH">⭐ 我的清單</button>
     <button data-view="TEST">🧪 2萬元實測</button>
   </div>
-  <button class="trade-open" id="openTrading">💰 2萬元台／美股交易控制（已選 <span id="tradeSelectionCount">0</span>/3）</button>
 
   <div class="nav-label">⚛️ 量子概念股專區</div>
   <div class="buttons" id="quantumButtons">
@@ -106,20 +104,6 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
   <footer class="footer">武得 AI 股票助理 V6.32-LIVE<br>每日 06:00／12:00／20:00 自動更新<br>AI 分析僅供研究與風險輔助</footer>
 </div>
 
-<div class="modal" id="tradingModal" role="dialog" aria-modal="true" aria-labelledby="tradeTitle">
-  <div class="modal-card">
-    <div class="modal-head"><div><div class="modal-title" id="tradeTitle">💰 台／美股交易控制</div><div class="status">同一筆台幣資金，最多3檔，最長持有5個交易日</div></div><button class="modal-close" id="tradeClose" aria-label="關閉">✕</button></div>
-    <div class="trade-warning"><b>目前只開放模擬模式</b><br>真實資金硬上限為20,000元；在成交核對、持倉與緊急停止完成驗證前，不會送出富邦真實委託。美股真單尚待券商官方介面確認。</div>
-    <label>本次資金上限（新台幣）<input class="trade-cash" id="tradeCash" type="number" min="1000" max="20000" step="1000" value="20000"></label>
-    <div class="trade-selections" id="tradeSelections"></div>
-    <div class="trade-allocation" id="tradeAllocation"></div>
-    <div class="trade-actions"><button id="tradePreviewButton">🧮 預覽分配</button><button id="tradeStartButton">▶ 啟用模擬監控</button></div>
-    <button class="stop" id="tradeStopButton" style="width:100%;margin-top:8px">⛔ 緊急停止</button>
-    <div class="trade-message" id="tradeMessage">尚未連線。</div>
-    <div class="trade-preview" id="tradePreview"></div>
-  </div>
-</div>
-
 <div class="modal" id="liveModal" role="dialog" aria-modal="true" aria-labelledby="liveTitle">
   <div class="modal-card">
     <div class="modal-head"><div><div class="modal-title" id="liveTitle">🧠 自動即時判斷</div><div class="status" id="liveStockName"></div></div><button class="modal-close" id="liveClose" aria-label="關閉">✕</button></div>
@@ -136,7 +120,6 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="live_analysis.js?v=633"></script>
 <script src="ranking.js?v=634"></script>
 <script src="capital_test.js"></script>
-<script src="trading_client.js?v=635"></script>
 <script>
 'use strict';
 var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},fubonLive:null,fubonQuotes:{},view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
@@ -346,7 +329,6 @@ function stockCard(stock,index){
     '風控價：<b class="down">'+esc(number(stock.stop,2))+'</b></div>',
     '<div class="advice">'+esc(stock.advice)+'</div><div class="risk">風險：'+esc(stock.risk)+'</div>',
     '<div data-capital-result="'+esc(stock.symbol)+'">'+capitalTestHtml(stock)+'</div>',
-    '<button class="trade-select'+(WudeTradingClient.selected(stock.symbol)?' selected':'')+'" data-trade-symbol="'+esc(stock.symbol)+'" data-trade-name="'+esc(stock.name)+'" data-trade-market="'+esc(stock.market)+'">'+(WudeTradingClient.selected(stock.symbol)?'✅ 已加入交易清單':'＋ 加入2萬元交易清單')+'</button>',
     '<button class="live-button" data-live-symbol="'+esc(stock.symbol)+'">🧠 查看自動即時判斷</button></article>'
   ].join('');
 }
