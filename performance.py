@@ -13,10 +13,18 @@ from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 HORIZONS = (1, 5, 10, 20)
 METHODOLOGY_VERSION = 6
-AUDIT_SCHEMA_VERSION = 1
+AUDIT_SCHEMA_VERSION = 2
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
 TOP_K = (5, 10, 20)
+TW_THRESHOLD_GRID = (
+    (58.0, 6),
+    (60.0, 6),
+    (62.0, 6),
+    (65.0, 6),
+    (60.0, 7),
+    (62.0, 7),
+)
 RETURN_TRACKS = {
     "overnight": "close_to_open_return_pct",
     "session": "open_to_close_return_pct",
@@ -35,6 +43,7 @@ def _outcome_return(value: Any, field: str = "close_to_close_return_pct") -> flo
 
 def _metric(records: list[tuple[float, str]], eligible: int = 0) -> dict[str, float | int]:
     directional = [value if direction == "UP" else -value for value, direction in records]
+    actual = [value for value, _direction in records]
     if not directional:
         return {
             "samples": 0,
@@ -44,6 +53,8 @@ def _metric(records: list[tuple[float, str]], eligible: int = 0) -> dict[str, fl
             "win_rate_pct": 0.0,
             "avg_return_pct": 0.0,
             "worst_return_pct": 0.0,
+            "lowest_actual_return_pct": 0.0,
+            "highest_actual_return_pct": 0.0,
             "sample_status": _sample_status(0),
         }
     return {
@@ -54,7 +65,71 @@ def _metric(records: list[tuple[float, str]], eligible: int = 0) -> dict[str, fl
         "win_rate_pct": round(sum(value > 0 for value in directional) / len(directional) * 100, 1),
         "avg_return_pct": round(sum(directional) / len(directional), 2),
         "worst_return_pct": round(min(directional), 2),
+        "lowest_actual_return_pct": round(min(actual), 2),
+        "highest_actual_return_pct": round(max(actual), 2),
         "sample_status": _sample_status(len(directional)),
+    }
+
+
+def _shadow_consensus_direction(
+    row: dict[str, Any], threshold: float, minimum_votes: int
+) -> str:
+    """Re-score stored TW model votes without changing production forecasts."""
+    models = (
+        row.get("track_predictions", {})
+        .get("full_day", {})
+        .get("models", {})
+    )
+    up = down = 0
+    for vote in models.values():
+        try:
+            score = float(vote.get("score"))
+            coverage = float(vote.get("evidence_coverage_pct"))
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if coverage < 75.0:
+            continue
+        if score >= threshold:
+            up += 1
+        elif score <= 100.0 - threshold:
+            down += 1
+    if up >= minimum_votes and up >= down + 3:
+        return "UP"
+    if down >= minimum_votes and down >= up + 3:
+        return "DOWN"
+    return "ABSTAIN"
+
+
+def _tw_threshold_calibration(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compare TW research thresholds on immutable completed outcomes only."""
+    cohorts: dict[str, list[dict[str, Any]]] = {"TW_STOCK": [], "TW_ETF": []}
+    for cohort in cohorts:
+        for threshold, minimum_votes in TW_THRESHOLD_GRID:
+            records: list[tuple[float, str]] = []
+            eligible = 0
+            for snapshot in snapshots:
+                for row in snapshot.get("predictions", []):
+                    if str(row.get("cohort")) != cohort:
+                        continue
+                    value = _outcome_return(row.get("outcomes", {}).get("1"))
+                    if value is None:
+                        continue
+                    eligible += 1
+                    direction = _shadow_consensus_direction(row, threshold, minimum_votes)
+                    if evaluate_direction(direction, value) is not None:
+                        records.append((value, direction))
+            cohorts[cohort].append({
+                "score_threshold": threshold,
+                "minimum_votes": minimum_votes,
+                **_metric(records, eligible),
+            })
+    return {
+        "mode": "shadow_only",
+        "minimum_samples_before_review": 20,
+        "affects_ai_score": False,
+        "automatic_promotion": False,
+        "cohorts": cohorts,
+        "note": "只比較已固定台股預測的完成結果；不讀取美股，也不自動修改正式權重。",
     }
 
 
@@ -255,6 +330,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "model_leaderboard": leaderboards["full_day"],
         "model_leaderboards": leaderboards,
         "groups": groups,
+        "tw_threshold_calibration": _tw_threshold_calibration(snapshots),
         "calibration": {
             "trading_days_collected": collected,
             "minimum_trading_days": MINIMUM_TRADING_DAYS,
@@ -568,6 +644,7 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
         "immutable_rule": "同一市場與交易日只建立一次預測；結果只追加，不覆寫預測內容。",
         "integrity": integrity,
         "calibration": summary.get("calibration", {}),
+        "tw_threshold_calibration": summary.get("tw_threshold_calibration", {}),
         "groups": public_groups,
         "tracks": summary.get("tracks", {}),
         "recent": recent[:200],
