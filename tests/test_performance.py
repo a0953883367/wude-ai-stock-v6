@@ -6,6 +6,7 @@ from performance import (
     _snapshot_integrity,
     _summary,
     _tw_threshold_calibration,
+    load_frozen_forecasts,
     load_performance_context,
     update_performance,
 )
@@ -318,6 +319,10 @@ def test_snapshot_is_hashed_and_same_session_cannot_be_rewritten(tmp_path: Path)
     frozen = history["snapshots"][0]
     assert frozen["integrity_sha256"] == original_hash
     assert frozen["predictions"][0]["official_price"] == original_price
+    fixed = load_frozen_forecasts(tmp_path, market="TW")["2330.TW"]
+    assert fixed["next_session_source_session_date"] == "2026-08-18"
+    assert fixed["next_session_generated_at"] == "2026-08-18 20:00:00"
+    assert fixed["next_session_data_mode"] == "固定快照（雜湊驗證通過）"
 
 
 def test_tampered_snapshot_is_quarantined_from_accuracy(tmp_path: Path):
