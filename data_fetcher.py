@@ -25,6 +25,7 @@ from config import SETTINGS
 LOG = logging.getLogger(__name__)
 CORE_MARKET = {
     "加權指數": "^TWII",
+    "櫃買指數": "^TWOII",
     "S&P 500": "^GSPC",
     "Nasdaq": "^IXIC",
     "費城半導體": "^SOX",
@@ -408,18 +409,29 @@ def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path |
         LOG.debug("US company metadata cache write failed: %s", exc)
     return output
 
-def fetch_core_market() -> dict[str, dict[str, float | None]]:
+def fetch_core_market() -> dict[str, dict[str, Any]]:
     histories = download_history(list(CORE_MARKET.values()), period="7d")
-    output: dict[str, dict[str, float | None]] = {}
+    output: dict[str, dict[str, Any]] = {}
     for label, symbol in CORE_MARKET.items():
         frame = histories.get(symbol)
         if frame is None or frame.empty or "close" not in frame:
-            output[label] = {"price": None, "change_pct": None}
+            output[label] = {
+                "price": None,
+                "change_pct": None,
+                "session_date": None,
+            }
             continue
         close = frame["close"].dropna()
         price = float(close.iloc[-1]) if len(close) else None
         change = float((close.iloc[-1] / close.iloc[-2] - 1) * 100) if len(close) > 1 else None
-        output[label] = {"price": price, "change_pct": change}
+        session_date = (
+            pd.Timestamp(close.index[-1]).date().isoformat() if len(close) else None
+        )
+        output[label] = {
+            "price": price,
+            "change_pct": change,
+            "session_date": session_date,
+        }
     return output
 
 

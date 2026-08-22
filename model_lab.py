@@ -47,9 +47,17 @@ def _inputs(row: dict[str, Any]) -> dict[str, Any]:
     volume = _number(row.get("volume_score"))
     flow = _number(row.get("market_flow_score"), _number(row.get("institution_score")))
     positioning = _number(row.get("positioning_score"))
-    group = _number(row.get("group_score"))
+    group = _number(
+        row.get("tw_sector_context_score")
+        if market == "TW" and row.get("tw_sector_context_available")
+        else row.get("group_score")
+    )
     entry = _number(row.get("entry_score"))
-    macro = _number(row.get("macro_score"))
+    macro = _number(
+        row.get("tw_market_context_score")
+        if market == "TW" and row.get("tw_market_context_available")
+        else row.get("macro_score")
+    )
     rsi = _number(row.get("rsi"))
     change = _float(row.get("change_pct"))
     relative_volume = _float(row.get("daily_volume_ratio"), _float(row.get("relative_volume"), 1.0))
@@ -130,30 +138,32 @@ def _track_scores(row: dict[str, Any], track: str) -> dict[str, float]:
         overnight_share = .45
     else:
         # Taiwan uses completed close/volume plus local institutional, credit
-        # and broker evidence. Fundamentals do not vote on tomorrow's return.
+        # and broker evidence. Most models keep symbol evidence dominant and
+        # bound peer/market context to 20%/10%. Dedicated context models cast
+        # only one vote each. Fundamentals do not vote on tomorrow's return.
         overnight = {
-            "balanced_next": _blend([(x["technical"],20),(x["kline"],10),(x["flow"],25),(x["macro"],20),(x["news"],10),(x["exhaustion"],15)]),
-            "price_trend": _blend([(x["technical"],35),(x["kline"],15),(x["macro"],20),(x["flow"],15),(x["exhaustion"],15)]),
-            "volume_confirmation": _blend([(x["volume"],25),(x["kline"],15),(x["flow"],25),(x["macro"],15),(x["exhaustion"],20)]),
-            "market_flow": _blend([(x["flow"],45),(x["positioning"],15),(x["macro"],20),(x["news"],10),(x["exhaustion"],10)]),
-            "macro_risk": _blend([(x["macro"],50),(x["news"],25),(x["flow"],15),(x["exhaustion"],10)]),
-            "exhaustion_guard": _blend([(x["exhaustion"],50),(x["kline"],15),(x["flow"],20),(x["macro"],15)]),
-            "mean_reversion": _blend([(x["reversion"],35),(x["entry"],20),(x["flow"],15),(x["macro"],15),(x["exhaustion"],15)]),
-            "momentum_confirmed": _blend([(x["momentum"],30),(x["volume"],20),(x["flow"],20),(x["macro"],10),(x["exhaustion"],20)]),
-            "relative_strength": _blend([(x["group"],30),(x["technical"],20),(x["flow"],20),(x["macro"],15),(x["exhaustion"],15)]),
-            "entry_timing": _blend([(x["entry"],30),(x["technical"],15),(x["flow"],20),(x["macro"],15),(x["exhaustion"],20)]),
+            "balanced_next": _blend([(x["technical"],20),(x["kline"],10),(x["flow"],20),(x["news"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "price_trend": _blend([(x["technical"],35),(x["kline"],15),(x["flow"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "volume_confirmation": _blend([(x["volume"],25),(x["kline"],10),(x["flow"],20),(x["exhaustion"],15),(x["group"],20),(x["macro"],10)]),
+            "market_flow": _blend([(x["flow"],35),(x["positioning"],15),(x["news"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "macro_risk": _blend([(x["macro"],35),(x["group"],25),(x["technical"],15),(x["flow"],15),(x["exhaustion"],10)]),
+            "exhaustion_guard": _blend([(x["exhaustion"],35),(x["kline"],15),(x["flow"],10),(x["technical"],10),(x["group"],20),(x["macro"],10)]),
+            "mean_reversion": _blend([(x["reversion"],30),(x["entry"],20),(x["flow"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "momentum_confirmed": _blend([(x["momentum"],30),(x["volume"],15),(x["flow"],15),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "relative_strength": _blend([(x["group"],35),(x["technical"],20),(x["flow"],15),(x["macro"],15),(x["exhaustion"],15)]),
+            "entry_timing": _blend([(x["entry"],30),(x["technical"],15),(x["flow"],15),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
         }
         session = {
-            "balanced_next": _blend([(x["technical"],25),(x["volume"],20),(x["flow"],20),(x["group"],15),(x["exhaustion"],20)]),
-            "price_trend": _blend([(x["technical"],35),(x["momentum"],20),(x["kline"],15),(x["group"],10),(x["exhaustion"],20)]),
-            "volume_confirmation": _blend([(x["volume"],30),(x["attack"],15),(x["momentum"],15),(x["flow"],20),(x["exhaustion"],20)]),
-            "market_flow": _blend([(x["flow"],40),(x["positioning"],20),(x["volume"],15),(x["macro"],10),(x["exhaustion"],15)]),
-            "macro_risk": _blend([(x["macro"],35),(x["group"],25),(x["flow"],25),(x["news"],15)]),
-            "exhaustion_guard": _blend([(x["exhaustion"],45),(x["technical"],15),(x["kline"],15),(x["volume"],10),(x["macro"],15)]),
-            "mean_reversion": _blend([(x["reversion"],35),(x["entry"],25),(x["volume"],10),(x["macro"],15),(x["exhaustion"],15)]),
-            "momentum_confirmed": _blend([(x["momentum"],30),(x["volume"],20),(x["attack"],15),(x["flow"],20),(x["exhaustion"],15)]),
-            "relative_strength": _blend([(x["group"],30),(x["technical"],20),(x["flow"],20),(x["macro"],15),(x["exhaustion"],15)]),
-            "entry_timing": _blend([(x["entry"],30),(x["volume"],15),(x["technical"],15),(x["flow"],20),(x["exhaustion"],20)]),
+            "balanced_next": _blend([(x["technical"],20),(x["volume"],15),(x["flow"],20),(x["entry"],5),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "price_trend": _blend([(x["technical"],30),(x["momentum"],20),(x["kline"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "volume_confirmation": _blend([(x["volume"],25),(x["attack"],15),(x["momentum"],10),(x["flow"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "market_flow": _blend([(x["flow"],35),(x["positioning"],15),(x["volume"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "macro_risk": _blend([(x["macro"],35),(x["group"],25),(x["flow"],20),(x["technical"],10),(x["news"],10)]),
+            "exhaustion_guard": _blend([(x["exhaustion"],35),(x["technical"],15),(x["kline"],10),(x["volume"],10),(x["group"],20),(x["macro"],10)]),
+            "mean_reversion": _blend([(x["reversion"],30),(x["entry"],20),(x["volume"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "momentum_confirmed": _blend([(x["momentum"],25),(x["volume"],15),(x["attack"],10),(x["flow"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
+            "relative_strength": _blend([(x["group"],35),(x["technical"],20),(x["flow"],15),(x["macro"],15),(x["exhaustion"],15)]),
+            "entry_timing": _blend([(x["entry"],25),(x["volume"],10),(x["technical"],15),(x["flow"],10),(x["exhaustion"],10),(x["group"],20),(x["macro"],10)]),
         }
         overnight_share = .35
     scores = ({name: overnight[name]*overnight_share + session[name]*(1-overnight_share) for name in MODEL_NAMES}
@@ -168,10 +178,17 @@ def _track_scores(row: dict[str, Any], track: str) -> dict[str, float]:
     )
     for name, score in list(scores.items()):
         if hard_block: score = min(score, 45.0)
-        if weak_market:
-            # A weak broad market must stay below the research-UP threshold.
+        if weak_market and x["market"] == "US":
+            # Preserve the established US-V3 market-risk behaviour.
             score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
             if x["macro"] <= 28: score -= 10.0
+        elif weak_market and x["market"] == "TW":
+            # Taiwan market weakness lowers confidence, but does not erase an
+            # independently strong stock unless its peer group is also weak.
+            if x["macro"] <= 28 and x["group"] <= 40 and x["technical"] < 65:
+                score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
+            else:
+                score -= min(5.0, max(0.0, (40.0 - x["macro"]) * 0.25))
         if heavy_selling: score = min(score, 58.0)
         if overextended: score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
         if distribution_spike: score = min(score, MODEL_DIRECTION_THRESHOLD - 2.0)
@@ -201,7 +218,12 @@ def _evidence_coverage(row: dict[str, Any], track: str) -> float:
             row.get("institution_available") or row.get("credit_available")
             or row.get("broker_available")
         )
-        checks = [(technical,30),(volume,15),(flow,25),(macro,20),(news,10)]
+        tw_market = bool(row.get("tw_market_context_available"))
+        peer = bool(row.get("tw_sector_context_available"))
+        checks = [
+            (technical,25),(volume,15),(flow,25),(peer,15),
+            (tw_market,10),(news,10),
+        ]
     total = sum(weight for _, weight in checks)
     return round(sum(weight for ok, weight in checks if ok) / total * 100, 1)
 

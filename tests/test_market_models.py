@@ -27,13 +27,13 @@ def test_tw_contract_removes_us_only_fields():
     assert "extended_price" not in result
     assert "us_live_price" not in result
     assert "us_option_iv_pct" not in result
-    assert result["market_model_version"] == "TW-STOCK-V4"
+    assert result["market_model_version"] == "TW-STOCK-V5"
 
 
 def test_tw_etf_has_separate_contract_and_us_version_is_unchanged():
     tw = enforce_market_contract({"market": "TW", "type": "ETF"})
     us = enforce_market_contract({"market": "US", "type": "ETF"})
-    assert tw["market_model_version"] == "TW-ETF-V4"
+    assert tw["market_model_version"] == "TW-ETF-V5"
     assert us["market_model_version"] == "US-V3"
 
 
