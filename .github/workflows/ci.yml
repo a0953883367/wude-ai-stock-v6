@@ -37,11 +37,13 @@ jobs:
       - name: 執行完整測試
         run: python -m pytest -q
       - name: 檢查主要程式可編譯
-        run: python -m py_compile briefing.py data_fetcher.py market_models.py strategy.py us_market_data.py live_api.py million_simulation.py
+        run: python -m py_compile briefing.py data_fetcher.py market_models.py strategy.py us_market_data.py live_api.py million_simulation.py holding_simulation.py
       - name: 檢查 2 萬元實測規則
         run: node tests/test_capital_test.js
       - name: 檢查 100 萬元五日網頁試走
         run: node tests/test_million_simulation_ui.js
+      - name: 檢查中期與長期網頁試走
+        run: node tests/test_holding_simulation_ui.js
       - name: 檢查自動即時判斷
         run: node tests/test_live_analysis.js
       - name: 檢查所有排名資格與 TOP 標示
