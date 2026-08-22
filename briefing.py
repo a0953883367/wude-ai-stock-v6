@@ -28,7 +28,7 @@ from data_fetcher import (
 from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
 from news_risk import fetch_news_risks, merge_official_announcements
-from performance import load_performance_context, update_performance
+from performance import load_frozen_forecasts, load_performance_context, update_performance
 from market_models import (
     assess_market_data_quality,
     enforce_market_contract,
@@ -62,6 +62,7 @@ _NEXT_SESSION_FIELDS = (
     "next_session_direction", "next_session_confidence",
     "next_session_up_votes", "next_session_down_votes",
     "next_session_abstain_votes", "next_session_tracks",
+    "next_session_model_votes",
     "next_session_note", "next_session_source_session_date",
     "next_session_generated_at", "next_session_signal_level",
     "next_session_data_quality", "next_session_data_mode",
@@ -97,15 +98,26 @@ def _attach_next_session_predictions(
     previous = previous or {}
     for row in rows:
         source_date = str(row.get("official_session_date") or "")
-        if not _prediction_checkpoint_ready(row, period, intraday):
-            prior = previous.get(str(row.get("symbol") or ""), {})
-            completed_direction = str(prior.get("next_session_direction") or "")
-            same_close = bool(
-                str(prior.get("next_session_model_version") or "").endswith("-shadow")
-                and str(prior.get("next_session_source_session_date") or "") == source_date
-                and str(prior.get("next_session_generated_at") or "").strip()
-                and completed_direction in labels.values()
+        prior = previous.get(str(row.get("symbol") or ""), {})
+        completed_direction = str(prior.get("next_session_direction") or "")
+        same_close = bool(
+            str(prior.get("next_session_model_version") or "").endswith("-shadow")
+            and str(prior.get("next_session_source_session_date") or "") == source_date
+            and str(prior.get("next_session_generated_at") or "").strip()
+            and completed_direction in labels.values()
+        )
+        # Taiwan's immutable close snapshot is authoritative even when the
+        # same evening report is re-run on a weekend or provider outage. US is
+        # intentionally left on its existing behavior.
+        if same_close and str(row.get("market") or "").upper() == "TW":
+            for field in _NEXT_SESSION_FIELDS:
+                if field in prior:
+                    row[field] = prior[field]
+            row["next_session_note"] = (
+                f"沿用 {source_date} 收盤後固定預測；重新整理不重新配分。"
             )
+            continue
+        if not _prediction_checkpoint_ready(row, period, intraday):
             if same_close:
                 for field in _NEXT_SESSION_FIELDS:
                     if field in prior:
@@ -151,6 +163,11 @@ def _attach_next_session_predictions(
         row["next_session_abstain_votes"] = full_day["abstain_votes"]
         row["next_session_signal_level"] = full_day["signal_level"]
         row["next_session_tracks"] = compact_tracks
+        row["next_session_model_votes"] = (
+            shadow["full_day"]["models"]
+            if str(row.get("market") or "").upper() == "TW"
+            else {}
+        )
         row["next_session_source_session_date"] = source_date
         row["next_session_generated_at"] = generated_at
         row["next_session_data_quality"] = min(
@@ -166,8 +183,23 @@ def _attach_next_session_predictions(
             row["next_session_data_mode"] = "SIP行情；OPRA未取得"
         else:
             row["next_session_data_mode"] = "主要資料完整"
+        if full_day["direction"] == "ABSTAIN":
+            if row["next_session_data_quality"] < 75:
+                abstain_note = (
+                    f"棄權：隔日資料完整度 {row['next_session_data_quality']:.0f} 分，"
+                    "未達 75 分；不以缺資料硬猜。"
+                )
+            elif max(full_day["up_votes"], full_day["down_votes"]) < 6:
+                abstain_note = (
+                    f"棄權：同方向最高 {max(full_day['up_votes'], full_day['down_votes'])}/10 票，"
+                    "未達研究門檻 6 票。"
+                )
+            else:
+                abstain_note = "棄權：多空票差或證據強度未達門檻，不代表預測平盤。"
+        else:
+            abstain_note = ""
         row["next_session_note"] = (
-            "棄權代表證據不足或至少6/10模型未形成方向，不代表預測平盤。"
+            abstain_note
             if full_day["direction"] == "ABSTAIN"
             else (
                 "強訊號仍是影子預測，不代表保證獲利。"
@@ -301,6 +333,9 @@ def main() -> int:
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
     previous_rows = _previous_rows()
+    # Do not trust a mutable report over the fixed TW forecast. This overlay
+    # repairs earlier reports that were recomputed after the close.
+    previous_rows.update(load_frozen_forecasts(SETTINGS.reports_dir, market="TW"))
     previous = previous_rows if args.intraday else {}
     if previous:
         logging.info("盤中更新沿用上一份法人、融資、基本面與分點快照")
@@ -508,8 +543,8 @@ def main() -> int:
     # or incomplete rows may remain visible as observations, but they are not
     # recorded as TOP signals for performance statistics.
     backtest_groups = {
-        "TW_STOCK": [row for row in ranked if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))][:20],
-        "TW_ETF": [row for row in ranked if row.get("market") == "TW" and "ETF" in str(row.get("type", ""))][:20],
+        "TW_STOCK": [row for row in ranked if row.get("market") == "TW" and "ETF" not in str(row.get("type", ""))],
+        "TW_ETF": [row for row in ranked if row.get("market") == "TW" and "ETF" in str(row.get("type", ""))],
         "US_STOCK": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
         "US_ETF": [row for row in ranked if row.get("market") == "US" and "ETF" in str(row.get("type", ""))][:20],
     }
