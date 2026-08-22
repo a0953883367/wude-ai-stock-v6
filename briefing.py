@@ -550,6 +550,7 @@ def main() -> int:
         previous=previous_rows,
         generated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
     )
+    ranked = strategy.apply_tw_buy_candidate_ranking(ranked)
     by_symbol = {row["symbol"]: row for row in ranked}
     watchlist_rows = sort_by_score([
         by_symbol[item["symbol"]]
@@ -643,7 +644,7 @@ def main() -> int:
                 "valuation": 0.10,
                 "news_risk": 0.10,
             },
-            "overall_ranking": "先依合格／觀察／阻擋分層，再綜合AI總分45%、進場分35%、短線10%、中長線10%與資料信心排序",
+            "overall_ranking": "台股只有短線條件完整、現價進入買進區、隔日模型確認看漲且資料完整度達75分才取得買進條件名次；美股維持既有綜合風控排名",
             "short_term": "1至5個交易日；先依合格與安全條件分層，再以量價、短均線與K線、籌碼、開盤攻擊量及風報比排序",
             "next_session": "V6市場分流隔日影子預測；台股晚報、美股早報才以完整收盤資料固定預測。研究方向供向前驗證，強訊號另行標示；兩市場採不同權重且不影響原排名",
             "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
@@ -675,7 +676,7 @@ def main() -> int:
         "updated_at": report["updated_at"],
         "period": args.period,
         "run_mode": report["run_mode"],
-        "ranking_basis": "overall_rank_tier_then_overall_ranking_score",
+        "ranking_basis": "TW_buy_conditions_after_next_session_confirmation; US_existing_overall_ranking",
         "data": ranking_rows,
     }
     ranking_path = SETTINGS.reports_dir / "rankings.json"

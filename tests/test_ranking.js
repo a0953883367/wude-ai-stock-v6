@@ -51,10 +51,17 @@ assert.deepStrictEqual(
 const noQualified = ranking.labelRows('TW', [watch, blocked]);
 assert.deepStrictEqual(
   noQualified.map(row => row.displayRankLabel),
-  ['觀察｜同組排序 2/3', '風險阻擋｜同組排序 3/3']
+  ['尚未符合買進條件', '風險阻擋']
 );
 assert.ok(noQualified.every(row => !row.displayRankLabel.includes('TOP')));
-assert.ok(noQualified.every(row => row.displayRankLabel.includes('同組排序')));
+assert.ok(noQualified.every(row => !row.displayRankLabel.includes('同組排序')));
+
+const twNoQualified = ranking.labelRows('TW', [watch, blocked]);
+assert.deepStrictEqual(
+  twNoQualified.map(row => row.displayRankLabel),
+  ['尚未符合買進條件', '風險阻擋']
+);
+assert.ok(twNoQualified.every(row => !row.displayRankLabel.includes('同組排序')));
 
 const fallbackBlocked = {
   symbol: 'LEGACY-BLOCK', score: 100, overallEligible: true,

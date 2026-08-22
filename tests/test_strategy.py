@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, build_features, market_session_fraction, score_candidates
+from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
 
 
 def test_market_session_fraction_uses_each_markets_clock():
@@ -562,6 +562,50 @@ def test_observation_and_blocked_rows_have_no_numeric_rank():
         assert row["overall_rank"] is None
         assert row["short_term_rank"] is None
         assert row["mid_long_rank"] is None
+
+
+def test_tw_overall_rank_requires_actual_buy_conditions_after_forecast():
+    ready = {
+        "symbol": "READY.TW", "market": "TW", "type": "個股",
+        "price": 100, "short_term_entry_low": 99, "short_term_entry_high": 101,
+        "short_term_eligible": True, "short_term_score": 82,
+        "entry_score": 80, "score": 76,
+        "next_session_direction": "📈 看漲", "next_session_confidence": 70,
+        "next_session_data_quality": 90, "next_session_signal_level": "RESEARCH",
+        "market_contract_valid": True, "trade_guard_blocked": False,
+        "overall_eligible": True,
+        "short_term_rank_tier": 2, "short_term_ranking_score": 82,
+        "mid_long_rank_tier": 1, "mid_long_ranking_score": 70,
+    }
+    outside_zone = dict(ready, symbol="WAIT.TW", price=105, score=90)
+    abstain = dict(
+        ready, symbol="ABSTAIN.TW", score=95,
+        next_session_direction="⚪ 棄權", next_session_signal_level="ABSTAIN",
+    )
+
+    ranked = apply_tw_buy_candidate_ranking([outside_zone, abstain, ready])
+
+    assert ranked[0]["symbol"] == "READY.TW"
+    assert ready["buy_candidate_eligible"] is True
+    assert ready["overall_rank"] == 1
+    assert outside_zone["overall_rank"] is None
+    assert abstain["overall_rank"] is None
+    assert "現價尚未進入買進區" in outside_zone["buy_candidate_reasons"]
+    assert "隔日模型尚未確認看漲" in abstain["buy_candidate_reasons"]
+
+
+def test_tw_buy_filter_does_not_change_us_existing_ranking_fields():
+    us = {
+        "symbol": "NVDA", "market": "US", "type": "個股",
+        "overall_eligible": True, "overall_rank_tier": 2,
+        "overall_ranking_score": 88, "overall_rank": 1,
+        "short_term_rank_tier": 1, "short_term_ranking_score": 70,
+        "mid_long_rank_tier": 2, "mid_long_ranking_score": 80,
+    }
+    apply_tw_buy_candidate_ranking([us])
+    assert us["overall_rank_tier"] == 2
+    assert us["overall_ranking_score"] == 88
+    assert us["buy_candidate_eligible"] is None
 
 
 def test_complete_published_universe_obeys_ranking_safety_invariants():
