@@ -109,7 +109,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <div class="modal" id="tradingModal" role="dialog" aria-modal="true" aria-labelledby="tradeTitle">
   <div class="modal-card">
     <div class="modal-head"><div><div class="modal-title" id="tradeTitle">💰 台／美股交易控制</div><div class="status">同一筆台幣資金，最多3檔，最長持有5個交易日</div></div><button class="modal-close" id="tradeClose" aria-label="關閉">✕</button></div>
-    <div class="trade-warning"><b>目前只開放模擬模式</b><br>真實資金硬上限為20,000元；在成交核對、持倉與緊急停止完成驗證前，不會送出富邦真實委託。美股真單尚待券商官方介面確認。</div>
+    <div class="trade-warning" id="tradeWarning"><b>目前只開放模擬模式</b><br>真實資金硬上限為20,000元；在成交核對、持倉與緊急停止完成驗證前，不會送出富邦真實委託。美股真單尚待券商官方介面確認。</div>
     <label>本次資金上限（新台幣）<input class="trade-cash" id="tradeCash" type="number" min="1000" max="20000" step="1000" value="20000"></label>
     <div class="trade-selections" id="tradeSelections"></div>
     <div class="trade-allocation" id="tradeAllocation"></div>
@@ -136,7 +136,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="live_analysis.js?v=633"></script>
 <script src="ranking.js?v=634"></script>
 <script src="capital_test.js"></script>
-<script src="trading_client.js?v=635"></script>
+<script src="trading_client.js?v=636"></script>
 <script>
 'use strict';
 var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,reports:{},fubonLive:null,fubonQuotes:{},view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
