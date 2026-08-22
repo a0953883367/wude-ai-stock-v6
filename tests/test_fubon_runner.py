@@ -17,6 +17,7 @@ def test_parse_direct_fubon_quote_sums_five_levels():
     assert result["askPrice"] == 1060
     assert result["bidTotal"] == 180
     assert result["askTotal"] == 100
+    assert result["quoteDate"] is None
     assert result["fetchedAt"].endswith("+08:00")
 
 
@@ -34,6 +35,21 @@ def test_parse_sdk_wrapped_quote_and_model_levels():
     assert result["lastPrice"] == 88.5
     assert result["bidTotal"] == 20
     assert result["askTotal"] == 25
+
+
+def test_parse_quote_preserves_safe_session_metadata():
+    result = parse_fubon_quote({
+        "date": "2026-08-24", "type": "EQUITY", "market": "TSE",
+        "lastPrice": 100, "bids": [{"size": 2}], "asks": [{"size": 3}],
+        "isOpen": True, "isClose": False, "lastUpdated": 123456,
+    })
+
+    assert result["quoteDate"] == "2026-08-24"
+    assert result["quoteType"] == "EQUITY"
+    assert result["quoteMarket"] == "TSE"
+    assert result["isOpen"] is True
+    assert result["isClose"] is False
+    assert result["lastUpdated"] == 123456
 
 
 def test_empty_levels_do_not_masquerade_as_zero_depth():

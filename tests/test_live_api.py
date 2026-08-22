@@ -100,6 +100,76 @@ def test_taiwan_quote_uses_fubon_once_with_cache():
     assert calls == {"login": 1, "quote": 1}
 
 
+def test_taiwan_quote_falls_back_to_oddlot_book_when_regular_depth_is_missing():
+    calls = []
+
+    class QuoteClient:
+        def quote(self, **kwargs):
+            calls.append(kwargs)
+            if kwargs.get("type") == "oddlot":
+                return {
+                    "lastPrice": 100.5,
+                    "bids": [{"price": 100.0, "size": 12}],
+                    "asks": [{"price": 100.5, "size": 9}],
+                }
+            return {"lastPrice": 100, "bids": [], "asks": []}
+
+    sdk = SimpleNamespace(
+        marketdata=SimpleNamespace(
+            rest_client=SimpleNamespace(stock=SimpleNamespace(intraday=QuoteClient()))
+        )
+    )
+    service = LiveDataService(clock=lambda: 100, fubon_login=lambda: sdk, quote_ttl=2)
+
+    result = service.fetch("1590", "TW")
+
+    assert calls == [{"symbol": "1590"}, {"symbol": "1590", "type": "oddlot"}]
+    assert result["quote_status"] == "complete"
+    assert result["quote"]["orderBookType"] == "oddlot"
+    assert result["quote"]["bidTotal"] == 12
+    assert result["quote"]["askTotal"] == 9
+
+
+def test_taiwan_quote_reports_partial_book_without_inventing_depth():
+    class QuoteClient:
+        def quote(self, **_kwargs):
+            return {"lastPrice": 100, "bids": [], "asks": []}
+
+    sdk = SimpleNamespace(
+        marketdata=SimpleNamespace(
+            rest_client=SimpleNamespace(stock=SimpleNamespace(intraday=QuoteClient()))
+        )
+    )
+    service = LiveDataService(clock=lambda: 100, fubon_login=lambda: sdk, quote_ttl=2)
+
+    result = service.fetch("1590", "TW")
+
+    assert result["quote_status"] == "order_book_missing"
+    assert result["quote"]["orderBookComplete"] is False
+    assert result["quote"]["bidTotal"] is None
+    assert result["quote"]["askTotal"] is None
+
+
+def test_taiwan_quote_keeps_regular_price_when_oddlot_fallback_fails():
+    class QuoteClient:
+        def quote(self, **kwargs):
+            if kwargs.get("type") == "oddlot":
+                raise RuntimeError("odd-lot feed unavailable")
+            return {"lastPrice": 100, "bids": [], "asks": []}
+
+    sdk = SimpleNamespace(
+        marketdata=SimpleNamespace(
+            rest_client=SimpleNamespace(stock=SimpleNamespace(intraday=QuoteClient()))
+        )
+    )
+    service = LiveDataService(clock=lambda: 100, fubon_login=lambda: sdk, quote_ttl=2)
+
+    result = service.fetch("1590", "TW")
+
+    assert result["quote"]["lastPrice"] == 100
+    assert result["quote_status"] == "order_book_missing"
+
+
 def test_rate_limiter_resets_after_one_minute():
     now = [100.0]
     limiter = MinuteRateLimiter(2, clock=lambda: now[0])

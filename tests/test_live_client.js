@@ -37,11 +37,13 @@ assert.strictEqual(us.usOptionSafetyScore, 68);
 const tw = client.taiwanQuote({
   ok: true,
   fetched_at: '2026-08-18T12:00:00+08:00',
-  quote: {lastPrice: 1060, bidTotal: 100, askTotal: 80}
+  quote: {lastPrice: 1060, bidTotal: 100, askTotal: 80, orderBookType: 'oddlot', orderBookComplete: true}
 });
 assert.deepStrictEqual(tw, {
-  lastPrice: 1060, bidTotal: 100, askTotal: 80,
+  lastPrice: 1060, bidTotal: 100, askTotal: 80, orderBookType: 'oddlot', orderBookComplete: true,
   fetchedAt: '2026-08-18T12:00:00+08:00'
 });
+assert.match(client.errorMessage({status: 401}), /尚未取得私人即時行情授權/);
+assert.match(client.errorMessage({status: 503}), /富邦行情登入或報價服務未回應/);
 
 console.log('live client tests passed');
