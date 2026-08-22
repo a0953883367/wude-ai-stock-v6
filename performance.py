@@ -718,3 +718,68 @@ def load_performance_context(reports_dir: Path) -> dict[str, Any]:
     if int(value.get("methodology_version") or 0) != METHODOLOGY_VERSION:
         return {}
     return value
+
+
+def load_frozen_forecasts(
+    reports_dir: Path, market: str = "TW"
+) -> dict[str, dict[str, Any]]:
+    """Return the latest verified fixed forecast for one market.
+
+    This is deliberately separate from the mutable report files. Re-running a
+    report for the same completed session must render the immutable forecast,
+    even when a weekend/provider refresh temporarily has less data.
+    """
+    try:
+        history = json.loads(
+            (reports_dir / "prediction_history.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, json.JSONDecodeError, TypeError, OSError):
+        return {}
+    if int(history.get("version") or 0) != METHODOLOGY_VERSION:
+        return {}
+    selected: dict[str, dict[str, Any]] = {}
+    labels = {"UP": "📈 看漲", "DOWN": "📉 看跌", "ABSTAIN": "⚪ 棄權"}
+    snapshots = [
+        item for item in history.get("snapshots", [])
+        if str(item.get("market") or "").upper() == market.upper()
+        and _snapshot_integrity(item) == "verified"
+    ]
+    snapshots.sort(key=lambda item: (str(item.get("session_date") or ""), str(item.get("captured_at") or "")))
+    for snapshot in snapshots:
+        for row in snapshot.get("predictions", []):
+            tracks = row.get("track_predictions", {})
+            compact = {
+                track: (bundle.get("consensus", {}) if isinstance(bundle, dict) else {})
+                for track, bundle in tracks.items()
+            }
+            full_day = compact.get("full_day", {})
+            direction = str(full_day.get("direction") or "ABSTAIN")
+            qualities = []
+            for bundle in tracks.values():
+                for vote in (bundle.get("models", {}) if isinstance(bundle, dict) else {}).values():
+                    try:
+                        qualities.append(float(vote.get("evidence_coverage_pct")))
+                    except (AttributeError, TypeError, ValueError):
+                        pass
+            selected[str(row.get("symbol") or "")] = {
+                "next_session_model_version": row.get("model_version") or "V6-shadow",
+                "next_session_market_model": row.get("market_model") or "TW-NEXT-V6",
+                "next_session_direction": labels.get(direction, "⚪ 棄權"),
+                "next_session_confidence": full_day.get("confidence") or 0.0,
+                "next_session_up_votes": full_day.get("up_votes") or 0,
+                "next_session_down_votes": full_day.get("down_votes") or 0,
+                "next_session_abstain_votes": full_day.get("abstain_votes") or 0,
+                "next_session_tracks": compact,
+                "next_session_model_votes": (
+                    tracks.get("full_day", {}).get("models", {})
+                    if isinstance(tracks.get("full_day", {}), dict)
+                    else {}
+                ),
+                "next_session_note": "沿用同一交易日雜湊驗證的固定預測；重新整理不重新配分。",
+                "next_session_source_session_date": snapshot.get("session_date") or "",
+                "next_session_generated_at": snapshot.get("captured_at") or "",
+                "next_session_signal_level": full_day.get("signal_level") or "ABSTAIN",
+                "next_session_data_quality": min(qualities) if qualities else 0.0,
+                "next_session_data_mode": "固定快照（雜湊驗證通過）",
+            }
+    return selected

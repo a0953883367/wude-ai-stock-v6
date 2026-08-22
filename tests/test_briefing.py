@@ -135,6 +135,7 @@ def test_predictions_are_frozen_at_each_markets_completed_close_checkpoint():
     assert tw_evening["next_session_model_version"] == "V6-shadow"
     assert tw_evening["next_session_market_model"] == "TW-NEXT-V6"
     assert tw_evening["next_session_generated_at"] == "2026-08-20 20:00:00"
+    assert len(tw_evening["next_session_model_votes"]) == 10
 
     us_evening = _complete_shadow_row("US")
     _attach_next_session_predictions([us_evening], period="evening", generated_at="2026-08-20 20:00:00")
@@ -163,6 +164,23 @@ def test_intraday_refresh_carries_same_completed_close_forecast():
     assert "不重新配分" in current["next_session_note"]
 
 
+def test_repeated_tw_evening_uses_same_fixed_forecast():
+    prior = _complete_shadow_row("TW")
+    _attach_next_session_predictions(
+        [prior], period="evening", generated_at="2026-08-20 20:00:00"
+    )
+    current = _complete_shadow_row("TW")
+    current.update({"technical_score": 10, "volume_score": 10, "market_flow_score": 10})
+    _attach_next_session_predictions(
+        [current], period="evening", previous={current["symbol"]: prior},
+        generated_at="2026-08-20 21:00:00",
+    )
+    assert current["next_session_direction"] == prior["next_session_direction"]
+    assert current["next_session_up_votes"] == prior["next_session_up_votes"]
+    assert current["next_session_generated_at"] == "2026-08-20 20:00:00"
+    assert "重新整理不重新配分" in current["next_session_note"]
+
+
 def test_waiting_placeholder_is_never_mislabeled_as_a_frozen_forecast():
     prior = _complete_shadow_row("TW")
     _attach_next_session_predictions(
@@ -182,6 +200,16 @@ def test_waiting_placeholder_is_never_mislabeled_as_a_frozen_forecast():
     assert current["next_session_direction"] == "🕒 等待收盤"
     assert current["next_session_signal_level"] == "WAITING"
     assert "沿用" not in current["next_session_note"]
+
+
+def test_tw_abstention_explains_the_actual_gate():
+    row = _complete_shadow_row("TW")
+    row.update({"market_data_quality_score": 20})
+    _attach_next_session_predictions(
+        [row], period="evening", generated_at="2026-08-20 20:00:00"
+    )
+    assert row["next_session_direction"] == "⚪ 棄權"
+    assert "未達 75 分" in row["next_session_note"]
 
 
 def test_us_fallback_feed_is_explicit_without_changing_ranking_fields():
