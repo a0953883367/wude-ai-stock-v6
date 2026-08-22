@@ -83,6 +83,7 @@ def sanitize_accuracy(value):
         "immutable_rule": value.get("immutable_rule"),
         "integrity": value.get("integrity", {}),
         "calibration": value.get("calibration", {}),
+        "tw_threshold_calibration": value.get("tw_threshold_calibration", {}),
         "groups": groups,
     }
 

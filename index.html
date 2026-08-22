@@ -510,7 +510,19 @@ function renderPerformance(report){
 function accuracyMetric(metric,label){
   metric=metric||{};var samples=Number(metric.samples||0),eligible=Number(metric.eligible_samples||0);
   if(!eligible&&!samples)return '<div class="accuracy-line">'+label+'：等待完成結果</div>';
-  return '<div class="accuracy-line"><b>'+label+'</b>：'+samples+'筆｜命中 '+number(metric.win_rate_pct,1)+'%｜平均 '+percent(metric.avg_return_pct)+'｜涵蓋 '+number(metric.coverage_pct,1)+'%｜'+esc(metric.sample_status||'樣本不足')+'</div>';
+  return '<div class="accuracy-line"><b>'+label+'</b>：方向 '+samples+'筆／棄權 '+Number(metric.abstain_samples||0)+'筆｜命中 '+number(metric.win_rate_pct,1)+'%｜平均 '+percent(metric.avg_return_pct)+'｜最差方向 '+percent(metric.worst_return_pct)+'｜實際最大跌幅 '+percent(metric.lowest_actual_return_pct)+'｜涵蓋 '+number(metric.coverage_pct,1)+'%｜'+esc(metric.sample_status||'樣本不足')+'</div>';
+}
+function accuracyPrice(value){return value===null||value===undefined||value===''?'—':number(value,2);}
+function renderTwThresholdCalibration(value){
+  var cohorts=(value||{}).cohorts||{},labels={TW_STOCK:'台股',TW_ETF:'台灣 ETF'},html='';
+  ['TW_STOCK','TW_ETF'].forEach(function(key){
+    var rows=cohorts[key]||[];
+    html+='<div class="accuracy-card"><h3>🧪 '+labels[key]+'門檻影子回測</h3>';
+    if(!rows.length){html+='<div class="accuracy-line">等待完成結果</div>';}
+    rows.forEach(function(row){html+='<div class="accuracy-line">分數≥'+number(row.score_threshold,0)+'／至少'+Number(row.minimum_votes||0)+'票：方向 '+Number(row.samples||0)+'筆／棄權 '+Number(row.abstain_samples||0)+'筆｜命中 '+number(row.win_rate_pct,1)+'%｜平均 '+percent(row.avg_return_pct)+'｜'+esc(row.sample_status||'樣本不足')+'</div>';});
+    html+='</div>';
+  });
+  return '<div class="accuracy-grid">'+html+'</div><div class="accuracy-note">影子回測只使用已固定且已完成的台股結果；至少20筆後才可人工評估，絕不自動改正式模型，也不讀取或修改美股權重。</div>';
 }
 function renderAccuracy(){
   var box=document.getElementById('accuracyOutput'),a=STATE.accuracy;
@@ -523,8 +535,8 @@ function renderAccuracy(){
     cards+='</div>';
   });
   var integrity=a.integrity||{},cal=a.calibration||{},note='<div class="accuracy-note">🔒 '+esc(a.immutable_rule||'預測固定後不覆寫')+'<br>可驗證快照 '+Number(integrity.verified||0)+' 份｜舊版未加密 '+Number(integrity.legacy_unverified||0)+' 份｜異常隔離 '+Number(integrity.mismatch||0)+' 份<br>目前累積 '+Number(cal.trading_days_collected||0)+' 個交易日；樣本少於20筆只顯示「樣本不足」，棄權不算命中。此頁只做驗證，不會修改排名或啟用下單。</div>';
-  var recent=(a.recent||[]).slice(0,40),rows=recent.map(function(row){var full=(row.tracks||{}).full_day||{},hit=full.hit,cls=hit===true?'accuracy-ok':hit===false?'accuracy-bad':'accuracy-wait',icon=hit===true?'✅':hit===false?'❌':'⚪';return '<div class="accuracy-row"><div class="accuracy-row-head"><span>'+esc(row.name||row.symbol)+'（'+esc(row.symbol)+'）</span><span class="'+cls+'">'+icon+' '+esc(full.direction||'ABSTAIN')+'</span></div><div class="accuracy-row-meta">'+esc(labels[row.cohort]||row.cohort)+'｜當日排名 '+esc(row.rank)+'｜預測 '+esc(row.source_session_date)+' → 驗證 '+esc(row.evaluated_session_date)+'｜'+(row.integrity==='verified'?'雜湊驗證通過':'舊版紀錄')+'</div><div class="accuracy-row-result">收盤→開盤 '+percent(((row.tracks||{}).overnight||{}).actual_return_pct)+'｜開盤→收盤 '+percent(((row.tracks||{}).session||{}).actual_return_pct)+'｜收盤→收盤 <b class="'+cls+'">'+percent(full.actual_return_pct)+'</b></div></div>';}).join('');
-  box.innerHTML=note+'<div class="accuracy-grid">'+cards+'</div><div class="accuracy-recent"><div class="group">最近完成的逐筆驗證</div>'+(rows||'<div class="empty">目前尚無下一交易日完成結果。</div>')+'</div>';
+  var recent=(a.recent||[]).slice(0,40),rows=recent.map(function(row){var full=(row.tracks||{}).full_day||{},hit=full.hit,cls=hit===true?'accuracy-ok':hit===false?'accuracy-bad':'accuracy-wait',icon=hit===true?'✅':hit===false?'❌':'⚪';return '<div class="accuracy-row"><div class="accuracy-row-head"><span>'+esc(row.name||row.symbol)+'（'+esc(row.symbol)+'）</span><span class="'+cls+'">'+icon+' '+esc(full.direction||'ABSTAIN')+'</span></div><div class="accuracy-row-meta">'+esc(labels[row.cohort]||row.cohort)+'｜當日排名 '+esc(row.rank)+'｜預測 '+esc(row.source_session_date)+' → 驗證 '+esc(row.evaluated_session_date)+'｜'+(row.integrity==='verified'?'雜湊驗證通過':'舊版紀錄')+'</div><div class="accuracy-row-result">前收 '+accuracyPrice(row.source_close_price)+'｜隔日開 '+accuracyPrice(row.actual_open_price)+'｜高 '+accuracyPrice(row.actual_high_price)+'｜低 '+accuracyPrice(row.actual_low_price)+'｜收 '+accuracyPrice(row.actual_close_price)+'<br>收盤→開盤 '+percent(((row.tracks||{}).overnight||{}).actual_return_pct)+'｜開盤→收盤 '+percent(((row.tracks||{}).session||{}).actual_return_pct)+'｜收盤→收盤 <b class="'+cls+'">'+percent(full.actual_return_pct)+'</b></div></div>';}).join('');
+  box.innerHTML=note+'<div class="accuracy-grid">'+cards+'</div>'+renderTwThresholdCalibration(a.tw_threshold_calibration)+'<div class="accuracy-recent"><div class="group">最近完成的逐筆驗證</div>'+(rows||'<div class="empty">目前尚無下一交易日完成結果。</div>')+'</div>';
 }
 async function openAccuracy(){
   document.getElementById('accuracyModal').classList.add('open');document.body.style.overflow='hidden';

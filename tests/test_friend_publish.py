@@ -29,6 +29,7 @@ def test_friend_accuracy_only_contains_aggregate_metrics():
         "immutable_rule": "固定後不覆寫",
         "integrity": {"verified": 1},
         "calibration": {"trading_days_collected": 2},
+        "tw_threshold_calibration": {"mode": "shadow_only", "cohorts": {}},
         "groups": {
             "TW_STOCK": {
                 "tracks": {"full_day": {"samples": 3}},
@@ -42,3 +43,4 @@ def test_friend_accuracy_only_contains_aggregate_metrics():
     assert result["groups"]["TW_STOCK"]["tracks"]["full_day"]["samples"] == 3
     assert "recent" not in result
     assert "models" not in result["groups"]["TW_STOCK"]
+    assert result["tw_threshold_calibration"]["mode"] == "shadow_only"

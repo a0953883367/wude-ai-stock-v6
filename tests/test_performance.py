@@ -5,6 +5,7 @@ from model_lab import MODEL_NAMES, consensus_prediction, model_predictions, trac
 from performance import (
     _snapshot_integrity,
     _summary,
+    _tw_threshold_calibration,
     load_performance_context,
     update_performance,
 )
@@ -361,6 +362,24 @@ def test_accuracy_groups_top_k_and_abstentions_are_explicit(tmp_path: Path):
     assert top20["eligible_samples"] == 6
     assert top20["abstain_samples"] >= 1
     assert top5["sample_status"] == "樣本不足"
+    assert "lowest_actual_return_pct" in top5
+
+
+def test_tw_threshold_calibration_is_shadow_only_and_ignores_us(tmp_path: Path):
+    tw = _row(100, "2026-08-18")
+    us = _row(200, "2026-08-18", "US", "NVDA", "US")
+    update_performance(tmp_path, [tw], [tw], "2026-08-18 20:00:00", "evening")
+    update_performance(tmp_path, [us], [us], "2026-08-19 06:00:00", "morning")
+    tw2 = _row(102, "2026-08-19", open_price=101)
+    us2 = _row(180, "2026-08-19", "US", "NVDA", "US", open_price=190)
+    update_performance(tmp_path, [tw2], [tw2], "2026-08-19 20:00:00", "evening")
+    update_performance(tmp_path, [us2], [us2], "2026-08-20 06:00:00", "morning")
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    result = _tw_threshold_calibration(history["snapshots"])
+    assert result["affects_ai_score"] is False
+    assert result["automatic_promotion"] is False
+    assert result["cohorts"]["TW_STOCK"][0]["eligible_samples"] == 1
+    assert "US_STOCK" not in result["cohorts"]
 
 
 def test_accuracy_records_actual_high_low_and_target_touch(tmp_path: Path):
