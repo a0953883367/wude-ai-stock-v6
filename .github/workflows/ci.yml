@@ -48,6 +48,8 @@ jobs:
         run: node tests/test_holding_simulation_ui.js
       - name: 檢查獨立歷史驗證實驗室
         run: node tests/test_historical_lab_ui.js
+      - name: 檢查 AI 模型訓練中心
+        run: node tests/test_training_center_ui.js
       - name: 檢查自動即時判斷
         run: node tests/test_live_analysis.js
       - name: 檢查所有排名資格與 TOP 標示
