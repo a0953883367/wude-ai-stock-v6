@@ -149,27 +149,38 @@ def _portfolio_metrics(days: list[dict[str, Any]], key: str) -> dict[str, Any]:
     profits = [float(day[key]["net_profit_twd"]) for day in days]
     gross = [float(day[key]["gross_profit_twd"]) for day in days]
     invested = [int(day[key].get("executed_positions", 0)) for day in days]
-    equity = CAPITAL_TWD + np.cumsum(profits) if profits else np.array([CAPITAL_TWD])
+    net_returns = np.array(profits, dtype=float) / CAPITAL_TWD
+    gross_returns = np.array(gross, dtype=float) / CAPITAL_TWD
+    net_growth = np.cumprod(1 + net_returns) if profits else np.array([], dtype=float)
+    gross_growth = np.cumprod(1 + gross_returns) if gross else np.array([], dtype=float)
+    equity = CAPITAL_TWD * np.concatenate(([1.0], net_growth))
     peaks = np.maximum.accumulate(equity)
     drawdowns = (equity / peaks - 1) * 100
-    compounded = float(np.prod([1 + value / CAPITAL_TWD for value in profits]) - 1) if profits else 0.0
+    compounded = float(net_growth[-1] - 1) if len(net_growth) else 0.0
+    gross_compounded = float(gross_growth[-1] - 1) if len(gross_growth) else 0.0
+    annualized = (1 + compounded) ** (252 / len(profits)) - 1 if profits and compounded > -1 else -1.0
     by_regime: dict[str, dict[str, Any]] = {}
     for regime in ("bull", "bear", "sideways", "unknown"):
         subset = [day for day in days if day.get("regime") == regime]
         if subset:
-            regime_profit = sum(float(day[key]["net_profit_twd"]) for day in subset)
+            regime_returns = [float(day[key]["net_profit_twd"]) / CAPITAL_TWD for day in subset]
+            regime_compounded = float(np.prod([1 + value for value in regime_returns]) - 1)
             by_regime[regime] = {
                 "sessions": len(subset),
-                "net_profit_twd": round(regime_profit, 2),
-                "net_return_pct": round(regime_profit / CAPITAL_TWD * 100, 4),
+                "net_profit_twd": round(CAPITAL_TWD * regime_compounded, 2),
+                "net_return_pct": round(regime_compounded * 100, 4),
+                "average_daily_net_return_pct": round(float(np.mean(regime_returns)) * 100, 4),
                 "win_rate_pct": round(sum(day[key]["net_profit_twd"] > 0 for day in subset) / len(subset) * 100, 2),
             }
     return {
         "evaluated_sessions": len(days),
-        "gross_profit_twd": round(sum(gross), 2),
-        "net_profit_twd": round(sum(profits), 2),
-        "net_return_pct": round(sum(profits) / CAPITAL_TWD * 100, 4),
+        "gross_profit_twd": round(CAPITAL_TWD * gross_compounded, 2),
+        "net_profit_twd": round(CAPITAL_TWD * compounded, 2),
+        "net_return_pct": round(compounded * 100, 4),
         "compounded_return_pct": round(compounded * 100, 4),
+        "annualized_return_pct": round(annualized * 100, 4),
+        "average_daily_net_return_pct": round(float(np.mean(net_returns)) * 100, 4) if profits else 0.0,
+        "fixed_capital_profit_sum_twd": round(sum(profits), 2),
         "win_rate_pct": round(sum(value > 0 for value in profits) / len(profits) * 100, 2) if profits else 0.0,
         "max_drawdown_pct": round(float(drawdowns.min()), 4) if len(drawdowns) else 0.0,
         "average_positions": round(sum(invested) / len(invested), 2) if invested else 0.0,
@@ -393,7 +404,7 @@ def build_report(
         "version": METHOD,
         "signal_timing": "交易日收盤後，以當日及以前資料排名",
         "execution_timing": "下一交易日官方開盤買入、同日收盤賣出",
-        "portfolio": "前10名各配置10萬元；嚴格組未達資格保留現金",
+        "portfolio": "前10名各配置10%；嚴格組未達資格保留現金；帳戶報酬與回撤採逐日複利淨值",
         "costs": "台股個股來回0.685%、台股ETF來回0.385%；美股來回0.20%；匯率另列",
         "regimes": "大盤當日收盤、MA20、MA60與20日動能分多頭／空頭／盤整",
         "methodology_hash": hashlib.sha256(METHOD.encode()).hexdigest()[:16],
