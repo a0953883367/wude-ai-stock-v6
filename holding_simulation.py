@@ -12,6 +12,7 @@ from __future__ import annotations
 from calendar import monthrange
 from collections import Counter
 from datetime import date, datetime, timedelta
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Iterable
@@ -31,6 +32,10 @@ LONG_PICK_COUNT_PER_MARKET = 1
 LONG_ALLOCATION_TWD = 500_000
 LONG_HOLD_MONTHS = 6
 ROUND_TRIP_COST_PCT = {"TW": 0.685, "US": 0.20}
+BENCHMARKS = {
+    "TW": {"symbol": "0050.TW", "name": "0050｜台灣50"},
+    "US": {"symbol": "VOO", "name": "VOO｜S&P 500"},
+}
 
 
 def _finite(value: Any, fallback: float = 0.0) -> float:
@@ -102,6 +107,7 @@ def _empty_medium_market(market: str) -> dict[str, Any]:
         "hold_days": MEDIUM_HOLD_DAYS,
         "pending": None,
         "positions": [],
+        "benchmark_positions": [],
         "entry_session_date": None,
         "target_exit_date": None,
         "last_valuation_date": None,
@@ -109,6 +115,9 @@ def _empty_medium_market(market: str) -> dict[str, Any]:
         "gross_return_pct": 0.0,
         "net_profit_twd": 0.0,
         "net_return_pct": 0.0,
+        "benchmark_net_profit_twd": 0.0,
+        "benchmark_net_return_pct": 0.0,
+        "benchmark_realized": False,
         "realized": False,
     }
 
@@ -121,11 +130,15 @@ def _empty_long() -> dict[str, Any]:
         "hold_months": LONG_HOLD_MONTHS,
         "pending": {"TW": None, "US": None},
         "positions": [],
+        "benchmark_positions": [],
         "last_valuation_date": {"TW": None, "US": None},
         "gross_profit_twd": 0.0,
         "gross_return_pct": 0.0,
         "net_profit_twd": 0.0,
         "net_return_pct": 0.0,
+        "benchmark_net_profit_twd": 0.0,
+        "benchmark_net_return_pct": 0.0,
+        "benchmark_realized": False,
         "realized": False,
     }
 
@@ -156,6 +169,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "valuation_exit": "持有期間用官方收盤價估值；到期後第一個交易日官方收盤價賣出",
             "round_trip_cost_pct": ROUND_TRIP_COST_PCT,
             "costs": "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入",
+            "benchmark": {market: BENCHMARKS[market]["name"] for market in MARKETS},
+            "benchmark_rule": "與模型同一交易日開盤進場、同一到期日收盤出場；中期各市場100萬元，長期台美各50萬元",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
         "medium": {market: _empty_medium_market(market) for market in MARKETS},
@@ -206,7 +221,19 @@ def _new_pending(
     picks = select_mid_long_picks(rows, market, count=count, allocation_twd=allocation_twd)
     if not signal_date or len(picks) < count:
         return None
-    return {"signal_session_date": signal_date, "created_at": updated_at, "picks": picks}
+    payload = "|".join(
+        f"{pick['rank']}:{pick['symbol']}:{pick['ranking_score']}:{pick['rank_tier']}"
+        for pick in picks
+    )
+    snapshot_id = hashlib.sha256(
+        f"{market}|{signal_date}|{count}|{allocation_twd}|{payload}".encode()
+    ).hexdigest()[:12]
+    return {
+        "signal_session_date": signal_date,
+        "created_at": updated_at,
+        "snapshot_id": snapshot_id,
+        "picks": picks,
+    }
 
 
 def prepare_pending(state: dict[str, Any], rows: list[dict[str, Any]], market: str, updated_at: str) -> None:
@@ -225,6 +252,15 @@ def prepare_pending(state: dict[str, Any], rows: list[dict[str, Any]], market: s
         )
         if long["pending"][market]:
             long["status"] = "pending"
+    for pending in (medium.get("pending"), long.get("pending", {}).get(market)):
+        if pending and not pending.get("snapshot_id"):
+            payload = "|".join(
+                f"{pick.get('rank')}:{pick.get('symbol')}:{pick.get('ranking_score')}:{pick.get('rank_tier')}"
+                for pick in pending.get("picks") or []
+            )
+            pending["snapshot_id"] = hashlib.sha256(
+                f"{market}|{pending.get('signal_session_date')}|{payload}".encode()
+            ).hexdigest()[:12]
 
 
 def _enter_positions(
@@ -238,6 +274,14 @@ def _enter_positions(
 ) -> list[dict[str, Any]]:
     if not pending or session_date <= str(pending.get("signal_session_date") or "") or session_date < START_DATE:
         return []
+    if not pending.get("snapshot_id"):
+        payload = "|".join(
+            f"{pick.get('rank')}:{pick.get('symbol')}:{pick.get('ranking_score')}:{pick.get('rank_tier')}"
+            for pick in pending.get("picks") or []
+        )
+        pending["snapshot_id"] = hashlib.sha256(
+            f"{market}|{pending.get('signal_session_date')}|{payload}".encode()
+        ).hexdigest()[:12]
     row_map = {str(row.get("symbol") or ""): row for row in rows if _is_stock(row, market)}
     positions = []
     for pick in pending.get("picks") or []:
@@ -258,6 +302,7 @@ def _enter_positions(
             "entry_session_date": session_date,
             "entry_price": round(open_price, 4),
             "target_exit_date": target,
+            "ranking_snapshot_id": pending.get("snapshot_id"),
             "last_price": round(close_price, 4) if close_price > 0 else round(open_price, 4),
             "last_valuation_date": session_date,
             "gross_return_pct": round(return_pct, 4),
@@ -270,6 +315,42 @@ def _enter_positions(
             "realized": False,
         })
     return positions
+
+
+def _enter_benchmark_position(
+    rows: list[dict[str, Any]], market: str, session_date: str, allocation_twd: int, *,
+    hold_days: int | None = None, hold_months: int | None = None,
+) -> list[dict[str, Any]]:
+    config = BENCHMARKS[market]
+    row = next((item for item in rows if str(item.get("symbol") or "") == config["symbol"]), None)
+    open_price = _finite(row.get("official_open_price")) if row else 0.0
+    close_price = _finite(row.get("official_close_price")) if row else 0.0
+    if not row or str(row.get("official_session_date") or "") != session_date or open_price <= 0:
+        return []
+    target = (
+        (date.fromisoformat(session_date) + timedelta(days=hold_days)).isoformat()
+        if hold_days is not None else _add_months(session_date, int(hold_months or 0))
+    )
+    gross_return = (close_price / open_price - 1) * 100 if close_price > 0 else 0.0
+    net_return = gross_return - ROUND_TRIP_COST_PCT[market]
+    return [{
+        **config,
+        "market": market,
+        "allocation_twd": allocation_twd,
+        "entry_session_date": session_date,
+        "entry_price": round(open_price, 4),
+        "target_exit_date": target,
+        "last_price": round(close_price, 4) if close_price > 0 else round(open_price, 4),
+        "last_valuation_date": session_date,
+        "gross_return_pct": round(gross_return, 4),
+        "gross_profit_twd": round(allocation_twd * gross_return / 100, 2),
+        "net_return_pct": round(net_return, 4),
+        "net_profit_twd": round(allocation_twd * net_return / 100, 2),
+        "estimated_cost_twd": round(allocation_twd * ROUND_TRIP_COST_PCT[market] / 100, 2),
+        "exit_session_date": None,
+        "exit_price": None,
+        "realized": False,
+    }]
 
 
 def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]], market: str, session_date: str) -> None:
@@ -298,6 +379,33 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
             position["realized"] = True
 
 
+def _value_benchmark_positions(
+    positions: list[dict[str, Any]], rows: list[dict[str, Any]], market: str, session_date: str
+) -> None:
+    config = BENCHMARKS[market]
+    row = next((item for item in rows if str(item.get("symbol") or "") == config["symbol"]), None)
+    close_price = _finite(row.get("official_close_price")) if row else 0.0
+    if not row or str(row.get("official_session_date") or "") != session_date or close_price <= 0:
+        return
+    for position in positions:
+        if position.get("market") != market or position.get("realized"):
+            continue
+        entry_price = _finite(position.get("entry_price"))
+        allocation = _finite(position.get("allocation_twd"))
+        gross_return = (close_price / entry_price - 1) * 100 if entry_price > 0 else 0.0
+        net_return = gross_return - ROUND_TRIP_COST_PCT[market]
+        position["last_price"] = round(close_price, 4)
+        position["last_valuation_date"] = session_date
+        position["gross_return_pct"] = round(gross_return, 4)
+        position["gross_profit_twd"] = round(allocation * gross_return / 100, 2)
+        position["net_return_pct"] = round(net_return, 4)
+        position["net_profit_twd"] = round(allocation * net_return / 100, 2)
+        if session_date >= str(position.get("target_exit_date") or "9999-12-31"):
+            position["exit_session_date"] = session_date
+            position["exit_price"] = round(close_price, 4)
+            position["realized"] = True
+
+
 def _summarize(portfolio: dict[str, Any], positions: list[dict[str, Any]]) -> None:
     profit = sum(_finite(position.get("gross_profit_twd")) for position in positions)
     net_profit = sum(_finite(position.get("net_profit_twd")) for position in positions)
@@ -313,6 +421,19 @@ def _summarize(portfolio: dict[str, Any], positions: list[dict[str, Any]]) -> No
         portfolio["status"] = "active"
 
 
+def _summarize_benchmark(portfolio: dict[str, Any]) -> None:
+    positions = portfolio.get("benchmark_positions") or []
+    capital = _finite(portfolio.get("capital_twd"))
+    net_profit = sum(_finite(position.get("net_profit_twd")) for position in positions)
+    portfolio["benchmark_net_profit_twd"] = round(net_profit, 2)
+    portfolio["benchmark_net_return_pct"] = round(net_profit / capital * 100, 4) if capital else 0.0
+    portfolio["benchmark_realized"] = bool(positions) and all(
+        position.get("realized") is True for position in positions
+    )
+    if positions and portfolio.get("realized") and not portfolio["benchmark_realized"]:
+        portfolio["status"] = "active"
+
+
 def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: str, session_date: str) -> None:
     portfolio = state["medium"][market]
     if portfolio.get("status") == "complete":
@@ -323,14 +444,21 @@ def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: st
         )
         if positions:
             portfolio["positions"] = positions
+            portfolio["benchmark_positions"] = _enter_benchmark_position(
+                rows, market, session_date, MEDIUM_CAPITAL_TWD, hold_days=MEDIUM_HOLD_DAYS
+            )
             portfolio["pending"] = None
             portfolio["entry_session_date"] = session_date
             portfolio["target_exit_date"] = positions[0]["target_exit_date"]
             portfolio["status"] = "active"
     _value_positions(portfolio.get("positions") or [], rows, market, session_date)
+    _value_benchmark_positions(
+        portfolio.get("benchmark_positions") or [], rows, market, session_date
+    )
     if portfolio.get("positions"):
         portfolio["last_valuation_date"] = session_date
     _summarize(portfolio, portfolio.get("positions") or [])
+    _summarize_benchmark(portfolio)
 
 
 def _update_long(state: dict[str, Any], rows: list[dict[str, Any]], market: str, session_date: str) -> None:
@@ -343,11 +471,18 @@ def _update_long(state: dict[str, Any], rows: list[dict[str, Any]], market: str,
         positions = _enter_positions(pending, rows, market, session_date, hold_months=LONG_HOLD_MONTHS)
         if positions:
             portfolio.setdefault("positions", []).extend(positions)
+            portfolio.setdefault("benchmark_positions", []).extend(_enter_benchmark_position(
+                rows, market, session_date, LONG_ALLOCATION_TWD, hold_months=LONG_HOLD_MONTHS
+            ))
             portfolio["pending"][market] = None
             portfolio["status"] = "active"
     _value_positions(portfolio.get("positions") or [], rows, market, session_date)
+    _value_benchmark_positions(
+        portfolio.get("benchmark_positions") or [], rows, market, session_date
+    )
     portfolio.setdefault("last_valuation_date", {"TW": None, "US": None})[market] = session_date
     _summarize(portfolio, portfolio.get("positions") or [])
+    _summarize_benchmark(portfolio)
     # The long portfolio is not complete until both intended market positions
     # have entered and both have reached their own six-month exit date.
     if len(portfolio.get("positions") or []) < 2:
@@ -368,12 +503,25 @@ def update_state(
     state["policy"]["costs"] = (
         "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入"
     )
+    state["policy"]["benchmark"] = {market: BENCHMARKS[market]["name"] for market in MARKETS}
+    state["policy"]["benchmark_rule"] = (
+        "與模型同一交易日開盤進場、同一到期日收盤出場；"
+        "中期各市場100萬元，長期台美各50萬元"
+    )
     for market in MARKETS:
         state["medium"].setdefault(market, _empty_medium_market(market))
         state["medium"][market].setdefault("net_profit_twd", 0.0)
         state["medium"][market].setdefault("net_return_pct", 0.0)
+        state["medium"][market].setdefault("benchmark_positions", [])
+        state["medium"][market].setdefault("benchmark_net_profit_twd", 0.0)
+        state["medium"][market].setdefault("benchmark_net_return_pct", 0.0)
+        state["medium"][market].setdefault("benchmark_realized", False)
         state.setdefault("long", _empty_long()).setdefault("net_profit_twd", 0.0)
         state["long"].setdefault("net_return_pct", 0.0)
+        state["long"].setdefault("benchmark_positions", [])
+        state["long"].setdefault("benchmark_net_profit_twd", 0.0)
+        state["long"].setdefault("benchmark_net_return_pct", 0.0)
+        state["long"].setdefault("benchmark_realized", False)
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         prepare_pending(state, rows, market, updated_at)
