@@ -49,6 +49,27 @@ def test_context_uses_twse_tpex_and_never_attaches_to_us():
     assert "tw_market_context_score" not in us
 
 
+def test_relative_strength_compares_stock_with_same_exchange_and_sector():
+    rows = _tw_rows()
+    for row in rows:
+        if row["market"] == "TW":
+            row["tw_return_5d_pct"] = 1.0
+            row["tw_return_20d_pct"] = 2.0
+    leader = next(row for row in rows if row["symbol"] == "2300.TW")
+    leader["tw_return_5d_pct"] = 10.0
+    leader["tw_return_20d_pct"] = 18.0
+    context = build_tw_market_context(rows, {
+        "加權指數": {"change_pct": 1.0, "session_date": "2026-08-21"},
+        "櫃買指數": {"change_pct": -.5, "session_date": "2026-08-21"},
+    })
+    attach_tw_context(rows, context)
+    assert leader["tw_relative_strength_available"] is True
+    assert leader["tw_relative_strength_score"] >= 65
+    assert leader["tw_market_relative_5d_pct"] > 0
+    assert leader["tw_sector_relative_20d_pct"] > 0
+    assert "領先" in leader["tw_relative_strength_status"]
+
+
 def test_broad_same_day_breadth_is_valid_fallback_when_index_is_missing():
     rows = [
         {

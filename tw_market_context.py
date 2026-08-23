@@ -175,6 +175,7 @@ def attach_tw_context(
     ]
     tw_stocks = [row for row in tw_assets if _is_tw_stock(row)]
     exchange_medians: dict[str, float] = {}
+    exchange_return_medians: dict[tuple[str, str, int], float | None] = {}
     for exchange in ("TWSE", "TPEx"):
         changes = [
             value
@@ -184,8 +185,23 @@ def attach_tw_context(
             if value is not None
         ]
         exchange_medians[exchange] = float(median(changes)) if changes else 0.0
+        for asset_class in ("STOCK", "ETF"):
+            minimum = 10 if asset_class == "STOCK" else 3
+            for horizon in (5, 20):
+                returns = [
+                    value
+                    for row in tw_assets
+                    if _exchange(row) == exchange
+                    and (("ETF" in str(row.get("type") or "").upper()) == (asset_class == "ETF"))
+                    for value in [_number(row.get(f"tw_return_{horizon}d_pct"))]
+                    if value is not None
+                ]
+                exchange_return_medians[(exchange, asset_class, horizon)] = (
+                    float(median(returns)) if len(returns) >= minimum else None
+                )
 
     peer_changes: dict[tuple[str, str, str], list[tuple[str, float]]] = {}
+    peer_returns: dict[tuple[str, str, str, int], list[tuple[str, float]]] = {}
     for row in tw_assets:
         asset_class = "ETF" if "ETF" in str(row.get("type") or "").upper() else "STOCK"
         industry = str(row.get("industry") or row.get("theme") or "其他")
@@ -194,6 +210,12 @@ def attach_tw_context(
             peer_changes.setdefault((_exchange(row), asset_class, industry), []).append(
                 (str(row.get("symbol") or ""), value)
             )
+        for horizon in (5, 20):
+            return_value = _number(row.get(f"tw_return_{horizon}d_pct"))
+            if return_value is not None:
+                peer_returns.setdefault((_exchange(row), asset_class, industry, horizon), []).append(
+                    (str(row.get("symbol") or ""), return_value)
+                )
 
     exchanges = context.get("exchanges") or {}
     for row in rows:
@@ -221,6 +243,67 @@ def attach_tw_context(
         relative_change = peer_median - exchange_medians.get(exchange, 0.0)
         peer_score = round(_clamp(50.0 + relative_change * 12.0), 1)
 
+        relative_components: list[float] = []
+        market_relative_count = 0
+        sector_relative_count = 0
+        relative_fields: dict[str, float | None] = {}
+        for horizon, multiplier in ((5, 4.0), (20, 2.0)):
+            stock_return = _number(row.get(f"tw_return_{horizon}d_pct"))
+            market_median = exchange_return_medians.get((exchange, asset_class, horizon))
+            horizon_peers = [
+                peer_value
+                for peer_symbol, peer_value
+                in peer_returns.get((exchange, asset_class, industry, horizon), [])
+                if peer_symbol != symbol
+            ]
+            sector_median = float(median(horizon_peers)) if len(horizon_peers) >= 2 else None
+            market_relative = (
+                stock_return-market_median
+                if stock_return is not None and market_median is not None else None
+            )
+            sector_relative = (
+                stock_return-sector_median
+                if stock_return is not None and sector_median is not None else None
+            )
+            relative_fields[f"tw_market_relative_{horizon}d_pct"] = (
+                round(market_relative, 2) if market_relative is not None else None
+            )
+            relative_fields[f"tw_sector_relative_{horizon}d_pct"] = (
+                round(sector_relative, 2) if sector_relative is not None else None
+            )
+            for relative in (market_relative, sector_relative):
+                if relative is not None:
+                    relative_components.append(_clamp(50.0+relative*multiplier))
+            market_relative_count += int(market_relative is not None)
+            sector_relative_count += int(sector_relative is not None)
+        relative_available = bool(same_session and len(relative_components) >= 2)
+        relative_score = (
+            round(sum(relative_components)/len(relative_components), 1)
+            if relative_components else None
+        )
+        if not same_session:
+            relative_status = "交易日不一致，不使用相對強弱"
+        elif relative_score is None:
+            relative_status = "同市場／族群歷史資料不足"
+        elif relative_score >= 65:
+            relative_status = (
+                "明顯領先同市場與族群"
+                if market_relative_count and sector_relative_count else
+                "明顯領先同市場" if market_relative_count else "明顯領先同族群"
+            )
+        elif relative_score >= 55:
+            relative_status = "相對強勢"
+        elif relative_score <= 35:
+            relative_status = (
+                "明顯落後同市場與族群"
+                if market_relative_count and sector_relative_count else
+                "明顯落後同市場" if market_relative_count else "明顯落後同族群"
+            )
+        elif relative_score <= 45:
+            relative_status = "相對弱勢"
+        else:
+            relative_status = "相對表現中性"
+
         row.update({
             "tw_exchange": exchange,
             "tw_market_context_available": market_available,
@@ -234,6 +317,10 @@ def attach_tw_context(
             "tw_sector_peer_count": len(peers),
             "tw_sector_median_change_pct": round(peer_median, 2) if peers else None,
             "tw_sector_relative_change_pct": round(relative_change, 2) if peers else None,
+            "tw_relative_strength_available": relative_available,
+            "tw_relative_strength_score": relative_score,
+            "tw_relative_strength_status": relative_status,
+            **relative_fields,
             "tw_context_affects_us": False,
         })
     return rows

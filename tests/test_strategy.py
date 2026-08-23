@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_head_shoulders_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
 
 
 def test_market_session_fraction_uses_each_markets_clock():
@@ -134,6 +134,62 @@ def test_candlestick_detects_volume_breakout():
     assert result["breakout20"] is True
     assert "突破20日高" in result["kline_pattern"]
     assert result["volume_price_pattern"] == "價漲量增"
+
+
+def test_tw_volume_contraction_breakout_rewards_only_confirmed_expansion():
+    close = pd.Series([100.0+i*.1 for i in range(21)])
+    close.iloc[-1] = 105.0
+    high, low = close+.1, close-.6
+    volume = pd.Series([1_000_000.0]*15+[600_000.0]*5+[1_600_000.0])
+    result = _tw_daily_momentum_features(high, low, close, volume)
+    assert result["tw_volume_contraction_breakout"] is True
+    assert result["tw_breakout_quality_score"] >= 70
+    assert "放量" in result["tw_breakout_quality_status"]
+
+
+def test_tw_false_breakout_is_warning_not_a_trade_guard():
+    close = pd.Series([100.0]*20+[105.0, 103.0, 100.0])
+    high = pd.Series([101.0]*20+[105.2, 104.0, 101.0])
+    low = close-.8
+    volume = pd.Series([1_000_000.0]*23)
+    result = _tw_daily_momentum_features(high, low, close, volume)
+    assert result["tw_false_breakout"] is True
+    assert "假突破" in result["tw_breakout_quality_status"]
+    guard = _trade_safety_guard({"market": "TW", **result})
+    assert guard["trade_guard_blocked"] is False
+
+
+def test_tw_intraday_vwap_and_opening_range_are_calculated_from_bars():
+    frame = pd.DataFrame({
+        "high": [100, 101, 102, 102.5, 103, 104, 105],
+        "low": [99, 100, 101, 101.5, 102, 103, 104],
+        "close": [99.8, 100.8, 101.8, 102.3, 102.8, 103.8, 104.8],
+        "volume": [100_000]*7,
+    })
+    result = _tw_intraday_momentum_features(frame)
+    assert result["tw_intraday_momentum_available"] is True
+    assert result["tw_above_vwap"] is True
+    assert result["tw_breakout_opening_15m"] is True
+    assert result["tw_breakout_opening_30m"] is True
+    assert result["tw_intraday_momentum_score"] > 70
+
+
+def test_us_build_features_does_not_receive_taiwan_momentum_fields():
+    dates = pd.date_range("2026-05-01", periods=30, freq="B")
+    daily = pd.DataFrame({
+        "close": [100.0+i*.1 for i in range(30)],
+        "open": [99.8+i*.1 for i in range(30)],
+        "high": [100.5+i*.1 for i in range(30)],
+        "low": [99.5+i*.1 for i in range(30)],
+        "volume": [1_000_000]*30,
+    }, index=dates)
+    result = build_features(
+        {"symbol": "TEST", "market": "US", "name": "Test", "type": "個股", "theme": "Test"},
+        daily, None, None,
+    )
+    assert result is not None
+    assert "tw_breakout_quality_score" not in result
+    assert "tw_intraday_vwap" not in result
 
 
 def _pattern_series(anchors, length=50):
@@ -669,6 +725,32 @@ def test_tw_buy_ranking_separates_setup_trigger_and_live_confirmation():
     assert abstain["overall_rank"] is not None
     assert "等待回測買進區" in outside_zone["buy_candidate_status"]
     assert "等待隔日方向確認" in abstain["buy_candidate_status"]
+
+
+def test_tw_intraday_momentum_delays_trigger_but_never_removes_setup_candidate():
+    base = {
+        "symbol": "MOMENTUM.TW", "market": "TW", "type": "個股",
+        "price": 100, "short_term_entry_low": 99, "short_term_entry_high": 101,
+        "short_term_stop": 96, "short_term_target1": 108, "short_term_rr": 2,
+        "short_term_score": 72, "entry_score": 65, "technical_score": 68, "score": 66,
+        "market_data_quality_score": 90, "entry_data_coverage": 6, "entry_data_total": 6,
+        "daily_volume_ratio": .9, "rsi": 58, "breakdown20": False, "news_penalty": 0,
+        "next_session_direction": "📈 看漲", "next_session_confidence": 70,
+        "next_session_data_quality": 90, "next_session_signal_level": "RESEARCH",
+        "market_contract_valid": True, "trade_guard_blocked": False,
+        "overall_eligible": True, "short_term_rank_tier": 2, "short_term_ranking_score": 82,
+        "mid_long_rank_tier": 1, "mid_long_ranking_score": 70,
+        "tw_intraday_momentum_available": True, "tw_intraday_is_current_session": True,
+        "tw_above_vwap": True,
+        "tw_breakout_opening_15m": False, "tw_breakout_opening_30m": False,
+    }
+    waiting = dict(base)
+    confirmed = dict(base, symbol="CONFIRMED.TW", tw_breakout_opening_15m=True)
+    apply_tw_buy_candidate_ranking([waiting, confirmed])
+    assert waiting["buy_setup_eligible"] is True
+    assert waiting["buy_trigger_ready"] is False
+    assert "等待站上VWAP" in waiting["buy_candidate_status"]
+    assert confirmed["buy_trigger_ready"] is True
 
 
 def test_tw_strong_bearish_forecast_vetoes_setup_candidate():

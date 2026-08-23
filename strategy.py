@@ -365,6 +365,171 @@ def _tw_head_shoulders_features(
     }
 
 
+def _tw_daily_momentum_features(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    volume: pd.Series,
+) -> dict[str, Any]:
+    """Measure Taiwan breakout quality without turning one signal into a veto."""
+    defaults = {
+        "tw_return_5d_pct": None,
+        "tw_return_20d_pct": None,
+        "tw_volume_contraction_ratio": None,
+        "tw_volume_contraction_breakout": False,
+        "tw_volume_contraction_status": "資料不足",
+        "tw_breakout_quality_available": False,
+        "tw_breakout_quality_score": None,
+        "tw_breakout_quality_status": "資料不足",
+        "tw_breakout_close_location_pct": None,
+        "tw_false_breakout": False,
+    }
+    frame = pd.DataFrame({
+        "high": pd.to_numeric(high, errors="coerce"),
+        "low": pd.to_numeric(low, errors="coerce"),
+        "close": pd.to_numeric(close, errors="coerce"),
+        "volume": pd.to_numeric(volume, errors="coerce").fillna(0),
+    }).dropna(subset=["high", "low", "close"]).tail(80).reset_index(drop=True)
+    if len(frame) < 21:
+        return defaults
+
+    highs = frame["high"]
+    lows = frame["low"]
+    closes = frame["close"]
+    volumes = frame["volume"]
+    current_close = _finite(closes.iloc[-1])
+    previous_close = _finite(closes.iloc[-2], current_close)
+    current_high = _finite(highs.iloc[-1], current_close)
+    current_low = _finite(lows.iloc[-1], current_close)
+    current_volume = _finite(volumes.iloc[-1])
+    prior_high20 = _finite(highs.iloc[-21:-1].max(), current_high)
+    prior_high5 = _finite(highs.iloc[-6:-1].max(), prior_high20)
+    prior_volume5 = _finite(volumes.iloc[-6:-1].mean())
+    prior_volume20 = _finite(volumes.iloc[-21:-1].mean())
+    contraction_ratio = prior_volume5 / max(prior_volume20, 1.0)
+    current_volume_ratio = current_volume / max(prior_volume20, 1.0)
+    day_range = max(current_high-current_low, abs(current_close)*.001, .01)
+    close_location = (current_close-current_low) / day_range
+    breakout = current_close > prior_high20*1.001
+
+    quality = 50.0
+    status = "尚未突破20日壓力"
+    if breakout:
+        quality += 18 if current_volume_ratio >= 1.3 else -8 if current_volume_ratio < .9 else 4
+        quality += 15 if close_location >= .75 else -10 if close_location < .45 else 3
+        quality += 8 if current_close > previous_close else -5
+        quality += _clamp((current_close/prior_high20-1)*500, 0, 9)
+        if current_volume_ratio >= 1.3 and close_location >= .75:
+            status = "放量且收盤靠近最高，突破品質佳"
+        elif current_volume_ratio < .9 or close_location < .45:
+            status = "突破但量價確認不足"
+        else:
+            status = "突破品質普通，等待續強"
+
+    false_breakout = False
+    for index in range(max(20, len(frame)-4), len(frame)-1):
+        reference = _finite(highs.iloc[index-20:index].max())
+        if reference > 0 and closes.iloc[index] > reference*1.001 and current_close < reference*.997:
+            false_breakout = True
+            break
+    if false_breakout:
+        quality -= 20
+        status = "近3日突破後跌回壓力下，疑似假突破"
+
+    contraction_breakout = bool(
+        contraction_ratio <= .80
+        and current_volume_ratio >= 1.30
+        and current_close > previous_close
+        and current_close > prior_high5*1.001
+    )
+    if contraction_breakout:
+        contraction_status = "量縮整理後放量突破"
+    elif contraction_ratio <= .80:
+        contraction_status = "量能已收斂，等待放量突破"
+    else:
+        contraction_status = "尚無明顯量縮蓄勢"
+
+    return {
+        "tw_return_5d_pct": round((current_close/_finite(closes.iloc[-6], current_close)-1)*100, 2),
+        "tw_return_20d_pct": round((current_close/_finite(closes.iloc[-21], current_close)-1)*100, 2),
+        "tw_volume_contraction_ratio": round(contraction_ratio, 2),
+        "tw_volume_contraction_breakout": contraction_breakout,
+        "tw_volume_contraction_status": contraction_status,
+        "tw_breakout_quality_available": True,
+        "tw_breakout_quality_score": round(_clamp(quality), 1),
+        "tw_breakout_quality_status": status,
+        "tw_breakout_close_location_pct": round(_clamp(close_location*100), 1),
+        "tw_false_breakout": false_breakout,
+    }
+
+
+def _tw_intraday_momentum_features(frame: pd.DataFrame | None) -> dict[str, Any]:
+    """Return Taiwan VWAP and opening-range confirmations when bars exist."""
+    defaults = {
+        "tw_intraday_momentum_available": False,
+        "tw_intraday_session_date": None,
+        "tw_intraday_is_current_session": False,
+        "tw_intraday_vwap": None,
+        "tw_intraday_vwap_distance_pct": None,
+        "tw_opening_high_15m": None,
+        "tw_opening_high_30m": None,
+        "tw_above_vwap": False,
+        "tw_breakout_opening_15m": False,
+        "tw_breakout_opening_30m": False,
+        "tw_intraday_momentum_score": None,
+        "tw_intraday_momentum_status": "等待台股盤中資料",
+    }
+    if frame is None or frame.empty or "close" not in frame:
+        return defaults
+    session_date = None
+    if isinstance(frame.index, pd.DatetimeIndex) and len(frame.index):
+        stamp = pd.Timestamp(frame.index[-1])
+        if stamp.tzinfo is None:
+            stamp = stamp.tz_localize(TAIPEI)
+        else:
+            stamp = stamp.tz_convert(TAIPEI)
+        session_date = stamp.date().isoformat()
+    current_session = bool(session_date == datetime.now(TAIPEI).date().isoformat())
+    close = pd.to_numeric(frame["close"], errors="coerce")
+    volume = pd.to_numeric(frame.get("volume", pd.Series(0, index=frame.index)), errors="coerce").fillna(0)
+    high = pd.to_numeric(frame.get("high", close), errors="coerce").fillna(close)
+    low = pd.to_numeric(frame.get("low", close), errors="coerce").fillna(close)
+    valid = close.notna()
+    if not valid.any() or volume.sum() <= 0:
+        return defaults
+    close, volume, high, low = close[valid], volume[valid], high[valid], low[valid]
+    typical = (high+low+close)/3
+    vwap = _finite((typical*volume).sum()/max(volume.sum(), 1.0))
+    live = _finite(close.iloc[-1])
+    opening15 = _finite(high.iloc[:3].max()) if len(high) >= 3 else None
+    opening30 = _finite(high.iloc[:6].max()) if len(high) >= 6 else None
+    breakout15 = bool(opening15 and len(high) >= 4 and live > opening15*1.001)
+    breakout30 = bool(opening30 and len(high) >= 7 and live > opening30*1.001)
+    above_vwap = bool(vwap > 0 and live >= vwap*1.001)
+    distance = (live/vwap-1)*100 if vwap > 0 else 0.0
+    score = 50.0+(12 if above_vwap else -8)+(10 if breakout15 else 0)+(12 if breakout30 else 0)
+    if above_vwap and (breakout15 or breakout30):
+        status = "站上VWAP並突破開盤區間"
+    elif above_vwap:
+        status = "站上VWAP，等待突破15／30分鐘高點"
+    else:
+        status = "尚未站穩VWAP"
+    return {
+        "tw_intraday_momentum_available": True,
+        "tw_intraday_session_date": session_date,
+        "tw_intraday_is_current_session": current_session,
+        "tw_intraday_vwap": round(vwap, 2),
+        "tw_intraday_vwap_distance_pct": round(distance, 2),
+        "tw_opening_high_15m": round(opening15, 2) if opening15 else None,
+        "tw_opening_high_30m": round(opening30, 2) if opening30 else None,
+        "tw_above_vwap": above_vwap,
+        "tw_breakout_opening_15m": breakout15,
+        "tw_breakout_opening_30m": breakout30,
+        "tw_intraday_momentum_score": round(_clamp(score), 1),
+        "tw_intraday_momentum_status": status,
+    }
+
+
 def build_features(
     item: dict[str, Any],
     daily: pd.DataFrame,
@@ -396,6 +561,8 @@ def build_features(
     market = str(item.get("market") or ("TW" if str(item.get("symbol", "")).upper().endswith(".TW") else "US")).upper()
     if market == "TW":
         candle.update(_tw_head_shoulders_features(high, low, close, volume))
+        candle.update(_tw_daily_momentum_features(high, low, close, volume))
+        candle.update(_tw_intraday_momentum_features(intraday))
     # Keep an auditable official-session price for forward testing.  The
     # dashboard may show an intraday/live price, but a next-session outcome
     # must always compare completed daily bars from the same exchange.
@@ -787,6 +954,17 @@ def _market_outlook(row: dict[str, Any]) -> dict[str, Any]:
         elif market == "TW" and row.get("tw_inverse_head_shoulders_confirmed"):
             bias += 8
             reasons.append((8, "頭肩底已收盤突破頸線"))
+        if market == "TW" and row.get("tw_relative_strength_available"):
+            relative_score = _finite(row.get("tw_relative_strength_score"), 50.0)
+            relative_bias = _clamp((relative_score-50.0)*.35, -6, 6)
+            bias += relative_bias
+            reasons.append((relative_bias, str(row.get("tw_relative_strength_status") or "相對強弱中性")))
+        if market == "TW" and row.get("tw_volume_contraction_breakout"):
+            bias += 7
+            reasons.append((7, "量縮整理後放量突破"))
+        if market == "TW" and row.get("tw_false_breakout"):
+            bias -= 8
+            reasons.append((-8, "近3日突破後跌回壓力下，疑似假突破"))
 
     volume_available = _finite(row.get("avg_volume20")) > 0 or row.get("intraday_available")
     if volume_available:
@@ -1682,6 +1860,12 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
             score -= 6
         elif row.get("tw_inverse_head_shoulders_confirmed"):
             score += 6
+        if row.get("tw_intraday_momentum_available") and row.get("tw_intraday_is_current_session"):
+            score += _clamp(
+                (_finite(row.get("tw_intraday_momentum_score"), 50.0)-50.0)*.16,
+                -5,
+                6,
+            )
     guard = _trade_safety_guard(row)
     evidence_ok = short_confidence >= 75
     if not coverage_ok or not evidence_ok:
@@ -1740,9 +1924,9 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     )
     if eligible:
         status = "🟢 等待觸發"
-        trigger = ("回測進場區止穩，且前15～30分鐘攻擊量轉正才分批進場"
+        trigger = ("回測進場區止穩，且前15～30分鐘攻擊量轉正；有當日盤中資料時再確認站上VWAP並突破開盤區間"
                    if price > entry_high else
-                   "進場區不破支撐，出現量增紅K或突破前15分鐘高點才分批進場")
+                   "進場區不破支撐，出現量增紅K；有盤中資料時站上VWAP並突破前15／30分鐘高點再分批")
         reason = f"{setup}｜量能合格｜風報比 {rr:.2f}"
     elif not premium_ok:
         status, trigger = "🔴 淨值溢價過高", f"目前溢價 {premium:.2f}% 高於 {premium_limit:.2f}% 門檻，不追價"
@@ -2054,7 +2238,20 @@ def apply_tw_buy_candidate_ranking(rows: list[dict[str, Any]]) -> list[dict[str,
             and _finite(row.get("next_session_data_quality")) >= 75
             and str(row.get("next_session_signal_level") or "") in {"RESEARCH", "STRONG"}
         )
-        trigger_ready = bool(setup_eligible and in_entry_zone and forecast_confirmed)
+        intraday_available = bool(
+            row.get("tw_intraday_momentum_available")
+            and row.get("tw_intraday_is_current_session")
+        )
+        intraday_confirmed = bool(
+            not intraday_available
+            or (
+                row.get("tw_above_vwap")
+                and (row.get("tw_breakout_opening_15m") or row.get("tw_breakout_opening_30m"))
+            )
+        )
+        trigger_ready = bool(
+            setup_eligible and in_entry_zone and forecast_confirmed and intraday_confirmed
+        )
 
         row["quality_eligible_before_buy_filter"] = bool(row.get("overall_eligible"))
         row["buy_setup_eligible"] = setup_eligible
@@ -2068,6 +2265,8 @@ def apply_tw_buy_candidate_ranking(rows: list[dict[str, Any]]) -> list[dict[str,
             row["buy_candidate_status"] = "🔴 安全阻擋"
         elif trigger_ready:
             row["buy_candidate_status"] = "🟢 已達觸發區｜等待盤中富邦7/7確認"
+        elif setup_eligible and in_entry_zone and forecast_confirmed and intraday_available:
+            row["buy_candidate_status"] = "🟡 買進候選｜等待站上VWAP並突破15／30分鐘高點"
         elif setup_eligible and in_entry_zone:
             row["buy_candidate_status"] = "🟡 買進候選｜已進買進區，等待隔日方向確認"
         elif setup_eligible:
@@ -2159,6 +2358,18 @@ def score_candidates(
                 technical -= 6
             elif row.get("tw_inverse_head_shoulders_confirmed"):
                 technical += 6
+            if row.get("tw_relative_strength_available"):
+                technical += _clamp(
+                    (_finite(row.get("tw_relative_strength_score"), 50.0)-50.0)*.16,
+                    -8,
+                    8,
+                )
+            if row.get("tw_breakout_quality_available"):
+                technical += _clamp(
+                    (_finite(row.get("tw_breakout_quality_score"), 50.0)-50.0)*.18,
+                    -8,
+                    8,
+                )
 
         # Blend absolute pace, same-market relative participation and attack
         # volume.  A broad market-wide quiet session is no longer treated as
@@ -2170,6 +2381,10 @@ def score_candidates(
             + relative_volume * 0.40
             + _clamp(50 + row["attack_volume"] * 0.8) * 0.20
         )
+        if market_name == "TW" and row.get("tw_volume_contraction_breakout"):
+            volume_score = _clamp(volume_score+8)
+        if market_name == "TW" and row.get("tw_false_breakout"):
+            volume_score = _clamp(volume_score-5)
         if row.get("institution_available"):
             multiday = bool(row.get(
                 "institution_multiday_available",
