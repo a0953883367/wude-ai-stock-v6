@@ -641,6 +641,8 @@ def build_features(
         "avg_volume10": int(avg10),
         "avg_volume20": int(avg20),
         "ma20_distance_pct": round((price / ma20 - 1) * 100 if ma20 else 0.0, 2),
+        "ma20_slope5_pct": round((ma20 / _finite(close.iloc[-25:-5].mean(), ma20) - 1) * 100, 2) if len(close) >= 25 else None,
+        "recent_low5": round(_finite(low.tail(5).min()), 2),
         **candle,
         "support1": round(support1, 2),
         "support2": round(support2, 2),
@@ -653,14 +655,145 @@ def build_features(
         "institution_net": int(inst_net),
         "institution_available": bool(_finite(inst.get("available"))),
         "institution_1d": int(_finite(inst.get("institution_1d", inst_net))),
-        "institution_3d": int(_finite(inst.get("institution_3d", inst_net))),
-        "institution_5d": int(_finite(inst.get("institution_5d", inst_net))),
-        "institution_10d": int(_finite(inst.get("institution_10d", inst_net))),
+        "institution_3d": None if inst.get("institution_3d") is None else int(_finite(inst.get("institution_3d"))),
+        "institution_5d": None if inst.get("institution_5d") is None else int(_finite(inst.get("institution_5d"))),
+        "institution_10d": None if inst.get("institution_10d") is None else int(_finite(inst.get("institution_10d"))),
+        "institution_multiday_available": bool(inst.get(
+            "institution_multiday_available", inst.get("institution_5d") is not None
+        )),
+        "foreign_5d": inst.get("foreign_5d"),
+        "trust_5d": inst.get("trust_5d"),
+        "dealer_5d": inst.get("dealer_5d"),
+        "foreign_buy_days_5": inst.get("foreign_buy_days_5"),
+        "trust_buy_days_5": inst.get("trust_buy_days_5"),
+        "institution_buy_days_5": inst.get("institution_buy_days_5"),
     }
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return min(high, max(low, value))
+
+
+def _tw_institutional_accumulation(row: dict[str, Any]) -> dict[str, Any]:
+    """Return an auditable TW institutional-accumulation shadow signal.
+
+    The result is deliberately display/forward-test only.  It must not alter
+    the production ranking until enough completed-session outcomes pass the
+    documented sample gate.
+    """
+    empty = {
+        "tw_accumulation_available": False,
+        "tw_accumulation_score": None,
+        "tw_accumulation_status": "資料不足",
+        "tw_accumulation_candidate": False,
+        "tw_accumulation_strong": False,
+        "tw_accumulation_launch_confirmed": False,
+        "tw_accumulation_data_coverage": "0/5",
+        "tw_accumulation_affects_score": False,
+    }
+    if str(row.get("market") or "").upper() != "TW" or _is_etf(row):
+        return empty
+    avg_volume = _finite(row.get("avg_volume20"))
+    price = _finite(row.get("price"))
+    ma20 = _finite(row.get("ma20"))
+    atr = _finite(row.get("atr14"))
+    multiday = bool(row.get("institution_multiday_available"))
+    trust5 = row.get("trust_5d")
+    foreign5 = row.get("foreign_5d")
+    institution5 = row.get("institution_5d")
+    trust_days = row.get("trust_buy_days_5")
+    institution_days = row.get("institution_buy_days_5")
+    return5 = row.get("tw_return_5d_pct")
+    contraction = row.get("tw_volume_contraction_ratio")
+    slope = row.get("ma20_slope5_pct")
+    recent_low = row.get("recent_low5")
+    groups = [
+        multiday and trust5 is not None and foreign5 is not None and institution5 is not None,
+        trust_days is not None and institution_days is not None,
+        price > 0 and ma20 > 0 and atr > 0 and slope is not None and recent_low is not None,
+        return5 is not None,
+        contraction is not None,
+    ]
+    coverage = sum(bool(value) for value in groups)
+    empty["tw_accumulation_data_coverage"] = f"{coverage}/5"
+    if not row.get("institution_available") or avg_volume <= 0 or coverage < 5:
+        empty["tw_accumulation_status"] = f"資料不足（{coverage}/5）"
+        return empty
+
+    five_day_volume = max(avg_volume * 5, 1.0)
+    trust_ratio = _finite(trust5) / five_day_volume * 100
+    foreign_ratio = _finite(foreign5) / five_day_volume * 100
+    institution_ratio = _finite(institution5) / five_day_volume * 100
+    # Flow is normalized by traded shares, so a thousand lots in a small stock
+    # is not treated the same as a thousand lots in a mega-cap.
+    trust_intensity = _clamp(50 + trust_ratio * 12)
+    foreign_intensity = _clamp(50 + foreign_ratio * 6)
+    intensity_score = trust_intensity * .60 + foreign_intensity * .40
+    continuity_score = _clamp(
+        _finite(trust_days) / 5 * 100 * .60
+        + _finite(institution_days) / 5 * 100 * .40
+    )
+    stable_checks = (
+        price >= ma20,
+        _finite(slope) >= 0,
+        _finite(recent_low) >= ma20 * .98,
+        not row.get("breakdown20") and str(row.get("kline_pattern") or "") != "上影壓力",
+    )
+    stability_score = sum(stable_checks) * 25.0
+    atr_pct = atr / price * 100
+    absorption_efficiency = institution_ratio / max(abs(_finite(return5)), atr_pct, .5)
+    absorption_score = _clamp(50 + absorption_efficiency * 20)
+    contraction_score = _clamp((1.10 - _finite(contraction)) / .50 * 100)
+    score = _clamp(
+        intensity_score * .35
+        + continuity_score * .20
+        + stability_score * .20
+        + absorption_score * .15
+        + contraction_score * .10
+    )
+    flow_ready = institution_ratio > 0 and _finite(institution_days) >= 3
+    candidate = score >= 70 and flow_ready
+    strong = score >= 80 and flow_ready
+    daily_launch = bool(
+        strong
+        and _finite(row.get("daily_volume_ratio")) >= 1.30
+        and (row.get("breakout20") or _finite(row.get("tw_breakout_quality_score")) >= 65)
+        and _finite(row.get("ma20_distance_pct")) < 10
+    )
+    if daily_launch:
+        status = "正式發動確認（影子）"
+    elif strong:
+        status = "法人高度蓄力"
+    elif candidate:
+        status = "法人蓄力觀察"
+    elif score >= 70 and not flow_ready:
+        status = "分數達標，但法人連買未確認"
+    elif score >= 60:
+        status = "法人有買，尚未確認"
+    else:
+        status = "蓄力條件不足"
+    return {
+        "tw_accumulation_available": True,
+        "tw_accumulation_score": round(score, 1),
+        "tw_accumulation_status": status,
+        "tw_accumulation_candidate": candidate,
+        "tw_accumulation_strong": strong,
+        "tw_accumulation_launch_confirmed": daily_launch,
+        "tw_accumulation_data_coverage": "5/5",
+        "tw_accumulation_affects_score": False,
+        "tw_accumulation_intensity_score": round(intensity_score, 1),
+        "tw_accumulation_continuity_score": round(continuity_score, 1),
+        "tw_accumulation_stability_score": round(stability_score, 1),
+        "tw_accumulation_absorption_score": round(absorption_score, 1),
+        "tw_accumulation_contraction_score": round(contraction_score, 1),
+        "tw_accumulation_trust_ratio_5d_pct": round(trust_ratio, 3),
+        "tw_accumulation_foreign_ratio_5d_pct": round(foreign_ratio, 3),
+        "tw_accumulation_institution_ratio_5d_pct": round(institution_ratio, 3),
+        "tw_accumulation_trust_buy_days_5": int(_finite(trust_days)),
+        "tw_accumulation_institution_buy_days_5": int(_finite(institution_days)),
+        "tw_accumulation_flow_ready": flow_ready,
+        "tw_accumulation_formula": "強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%",
+    }
 
 
 
@@ -2624,6 +2757,7 @@ def score_candidates(
         else:
             row["action"] = "🔴 暫不買"
 
+        row.update(_tw_institutional_accumulation(row))
         row.update(_positioning_radar(row))
         row.update(_next_day_scenario(row))
         row.update(_market_outlook(row))

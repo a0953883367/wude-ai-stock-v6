@@ -438,11 +438,40 @@ def _merge_latest_institution(
             previous = _number(fallback.get(key))
             if previous is not None:
                 merged[key] = previous + delta
+        for group in ("foreign", "trust", "dealer"):
+            old_group = _number(fallback.get(group))
+            new_group = _number(official.get(group))
+            if old_group is None or new_group is None:
+                continue
+            group_delta = new_group - old_group
+            for window in (1, 3, 5, 10):
+                key = f"{group}_{window}d"
+                previous = _number(fallback.get(key))
+                if previous is not None:
+                    merged[key] = previous + group_delta
+        for group in ("foreign", "trust"):
+            key = f"{group}_buy_days_5"
+            previous = _number(fallback.get(key))
+            old_group = _number(fallback.get(group))
+            new_group = _number(official.get(group))
+            if previous is not None and old_group is not None and new_group is not None:
+                merged[key] = max(0, min(5, previous - int(old_group > 0) + int(new_group > 0)))
+        prior_days = _number(fallback.get("institution_buy_days_5"))
+        if prior_days is not None:
+            merged["institution_buy_days_5"] = max(
+                0,
+                min(5, prior_days - int(old_one > 0) + int(new_one > 0)),
+            )
         merged["institution_multiday_available"] = True
     else:
         # Never label a stale FinMind window as current official history.
         for window in (3, 5, 10):
             merged[f"institution_{window}d"] = None
+        for group in ("foreign", "trust", "dealer"):
+            for window in (3, 5, 10):
+                merged[f"{group}_{window}d"] = None
+        for key in ("foreign_buy_days_5", "trust_buy_days_5", "institution_buy_days_5"):
+            merged[key] = None
         merged["institution_multiday_available"] = False
     merged.update(official)
     return merged

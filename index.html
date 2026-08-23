@@ -187,6 +187,7 @@ function normalizeReport(row){
     twRelativeStrengthAvailable:row.tw_relative_strength_available,twRelativeStrengthScore:row.tw_relative_strength_score,twRelativeStrengthStatus:row.tw_relative_strength_status,twMarketRelative5d:row.tw_market_relative_5d_pct,twMarketRelative20d:row.tw_market_relative_20d_pct,twSectorRelative5d:row.tw_sector_relative_5d_pct,twSectorRelative20d:row.tw_sector_relative_20d_pct,
     twVolumeContractionStatus:row.tw_volume_contraction_status,twVolumeContractionBreakout:row.tw_volume_contraction_breakout,twBreakoutQualityScore:row.tw_breakout_quality_score,twBreakoutQualityStatus:row.tw_breakout_quality_status,twFalseBreakout:row.tw_false_breakout,
     twIntradayMomentumAvailable:row.tw_intraday_momentum_available,twIntradaySessionDate:row.tw_intraday_session_date,twIntradayIsCurrentSession:row.tw_intraday_is_current_session,twIntradayMomentumStatus:row.tw_intraday_momentum_status,twIntradayVwap:row.tw_intraday_vwap,twIntradayVwapDistance:row.tw_intraday_vwap_distance_pct,twOpeningHigh15m:row.tw_opening_high_15m,twOpeningHigh30m:row.tw_opening_high_30m,twAboveVwap:row.tw_above_vwap,twBreakoutOpening15m:row.tw_breakout_opening_15m,twBreakoutOpening30m:row.tw_breakout_opening_30m,
+    twAccumulationAvailable:row.tw_accumulation_available,twAccumulationScore:row.tw_accumulation_score,twAccumulationStatus:row.tw_accumulation_status,twAccumulationCandidate:row.tw_accumulation_candidate,twAccumulationStrong:row.tw_accumulation_strong,twAccumulationLaunchConfirmed:row.tw_accumulation_launch_confirmed,twAccumulationCoverage:row.tw_accumulation_data_coverage,twAccumulationIntensity:row.tw_accumulation_intensity_score,twAccumulationContinuity:row.tw_accumulation_continuity_score,twAccumulationStability:row.tw_accumulation_stability_score,twAccumulationAbsorption:row.tw_accumulation_absorption_score,twAccumulationContraction:row.tw_accumulation_contraction_score,twAccumulationTrustRatio:row.tw_accumulation_trust_ratio_5d_pct,twAccumulationForeignRatio:row.tw_accumulation_foreign_ratio_5d_pct,twAccumulationTrustDays:row.tw_accumulation_trust_buy_days_5,twAccumulationInstitutionDays:row.tw_accumulation_institution_buy_days_5,twAccumulationFormula:row.tw_accumulation_formula,twAccumulationAffectsScore:row.tw_accumulation_affects_score,
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
@@ -298,6 +299,10 @@ function stockCard(stock,index){
     }
     if(stock.market==='TW'&&stock.twIntradayMomentumAvailable){
       data+='<br>⏱️ 盤中確認（'+esc(stock.twIntradaySessionDate||'—')+'）：<b>'+esc(stock.twIntradayMomentumStatus)+'</b>｜VWAP '+number(stock.twIntradayVwap,2)+'（'+percent(stock.twIntradayVwapDistance)+'）｜15／30分高 '+number(stock.twOpeningHigh15m,2)+'／'+number(stock.twOpeningHigh30m,2);
+    }
+    if(stock.market==='TW'&&stock.twAccumulationStatus){
+      data+='<br>🏦 法人蓄力（影子）：<b>'+esc(stock.twAccumulationStatus)+'</b>｜'+number(stock.twAccumulationScore,1)+'分｜資料 '+esc(stock.twAccumulationCoverage||'—');
+      if(stock.twAccumulationAvailable)data+='<br>　強度／連買／K穩／吸收／量縮：<b>'+[stock.twAccumulationIntensity,stock.twAccumulationContinuity,stock.twAccumulationStability,stock.twAccumulationAbsorption,stock.twAccumulationContraction].map(function(v){return number(v,1);}).join('／')+'</b>｜投信／外資5日量比 '+percent(stock.twAccumulationTrustRatio)+'／'+percent(stock.twAccumulationForeignRatio)+'｜買超天數 '+number(stock.twAccumulationTrustDays,0)+'／'+number(stock.twAccumulationInstitutionDays,0)+'<br>　<span class="muted">'+esc(stock.twAccumulationFormula||'')+'；目前只驗證，不影響AI排名。</span>';
     }
     if(Number(stock.institutionAvailable)>0)data+='<br>🏦 法人合計 1／5／10日：<b>'+[stock.institution1d,stock.institution5d,stock.institution10d].map(compact).join('／')+'</b>';
     if(Number(stock.creditAvailable)>0){
@@ -618,7 +623,7 @@ function renderPerformance(report){
   if(!h||!t){box.innerHTML='<div class="performance">🎯 隔日預測 V6 已啟動，累積資料後顯示三段真實命中率。</div>';return;}
   var trackDefs=[['overnight','隔夜｜今日收盤→次日開盤'],['session','盤中｜次日開盤→次日收盤'],['full_day','全天｜今日收盤→次日收盤']];
   var availableTracks=trackDefs.filter(function(x){return Number((t[x[0]]||{}).samples)>0;});
-  var availableHorizons=['5','10','20'].filter(function(k){return Number((h[k]||{}).samples)>0;});
+  var availableHorizons=['3','5','10','20'].filter(function(k){return Number((h[k]||{}).samples)>0;});
   var c=p.calibration||{},boards=p.model_leaderboards||{},names={balanced_next:'隔日平衡',price_trend:'價格趨勢',volume_confirmation:'量能確認',market_flow:'資金流',macro_risk:'大盤風險',exhaustion_guard:'追高防護',mean_reversion:'均值回歸',momentum_confirmed:'確認動能',relative_strength:'相對強勢',entry_timing:'進場時機'};
   if(!availableTracks.length&&!availableHorizons.length){box.innerHTML='<div class="performance">🧪 隔日預測 V6｜10個候選模型已開始向前測試<br>台股與美股使用不同權重；隔夜、盤中及全天各自投票，台股、台灣ETF、美股、美國ETF分開驗證。目前沒有完成的下一交易日結果，所以不顯示假命中率，也不影響AI排名。</div>';return;}
   var guard=c.ready_for_model_selection?'✅ 已達模型遴選門檻；需通過審核才會升級正式排名':'🛡️ 仍在乾淨驗證期；尚差 '+number(c.remaining_trading_days,0)+' 個交易日，目前不影響AI分數';
@@ -647,6 +652,11 @@ function renderTwThresholdCalibration(value){
   });
   return '<div class="accuracy-grid">'+html+'</div><div class="accuracy-note">影子回測只使用已固定且已完成的台股結果；至少20筆後才可人工評估，絕不自動改正式模型，也不讀取或修改美股權重。</div>';
 }
+function renderTwAccumulationValidation(value){
+  value=value||{};var regimes=value.regimes||{},labels={all:'全部行情',bull:'多頭',bear:'空頭',sideways:'盤整'},signals=value.signals||{},html='';
+  ['all','bull','bear','sideways'].forEach(function(regime){var block=regimes[regime]||{},items=block.signals||{};html+='<div class="accuracy-card"><h3>🏦 法人蓄力｜'+labels[regime]+'</h3>';['candidate_70','strong_80','launch_confirmed'].forEach(function(key){var metric=((items[key]||{})['5'])||{},samples=Number(metric.samples||0),minimum=Number(metric.minimum_samples||(regime==='all'?100:30)),cls=metric.status==='驗證有效'?'accuracy-ok':metric.status==='驗證未通過'?'accuracy-bad':'accuracy-wait';html+='<div class="accuracy-line"><b>'+esc(signals[key]||key)+'</b>：'+samples+'/'+minimum+'筆｜5日淨勝率 '+number(metric.win_rate_pct,1)+'%｜平均淨報酬 '+percent(metric.avg_net_return_pct)+'｜超額 '+percent(metric.avg_excess_return_pct)+'｜獲利因子 '+number(metric.profit_factor,2)+'｜<span class="'+cls+'">'+esc(metric.status||'樣本不足')+'</span></div>';});html+='</div>';});
+  return '<div class="accuracy-grid">'+html+'</div><div class="accuracy-note">成本假設：'+esc(value.cost_assumption||'—')+'。通過規則：'+esc(value.pass_rule||'—')+'；只做影子驗證，不自動修改排名或下單。</div>';
+}
 function renderAccuracy(){
   var box=document.getElementById('accuracyOutput'),a=STATE.accuracy;
   if(!a){box.innerHTML='<div class="empty">尚未產生驗證檔。下一次台股晚報或美股早報完成後會自動建立。</div>';return;}
@@ -659,7 +669,7 @@ function renderAccuracy(){
   });
   var integrity=a.integrity||{},cal=a.calibration||{},note='<div class="accuracy-note">🔒 '+esc(a.immutable_rule||'預測固定後不覆寫')+'<br>可驗證快照 '+Number(integrity.verified||0)+' 份｜舊版未加密 '+Number(integrity.legacy_unverified||0)+' 份｜異常隔離 '+Number(integrity.mismatch||0)+' 份<br>目前累積 '+Number(cal.trading_days_collected||0)+' 個交易日；樣本少於20筆只顯示「樣本不足」，棄權不算命中。此頁只做驗證，不會修改排名或啟用下單。</div>';
   var recent=(a.recent||[]).slice(0,40),rows=recent.map(function(row){var full=(row.tracks||{}).full_day||{},hit=full.hit,cls=hit===true?'accuracy-ok':hit===false?'accuracy-bad':'accuracy-wait',icon=hit===true?'✅':hit===false?'❌':'⚪';return '<div class="accuracy-row"><div class="accuracy-row-head"><span>'+esc(row.name||row.symbol)+'（'+esc(row.symbol)+'）</span><span class="'+cls+'">'+icon+' '+esc(full.direction||'ABSTAIN')+'</span></div><div class="accuracy-row-meta">'+esc(labels[row.cohort]||row.cohort)+'｜當日排名 '+esc(row.rank)+'｜預測 '+esc(row.source_session_date)+' → 驗證 '+esc(row.evaluated_session_date)+'｜'+(row.integrity==='verified'?'雜湊驗證通過':'舊版紀錄')+'</div><div class="accuracy-row-result">前收 '+accuracyPrice(row.source_close_price)+'｜隔日開 '+accuracyPrice(row.actual_open_price)+'｜高 '+accuracyPrice(row.actual_high_price)+'｜低 '+accuracyPrice(row.actual_low_price)+'｜收 '+accuracyPrice(row.actual_close_price)+'<br>收盤→開盤 '+percent(((row.tracks||{}).overnight||{}).actual_return_pct)+'｜開盤→收盤 '+percent(((row.tracks||{}).session||{}).actual_return_pct)+'｜收盤→收盤 <b class="'+cls+'">'+percent(full.actual_return_pct)+'</b></div></div>';}).join('');
-  box.innerHTML=note+'<div class="accuracy-grid">'+cards+'</div>'+renderTwThresholdCalibration(a.tw_threshold_calibration)+'<div class="accuracy-recent"><div class="group">最近完成的逐筆驗證</div>'+(rows||'<div class="empty">目前尚無下一交易日完成結果。</div>')+'</div>';
+  box.innerHTML=note+'<div class="accuracy-grid">'+cards+'</div>'+renderTwAccumulationValidation(a.tw_accumulation_validation)+renderTwThresholdCalibration(a.tw_threshold_calibration)+'<div class="accuracy-recent"><div class="group">最近完成的逐筆驗證</div>'+(rows||'<div class="empty">目前尚無下一交易日完成結果。</div>')+'</div>';
 }
 async function openAccuracy(){
   document.getElementById('accuracyModal').classList.add('open');document.body.style.overflow='hidden';

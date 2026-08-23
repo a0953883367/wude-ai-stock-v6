@@ -55,6 +55,9 @@ def test_institution_rows_include_date_source_and_share_unit():
     assert result["institution_date"] == "2026-08-21"
     assert result["institution_source"] == "FinMind"
     assert result["institution_unit"] == "shares"
+    assert result["trust_buy_days_5"] == 1
+    assert result["foreign_buy_days_5"] == 0
+    assert result["institution_buy_days_5"] == 0
 
 
 def test_fundamental_rows_have_valuation_and_revenue_growth():
