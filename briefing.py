@@ -40,6 +40,11 @@ from holding_simulation import update_holding_simulation
 from million_simulation import update_million_simulation
 from weight_experiment import update_weight_experiment
 from exit_horizon_experiment import update_exit_horizon_experiment
+from inverse_experiment import (
+    build_inverse_market_rows,
+    load_inverse_experiment_watchlist,
+    update_inverse_experiment,
+)
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from tw_official_data import (
@@ -329,7 +334,13 @@ def main() -> int:
     universe = list(combined.values())
     symbols = list(combined)
 
-    history = _stage("日線價格", lambda: download_history(symbols))
+    # The inverse ETFs are price inputs for one isolated shadow experiment.
+    # They deliberately never enter `combined`, `universe`, ALL or ranking.
+    inverse_watchlist = load_inverse_experiment_watchlist()
+    inverse_symbols = [item["symbol"] for item in inverse_watchlist]
+    data_symbols = list(dict.fromkeys([*symbols, *inverse_symbols]))
+
+    history = _stage("日線價格", lambda: download_history(data_symbols))
     intraday = _stage("盤中量價", lambda: download_intraday(symbols))
     watchlist_stock_ids = {
         item["symbol"].split(".")[0]
@@ -708,6 +719,29 @@ def main() -> int:
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
+    )
+    inverse_session_dates = {
+        market_name: next((
+            str(row.get("official_session_date") or "")
+            for row in ranking_rows
+            if row.get("market") == market_name
+            and "ETF" not in str(row.get("type") or "").upper()
+            and row.get("official_session_date")
+        ), "")
+        for market_name in ("TW", "US")
+    }
+    inverse_market_rows = build_inverse_market_rows(
+        inverse_watchlist, history, inverse_session_dates
+    )
+    update_inverse_experiment(
+        SETTINGS.reports_dir,
+        ranking_rows,
+        inverse_market_rows,
+        market_regime_history,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+        watchlist=inverse_watchlist,
     )
     ranking_payload = {
         "updated_at": report["updated_at"],
