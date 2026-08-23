@@ -28,6 +28,10 @@ def universe(session_date: str = "2026-08-21", close_offset: float = 1) -> list[
     rows = [row(index, "TW", session_date, close_offset) for index in range(1, 13)]
     rows += [row(index, "US", session_date, close_offset) for index in range(1, 13)]
     rows += [{**row(20, "TW", session_date), "symbol": "ETF", "type": "ETF"}]
+    rows += [
+        {**row(30, "TW", session_date), "symbol": "0050.TW", "type": "ETF"},
+        {**row(31, "US", session_date), "symbol": "VOO", "type": "ETF"},
+    ]
     return rows
 
 
@@ -73,8 +77,13 @@ def test_next_session_open_enters_medium_and_long_as_separate_accounts():
     assert state["medium"]["TW"]["target_exit_date"] == "2026-10-08"
     assert state["medium"]["US"]["target_exit_date"] == "2026-10-08"
     assert len(state["long"]["positions"]) == 2
+    assert len(state["medium"]["TW"]["benchmark_positions"]) == 1
+    assert state["medium"]["TW"]["benchmark_positions"][0]["symbol"] == "0050.TW"
+    assert len(state["long"]["benchmark_positions"]) == 2
+    assert {position["symbol"] for position in state["long"]["benchmark_positions"]} == {"0050.TW", "VOO"}
     assert {position["market"] for position in state["long"]["positions"]} == {"TW", "US"}
     assert all(position["target_exit_date"] == "2027-02-24" for position in state["long"]["positions"])
+    assert all(len(position["ranking_snapshot_id"]) == 12 for position in state["long"]["positions"])
     # The top stock is intentionally held in both medium and long accounts.
     assert state["medium"]["TW"]["positions"][0]["symbol"] == state["long"]["positions"][0]["symbol"]
 
@@ -91,9 +100,12 @@ def test_medium_exits_after_45_days_while_long_remains_active():
 
     assert state["medium"]["TW"]["status"] == "complete"
     assert state["medium"]["US"]["status"] == "complete"
+    assert state["medium"]["TW"]["benchmark_realized"] is True
+    assert state["medium"]["US"]["benchmark_realized"] is True
     assert state["medium"]["TW"]["gross_profit_twd"] > 0
     assert state["medium"]["TW"]["net_profit_twd"] < state["medium"]["TW"]["gross_profit_twd"]
     assert state["medium"]["TW"]["positions"][0]["estimated_cost_twd"] == 1370.0
+    assert state["medium"]["TW"]["benchmark_net_profit_twd"] != 0
     assert state["long"]["status"] == "active"
     assert state["long"]["realized"] is False
 
@@ -118,6 +130,7 @@ def test_long_exits_at_six_month_target_and_intraday_never_changes_state():
     update_state(state, maturity, period="morning", updated_at="2027-02-25 06:00:00")
     assert state["long"]["status"] == "complete"
     assert state["long"]["realized"] is True
+    assert state["long"]["benchmark_realized"] is True
     assert all(position["realized"] for position in state["long"]["positions"])
     assert state["long"]["gross_profit_twd"] > 0
     assert state["long"]["net_profit_twd"] < state["long"]["gross_profit_twd"]

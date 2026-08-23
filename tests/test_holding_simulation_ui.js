@@ -13,6 +13,8 @@ const html = fs.readFileSync('index.html', 'utf8');
   '長期6個月',
   '前5名每檔20萬元',
   '台股第1名與美股第1名，各50萬元',
+  '同期基準',
+  '台股0050、美股VOO',
   '全程不送券商訂單'
 ].forEach((text) => assert.ok(html.includes(text), `missing holding UI contract: ${text}`));
 

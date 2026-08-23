@@ -30,6 +30,10 @@ def universe(session_date: str = "2026-08-21") -> list[dict]:
     rows = [row(index, "TW", session_date) for index in range(1, 16)]
     rows += [row(index, "US", session_date) for index in range(1, 16)]
     rows += [{**row(index, "TW", session_date), "symbol": f"ETF{index}", "type": "ETF"} for index in range(1, 4)]
+    rows += [
+        {**row(30, "TW", session_date), "symbol": "0050.TW", "type": "ETF"},
+        {**row(31, "US", session_date), "symbol": "VOO", "type": "ETF"},
+    ]
     return rows
 
 
@@ -82,8 +86,38 @@ def test_next_session_open_to_close_profit_is_recorded_without_lookahead():
     assert market["days"][0]["net_profit_twd"] < market["days"][0]["gross_profit_twd"]
     assert market["cumulative_net_profit_twd"] == market["days"][0]["net_profit_twd"]
     assert market["days"][0]["strategies"]["overall"]["positions"][0]["estimated_cost_twd"] == 342.5
+    assert market["days"][0]["strict_portfolio"]["invested_twd"] < CAPITAL_PER_MARKET
+    assert market["days"][0]["strict_portfolio"]["idle_twd"] > 0
+    assert market["days"][0]["strategies"]["overall"]["invested_twd"] == 500_000
+    assert market["days"][0]["benchmark"]["symbol"] == "0050.TW"
+    assert market["days"][0]["benchmark"]["data_available"] is True
+    assert len(market["days"][0]["ranking_snapshot_id"]) == 12
     assert market["days"][0]["ending_capital_twd"] > CAPITAL_PER_MARKET
     assert market["pending"]["signal_session_date"] == "2026-08-24"
+
+
+def test_strict_portfolio_does_not_pretend_a_locked_limit_up_stock_was_bought():
+    state = empty_state()
+    first = universe("2026-08-21")
+    update_state(state, first, period="evening", updated_at="start")
+    second = universe("2026-08-24")
+    selected_symbol = state["markets"]["TW"]["pending"]["strategies"]["overall"][0]["symbol"]
+    selected = next(item for item in second if item["symbol"] == selected_symbol)
+    selected.update({
+        "change_pct": 10.0,
+        "official_open_price": 110,
+        "official_high_price": 110,
+        "official_low_price": 110,
+        "official_close_price": 110,
+    })
+    update_state(state, second, period="evening", updated_at="close")
+    position = next(
+        item for item in state["markets"]["TW"]["days"][0]["strategies"]["overall"]["positions"]
+        if item["symbol"] == selected_symbol
+    )
+    assert position["data_available"] is True
+    assert position["strict_executed"] is False
+    assert position["strict_block_reason"] == "鎖漲停買不到"
 
 
 def test_intraday_refresh_never_starts_or_settles_the_experiment():

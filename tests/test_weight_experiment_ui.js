@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const html = fs.readFileSync('index.html', 'utf8');
+assert.ok(html.includes('法人額外效益'));
 [
   'data-view="WEIGHT"',
   'reports/tw_weight_experiment.json',

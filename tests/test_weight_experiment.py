@@ -74,6 +74,8 @@ def test_experiment_freezes_previous_rank_then_settles_open_to_close_net_of_cost
     expected_net = CAPITAL_TWD * (1 - ROUND_TRIP_COST_PCT) / 100
     assert model["days"][0]["net_profit_twd"] == round(expected_net, 2)
     assert model["metrics"]["win_rate_pct"] == 100
+    assert len(model["days"][0]["ranking_snapshot_id"]) == 12
+    assert model["comparison_vs_base"]["interpretation"] == "法人權重相較原模型的額外效益"
     assert model["pending"]["signal_session_date"] == "2026-08-24"
 
 
