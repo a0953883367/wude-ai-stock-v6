@@ -765,6 +765,15 @@ _POWER_AND_FRIEND_ADDITIONS = (
     # Friend-requested Taiwan memory stock; fixed-list status enables richer
     # institutional, credit, and fundamental enrichment before publication.
     ("2337.TW", "旺宏", "TW", "記憶體", "半導體"),
+    # User-requested U.S. listings for the 2026-08-24 forward shadow test.
+    # Use the exchange-listed ADR where one exists; HNHPF remains OTC and is
+    # therefore still subject to the normal liquidity and trade guards.
+    ("SPCX", "SpaceX", "US", "太空／衛星通訊", "航太／發射服務"),
+    ("SKHY", "SK 海力士 ADR", "US", "AI記憶體／HBM", "記憶體半導體"),
+    ("UMC", "聯電 ADR", "US", "半導體", "晶圓代工"),
+    ("HNHPF", "鴻海 OTC", "US", "AI伺服器", "電子製造服務"),
+    ("PATH", "UiPath", "US", "AI／企業自動化", "RPA軟體"),
+    ("GLW", "Corning", "US", "光通訊／CPO", "光纖／特殊玻璃"),
     # United States: generators and regulated utilities.
     ("CEG", "Constellation Energy", "US", "核能／電力", "電力事業"),
     ("VST", "Vistra", "US", "發電／售電", "電力事業"),
