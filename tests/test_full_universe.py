@@ -13,3 +13,4 @@ def test_search_universe_loads_all_maintained_markets():
     assert {row["market"] for row in rows} == {"TW", "US"}
     assert any(row["type"] == "ETF" for row in rows)
     assert len(load_taiwan_universe()) == payload["summary"]["台灣個股"] + payload["summary"]["台灣ETF"]
+    assert {"SPCX", "SKHY", "UMC", "HNHPF"} <= symbols
