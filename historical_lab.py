@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 
 LOG = logging.getLogger(__name__)
 TAIPEI = ZoneInfo("Asia/Taipei")
-METHOD = "V6-HIST-CORE-2"
+METHOD = "V6-HIST-CORE-3"
 CAPITAL_TWD = 1_000_000.0
 TOP_N = 10
 COST_RATE = {"TW_STOCK": 0.00685, "TW_ETF": 0.00385, "US_STOCK": 0.002, "US_ETF": 0.002}
@@ -260,6 +260,121 @@ def _five_day_metrics(days: list[dict[str, Any]], key: str, window: int = 5) -> 
     }
 
 
+def _event_metrics(events: list[dict[str, Any]], key: str) -> dict[str, Any]:
+    returns = np.array(
+        [float(event[key]["net_profit_twd"]) / CAPITAL_TWD * 100 for event in events],
+        dtype=float,
+    )
+    by_regime: dict[str, dict[str, Any]] = {}
+    for regime in ("bull", "bear", "sideways", "unknown"):
+        subset = [event for event in events if event.get("regime") == regime]
+        if subset:
+            values = np.array(
+                [float(event[key]["net_profit_twd"]) / CAPITAL_TWD * 100 for event in subset],
+                dtype=float,
+            )
+            by_regime[regime] = {
+                "events": len(subset),
+                "profitable_event_pct": round(float(np.mean(values > 0)) * 100, 2),
+                "average_net_return_pct": round(float(np.mean(values)), 4),
+                "median_net_return_pct": round(float(np.median(values)), 4),
+            }
+    return {
+        "event_count": len(events),
+        "profitable_event_pct": round(float(np.mean(returns > 0)) * 100, 2) if len(returns) else 0.0,
+        "average_net_return_pct": round(float(np.mean(returns)), 4) if len(returns) else 0.0,
+        "median_net_return_pct": round(float(np.median(returns)), 4) if len(returns) else 0.0,
+        "best_net_return_pct": round(float(np.max(returns)), 4) if len(returns) else 0.0,
+        "worst_net_return_pct": round(float(np.min(returns)), 4) if len(returns) else 0.0,
+        "p10_net_return_pct": round(float(np.percentile(returns, 10)), 4) if len(returns) else 0.0,
+        "p90_net_return_pct": round(float(np.percentile(returns, 90)), 4) if len(returns) else 0.0,
+        "average_net_profit_twd": round(float(np.mean([event[key]["net_profit_twd"] for event in events])), 2) if events else 0.0,
+        "average_positions": round(float(np.mean([event[key]["executed_positions"] for event in events])), 2) if events else 0.0,
+        "regimes": by_regime,
+    }
+
+
+def _holding_horizon_comparison(
+    candidates: dict[str, pd.DataFrame],
+    benchmark: pd.DataFrame,
+    market: str,
+    portfolio_cost_rate: float,
+    benchmark_cost_rate: float,
+) -> dict[str, Any]:
+    """Compare exits while freezing the same close-of-day selection signal.
+
+    Each signal event is an independent research sample. Events may overlap in
+    calendar time, so their profits are averaged and never chained as a live
+    account or presented as simultaneously investable capital.
+    """
+    sessions = list(benchmark.index)
+    allocation = CAPITAL_TWD / TOP_N
+    horizons: dict[str, Any] = {}
+    for holding_sessions in (1, 2, 3, 5):
+        events: list[dict[str, Any]] = []
+        for offset in range(len(sessions) - holding_sessions):
+            signal_date = sessions[offset]
+            entry_date = sessions[offset + 1]
+            exit_date = sessions[offset + holding_sessions]
+            ranked: list[tuple[str, pd.Series]] = []
+            for symbol, features in candidates.items():
+                if signal_date not in features.index or entry_date not in features.index or exit_date not in features.index:
+                    continue
+                signal = features.loc[signal_date]
+                if pd.notna(signal.get("core_score")) and pd.notna(signal.get("ma60")):
+                    ranked.append((symbol, signal))
+            ranked.sort(key=lambda item: (-float(item[1]["core_score"]), item[0]))
+            picks = ranked[:TOP_N]
+            if not picks:
+                continue
+            event: dict[str, Any] = {
+                "signal_date": signal_date.date().isoformat(),
+                "entry_date": entry_date.date().isoformat(),
+                "exit_date": exit_date.date().isoformat(),
+                "regime": classify_regime(benchmark, signal_date),
+                "rank": {"net_profit_twd": 0.0, "executed_positions": 0},
+                "strict": {"net_profit_twd": 0.0, "executed_positions": 0},
+                "benchmark": {"net_profit_twd": 0.0, "executed_positions": 0},
+            }
+            for symbol, signal in picks:
+                features = candidates[symbol]
+                entry = features.loc[entry_date]
+                exit_close = float(features.loc[exit_date].get("close", math.nan))
+                entry_open = float(entry.get("open", math.nan))
+                if not math.isfinite(entry_open) or not math.isfinite(exit_close) or entry_open <= 0 or exit_close <= 0:
+                    continue
+                net_profit = allocation * (exit_close / entry_open - 1) - allocation * portfolio_cost_rate
+                event["rank"]["net_profit_twd"] += net_profit
+                event["rank"]["executed_positions"] += 1
+                prior_close = float(features.loc[signal_date, "close"])
+                if bool(signal["eligible"]) and not _locked_limit_up(entry, prior_close, market):
+                    event["strict"]["net_profit_twd"] += net_profit
+                    event["strict"]["executed_positions"] += 1
+            benchmark_open = float(benchmark.loc[entry_date].get("open", math.nan))
+            benchmark_close = float(benchmark.loc[exit_date].get("close", math.nan))
+            if math.isfinite(benchmark_open) and math.isfinite(benchmark_close) and benchmark_open > 0 and benchmark_close > 0:
+                event["benchmark"]["net_profit_twd"] = CAPITAL_TWD * (benchmark_close / benchmark_open - 1) - CAPITAL_TWD * benchmark_cost_rate
+                event["benchmark"]["executed_positions"] = 1
+            for key in ("rank", "strict", "benchmark"):
+                event[key]["net_profit_twd"] = round(event[key]["net_profit_twd"], 2)
+            events.append(event)
+        horizons[str(holding_sessions)] = {
+            "holding_sessions": holding_sessions,
+            "rank": _event_metrics(events, "rank"),
+            "strict": _event_metrics(events, "strict"),
+            "benchmark": _event_metrics(events, "benchmark"),
+            "recent_events": events[-12:],
+        }
+    return {
+        "method": "independent_signal_events",
+        "capital_is_not_stacked": True,
+        "entry_timing": "訊號後下一交易日開盤",
+        "exit_timing": "持有第N個交易日收盤",
+        "cost_charged_once_per_position": True,
+        "horizons": horizons,
+    }
+
+
 def evaluate_market(
     histories: dict[str, pd.DataFrame],
     universe: list[dict[str, Any]],
@@ -304,6 +419,11 @@ def evaluate_market(
         result["benchmark_portfolio"] = _portfolio_metrics([], "benchmark")
         result["five_day_rounds"] = {
             key: _five_day_metrics([], key) for key in ("rank", "strict", "benchmark")
+        }
+        result["holding_horizon_comparison"] = {
+            "method": "independent_signal_events",
+            "capital_is_not_stacked": True,
+            "horizons": {},
         }
         return result
 
@@ -383,6 +503,9 @@ def evaluate_market(
     result["five_day_rounds"] = {
         key: _five_day_metrics(days, key) for key in ("rank", "strict", "benchmark")
     }
+    result["holding_horizon_comparison"] = _holding_horizon_comparison(
+        candidates, benchmark, market, portfolio_cost_rate, benchmark_cost_rate
+    )
     # The daily audit trail stays deterministic but the dashboard report remains compact.
     result["audit_hash"] = hashlib.sha256(json.dumps(days, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
     result["recent_days"] = days[-20:]
@@ -486,6 +609,7 @@ def build_report(
         "regimes": "大盤當日收盤、MA20、MA60與20日動能分多頭／空頭／盤整",
         "methodology_hash": hashlib.sha256(METHOD.encode()).hexdigest()[:16],
         "primary_evaluation": "每5個交易日為一個不重疊試跑；每輪100萬元重新開始，五年各輪不串接",
+        "exit_comparison": "相同收盤排名訊號分別持有1、2、3、5個交易日；各事件獨立，不疊加資金或串接報酬",
     }
     return {
         "schema_version": 1,
