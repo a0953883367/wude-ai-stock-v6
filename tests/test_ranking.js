@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
 const ranking = require('../ranking.js');
 
 const qualified = {
@@ -70,5 +71,40 @@ const fallbackBlocked = {
 };
 assert.strictEqual(ranking.overallTier(fallbackBlocked), 0);
 assert.strictEqual(ranking.shortTier(fallbackBlocked), 0);
+
+const accumulationCandidate = {
+  symbol: 'ACC', twAccumulationAvailable: true, twAccumulationCandidate: true,
+  twAccumulationRankTier: 2, twAccumulationRankingScore: 72,
+  twAccumulationRank: 1, twAccumulationDisplayRank: 1,
+  twAccumulationGroupCount: 3
+};
+const accumulationObservation = {
+  symbol: 'OBS', twAccumulationAvailable: true, twAccumulationCandidate: false,
+  twAccumulationRankTier: 1, twAccumulationRankingScore: 95,
+  twAccumulationDisplayRank: 2, twAccumulationGroupCount: 3
+};
+const accumulationBlocked = {
+  symbol: 'BAD', twAccumulationAvailable: true, twAccumulationCandidate: true,
+  twAccumulationRankTier: 0, twAccumulationRankingScore: 99,
+  twAccumulationDisplayRank: 3, twAccumulationGroupCount: 3,
+  tradeGuardBlocked: true
+};
+assert.deepStrictEqual(
+  ranking.sortAccumulation([accumulationBlocked, accumulationObservation, accumulationCandidate]).map(row => row.symbol),
+  ['ACC', 'OBS', 'BAD']
+);
+assert.deepStrictEqual(
+  ranking.labelRows('SHORT:ACCUMULATION', [accumulationCandidate, accumulationObservation, accumulationBlocked]).map(row => row.displayRankLabel),
+  ['法人蓄力 TOP 1', '法人觀察｜同組排序 2/3', '法人阻擋｜同組排序 3/3']
+);
+
+const html = fs.readFileSync('index.html', 'utf8');
+[
+  'data-short="ACCUMULATION"',
+  'WudeRanking.sortAccumulation(rows)',
+  '原短線80%＋法人蓄力20%',
+  'short_term_accumulation_adjustment',
+  'buildAllAnalysisPool():STATE.normalized'
+].forEach((text) => assert.ok(html.includes(text), `missing accumulation UI contract: ${text}`));
 
 console.log('ranking tests passed');

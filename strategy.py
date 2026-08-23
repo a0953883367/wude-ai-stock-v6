@@ -675,12 +675,7 @@ def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
 
 
 def _tw_institutional_accumulation(row: dict[str, Any]) -> dict[str, Any]:
-    """Return an auditable TW institutional-accumulation shadow signal.
-
-    The result is deliberately display/forward-test only.  It must not alter
-    the production ranking until enough completed-session outcomes pass the
-    documented sample gate.
-    """
+    """Return an auditable TW institutional-accumulation signal."""
     empty = {
         "tw_accumulation_available": False,
         "tw_accumulation_score": None,
@@ -751,9 +746,13 @@ def _tw_institutional_accumulation(row: dict[str, Any]) -> dict[str, Any]:
         + absorption_score * .15
         + contraction_score * .10
     )
+    # Eligibility uses the same one-decimal value shown on the website.  This
+    # avoids a confusing 70.0 display being rejected because its hidden raw
+    # value was 69.96.
+    rounded_score = round(score, 1)
     flow_ready = institution_ratio > 0 and _finite(institution_days) >= 3
-    candidate = score >= 70 and flow_ready
-    strong = score >= 80 and flow_ready
+    candidate = rounded_score >= 70 and flow_ready
+    strong = rounded_score >= 80 and flow_ready
     daily_launch = bool(
         strong
         and _finite(row.get("daily_volume_ratio")) >= 1.30
@@ -761,20 +760,20 @@ def _tw_institutional_accumulation(row: dict[str, Any]) -> dict[str, Any]:
         and _finite(row.get("ma20_distance_pct")) < 10
     )
     if daily_launch:
-        status = "正式發動確認（影子）"
+        status = "正式發動確認"
     elif strong:
         status = "法人高度蓄力"
     elif candidate:
         status = "法人蓄力觀察"
-    elif score >= 70 and not flow_ready:
+    elif rounded_score >= 70 and not flow_ready:
         status = "分數達標，但法人連買未確認"
-    elif score >= 60:
+    elif rounded_score >= 60:
         status = "法人有買，尚未確認"
     else:
         status = "蓄力條件不足"
     return {
         "tw_accumulation_available": True,
-        "tw_accumulation_score": round(score, 1),
+        "tw_accumulation_score": rounded_score,
         "tw_accumulation_status": status,
         "tw_accumulation_candidate": candidate,
         "tw_accumulation_strong": strong,
@@ -794,6 +793,75 @@ def _tw_institutional_accumulation(row: dict[str, Any]) -> dict[str, Any]:
         "tw_accumulation_flow_ready": flow_ready,
         "tw_accumulation_formula": "強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%",
     }
+
+
+def _apply_tw_accumulation_short_ranking(
+    row: dict[str, Any],
+    plan_factor: float,
+    short_factor: float,
+    short_penalty: float,
+) -> None:
+    """Blend complete TW-stock accumulation data into short ranking only.
+
+    The original short score and its pre-blend ranking are retained for audit.
+    US stocks, ETFs, and incomplete TW accumulation data remain unchanged.
+    """
+    base_score = _finite(row.get("short_term_score"))
+    base_ranking = round(base_score * plan_factor * short_factor * short_penalty, 1)
+    is_tw_stock = str(row.get("market") or "").upper() == "TW" and not _is_etf(row)
+    accumulation_available = bool(row.get("tw_accumulation_available"))
+    affects_ranking = is_tw_stock and accumulation_available
+    weight = 0.20 if affects_ranking else 0.0
+    blended_score = (
+        base_score * (1.0 - weight)
+        + _finite(row.get("tw_accumulation_score")) * weight
+    )
+    adjusted_ranking = round(
+        blended_score * plan_factor * short_factor * short_penalty,
+        1,
+    )
+    row["short_term_base_score"] = round(base_score, 1)
+    row["short_term_base_ranking_score"] = base_ranking
+    row["short_term_accumulation_weight"] = weight
+    row["short_term_accumulation_affects_ranking"] = affects_ranking
+    row["short_term_accumulation_adjustment"] = round(adjusted_ranking - base_ranking, 1)
+    row["short_term_ranking_score"] = adjusted_ranking
+
+
+def _assign_tw_accumulation_ranks(rows: list[dict[str, Any]]) -> None:
+    """Assign a separate, safety-tiered ranking to available TW-stock signals."""
+    tw_rows = [
+        row for row in rows
+        if str(row.get("market") or "").upper() == "TW" and not _is_etf(row)
+    ]
+    available = [row for row in tw_rows if row.get("tw_accumulation_available")]
+    for row in tw_rows:
+        blocked = bool(row.get("trade_guard_blocked") or row.get("market_contract_valid") is False)
+        row["tw_accumulation_rank_tier"] = (
+            0 if blocked or not row.get("tw_accumulation_available")
+            else 2 if row.get("tw_accumulation_candidate") else 1
+        )
+        row["tw_accumulation_ranking_score"] = row.get("tw_accumulation_score")
+        row["tw_accumulation_rank"] = None
+        row["tw_accumulation_display_rank"] = None
+        row["tw_accumulation_group_count"] = len(available)
+    ordered = sorted(
+        available,
+        key=lambda row: (
+            _finite(row.get("tw_accumulation_rank_tier")),
+            _finite(row.get("tw_accumulation_ranking_score")),
+            _finite(row.get("tw_accumulation_launch_confirmed")),
+            _finite(row.get("tw_accumulation_strong")),
+            _finite(row.get("short_term_base_ranking_score")),
+        ),
+        reverse=True,
+    )
+    qualified_rank = 0
+    for display_rank, row in enumerate(ordered, 1):
+        row["tw_accumulation_display_rank"] = display_rank
+        if row.get("tw_accumulation_rank_tier") == 2:
+            qualified_rank += 1
+            row["tw_accumulation_rank"] = qualified_rank
 
 
 
@@ -2799,9 +2867,8 @@ def score_candidates(
         )
         short_factor = 0.70 + 0.30 * _finite(row.get("short_term_confidence")) / 100
         short_penalty = 0.45 if short_blocked else 1.0 if row.get("short_term_eligible") else 0.85
-        row["short_term_ranking_score"] = round(
-            _finite(row.get("short_term_score")) * plan_factor * short_factor * short_penalty,
-            1,
+        _apply_tw_accumulation_short_ranking(
+            row, plan_factor, short_factor, short_penalty
         )
 
         long_blocked = bool(
@@ -2826,4 +2893,5 @@ def score_candidates(
     for rank, row in enumerate(ranked, 1):
         row["rank"] = rank
     _assign_group_ranks(rows)
+    _assign_tw_accumulation_ranks(rows)
     return ranked

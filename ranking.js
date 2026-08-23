@@ -39,6 +39,12 @@
       truthy(stock && stock.tradeGuardSevere) || stock && stock.marketContractValid === false);
   }
 
+  function accumulationTier(stock) {
+    return tierValue(stock, 'twAccumulationRankTier', 'twAccumulationCandidate',
+      truthy(stock && stock.tradeGuardBlocked) || stock && stock.marketContractValid === false ||
+      !truthy(stock && stock.twAccumulationAvailable));
+  }
+
   function symbol(stock) { return String(stock && stock.symbol || ''); }
 
   function compareValues(a, b, values) {
@@ -76,6 +82,16 @@
     ]);
   }
 
+  function compareAccumulation(a, b) {
+    return compareValues(a, b, [
+      accumulationTier,
+      function (row) { return number(row.twAccumulationRankingScore, row.twAccumulationScore); },
+      function (row) { return truthy(row.twAccumulationLaunchConfirmed) ? 1 : 0; },
+      function (row) { return truthy(row.twAccumulationStrong) ? 1 : 0; },
+      function (row) { return row.shortTermBaseRankingScore; }
+    ]);
+  }
+
   function sorted(rows, comparator) {
     return (rows || []).slice().sort(comparator);
   }
@@ -84,7 +100,12 @@
     var qualifiedCount = 0;
     return (rows || []).map(function (stock, index) {
       var copy = Object.assign({}, stock), tier, prefix, qualifiedRank, displayRank;
-      if (String(mode).indexOf('SHORT') === 0) {
+      if (mode === 'ACCUMULATION' || mode === 'SHORT:ACCUMULATION') {
+        tier = accumulationTier(stock);
+        prefix = tier === 2 ? '法人蓄力 TOP' : tier === 1 ? '法人觀察' : '法人阻擋';
+        qualifiedRank = number(stock.twAccumulationRank, 0);
+        displayRank = number(stock.twAccumulationDisplayRank, index + 1);
+      } else if (String(mode).indexOf('SHORT') === 0) {
         tier = shortTier(stock);
         prefix = tier === 2 ? '短線 TOP' : tier === 1 ? '短線觀察' : '短線阻擋';
         qualifiedRank = number(stock.shortTermRank, 0);
@@ -119,7 +140,9 @@
         qualifiedCount += 1;
         copy.displayRankLabel = prefix + ' ' + (qualifiedRank || qualifiedCount);
       } else {
-        var total = number(stock.rankingGroupCount, (rows || []).length);
+        var total = (mode === 'ACCUMULATION' || mode === 'SHORT:ACCUMULATION')
+          ? number(stock.twAccumulationGroupCount, (rows || []).length)
+          : number(stock.rankingGroupCount, (rows || []).length);
         copy.displayRankLabel = isTaiwanBuyList
           ? prefix
           : prefix + '｜同組排序 ' + displayRank + '/' + total;
@@ -132,12 +155,15 @@
     overallTier: overallTier,
     shortTier: shortTier,
     longTier: longTier,
+    accumulationTier: accumulationTier,
     compareOverall: compareOverall,
     compareShort: compareShort,
     compareLong: compareLong,
+    compareAccumulation: compareAccumulation,
     sortOverall: function (rows) { return sorted(rows, compareOverall); },
     sortShort: function (rows) { return sorted(rows, compareShort); },
     sortLong: function (rows) { return sorted(rows, compareLong); },
+    sortAccumulation: function (rows) { return sorted(rows, compareAccumulation); },
     labelRows: labelRows
   };
 }));

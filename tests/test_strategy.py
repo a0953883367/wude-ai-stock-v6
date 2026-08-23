@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+from strategy import _apply_tw_accumulation_short_ranking, _assign_group_ranks, _assign_tw_accumulation_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
 
 
 def test_tw_institutional_accumulation_requires_complete_history_and_is_shadow_only():
@@ -38,6 +38,95 @@ def test_tw_institutional_accumulation_requires_complete_history_and_is_shadow_o
 
     us = _tw_institutional_accumulation({**row, "market": "US"})
     assert us["tw_accumulation_available"] is False
+
+
+def test_tw_accumulation_changes_only_complete_tw_stock_short_ranking():
+    high = {
+        "symbol": "HIGH.TW", "market": "TW", "type": "個股",
+        "short_term_score": 70, "tw_accumulation_available": True,
+        "tw_accumulation_score": 90,
+    }
+    low = {
+        "symbol": "LOW.TW", "market": "TW", "type": "個股",
+        "short_term_score": 70, "tw_accumulation_available": True,
+        "tw_accumulation_score": 50,
+    }
+    missing = {
+        "symbol": "MISS.TW", "market": "TW", "type": "個股",
+        "short_term_score": 70, "tw_accumulation_available": False,
+        "tw_accumulation_score": None,
+    }
+    us = {
+        "symbol": "US", "market": "US", "type": "個股",
+        "short_term_score": 70, "tw_accumulation_available": True,
+        "tw_accumulation_score": 100,
+    }
+    etf = {
+        "symbol": "0050.TW", "market": "TW", "type": "ETF",
+        "short_term_score": 70, "tw_accumulation_available": True,
+        "tw_accumulation_score": 100,
+    }
+    for row in (high, low, missing, us, etf):
+        _apply_tw_accumulation_short_ranking(row, 1, 1, 1)
+
+    assert high["short_term_ranking_score"] == 74
+    assert low["short_term_ranking_score"] == 66
+    assert high["short_term_base_score"] == high["short_term_score"] == 70
+    assert missing["short_term_ranking_score"] == 70
+    assert missing["short_term_accumulation_weight"] == 0
+    assert us["short_term_ranking_score"] == 70
+    assert etf["short_term_ranking_score"] == 70
+    assert not us["short_term_accumulation_affects_ranking"]
+    assert not etf["short_term_accumulation_affects_ranking"]
+
+
+def test_tw_accumulation_threshold_uses_the_same_rounded_score_as_display():
+    row = {
+        "market": "TW", "type": "個股", "institution_available": True,
+        "institution_multiday_available": True, "avg_volume20": 1_000_000,
+        "trust_5d": 57_000, "foreign_5d": 57_000, "institution_5d": 171_000,
+        "trust_buy_days_5": 3, "institution_buy_days_5": 3,
+        "price": 100, "ma20": 99, "atr14": 2, "ma20_slope5_pct": .1,
+        "recent_low5": 99, "tw_return_5d_pct": 2,
+        "tw_volume_contraction_ratio": .9, "breakdown20": False,
+        "kline_pattern": "十字", "daily_volume_ratio": 1,
+        "breakout20": False, "tw_breakout_quality_score": 50,
+        "ma20_distance_pct": 1,
+    }
+    result = _tw_institutional_accumulation(row)
+    assert result["tw_accumulation_score"] == 70.0
+    assert result["tw_accumulation_candidate"] is True
+
+
+def test_separate_tw_accumulation_ranking_prioritizes_candidate_and_safety():
+    candidate = {
+        "symbol": "GOOD.TW", "market": "TW", "type": "個股",
+        "tw_accumulation_available": True, "tw_accumulation_candidate": True,
+        "tw_accumulation_score": 72, "market_contract_valid": True,
+    }
+    observation = {
+        "symbol": "WATCH.TW", "market": "TW", "type": "個股",
+        "tw_accumulation_available": True, "tw_accumulation_candidate": False,
+        "tw_accumulation_score": 90, "market_contract_valid": True,
+    }
+    blocked = {
+        "symbol": "BLOCK.TW", "market": "TW", "type": "個股",
+        "tw_accumulation_available": True, "tw_accumulation_candidate": True,
+        "tw_accumulation_score": 99, "trade_guard_blocked": True,
+    }
+    missing = {
+        "symbol": "MISS.TW", "market": "TW", "type": "個股",
+        "tw_accumulation_available": False, "tw_accumulation_candidate": False,
+    }
+    _assign_tw_accumulation_ranks([observation, blocked, missing, candidate])
+
+    assert candidate["tw_accumulation_rank"] == 1
+    assert candidate["tw_accumulation_display_rank"] == 1
+    assert observation["tw_accumulation_rank"] is None
+    assert observation["tw_accumulation_display_rank"] == 2
+    assert blocked["tw_accumulation_display_rank"] == 3
+    assert missing["tw_accumulation_display_rank"] is None
+    assert candidate["tw_accumulation_group_count"] == 3
 
 
 def test_market_session_fraction_uses_each_markets_clock():

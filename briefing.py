@@ -650,7 +650,7 @@ def main() -> int:
                 "news_risk": 0.10,
             },
             "overall_ranking": "台股採三階段：先依完整買進計畫、趨勢、量能、資料品質與風險產生候選排名；價格進入買進區且隔日方向確認後才成為觸發候選；真正可買仍須盤中富邦7/7確認。美股維持既有綜合風控排名",
-            "short_term": "1至5個交易日；先依合格與安全條件分層，再以量價、短均線與K線、籌碼、開盤攻擊量及風報比排序",
+            "short_term": "1至5個交易日；先依合格與安全條件分層。台股個股在法人蓄力資料完整時，以原短線模型80%＋法人蓄力20%計算排名；缺資料沿用原分數，美股與ETF不變",
             "next_session": "V6市場分流隔日影子預測；台股晚報、美股早報才以完整收盤資料固定預測。研究方向供向前驗證，強訊號另行標示；兩市場採不同權重且不影響原排名",
             "mid_long_term": "3至12個月；先依合格與重大風險分層，再以財務品質、成長、估值、中期趨勢、法人籌碼及新聞風險排序",
             "etf": "台灣與美國ETF分開計分；使用流動性、折溢價、風險、成本、追蹤與組合品質，不套用個股財報模型",
@@ -662,7 +662,7 @@ def main() -> int:
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
             "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
-            "institutional_accumulation": "台股法人蓄力影子分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；先累積扣成本結果，不影響正式排名",
+            "institutional_accumulation": "台股法人蓄力分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；資料完整時占台股個股短線排名20%，另設獨立法人蓄力榜並持續累積扣成本驗證",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
