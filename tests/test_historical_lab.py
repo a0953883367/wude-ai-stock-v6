@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from historical_lab import build_features, build_report, evaluate_market
+from historical_lab import _five_day_metrics, build_features, build_report, evaluate_market
 
 
 def history(start: str, rows: int, slope: float = 0.15, jump_index: int | None = None) -> pd.DataFrame:
@@ -76,6 +76,27 @@ def test_strict_portfolio_can_hold_cash():
     assert any(day["strict"]["idle_twd"] > 0 for day in result["recent_days"])
 
 
+def test_five_day_rounds_reset_capital_and_do_not_overlap():
+    days = []
+    for index in range(12):
+        profit = 10_000 if index < 5 else (-20_000 if index < 10 else 999_999)
+        days.append({
+            "signal_date": f"2024-01-{index + 1:02d}",
+            "trade_date": f"2024-01-{index + 2:02d}",
+            "regime": "bull" if index < 5 else "bear",
+            "strict": {"gross_profit_twd": profit, "net_profit_twd": profit, "executed_positions": 5},
+        })
+    metrics = _five_day_metrics(days, "strict")
+    assert metrics["round_count"] == 2
+    assert metrics["evaluated_sessions"] == 10
+    assert metrics["unused_tail_sessions"] == 2
+    assert metrics["profitable_round_pct"] == 50
+    assert metrics["best_net_return_pct"] == 5
+    assert metrics["worst_net_return_pct"] == -10
+    assert metrics["average_net_return_pct"] == -2.5
+    assert metrics["recent_rounds"][0]["end_trade_date"] == "2024-01-06"
+
+
 def test_report_is_explicitly_isolated_and_not_exact_v6(tmp_path: Path):
     report = build_report(all_histories(), universe(), tmp_path, "5y")
     assert report["mode"] == "historical_lab_only"
@@ -86,6 +107,7 @@ def test_report_is_explicitly_isolated_and_not_exact_v6(tmp_path: Path):
     assert any("存活者偏差" in note for note in report["limitations"])
     assert report["methodology"]["signal_timing"].startswith("交易日收盤後")
     assert set(report["markets"]) == {"TW_STOCK", "US_STOCK", "TW_ETF", "US_ETF"}
+    assert report["methodology"]["primary_evaluation"].startswith("每5個交易日")
 
 
 def test_missing_market_data_is_not_treated_as_zero_return():

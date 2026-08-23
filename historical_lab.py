@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 
 LOG = logging.getLogger(__name__)
 TAIPEI = ZoneInfo("Asia/Taipei")
-METHOD = "V6-HIST-CORE-1"
+METHOD = "V6-HIST-CORE-2"
 CAPITAL_TWD = 1_000_000.0
 TOP_N = 10
 COST_RATE = {"TW_STOCK": 0.00685, "TW_ETF": 0.00385, "US_STOCK": 0.002, "US_ETF": 0.002}
@@ -189,6 +189,77 @@ def _portfolio_metrics(days: list[dict[str, Any]], key: str) -> dict[str, Any]:
     }
 
 
+def _five_day_metrics(days: list[dict[str, Any]], key: str, window: int = 5) -> dict[str, Any]:
+    """Score independent, non-overlapping rounds that match the web trial.
+
+    Each round starts with TWD 1,000,000, uses that same fixed allocation for
+    five daily open-to-close trades, and then resets.  Rounds are not chained,
+    so five years of repeated costs cannot masquerade as one account balance.
+    """
+    rounds: list[dict[str, Any]] = []
+    usable = len(days) - len(days) % window
+    for start in range(0, usable, window):
+        batch = days[start : start + window]
+        net_profits = [float(day[key]["net_profit_twd"]) for day in batch]
+        gross_profits = [float(day[key]["gross_profit_twd"]) for day in batch]
+        equity = CAPITAL_TWD + np.concatenate(([0.0], np.cumsum(net_profits)))
+        peaks = np.maximum.accumulate(equity)
+        drawdown = (equity / peaks - 1) * 100
+        regime_counts: dict[str, int] = {}
+        for day in batch:
+            regime = str(day.get("regime") or "unknown")
+            regime_counts[regime] = regime_counts.get(regime, 0) + 1
+        # Deterministic tie-break: use the first day's regime among tied modes.
+        highest = max(regime_counts.values())
+        tied = {regime for regime, count in regime_counts.items() if count == highest}
+        regime = next(str(day.get("regime") or "unknown") for day in batch if str(day.get("regime") or "unknown") in tied)
+        net_profit = sum(net_profits)
+        rounds.append({
+            "round": len(rounds) + 1,
+            "start_signal_date": batch[0]["signal_date"],
+            "end_trade_date": batch[-1]["trade_date"],
+            "regime": regime,
+            "gross_profit_twd": round(sum(gross_profits), 2),
+            "net_profit_twd": round(net_profit, 2),
+            "net_return_pct": round(net_profit / CAPITAL_TWD * 100, 4),
+            "max_drawdown_pct": round(float(drawdown.min()), 4),
+            "average_positions": round(sum(int(day[key].get("executed_positions", 0)) for day in batch) / window, 2),
+        })
+    returns = np.array([row["net_return_pct"] for row in rounds], dtype=float)
+    by_regime: dict[str, dict[str, Any]] = {}
+    for regime in ("bull", "bear", "sideways", "unknown"):
+        subset = [row for row in rounds if row["regime"] == regime]
+        if subset:
+            regime_returns = np.array([row["net_return_pct"] for row in subset], dtype=float)
+            by_regime[regime] = {
+                "rounds": len(subset),
+                "profitable_round_pct": round(float(np.mean(regime_returns > 0)) * 100, 2),
+                "average_net_return_pct": round(float(np.mean(regime_returns)), 4),
+                "median_net_return_pct": round(float(np.median(regime_returns)), 4),
+                "worst_net_return_pct": round(float(np.min(regime_returns)), 4),
+            }
+    return {
+        "round_length_sessions": window,
+        "round_count": len(rounds),
+        "evaluated_sessions": usable,
+        "unused_tail_sessions": len(days) - usable,
+        "profitable_round_pct": round(float(np.mean(returns > 0)) * 100, 2) if len(returns) else 0.0,
+        "flat_round_pct": round(float(np.mean(returns == 0)) * 100, 2) if len(returns) else 0.0,
+        "average_net_return_pct": round(float(np.mean(returns)), 4) if len(returns) else 0.0,
+        "median_net_return_pct": round(float(np.median(returns)), 4) if len(returns) else 0.0,
+        "best_net_return_pct": round(float(np.max(returns)), 4) if len(returns) else 0.0,
+        "worst_net_return_pct": round(float(np.min(returns)), 4) if len(returns) else 0.0,
+        "p10_net_return_pct": round(float(np.percentile(returns, 10)), 4) if len(returns) else 0.0,
+        "p90_net_return_pct": round(float(np.percentile(returns, 90)), 4) if len(returns) else 0.0,
+        "average_net_profit_twd": round(float(np.mean([row["net_profit_twd"] for row in rounds])), 2) if rounds else 0.0,
+        "worst_round_loss_twd": round(min((row["net_profit_twd"] for row in rounds), default=0.0), 2),
+        "worst_round_drawdown_pct": round(min((row["max_drawdown_pct"] for row in rounds), default=0.0), 4),
+        "average_positions": round(float(np.mean([row["average_positions"] for row in rounds])), 2) if rounds else 0.0,
+        "regimes": by_regime,
+        "recent_rounds": rounds[-12:],
+    }
+
+
 def evaluate_market(
     histories: dict[str, pd.DataFrame],
     universe: list[dict[str, Any]],
@@ -231,6 +302,9 @@ def evaluate_market(
         result["rank_portfolio"] = _portfolio_metrics([], "rank")
         result["strict_portfolio"] = _portfolio_metrics([], "strict")
         result["benchmark_portfolio"] = _portfolio_metrics([], "benchmark")
+        result["five_day_rounds"] = {
+            key: _five_day_metrics([], key) for key in ("rank", "strict", "benchmark")
+        }
         return result
 
     sessions = list(benchmark.index)
@@ -306,6 +380,9 @@ def evaluate_market(
     result["rank_portfolio"] = _portfolio_metrics(days, "rank")
     result["strict_portfolio"] = _portfolio_metrics(days, "strict")
     result["benchmark_portfolio"] = _portfolio_metrics(days, "benchmark")
+    result["five_day_rounds"] = {
+        key: _five_day_metrics(days, key) for key in ("rank", "strict", "benchmark")
+    }
     # The daily audit trail stays deterministic but the dashboard report remains compact.
     result["audit_hash"] = hashlib.sha256(json.dumps(days, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
     result["recent_days"] = days[-20:]
@@ -408,6 +485,7 @@ def build_report(
         "costs": "台股個股來回0.685%、台股ETF來回0.385%；美股來回0.20%；匯率另列",
         "regimes": "大盤當日收盤、MA20、MA60與20日動能分多頭／空頭／盤整",
         "methodology_hash": hashlib.sha256(METHOD.encode()).hexdigest()[:16],
+        "primary_evaluation": "每5個交易日為一個不重疊試跑；每輪100萬元重新開始，五年各輪不串接",
     }
     return {
         "schema_version": 1,
