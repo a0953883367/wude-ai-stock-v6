@@ -25,6 +25,7 @@ STRATEGIES = ("overall", "short")
 MARKETS = ("TW", "US")
 MARKET_LABELS = {"TW": "台股", "US": "美股"}
 CLOSED_PERIOD = {"TW": "evening", "US": "morning"}
+ROUND_TRIP_COST_PCT = {"TW": 0.685, "US": 0.20}
 
 
 def _finite(value: Any, fallback: float = 0.0) -> float:
@@ -101,6 +102,8 @@ def _empty_market(market: str) -> dict[str, Any]:
         "status": "waiting",
         "cumulative_gross_profit_twd": 0.0,
         "cumulative_gross_return_pct": 0.0,
+        "cumulative_net_profit_twd": 0.0,
+        "cumulative_net_return_pct": 0.0,
         "days": [],
         "pending": None,
     }
@@ -120,7 +123,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "start_date": START_DATE,
             "entry": "前一個完成交易日排名快照；下一交易日官方開盤價",
             "exit": "同一交易日官方收盤價，作為收盤前賣出代理",
-            "costs": "第一階段顯示毛損益；未扣手續費、證交稅與匯差",
+            "round_trip_cost_pct": ROUND_TRIP_COST_PCT,
+            "costs": "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
         "markets": {market: _empty_market(market) for market in MARKETS},
@@ -165,10 +169,13 @@ def _settle_strategy(
     picks: list[dict[str, Any]],
     row_map: dict[str, dict[str, Any]],
     session_date: str,
+    market: str,
 ) -> dict[str, Any]:
     positions = []
     profit = 0.0
+    net_profit = 0.0
     invested = 0.0
+    cost_pct = ROUND_TRIP_COST_PCT[market]
     for pick in picks:
         row = row_map.get(str(pick.get("symbol") or ""))
         open_price = _finite(row.get("official_open_price")) if row else 0.0
@@ -182,15 +189,21 @@ def _settle_strategy(
         )
         return_pct = ((close_price / open_price) - 1) * 100 if available else 0.0
         position_profit = allocation * return_pct / 100 if available else 0.0
+        net_return_pct = return_pct - cost_pct if available else 0.0
+        position_net_profit = allocation * net_return_pct / 100 if available else 0.0
         if available:
             invested += allocation
             profit += position_profit
+            net_profit += position_net_profit
         positions.append({
             **pick,
             "open_price": round(open_price, 4) if available else None,
             "sell_price": round(close_price, 4) if available else None,
             "gross_return_pct": round(return_pct, 4) if available else None,
             "gross_profit_twd": round(position_profit, 2) if available else 0.0,
+            "net_return_pct": round(net_return_pct, 4) if available else None,
+            "net_profit_twd": round(position_net_profit, 2) if available else 0.0,
+            "estimated_cost_twd": round(allocation * cost_pct / 100, 2) if available else 0.0,
             "data_available": available,
         })
     return {
@@ -199,6 +212,8 @@ def _settle_strategy(
         "idle_twd": round(PICKS_PER_STRATEGY * ALLOCATION_PER_PICK - invested, 2),
         "gross_profit_twd": round(profit, 2),
         "gross_return_pct": round(profit / (PICKS_PER_STRATEGY * ALLOCATION_PER_PICK) * 100, 4),
+        "net_profit_twd": round(net_profit, 2),
+        "net_return_pct": round(net_profit / (PICKS_PER_STRATEGY * ALLOCATION_PER_PICK) * 100, 4),
         "positions": positions,
     }
 
@@ -217,10 +232,13 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
         if _is_stock(row, market)
     }
     strategies = {
-        strategy: _settle_strategy(pending.get("strategies", {}).get(strategy, []), row_map, session_date)
+        strategy: _settle_strategy(
+            pending.get("strategies", {}).get(strategy, []), row_map, session_date, market
+        )
         for strategy in STRATEGIES
     }
     total_profit = sum(_finite(result.get("gross_profit_twd")) for result in strategies.values())
+    total_net_profit = sum(_finite(result.get("net_profit_twd")) for result in strategies.values())
     day = {
         "day": len(market_state.get("days") or []) + 1,
         "signal_session_date": signal_date,
@@ -230,6 +248,9 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
         "gross_profit_twd": round(total_profit, 2),
         "gross_return_pct": round(total_profit / CAPITAL_PER_MARKET * 100, 4),
         "ending_capital_twd": round(CAPITAL_PER_MARKET + total_profit, 2),
+        "net_profit_twd": round(total_net_profit, 2),
+        "net_return_pct": round(total_net_profit / CAPITAL_PER_MARKET * 100, 4),
+        "net_ending_capital_twd": round(CAPITAL_PER_MARKET + total_net_profit, 2),
         "strategies": strategies,
     }
     market_state.setdefault("days", []).append(day)
@@ -238,6 +259,9 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
     cumulative = sum(_finite(item.get("gross_profit_twd")) for item in market_state["days"])
     market_state["cumulative_gross_profit_twd"] = round(cumulative, 2)
     market_state["cumulative_gross_return_pct"] = round(cumulative / CAPITAL_PER_MARKET * 100, 4)
+    cumulative_net = sum(_finite(item.get("net_profit_twd")) for item in market_state["days"])
+    market_state["cumulative_net_profit_twd"] = round(cumulative_net, 2)
+    market_state["cumulative_net_return_pct"] = round(cumulative_net / CAPITAL_PER_MARKET * 100, 4)
     market_state["status"] = "complete" if market_state["completed_days"] >= TARGET_TRADING_DAYS else "running"
     return True
 
@@ -251,8 +275,14 @@ def update_state(
     intraday: bool = False,
 ) -> dict[str, Any]:
     state["updated_at"] = updated_at
+    state.setdefault("policy", {})["round_trip_cost_pct"] = ROUND_TRIP_COST_PCT
+    state["policy"]["costs"] = (
+        "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入"
+    )
     for market in MARKETS:
         market_state = state["markets"].setdefault(market, _empty_market(market))
+        market_state.setdefault("cumulative_net_profit_twd", 0.0)
+        market_state.setdefault("cumulative_net_return_pct", 0.0)
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         if market_state.get("status") == "complete":
