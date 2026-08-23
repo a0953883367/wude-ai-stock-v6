@@ -175,6 +175,196 @@ def _candlestick_features(
     }
 
 
+def _tw_head_shoulders_features(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    volume: pd.Series,
+) -> dict[str, Any]:
+    """Detect confirmed Taiwan head-and-shoulders structures conservatively.
+
+    The detector intentionally requires a preceding trend, three separated
+    swing points, comparable shoulders, a distinct head and a recent right
+    shoulder.  A drawing that merely resembles three peaks/troughs is only a
+    warning.  It becomes confirmed only after a closing-price neckline break.
+    """
+    defaults = {
+        "tw_head_shoulders_pattern": "未偵測",
+        "tw_head_shoulders_status": "無明顯頭肩型態",
+        "tw_head_shoulders_neckline": None,
+        "tw_head_shoulders_target": None,
+        "tw_head_shoulders_volume_confirmed": False,
+        "tw_head_shoulders_two_day_confirmed": False,
+        "tw_head_shoulders_top_suspected": False,
+        "tw_head_shoulders_top_confirmed": False,
+        "tw_head_shoulders_top_strong": False,
+        "tw_head_shoulders_top_recovered": False,
+        "tw_inverse_head_shoulders_confirmed": False,
+    }
+    if len(close) < 30:
+        return defaults
+
+    frame = pd.DataFrame({
+        "high": pd.to_numeric(high, errors="coerce"),
+        "low": pd.to_numeric(low, errors="coerce"),
+        "close": pd.to_numeric(close, errors="coerce"),
+        "volume": pd.to_numeric(volume, errors="coerce").fillna(0),
+    }).dropna(subset=["high", "low", "close"]).tail(80).reset_index(drop=True)
+    if len(frame) < 30:
+        return defaults
+
+    highs = frame["high"].to_numpy(dtype=float)
+    lows = frame["low"].to_numpy(dtype=float)
+    closes = frame["close"].to_numpy(dtype=float)
+    volumes = frame["volume"].to_numpy(dtype=float)
+    radius = 2
+
+    def swings(values: np.ndarray, peak: bool) -> list[int]:
+        points: list[int] = []
+        for index in range(radius, len(values) - radius):
+            window = values[index-radius:index+radius+1]
+            edge = float(np.max(window) if peak else np.min(window))
+            if values[index] == edge and np.count_nonzero(window == edge) == 1:
+                points.append(index)
+        return points
+
+    def neckline_at(first_index: int, first_value: float, second_index: int, second_value: float, index: int) -> float:
+        slope = (second_value-first_value) / max(second_index-first_index, 1)
+        return first_value+slope*(index-first_index)
+
+    def find_pattern(inverse: bool) -> dict[str, Any] | None:
+        points = swings(lows if inverse else highs, peak=not inverse)[-9:]
+        best: dict[str, Any] | None = None
+        for left_pos in range(len(points)-2):
+            for head_pos in range(left_pos+1, len(points)-1):
+                for right_pos in range(head_pos+1, len(points)):
+                    left_i, head_i, right_i = points[left_pos], points[head_pos], points[right_pos]
+                    gap1, gap2 = head_i-left_i, right_i-head_i
+                    if not (3 <= gap1 <= 24 and 3 <= gap2 <= 24):
+                        continue
+                    if max(gap1, gap2) / max(min(gap1, gap2), 1) > 2.5 or len(closes)-1-right_i > 15:
+                        continue
+
+                    left_value = lows[left_i] if inverse else highs[left_i]
+                    head_value = lows[head_i] if inverse else highs[head_i]
+                    right_value = lows[right_i] if inverse else highs[right_i]
+                    shoulder_difference = abs(left_value-right_value) / max((left_value+right_value)/2, .01)
+                    if shoulder_difference > .08:
+                        continue
+                    dominance = (
+                        min(left_value, right_value)/max(head_value, .01)-1
+                        if inverse else head_value/max(left_value, right_value)-1
+                    )
+                    if dominance < .03:
+                        continue
+
+                    if left_i < 6:
+                        continue
+                    prior_slice = closes[max(0, left_i-15):left_i+1]
+                    prior_move = (
+                        float(np.max(prior_slice))/max(left_value, .01)-1
+                        if inverse else left_value/max(float(np.min(prior_slice)), .01)-1
+                    )
+                    if prior_move < .06:
+                        continue
+
+                    if inverse:
+                        neck1_i = left_i+int(np.argmax(highs[left_i+1:head_i]))+1
+                        neck2_i = head_i+int(np.argmax(highs[head_i+1:right_i]))+1
+                        neck1, neck2 = highs[neck1_i], highs[neck2_i]
+                    else:
+                        neck1_i = left_i+int(np.argmin(lows[left_i+1:head_i]))+1
+                        neck2_i = head_i+int(np.argmin(lows[head_i+1:right_i]))+1
+                        neck1, neck2 = lows[neck1_i], lows[neck2_i]
+                    if abs(neck1-neck2) / max((neck1+neck2)/2, .01) > .12:
+                        continue
+
+                    quality = dominance*100-shoulder_difference*50-abs(gap1-gap2)*.15+right_i*.001
+                    candidate = {
+                        "inverse": inverse, "left_i": left_i, "head_i": head_i, "right_i": right_i,
+                        "head_value": head_value, "neck1_i": neck1_i, "neck1": neck1,
+                        "neck2_i": neck2_i, "neck2": neck2, "quality": quality,
+                    }
+                    if best is None or quality > best["quality"]:
+                        best = candidate
+        return best
+
+    def evaluate(pattern: dict[str, Any]) -> dict[str, Any]:
+        inverse = bool(pattern["inverse"])
+        right_i = int(pattern["right_i"])
+        neck_values = np.array([
+            neckline_at(pattern["neck1_i"], pattern["neck1"], pattern["neck2_i"], pattern["neck2"], i)
+            for i in range(len(closes))
+        ])
+        threshold = 1.003
+        broken = closes > neck_values*threshold if inverse else closes < neck_values/threshold
+        post_indices = [i for i in range(right_i+1, len(closes)) if broken[i]]
+        confirmed = bool(post_indices and broken[-1])
+        first_break = post_indices[0] if post_indices else None
+        avg20 = float(np.mean(volumes[max(0, (first_break or len(volumes)-1)-20):(first_break or len(volumes)-1)]))
+        break_window_volume = (
+            float(np.max(volumes[first_break:min(first_break+3, len(volumes))]))
+            if first_break is not None else 0.0
+        )
+        volume_confirmed = bool(
+            first_break is not None and avg20 > 0 and break_window_volume / avg20 >= 1.3
+        )
+        two_day = bool(len(broken) >= 2 and broken[-1] and broken[-2])
+        recovered = bool(
+            not inverse and post_indices and not confirmed and len(closes) >= 2
+            and closes[-1] >= neck_values[-1]*threshold
+            and closes[-2] >= neck_values[-2]*threshold
+            and len(closes)-1-post_indices[-1] <= 6
+        )
+        neckline = float(neck_values[-1])
+        distance = abs(float(pattern["head_value"])-neckline)
+        target = neckline+distance if inverse else max(neckline-distance, 0.0)
+        return {
+            **pattern,
+            "confirmed": confirmed,
+            "volume_confirmed": volume_confirmed,
+            "two_day": two_day,
+            "recovered": recovered,
+            "neckline": neckline,
+            "target": target,
+            "strong": bool(confirmed and volume_confirmed and two_day),
+        }
+
+    candidates = [evaluate(pattern) for pattern in (find_pattern(False), find_pattern(True)) if pattern]
+    if not candidates:
+        return defaults
+    # Prefer actionable confirmations/recoveries, then the better geometry.
+    chosen = max(candidates, key=lambda item: (
+        int(item["confirmed"] or item["recovered"]), item["quality"]
+    ))
+    inverse = bool(chosen["inverse"])
+    if inverse:
+        status = "頭肩底突破頸線" if chosen["confirmed"] else "疑似頭肩底（等待突破頸線）"
+        pattern_name = "頭肩底確認" if chosen["confirmed"] else "疑似頭肩底"
+    elif chosen["recovered"]:
+        status, pattern_name = "頭肩頂假跌破，已連續2日站回頸線", "頭肩頂假跌破解除"
+    elif chosen["strong"]:
+        status, pattern_name = "頭肩頂放量跌破且連續2日未收復", "頭肩頂強確認"
+    elif chosen["confirmed"]:
+        status, pattern_name = "頭肩頂收盤跌破頸線", "頭肩頂確認"
+    else:
+        status, pattern_name = "疑似頭肩頂（等待頸線確認）", "疑似頭肩頂"
+
+    return {
+        "tw_head_shoulders_pattern": pattern_name,
+        "tw_head_shoulders_status": status,
+        "tw_head_shoulders_neckline": round(chosen["neckline"], 2),
+        "tw_head_shoulders_target": round(chosen["target"], 2),
+        "tw_head_shoulders_volume_confirmed": bool(chosen["volume_confirmed"]),
+        "tw_head_shoulders_two_day_confirmed": bool(chosen["two_day"]),
+        "tw_head_shoulders_top_suspected": bool(not inverse and not chosen["confirmed"] and not chosen["recovered"]),
+        "tw_head_shoulders_top_confirmed": bool(not inverse and chosen["confirmed"]),
+        "tw_head_shoulders_top_strong": bool(not inverse and chosen["strong"]),
+        "tw_head_shoulders_top_recovered": bool(not inverse and chosen["recovered"]),
+        "tw_inverse_head_shoulders_confirmed": bool(inverse and chosen["confirmed"]),
+    }
+
+
 def build_features(
     item: dict[str, Any],
     daily: pd.DataFrame,
@@ -204,6 +394,8 @@ def build_features(
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
     market = str(item.get("market") or ("TW" if str(item.get("symbol", "")).upper().endswith(".TW") else "US")).upper()
+    if market == "TW":
+        candle.update(_tw_head_shoulders_features(high, low, close, volume))
     # Keep an auditable official-session price for forward testing.  The
     # dashboard may show an intraday/live price, but a next-session outcome
     # must always compare completed daily bars from the same exchange.
@@ -541,6 +733,7 @@ def _market_outlook(row: dict[str, Any]) -> dict[str, Any]:
     reasons: list[tuple[float, str]] = []
     available = 0
     total = 5
+    market = str(row.get("market", "US")).upper()
     price = _finite(row.get("price"))
     ma5 = _finite(row.get("ma5"))
     ma10 = _finite(row.get("ma10"))
@@ -584,6 +777,16 @@ def _market_outlook(row: dict[str, Any]) -> dict[str, Any]:
         if row.get("breakdown20"):
             bias -= 12
             reasons.append((-12, "價格跌破20日低點"))
+        if market == "TW" and row.get("tw_head_shoulders_top_confirmed"):
+            pattern_penalty = -18 if row.get("tw_head_shoulders_top_strong") else -12
+            bias += pattern_penalty
+            reasons.append((pattern_penalty, "頭肩頂已收盤跌破頸線"))
+        elif market == "TW" and row.get("tw_head_shoulders_top_suspected"):
+            bias -= 5
+            reasons.append((-5, "疑似頭肩頂，仍待頸線確認"))
+        elif market == "TW" and row.get("tw_inverse_head_shoulders_confirmed"):
+            bias += 8
+            reasons.append((8, "頭肩底已收盤突破頸線"))
 
     volume_available = _finite(row.get("avg_volume20")) > 0 or row.get("intraday_available")
     if volume_available:
@@ -604,7 +807,6 @@ def _market_outlook(row: dict[str, Any]) -> dict[str, Any]:
         elif attack <= -10:
             bias -= 6
 
-    market = str(row.get("market", "US")).upper()
     is_etf = "ETF" in str(row.get("type", "")).upper()
     if is_etf and row.get("etf_market_flow_score") is not None:
         flow = _finite(row.get("etf_market_flow_score"), 50)
@@ -804,6 +1006,10 @@ def _trade_safety_guard(row: dict[str, Any]) -> dict[str, Any]:
         blocked = True
         severe = True
         reasons.append("價格已跌破20日低點")
+    if market == "TW" and row.get("tw_head_shoulders_top_strong"):
+        blocked = True
+        severe = True
+        reasons.append("頭肩頂放量跌破頸線且連續2日未收復")
     if _finite(row.get("news_penalty")) >= 8:
         blocked = True
         severe = True
@@ -1467,6 +1673,15 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         score -= 8
     if row.get("breakdown20"):
         score -= 15
+    if market == "TW":
+        if row.get("tw_head_shoulders_top_strong"):
+            score -= 20
+        elif row.get("tw_head_shoulders_top_confirmed"):
+            score -= 14
+        elif row.get("tw_head_shoulders_top_suspected"):
+            score -= 6
+        elif row.get("tw_inverse_head_shoulders_confirmed"):
+            score += 6
     guard = _trade_safety_guard(row)
     evidence_ok = short_confidence >= 75
     if not coverage_ok or not evidence_ok:
@@ -1519,6 +1734,7 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
         technical_ok and coverage_ok and evidence_ok and entry_score >= 70 and score >= 75
         and price >= ma20*.99 and 40 <= rsi <= 72 and volume_ok and premium_ok
         and not row.get("breakdown20") and news_penalty < 8
+        and not (market == "TW" and row.get("tw_head_shoulders_top_confirmed"))
         and not guard["trade_guard_blocked"]
         and price <= entry_high*(1.08 if is_etf else 1.10) and rr >= 1.5
     )
@@ -1534,6 +1750,9 @@ def _short_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     elif guard["trade_guard_blocked"]:
         status, trigger = "🔴 籌碼／風險阻擋", "等待明顯賣壓縮小、價格重新站穩，再重新評估"
         reason = guard["trade_guard_reason"] or "目前存在短線安全阻擋條件"
+    elif market == "TW" and row.get("tw_head_shoulders_top_confirmed"):
+        status, trigger = "🔴 頭肩頂頸線已破", "至少連續2日站回頸線後，才重新評估短線進場"
+        reason = "收盤跌破頭肩頂頸線，取消短線買進資格"
     elif not coverage_ok or not evidence_ok or not technical_ok:
         status, trigger = "⚪ 資料不足", "等待均線、ATR、量能與資料完整度補齊，不先進場"
         reason = (
@@ -1611,6 +1830,15 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     data_ok = available >= required
     if price > 0 and ma60 > 0:
         long_score += 4 if price >= ma20 >= ma60 else (-8 if price < ma60*.90 else 0)
+    if market == "TW":
+        if row.get("tw_head_shoulders_top_strong"):
+            long_score -= 15
+        elif row.get("tw_head_shoulders_top_confirmed"):
+            long_score -= 7
+        elif row.get("tw_head_shoulders_top_suspected"):
+            long_score -= 2
+        elif row.get("tw_inverse_head_shoulders_confirmed"):
+            long_score += 4
     long_score = round(_clamp(long_score, 0.0, 100.0), 1)
 
     # Three batches: fair pullback, deeper support, and long-term trend defense.
@@ -1630,6 +1858,7 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     eligible = bool(
         not leveraged_etf and data_ok and technical_available and ai_score >= 62 and long_score >= 62
         and trend_ok and news_penalty < 10 and batch1_low > 0 and batch1_high > 0
+        and not (market == "TW" and row.get("tw_head_shoulders_top_strong"))
     )
     if leveraged_etf:
         status = "🔴 不列入一般中長線"
@@ -1643,6 +1872,9 @@ def _mid_long_term_plan(row: dict[str, Any]) -> dict[str, Any]:
     elif news_penalty >= 10:
         status = "🔴 重大風險觀察"
         reason = f"負面新聞風險扣分 {news_penalty:.1f}，暫停新增部位"
+    elif market == "TW" and row.get("tw_head_shoulders_top_strong"):
+        status = "🔴 頭肩頂強確認"
+        reason = "放量跌破頸線且連續2日未收復，中長線暫停新增部位"
     else:
         status = "🟡 暫不列入首選"
         reason = f"中長線分數 {long_score:.1f} 或長期趨勢尚未達門檻"
@@ -1808,6 +2040,8 @@ def apply_tw_buy_candidate_ranking(rows: list[dict[str, Any]]) -> list[dict[str,
             reasons.append("現價已跌離原買進結構")
         if row.get("breakdown20"):
             reasons.append("已跌破20日結構")
+        if row.get("tw_head_shoulders_top_confirmed"):
+            reasons.append("頭肩頂已收盤跌破頸線")
         if _finite(row.get("news_penalty")) >= 8:
             reasons.append("重大新聞風險未解除")
         if strong_bearish:
@@ -1916,6 +2150,15 @@ def score_candidates(
         elif 52 <= row["rsi"] <= 70:
             technical += 6
         technical += (_finite(row.get("kline_score"), 50) - 50) * 0.35
+        if market_name == "TW":
+            if row.get("tw_head_shoulders_top_strong"):
+                technical -= 20
+            elif row.get("tw_head_shoulders_top_confirmed"):
+                technical -= 14
+            elif row.get("tw_head_shoulders_top_suspected"):
+                technical -= 6
+            elif row.get("tw_inverse_head_shoulders_confirmed"):
+                technical += 6
 
         # Blend absolute pace, same-market relative participation and attack
         # volume.  A broad market-wide quiet session is no longer treated as
@@ -2113,7 +2356,13 @@ def score_candidates(
         row.update(_complete_price_plan(row))
         row.update(_trade_safety_guard(row))
         sbl_pressure = _finite(row.get("sbl_5d_change")) / max(row["avg_volume20"] * 5, 1) * 100
-        if row.get("breakdown20"):
+        if market_name == "TW" and row.get("tw_head_shoulders_top_strong"):
+            row["risk"] = "頭肩頂放量破頸線且兩日未收復，先避開"
+        elif market_name == "TW" and row.get("tw_head_shoulders_top_confirmed"):
+            row["risk"] = "頭肩頂收盤跌破頸線，短線停止買進"
+        elif market_name == "TW" and row.get("tw_head_shoulders_top_suspected"):
+            row["risk"] = "疑似頭肩頂，等待頸線確認"
+        elif row.get("breakdown20"):
             row["risk"] = "跌破20日低點，先避開"
         elif row.get("credit_available") and sbl_pressure >= 5 and row["price"] < row["ma20"]:
             row["risk"] = "借券賣壓增加且跌破月線"
@@ -2139,6 +2388,8 @@ def score_candidates(
         trend_ready = row["price"] >= row["ma10"] >= row["ma20"]
         not_extended = row["ma20_distance_pct"] < 10
         kline_ready = _finite(row.get("kline_score"), 50) >= 45 and not row.get("breakdown20")
+        if market_name == "TW" and row.get("tw_head_shoulders_top_confirmed"):
+            kline_ready = False
         fundamental_ready = not row.get("fundamental_available") or fundamental_score >= 40
         quality_ready = not row.get("financial_quality_available") or quality_score >= 38
         entry_coverage = int(_finite(row.get("entry_data_coverage")))
