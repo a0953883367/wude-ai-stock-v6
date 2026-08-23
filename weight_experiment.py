@@ -8,6 +8,7 @@ module never imports a broker path and cannot place an order.
 from __future__ import annotations
 
 from collections import Counter
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Iterable
@@ -176,9 +177,17 @@ def _new_pending(
     previous = set(model.get("last_pick_symbols") or [])
     current = {pick["symbol"] for pick in picks}
     turnover = None if not previous else round((1 - len(previous & current) / PICKS) * 100, 1)
+    snapshot_payload = "|".join(
+        f"{pick['rank']}:{pick['symbol']}:{pick['ranking_score']}:{pick['rank_tier']}"
+        for pick in picks
+    )
+    snapshot_id = hashlib.sha256(
+        f"{model.get('key')}|{signal_date}|{snapshot_payload}".encode()
+    ).hexdigest()[:12]
     return {
         "signal_session_date": signal_date,
         "created_at": updated_at,
+        "snapshot_id": snapshot_id,
         "execution_session_date": None,
         "rank_turnover_pct": turnover,
         "picks": picks,
@@ -191,6 +200,14 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
         return False
     session_date = _session_date(rows)
     signal_date = str(pending.get("signal_session_date") or "")
+    if not pending.get("snapshot_id"):
+        payload = "|".join(
+            f"{pick.get('rank')}:{pick.get('symbol')}:{pick.get('ranking_score')}:{pick.get('rank_tier')}"
+            for pick in pending.get("picks") or []
+        )
+        pending["snapshot_id"] = hashlib.sha256(
+            f"{model.get('key')}|{signal_date}|{payload}".encode()
+        ).hexdigest()[:12]
     if not session_date or session_date < START_DATE or session_date <= signal_date:
         return False
     row_map = {str(row.get("symbol") or ""): row for row in rows if _is_tw_stock(row)}
@@ -228,6 +245,7 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
         "signal_session_date": signal_date,
         "session_date": session_date,
         "rank_turnover_pct": pending.get("rank_turnover_pct"),
+        "ranking_snapshot_id": pending.get("snapshot_id"),
         "invested_twd": round(invested, 2),
         "gross_profit_twd": round(gross_profit, 2),
         "net_profit_twd": round(net_profit, 2),
@@ -291,6 +309,16 @@ def update_state(
             model["pending"] = _new_pending(rows, model, updated_at)
             if model["pending"]:
                 model["status"] = "running"
+    base_metrics = state["models"].get("base_0", {}).get("metrics", {})
+    base_profit = _finite(base_metrics.get("net_profit_twd"))
+    base_return = _finite(base_metrics.get("net_return_pct"))
+    for key, model in state["models"].items():
+        metrics = model.get("metrics", {})
+        model["comparison_vs_base"] = {
+            "incremental_net_profit_twd": round(_finite(metrics.get("net_profit_twd")) - base_profit, 2),
+            "incremental_net_return_pct": round(_finite(metrics.get("net_return_pct")) - base_return, 4),
+            "interpretation": "原模型基準" if key == "base_0" else "法人權重相較原模型的額外效益",
+        }
     completed = all(model.get("status") == "complete" for model in state["models"].values())
     state["status"] = "complete" if completed else "running"
     if completed:
@@ -314,4 +342,3 @@ def update_weight_experiment(
     tmp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tmp.replace(path)
     return path
-
