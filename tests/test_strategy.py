@@ -1004,6 +1004,41 @@ def test_complete_published_universe_obeys_ranking_safety_invariants():
             assert all(row["ranking_group_count"] == len(ordered) for row in ordered)
 
 
+def test_equal_scores_use_symbol_as_stable_ranking_tie_breaker():
+    rows = [
+        {
+            "symbol": symbol, "market": "US", "type": "個股",
+            "overall_rank_tier": 2, "overall_ranking_score": 80,
+            "entry_score": 70, "score": 75,
+            "short_term_rank_tier": 2, "short_term_ranking_score": 80,
+            "short_term_score": 75,
+            "mid_long_rank_tier": 2, "mid_long_ranking_score": 80,
+            "mid_long_score": 75,
+        }
+        for symbol in ("AAA", "BBB")
+    ]
+    _assign_group_ranks(rows)
+    first = {
+        row["symbol"]: (
+            row["overall_display_rank"],
+            row["short_term_display_rank"],
+            row["mid_long_display_rank"],
+        )
+        for row in rows
+    }
+    _assign_group_ranks(list(reversed(rows)))
+    second = {
+        row["symbol"]: (
+            row["overall_display_rank"],
+            row["short_term_display_rank"],
+            row["mid_long_display_rank"],
+        )
+        for row in rows
+    }
+    assert first == second
+    assert first["BBB"] == (1, 1, 1)
+
+
 
 def test_etf_uses_independent_score_model_and_blocks_large_premium():
     dates = pd.date_range("2026-01-01", periods=65, freq="B")

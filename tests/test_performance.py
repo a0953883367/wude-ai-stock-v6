@@ -375,6 +375,10 @@ def test_reaching_sample_gate_never_silently_changes_production_score():
     assert calibration["eligible_one_day_samples"] == 240
     assert calibration["ready_for_model_selection"] is True
     assert calibration["affects_ai_score"] is False
+    assert calibration["candidate_upgrade_only"] is True
+    assert calibration["automatic_ranking_changes"] is False
+    assert calibration["automatic_merge"] is False
+    assert calibration["broker_orders"] is False
 
 
 def test_snapshot_is_hashed_and_same_session_cannot_be_rewritten(tmp_path: Path):
@@ -437,8 +441,9 @@ def test_accuracy_groups_top_k_and_abstentions_are_explicit(tmp_path: Path):
     top5 = summary["groups"]["TW_STOCK"]["top_k"]["5"]["tracks"]["full_day"]
     top20 = summary["groups"]["TW_STOCK"]["top_k"]["20"]["tracks"]["full_day"]
     assert top5["eligible_samples"] == 5
-    assert top20["eligible_samples"] == 6
-    assert top20["abstain_samples"] >= 1
+    assert top20["eligible_samples"] == 5
+    assert summary["data_quality"]["invalid_frozen_rows"] == 1
+    assert summary["data_quality"]["invalid_reason_counts"]["market_data_quality"] == 1
     assert top5["sample_status"] == "樣本不足"
     assert "lowest_actual_return_pct" in top5
 
@@ -547,3 +552,43 @@ def test_regime_history_can_classify_old_snapshot_without_rewriting_it(tmp_path:
     accuracy = json.loads((tmp_path / "accuracy.json").read_text(encoding="utf-8"))
     assert accuracy["integrity"]["verified"] == 2
     assert accuracy["integrity"]["mismatch"] == 0
+
+
+def test_automatic_validation_tracks_day_two_and_collects_errors(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+    second = _row(98, "2026-08-19", open_price=99)
+    update_performance(tmp_path, [second], [second], "2026-08-19 20:00:00", "evening")
+    third = _row(95, "2026-08-20", open_price=97)
+    summary = update_performance(
+        tmp_path, [third], [third], "2026-08-20 20:00:00", "evening"
+    )
+    assert summary["horizons"]["2"]["samples"] == 1
+    assert summary["portfolio_statistics"]["TW"]["current_consensus"]["2"]["samples"] == 1
+    assert summary["error_cases"]["count"] >= 2
+
+    accuracy = json.loads((tmp_path / "accuracy.json").read_text(encoding="utf-8"))
+    automation = accuracy["automation"]
+    assert automation["mode"] == "fully_automatic_validation"
+    assert automation["tracked_horizons"] == [1, 2, 3, 5]
+    assert automation["missing_data_is_valid_sample"] is False
+    assert automation["promotion_gate"]["automatic_merge"] is False
+    assert automation["promotion_gate"]["broker_orders"] is False
+
+
+def test_missing_source_data_is_frozen_but_never_counted_as_valid_sample(tmp_path: Path):
+    incomplete = _row(100, "2026-08-18")
+    incomplete["market_data_quality_score"] = None
+    update_performance(
+        tmp_path, [incomplete], [incomplete], "2026-08-18 20:00:00", "evening"
+    )
+    complete = _row(110, "2026-08-19")
+    summary = update_performance(
+        tmp_path, [complete], [complete], "2026-08-19 20:00:00", "evening"
+    )
+    assert summary["horizons"]["1"]["samples"] == 0
+    assert summary["data_quality"]["invalid_frozen_rows"] == 1
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    frozen = history["snapshots"][0]["predictions"][0]
+    assert frozen["validation_eligible"] is False
+    assert "market_data_quality" in frozen["validation_missing_fields"]
