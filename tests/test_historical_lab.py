@@ -57,6 +57,8 @@ def test_trade_uses_next_session_open_and_close_and_deducts_cost():
     result = evaluate_market(histories, universe(), "US")
     assert result["status"] == "complete"
     assert result["rank_portfolio"]["evaluated_sessions"] > 0
+    assert -100 <= result["rank_portfolio"]["net_return_pct"]
+    assert -100 <= result["rank_portfolio"]["max_drawdown_pct"] <= 0
     recent = result["recent_days"][-1]
     assert recent["trade_date"] > recent["signal_date"]
     assert recent["rank"]["net_profit_twd"] < recent["rank"]["gross_profit_twd"]

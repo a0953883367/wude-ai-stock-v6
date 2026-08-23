@@ -620,7 +620,7 @@ function showHoldingSimulation(){
 }
 function historicalMetricsCard(title,metrics){
   metrics=metrics||{};
-  return '<div class="million-strategy"><h3>'+esc(title)+'</h3><div class="holding-summary"><div class="item"><div class="label">扣成本報酬</div><div class="value '+millionProfitClass(metrics.net_profit_twd)+'">'+esc(percent(metrics.net_return_pct))+'</div></div><div class="item"><div class="label">勝率</div><div class="value">'+esc(number(metrics.win_rate_pct,2))+'%</div></div><div class="item"><div class="label">最大回撤</div><div class="value">'+esc(percent(metrics.max_drawdown_pct))+'</div></div><div class="item"><div class="label">平均持股</div><div class="value">'+esc(number(metrics.average_positions,2))+' 檔</div></div></div></div>';
+  return '<div class="million-strategy"><h3>'+esc(title)+'</h3><div class="holding-summary"><div class="item"><div class="label">複利淨報酬</div><div class="value '+millionProfitClass(metrics.net_profit_twd)+'">'+esc(percent(metrics.net_return_pct))+'</div></div><div class="item"><div class="label">年化淨報酬</div><div class="value">'+esc(percent(metrics.annualized_return_pct))+'</div></div><div class="item"><div class="label">勝率</div><div class="value">'+esc(number(metrics.win_rate_pct,2))+'%</div></div><div class="item"><div class="label">最大回撤</div><div class="value">'+esc(percent(metrics.max_drawdown_pct))+'</div></div><div class="item"><div class="label">平均每日淨報酬</div><div class="value">'+esc(percent(metrics.average_daily_net_return_pct))+'</div></div><div class="item"><div class="label">平均持股</div><div class="value">'+esc(number(metrics.average_positions,2))+' 檔</div></div></div></div>';
 }
 function historicalRegimeRows(market){
   var metrics=market.strict_portfolio||{},regimes=metrics.regimes||{};
@@ -639,7 +639,7 @@ function showHistoricalLab(){
   if(!report){document.getElementById('status').textContent='等待第一輪歷史資料';document.getElementById('results').innerHTML='<div class="empty">歷史驗證尚未產生；不影響正式排名、星期一帳本或模擬買賣。</div>';return;}
   var archive=report.exact_forward_archive||{},markets=report.markets||{};
   document.getElementById('status').textContent='設定股票池 '+esc(report.configured_universe_count||'等待計算')+' 檔｜方法 '+esc((report.methodology||{}).version||'—')+'｜狀態 '+esc(report.status)+'｜更新 '+esc(report.generated_at||'等待首輪排程');
-  var notice='<div class="million-policy"><b>完全隔離：</b>這頁不影響正式排名、權重與任何影子帳本。它用3～5年OHLCV重建短線核心，訊號固定在收盤後、下一交易日開盤買入與收盤賣出，已扣交易成本並分成多頭、空頭、盤整。<br><b>重要限制：</b>這不是完整V6歷史回測；法人、投信、新聞、盤中攻擊量與當時交易阻擋沒有完整歷史資料，且現有股票池存在存活者偏差。</div>';
+  var notice='<div class="million-policy"><b>完全隔離：</b>這頁不影響正式排名、權重與任何影子帳本。它用3～5年OHLCV重建短線核心，訊號固定在收盤後、下一交易日開盤買入與收盤賣出，已扣交易成本並分成多頭、空頭、盤整。帳戶報酬與最大回撤採逐日複利淨值，避免固定本金損益相加後出現低於−100%的誤導數字。<br><b>重要限制：</b>這不是完整V6歷史回測；法人、投信、新聞、盤中攻擊量與當時交易阻擋沒有完整歷史資料，且現有股票池存在存活者偏差。</div>';
   var archiveHtml='<div class="million-note"><b>完整V6向前快照：</b>'+esc(archive.snapshot_count||0)+' 份，涵蓋 '+esc(archive.session_count||0)+' 個交易日（'+esc(archive.date_start||'等待累積')+' ～ '+esc(archive.date_end||'—')+'）。歷史核心代理只用來檢查方向，不能自動修改正式模型。</div>';
   var cards=['TW_STOCK','US_STOCK','TW_ETF','US_ETF'].filter(function(key){return markets[key];}).map(function(key){return historicalMarketCard(markets[key]);}).join('');
   var limitations=(report.limitations||[]).map(function(note){return '<li>'+esc(note)+'</li>';}).join('');
