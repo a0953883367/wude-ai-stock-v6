@@ -2291,14 +2291,16 @@ def _ranking_group(row: dict[str, Any]) -> str:
     return "TW" if str(row.get("market") or "").upper() == "TW" else "US"
 
 
-def _ranking_sort_key(row: dict[str, Any], horizon: str) -> tuple[float, ...]:
-    """Keep qualification ahead of score for every ranking horizon."""
+def _ranking_sort_key(row: dict[str, Any], horizon: str) -> tuple[Any, ...]:
+    """Keep qualification ahead of score with a deterministic tie breaker."""
+    symbol = str(row.get("symbol") or "")
     if horizon == "short":
         return (
             _finite(row.get("short_term_rank_tier")),
             _finite(row.get("short_term_ranking_score")),
             _finite(row.get("short_term_score")),
             _finite(row.get("entry_score")),
+            symbol,
         )
     if horizon == "long":
         return (
@@ -2306,12 +2308,14 @@ def _ranking_sort_key(row: dict[str, Any], horizon: str) -> tuple[float, ...]:
             _finite(row.get("mid_long_ranking_score")),
             _finite(row.get("mid_long_score")),
             _finite(row.get("score")),
+            symbol,
         )
     return (
         _finite(row.get("overall_rank_tier")),
         _finite(row.get("overall_ranking_score")),
         _finite(row.get("entry_score")),
         _finite(row.get("score")),
+        symbol,
     )
 
 
