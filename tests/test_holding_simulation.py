@@ -92,6 +92,8 @@ def test_medium_exits_after_45_days_while_long_remains_active():
     assert state["medium"]["TW"]["status"] == "complete"
     assert state["medium"]["US"]["status"] == "complete"
     assert state["medium"]["TW"]["gross_profit_twd"] > 0
+    assert state["medium"]["TW"]["net_profit_twd"] < state["medium"]["TW"]["gross_profit_twd"]
+    assert state["medium"]["TW"]["positions"][0]["estimated_cost_twd"] == 1370.0
     assert state["long"]["status"] == "active"
     assert state["long"]["realized"] is False
 
@@ -118,4 +120,4 @@ def test_long_exits_at_six_month_target_and_intraday_never_changes_state():
     assert state["long"]["realized"] is True
     assert all(position["realized"] for position in state["long"]["positions"])
     assert state["long"]["gross_profit_twd"] > 0
-
+    assert state["long"]["net_profit_twd"] < state["long"]["gross_profit_twd"]
