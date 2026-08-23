@@ -38,6 +38,7 @@ from market_models import (
 from model_lab import track_predictions
 from holding_simulation import update_holding_simulation
 from million_simulation import update_million_simulation
+from weight_experiment import update_weight_experiment
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from tw_official_data import (
@@ -680,6 +681,13 @@ def main() -> int:
     for group in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
         ranking_rows.extend(backtest_groups[group])
     update_million_simulation(
+        SETTINGS.reports_dir,
+        ranking_rows,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+    )
+    update_weight_experiment(
         SETTINGS.reports_dir,
         ranking_rows,
         period=args.period,
