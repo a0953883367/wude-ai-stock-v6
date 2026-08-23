@@ -183,6 +183,7 @@ function normalizeReport(row){
     creditAvailable:row.credit_available,marginBalance:row.margin_balance,margin1d:row.margin_1d_change,margin5d:row.margin_5d_change,shortBalance:row.short_balance,short5d:row.short_5d_change,sblBalance:row.sbl_balance,sbl5d:row.sbl_5d_change,
     brokerAvailable:row.broker_available,topBrokersBuy:row.top_brokers_buy||[],topBrokersSell:row.top_brokers_sell||[],
     klinePattern:row.kline_pattern,klineScore:row.kline_score,dailyVolumeRatio:row.daily_volume_ratio,volumePricePattern:row.volume_price_pattern,breakout20:row.breakout20,breakdown20:row.breakdown20,
+    twHeadShouldersPattern:row.tw_head_shoulders_pattern,twHeadShouldersStatus:row.tw_head_shoulders_status,twHeadShouldersNeckline:row.tw_head_shoulders_neckline,twHeadShouldersTarget:row.tw_head_shoulders_target,twHeadShouldersVolumeConfirmed:row.tw_head_shoulders_volume_confirmed,twHeadShouldersTwoDayConfirmed:row.tw_head_shoulders_two_day_confirmed,
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
@@ -283,6 +284,9 @@ function stockCard(stock,index){
   if(hasMarketDetail){
     data='<div class="databox">📈 均線 5／10／20／60日：<b>'+[stock.ma5,stock.ma10,stock.ma20,stock.ma60].map(function(v){return number(v,2);}).join('／')+'</b><br>📊 均量 5／10／20日：<b>'+[stock.avgVolume5,stock.avgVolume10,stock.avgVolume20].map(compact).join('／')+'</b>';
     if(stock.klinePattern)data+='<br>🕯️ K線：<b>'+esc(stock.klinePattern)+'</b>｜'+esc(stock.volumePricePattern||'量價中性')+'｜日量 '+number(stock.dailyVolumeRatio,2)+'x';
+    if(stock.market==='TW'&&stock.twHeadShouldersPattern&&stock.twHeadShouldersPattern!=='未偵測'){
+      data+='<br>👤 頭肩型態：<b>'+esc(stock.twHeadShouldersStatus)+'</b>｜頸線 '+number(stock.twHeadShouldersNeckline,2)+'｜推估目標 '+number(stock.twHeadShouldersTarget,2)+'｜放量確認 '+(stock.twHeadShouldersVolumeConfirmed?'是':'否')+'｜連續2日確認 '+(stock.twHeadShouldersTwoDayConfirmed?'是':'否');
+    }
     if(Number(stock.institutionAvailable)>0)data+='<br>🏦 法人合計 1／5／10日：<b>'+[stock.institution1d,stock.institution5d,stock.institution10d].map(compact).join('／')+'</b>';
     if(Number(stock.creditAvailable)>0){
       data+='<br>💳 融資餘額／5日增減：<b>'+compact(stock.marginBalance)+'／'+compactSigned(stock.margin5d)+'</b>';

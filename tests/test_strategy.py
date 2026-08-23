@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_head_shoulders_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
 
 
 def test_market_session_fraction_uses_each_markets_clock():
@@ -134,6 +134,72 @@ def test_candlestick_detects_volume_breakout():
     assert result["breakout20"] is True
     assert "突破20日高" in result["kline_pattern"]
     assert result["volume_price_pattern"] == "價漲量增"
+
+
+def _pattern_series(anchors, length=50):
+    values = pd.Series(index=range(length), dtype=float)
+    for index, value in anchors:
+        values.iloc[index] = value
+    return values.interpolate().bfill().ffill()
+
+
+def test_tw_head_shoulders_requires_neckline_break_and_confirms_volume_and_two_days():
+    close = _pattern_series([
+        (0, 80), (8, 91), (14, 103), (19, 94), (25, 114),
+        (31, 95), (37, 102), (43, 97), (47, 93), (49, 92),
+    ])
+    high, low = close+1, close-1
+    volume = pd.Series([1_000_000.0]*50)
+    volume.iloc[47] = 1_600_000
+    result = _tw_head_shoulders_features(high, low, close, volume)
+    assert result["tw_head_shoulders_pattern"] == "頭肩頂強確認"
+    assert result["tw_head_shoulders_top_confirmed"] is True
+    assert result["tw_head_shoulders_volume_confirmed"] is True
+    assert result["tw_head_shoulders_two_day_confirmed"] is True
+    assert result["tw_head_shoulders_top_strong"] is True
+
+
+def test_tw_head_shoulders_stays_warning_before_neckline_break():
+    close = _pattern_series([
+        (0, 80), (8, 91), (14, 103), (19, 94), (25, 114),
+        (31, 95), (37, 102), (43, 99), (49, 98),
+    ])
+    result = _tw_head_shoulders_features(close+1, close-1, close, pd.Series([1_000_000.0]*50))
+    assert result["tw_head_shoulders_pattern"] == "疑似頭肩頂"
+    assert result["tw_head_shoulders_top_suspected"] is True
+    assert result["tw_head_shoulders_top_confirmed"] is False
+
+
+def test_tw_head_shoulders_releases_after_fast_reclaim_holds_two_days():
+    close = _pattern_series([
+        (0, 80), (8, 91), (14, 103), (19, 94), (25, 114),
+        (31, 95), (37, 102), (43, 93), (47, 98), (49, 99),
+    ])
+    result = _tw_head_shoulders_features(close+1, close-1, close, pd.Series([1_000_000.0]*50))
+    assert result["tw_head_shoulders_pattern"] == "頭肩頂假跌破解除"
+    assert result["tw_head_shoulders_top_recovered"] is True
+    assert result["tw_head_shoulders_top_confirmed"] is False
+
+
+def test_tw_inverse_head_shoulders_confirms_only_after_close_above_neckline():
+    close = _pattern_series([
+        (0, 120), (8, 108), (14, 96), (19, 105), (25, 84),
+        (31, 104), (37, 97), (43, 105), (47, 108), (49, 110),
+    ])
+    volume = pd.Series([1_000_000.0]*50)
+    volume.iloc[43] = 1_600_000
+    result = _tw_head_shoulders_features(close+1, close-1, close, volume)
+    assert result["tw_head_shoulders_pattern"] == "頭肩底確認"
+    assert result["tw_inverse_head_shoulders_confirmed"] is True
+
+
+def test_head_shoulders_strong_guard_is_taiwan_only():
+    tw = _trade_safety_guard({"market": "TW", "tw_head_shoulders_top_strong": True})
+    us = _trade_safety_guard({"market": "US", "tw_head_shoulders_top_strong": True})
+    assert tw["trade_guard_blocked"] is True
+    assert tw["trade_guard_severe"] is True
+    assert "頭肩頂" in tw["trade_guard_reason"]
+    assert us["trade_guard_blocked"] is False
 
 
 def test_next_day_scenario_never_invents_missing_institution_data():
@@ -626,6 +692,34 @@ def test_tw_strong_bearish_forecast_vetoes_setup_candidate():
     assert row["buy_trigger_ready"] is False
     assert row["overall_rank"] is None
     assert "隔日模型高信心看跌" in row["buy_candidate_reasons"]
+
+
+def test_tw_confirmed_head_shoulders_vetoes_buy_candidate_without_touching_us():
+    base = {
+        "type": "個股", "price": 100,
+        "short_term_entry_low": 99, "short_term_entry_high": 101,
+        "short_term_stop": 96, "short_term_target1": 108, "short_term_rr": 2,
+        "short_term_score": 72, "entry_score": 65, "technical_score": 68,
+        "score": 66, "market_data_quality_score": 90,
+        "entry_data_coverage": 6, "entry_data_total": 6,
+        "daily_volume_ratio": .9, "rsi": 58, "news_penalty": 0,
+        "next_session_direction": "📈 看漲", "next_session_confidence": 72,
+        "next_session_signal_level": "RESEARCH", "next_session_data_quality": 90,
+        "market_contract_valid": True, "trade_guard_blocked": False,
+        "overall_eligible": True, "overall_rank_tier": 2,
+        "overall_ranking_score": 80, "short_term_rank_tier": 2,
+        "short_term_ranking_score": 72, "mid_long_rank_tier": 1,
+        "mid_long_ranking_score": 60,
+        "tw_head_shoulders_top_confirmed": True,
+    }
+    tw = dict(base, symbol="TOP.TW", market="TW")
+    us = dict(base, symbol="TEST", market="US")
+    apply_tw_buy_candidate_ranking([tw, us])
+    assert tw["buy_setup_eligible"] is False
+    assert tw["overall_rank"] is None
+    assert "頭肩頂已收盤跌破頸線" in tw["buy_candidate_reasons"]
+    assert us["overall_rank_tier"] == 2
+    assert us["buy_candidate_eligible"] is None
 
 
 def test_tw_buy_filter_does_not_change_us_existing_ranking_fields():
