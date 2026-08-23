@@ -13,10 +13,12 @@ from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 HORIZONS = (1, 5, 10, 20)
 METHODOLOGY_VERSION = 6
-AUDIT_SCHEMA_VERSION = 2
+AUDIT_SCHEMA_VERSION = 3
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
 TOP_K = (5, 10, 20)
+MARKET_REGIMES = ("bull", "bear", "sideways")
+MARKET_REGIME_LABELS = {"bull": "多頭", "bear": "空頭", "sideways": "盤整"}
 TW_THRESHOLD_GRID = (
     (58.0, 6),
     (60.0, 6),
@@ -236,6 +238,132 @@ def _track_model_direction(row: dict[str, Any], track: str, name: str) -> str:
     )
 
 
+def _max_drawdown_pct(returns: list[float]) -> float:
+    equity = peak = 1.0
+    maximum = 0.0
+    for value in returns:
+        equity *= 1 + value / 100
+        peak = max(peak, equity)
+        maximum = max(maximum, (peak - equity) / peak * 100)
+    return round(maximum, 2)
+
+
+def _regime_metric(
+    snapshots: list[dict[str, Any]],
+    *,
+    market: str,
+    regime: str,
+    horizon: str,
+    predicate: Callable[[dict[str, Any]], bool],
+    direction_for: Callable[[dict[str, Any]], str],
+) -> dict[str, Any]:
+    """Evaluate one strategy inside one source-date market regime."""
+    records: list[tuple[float, str]] = []
+    excess_returns: list[float] = []
+    benchmark_returns: list[float] = []
+    session_returns: list[float] = []
+    eligible = 0
+    for snapshot in sorted(snapshots, key=lambda item: str(item.get("session_date") or "")):
+        source_regime = snapshot.get("market_regime") or {}
+        if str(snapshot.get("market")) != market or source_regime.get("regime") != regime:
+            continue
+        local_returns: list[float] = []
+        for row in snapshot.get("predictions", []):
+            if str(row.get("cohort")) != f"{market}_STOCK":
+                continue
+            if not predicate(row):
+                continue
+            outcome = row.get("outcomes", {}).get(horizon)
+            actual = _outcome_return(outcome)
+            if actual is None:
+                continue
+            eligible += 1
+            direction = direction_for(row)
+            if evaluate_direction(direction, actual) is None:
+                continue
+            directional = actual if direction == "UP" else -actual
+            records.append((actual, direction))
+            local_returns.append(directional)
+            if isinstance(outcome, dict):
+                benchmark = _outcome_return(outcome.get("benchmark_close_to_close_return_pct"))
+                if benchmark is not None:
+                    directional_benchmark = benchmark if direction == "UP" else -benchmark
+                    benchmark_returns.append(directional_benchmark)
+                    excess_returns.append(directional - directional_benchmark)
+        if local_returns:
+            session_returns.append(sum(local_returns) / len(local_returns))
+    metric = _metric(records, eligible)
+    directional_values = [value if direction == "UP" else -value for value, direction in records]
+    gains = sum(value for value in directional_values if value > 0)
+    losses = abs(sum(value for value in directional_values if value < 0))
+    metric.update({
+        "sessions": len(session_returns),
+        "max_drawdown_pct": _max_drawdown_pct(session_returns) if horizon == "1" else None,
+        "drawdown_basis": "不重疊隔日訊號序列" if horizon == "1" else "多日報酬重疊，不計回撤",
+        "profit_factor": round(gains / losses, 2) if losses > 0 else None,
+        "benchmark_avg_return_pct": round(sum(benchmark_returns) / len(benchmark_returns), 2) if benchmark_returns else None,
+        "avg_excess_return_pct": round(sum(excess_returns) / len(excess_returns), 2) if excess_returns else None,
+    })
+    return metric
+
+
+def _regime_validation(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    strategies = {
+        "consensus": (lambda _row: True, _consensus_direction),
+        "buy_trigger": (lambda row: bool(row.get("trade_triggered")), _trade_direction),
+        "top5": (lambda row: _within_rank(row, 5), _consensus_direction),
+        "top10": (lambda row: _within_rank(row, 10), _consensus_direction),
+    }
+    markets: dict[str, Any] = {}
+    for market in ("TW", "US"):
+        markets[market] = {}
+        for regime in MARKET_REGIMES:
+            markets[market][regime] = {
+                "label": MARKET_REGIME_LABELS[regime],
+                "source_sessions": sum(
+                    str(snapshot.get("market")) == market
+                    and (snapshot.get("market_regime") or {}).get("regime") == regime
+                    for snapshot in snapshots
+                ),
+                "strategies": {
+                    name: {
+                        horizon: _regime_metric(
+                            snapshots,
+                            market=market,
+                            regime=regime,
+                            horizon=horizon,
+                            predicate=predicate,
+                            direction_for=direction_for,
+                        )
+                        for horizon in map(str, HORIZONS)
+                    }
+                    for name, (predicate, direction_for) in strategies.items()
+                },
+            }
+    classified = sum(
+        (snapshot.get("market_regime") or {}).get("regime") in MARKET_REGIMES
+        for snapshot in snapshots
+    )
+    return {
+        "mode": "forward_only",
+        "asset_scope": "STOCK_ONLY",
+        "affects_ai_score": False,
+        "classified_snapshot_count": classified,
+        "unclassified_snapshot_count": len(snapshots) - classified,
+        "regime_rule": (
+            "多頭：收盤高於MA60 1%、MA20高於MA60 0.5%、20日報酬至少2%且MA20上彎；"
+            "空頭條件反向；其餘為盤整。全部只使用預測當日及以前資料。"
+        ),
+        "strategies": {
+            "consensus": "10模型共識",
+            "buy_trigger": "實際買點觸發",
+            "top5": "排名前5共識",
+            "top10": "排名前10共識",
+        },
+        "markets": markets,
+    }
+
+
 def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dict[str, Any]:
     horizons = _metric_bundle(snapshots, lambda _row: True, _consensus_direction)
     tracks = _track_bundle(snapshots, lambda _row: True, _track_consensus_direction)
@@ -330,6 +458,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "model_leaderboard": leaderboards["full_day"],
         "model_leaderboards": leaderboards,
         "groups": groups,
+        "regime_validation": _regime_validation(snapshots),
         "tw_threshold_calibration": _tw_threshold_calibration(snapshots),
         "calibration": {
             "trading_days_collected": collected,
@@ -422,6 +551,7 @@ def _new_snapshot(
     predictions: list[dict[str, Any]],
     updated_at: str,
     period: str,
+    market_regime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -467,6 +597,8 @@ def _new_snapshot(
         "session_date": session_date,
         "captured_at": updated_at,
         "period": period,
+        "market_regime": market_regime or None,
+        "market_regime_frozen": bool(market_regime),
         "predictions": rows,
     }
     snapshot["integrity_sha256"] = _snapshot_hash(snapshot)
@@ -479,7 +611,7 @@ def _immutable_snapshot_payload(snapshot: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(row, dict):
             continue
         predictions.append({key: value for key, value in row.items() if key != "outcomes"})
-    return {
+    payload = {
         "id": snapshot.get("id"),
         "audit_schema_version": snapshot.get("audit_schema_version"),
         "market": snapshot.get("market"),
@@ -488,6 +620,14 @@ def _immutable_snapshot_payload(snapshot: dict[str, Any]) -> dict[str, Any]:
         "period": snapshot.get("period"),
         "predictions": predictions,
     }
+    # Old V6 snapshots did not contain a regime label.  Omitting the absent
+    # key keeps their existing integrity hashes valid instead of rewriting history.
+    if int(snapshot.get("audit_schema_version") or 0) >= 3:
+        frozen = bool(snapshot.get("market_regime_frozen"))
+        payload["market_regime_frozen"] = frozen
+        if frozen:
+            payload["market_regime"] = snapshot.get("market_regime")
+    return payload
 
 
 def _snapshot_hash(snapshot: dict[str, Any]) -> str:
@@ -512,6 +652,7 @@ def _evaluate_with_new_session(
     market: str,
     session_date: str,
     current_rows: list[dict[str, Any]],
+    market_regime_history: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     prices = {
         str(row.get("symbol")): (
@@ -530,6 +671,7 @@ def _evaluate_with_new_session(
     } | {session_date})
     positions = {value: index for index, value in enumerate(market_sessions)}
     current_index = positions[session_date]
+    current_market_regime = (market_regime_history or {}).get(session_date) or {}
     for snapshot in snapshots:
         if str(snapshot.get("market")) != market:
             continue
@@ -558,6 +700,25 @@ def _evaluate_with_new_session(
                 "evaluated_price": round(current_close, 4),
                 "evaluated_close_price": round(current_close, 4),
             }
+            source_benchmark = (
+                snapshot.get("market_regime")
+                or (market_regime_history or {}).get(origin)
+                or {}
+            )
+            current_benchmark = current_market_regime
+            try:
+                source_benchmark_close = float(source_benchmark.get("benchmark_close") or 0)
+                current_benchmark_close = float(current_benchmark.get("benchmark_close") or 0)
+            except (TypeError, ValueError):
+                source_benchmark_close = current_benchmark_close = 0.0
+            if (
+                source_benchmark_close > 0
+                and current_benchmark_close > 0
+                and source_benchmark.get("benchmark") == current_benchmark.get("benchmark")
+            ):
+                outcome["benchmark_close_to_close_return_pct"] = round(
+                    (current_benchmark_close / source_benchmark_close - 1) * 100, 4
+                )
             if elapsed == 1 and current_open > 0:
                 outcome.update({
                     "close_to_open_return_pct": round((current_open / base - 1) * 100, 4),
@@ -620,11 +781,16 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
                 "rank": row.get("rank"),
                 "model_version": row.get("model_version"),
                 "market_model": row.get("market_model"),
+                "source_market_regime": (snapshot.get("market_regime") or {}).get("regime"),
+                "source_market_regime_label": MARKET_REGIME_LABELS.get(
+                    (snapshot.get("market_regime") or {}).get("regime")
+                ),
                 "source_close_price": row.get("official_price"),
                 "actual_open_price": outcome.get("evaluated_open_price"),
                 "actual_high_price": outcome.get("evaluated_high_price"),
                 "actual_low_price": outcome.get("evaluated_low_price"),
                 "actual_close_price": outcome.get("evaluated_close_price"),
+                "benchmark_return_pct": outcome.get("benchmark_close_to_close_return_pct"),
                 "tracks": track_results,
                 "stop_touched": outcome.get("stop_touched"),
                 "target1_touched": outcome.get("target1_touched"),
@@ -647,6 +813,7 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
         "tw_threshold_calibration": summary.get("tw_threshold_calibration", {}),
         "groups": public_groups,
         "tracks": summary.get("tracks", {}),
+        "regime_validation": summary.get("regime_validation", {}),
         "recent": recent[:200],
     }
 
@@ -657,6 +824,7 @@ def update_performance(
     current_rows: list[dict[str, Any]],
     updated_at: str,
     period: str,
+    market_regimes: dict[str, dict[str, dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Evaluate and save only one completed-session snapshot per market."""
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -681,10 +849,24 @@ def update_performance(
         })
         if session_dates:
             session_date = session_dates[-1]
+            current_market_regime = (market_regimes or {}).get(market, {}).get(session_date)
             snapshot_id = f"{market}:{session_date}"
             if not any(str(item.get("id")) == snapshot_id for item in snapshots):
-                _evaluate_with_new_session(snapshots, market, session_date, current_rows)
-                snapshot = _new_snapshot(market, session_date, predictions, updated_at, period)
+                _evaluate_with_new_session(
+                    snapshots,
+                    market,
+                    session_date,
+                    current_rows,
+                    (market_regimes or {}).get(market, {}),
+                )
+                snapshot = _new_snapshot(
+                    market,
+                    session_date,
+                    predictions,
+                    updated_at,
+                    period,
+                    current_market_regime,
+                )
                 if snapshot["predictions"]:
                     snapshots.append(snapshot)
 
@@ -693,8 +875,28 @@ def update_performance(
         item for item in snapshots
         if str(item.get("session_date") or "") >= cutoff.isoformat()
     ]
+    def with_historical_regime(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        for item in items:
+            if item.get("market_regime"):
+                enriched.append(item)
+                continue
+            historical_regime = (
+                (market_regimes or {})
+                .get(str(item.get("market") or ""), {})
+                .get(str(item.get("session_date") or ""))
+            )
+            enriched.append(
+                {**item, "market_regime": historical_regime}
+                if historical_regime
+                else item
+            )
+        return enriched
+
     valid_snapshots = [item for item in snapshots if _snapshot_integrity(item) != "mismatch"]
-    summary = _summary(valid_snapshots, legacy_reset=legacy_reset)
+    analysis_snapshots = with_historical_regime(valid_snapshots)
+    audit_snapshots = with_historical_regime(snapshots)
+    summary = _summary(analysis_snapshots, legacy_reset=legacy_reset)
     history_path.write_text(
         json.dumps({"version": METHODOLOGY_VERSION, "snapshots": snapshots}, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -703,7 +905,7 @@ def update_performance(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (reports_dir / "accuracy.json").write_text(
-        json.dumps(_accuracy_audit(snapshots, summary), ensure_ascii=False, indent=2),
+        json.dumps(_accuracy_audit(audit_snapshots, summary), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     return summary

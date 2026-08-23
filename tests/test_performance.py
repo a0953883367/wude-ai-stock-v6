@@ -408,3 +408,69 @@ def test_accuracy_records_actual_high_low_and_target_touch(tmp_path: Path):
     assert record["target1_touched"] is True
     assert record["target2_touched"] is False
     assert record["stop_touched"] is False
+
+
+def test_bull_bear_sideways_validation_uses_frozen_source_regime(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    regimes = {
+        "TW": {
+            "2026-08-18": {
+                "market": "TW", "benchmark": "加權指數", "session_date": "2026-08-18",
+                "regime": "bull", "benchmark_open": 99, "benchmark_close": 100,
+            },
+            "2026-08-19": {
+                "market": "TW", "benchmark": "加權指數", "session_date": "2026-08-19",
+                "regime": "sideways", "benchmark_open": 100.5, "benchmark_close": 101,
+            },
+        }
+    }
+    update_performance(
+        tmp_path, [first], [first], "2026-08-18 20:00:00", "evening",
+        market_regimes=regimes,
+    )
+    second = _row(110, "2026-08-19", open_price=105)
+    summary = update_performance(
+        tmp_path, [second], [second], "2026-08-19 20:00:00", "evening",
+        market_regimes=regimes,
+    )
+    validation = summary["regime_validation"]
+    bull = validation["markets"]["TW"]["bull"]
+    metric = bull["strategies"]["consensus"]["1"]
+    assert bull["source_sessions"] == 1
+    assert metric["samples"] == 1
+    assert metric["win_rate_pct"] == 100.0
+    assert metric["benchmark_avg_return_pct"] == 1.0
+    assert metric["avg_excess_return_pct"] == 9.0
+    assert validation["markets"]["TW"]["sideways"]["strategies"]["consensus"]["1"]["samples"] == 0
+    assert validation["affects_ai_score"] is False
+
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    assert history["snapshots"][0]["market_regime"]["regime"] == "bull"
+    assert _snapshot_integrity(history["snapshots"][0]) == "verified"
+
+
+def test_regime_history_can_classify_old_snapshot_without_rewriting_it(tmp_path: Path):
+    first = _row(100, "2026-08-18")
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+    before = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    original_hash = before["snapshots"][0]["integrity_sha256"]
+    regimes = {
+        "TW": {
+            "2026-08-18": {"benchmark": "加權指數", "regime": "bear", "benchmark_close": 100},
+            "2026-08-19": {"benchmark": "加權指數", "regime": "sideways", "benchmark_close": 98},
+        }
+    }
+    second = _row(95, "2026-08-19", open_price=97)
+    summary = update_performance(
+        tmp_path, [second], [second], "2026-08-19 20:00:00", "evening",
+        market_regimes=regimes,
+    )
+    bear = summary["regime_validation"]["markets"]["TW"]["bear"]
+    assert bear["strategies"]["consensus"]["1"]["samples"] == 1
+    after = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    assert after["snapshots"][0]["integrity_sha256"] == original_hash
+    assert after["snapshots"][0].get("market_regime") is None
+    assert _snapshot_integrity(after["snapshots"][0]) == "verified"
+    accuracy = json.loads((tmp_path / "accuracy.json").read_text(encoding="utf-8"))
+    assert accuracy["integrity"]["verified"] == 2
+    assert accuracy["integrity"]["mismatch"] == 0

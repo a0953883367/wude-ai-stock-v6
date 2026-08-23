@@ -39,6 +39,11 @@ CORE_MARKET = {
     "美國10年期公債殖利率": "^TNX",
 }
 
+MARKET_REGIME_BENCHMARKS = {
+    "TW": ("加權指數", "^TWII"),
+    "US": ("S&P 500", "^GSPC"),
+}
+
 
 def load_search_universe(path: Path = SETTINGS.search_data_path) -> list[dict[str, Any]]:
     """Load every Taiwan and US candidate maintained by the V6 dashboard."""
@@ -432,6 +437,73 @@ def fetch_core_market() -> dict[str, dict[str, Any]]:
             "change_pct": change,
             "session_date": session_date,
         }
+    return output
+
+
+def _classify_market_regime_frame(
+    frame: pd.DataFrame,
+    *,
+    market: str,
+    benchmark: str,
+) -> dict[str, dict[str, Any]]:
+    """Classify each completed session using information available that day.
+
+    Rolling values are deliberately backward-looking.  A later rally or selloff
+    can therefore never relabel an already recorded bull/bear/sideways sample.
+    """
+    if frame is None or frame.empty or "close" not in frame:
+        return {}
+    close = pd.to_numeric(frame["close"], errors="coerce")
+    open_price = (
+        pd.to_numeric(frame["open"], errors="coerce")
+        if "open" in frame
+        else close.copy()
+    )
+    ma20 = close.rolling(20, min_periods=20).mean()
+    ma60 = close.rolling(60, min_periods=60).mean()
+    return20 = close.pct_change(20) * 100
+    ma20_slope5 = ma20.pct_change(5) * 100
+    result: dict[str, dict[str, Any]] = {}
+    for index in range(len(frame)):
+        values = (close.iloc[index], ma20.iloc[index], ma60.iloc[index], return20.iloc[index], ma20_slope5.iloc[index])
+        if any(pd.isna(value) for value in values):
+            continue
+        price, short_ma, long_ma, momentum, slope = (float(value) for value in values)
+        if price >= long_ma * 1.01 and short_ma >= long_ma * 1.005 and momentum >= 2.0 and slope >= 0:
+            regime = "bull"
+        elif price <= long_ma * 0.99 and short_ma <= long_ma * 0.995 and momentum <= -2.0 and slope <= 0:
+            regime = "bear"
+        else:
+            regime = "sideways"
+        trade_date = pd.Timestamp(frame.index[index]).date().isoformat()
+        current_open = open_price.iloc[index]
+        result[trade_date] = {
+            "market": market,
+            "benchmark": benchmark,
+            "session_date": trade_date,
+            "regime": regime,
+            "benchmark_open": round(float(current_open), 6) if not pd.isna(current_open) else None,
+            "benchmark_close": round(price, 6),
+            "ma20": round(short_ma, 6),
+            "ma60": round(long_ma, 6),
+            "return20_pct": round(momentum, 4),
+            "ma20_slope5_pct": round(slope, 4),
+            "classification_rule": "只用當日及以前資料：收盤/MA20/MA60/20日報酬/MA20五日斜率",
+        }
+    return result
+
+
+def fetch_market_regime_history(period: str = "1y") -> dict[str, dict[str, dict[str, Any]]]:
+    """Return point-in-time bull, bear and sideways labels for TW and US."""
+    histories = download_history(
+        [symbol for _label, symbol in MARKET_REGIME_BENCHMARKS.values()],
+        period=period,
+    )
+    output: dict[str, dict[str, dict[str, Any]]] = {}
+    for market, (label, symbol) in MARKET_REGIME_BENCHMARKS.items():
+        output[market] = _classify_market_regime_frame(
+            histories.get(symbol), market=market, benchmark=label
+        )
     return output
 
 
