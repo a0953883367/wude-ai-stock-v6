@@ -12,6 +12,7 @@ const html = fs.readFileSync('index.html', 'utf8');
   '不影響正式排名',
   '不是完整V6歷史回測',
   '存活者偏差',
+  '複利淨報酬',
   "['TW_STOCK','US_STOCK','TW_ETF','US_ETF']",
   '多頭',
   '空頭',
