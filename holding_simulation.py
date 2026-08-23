@@ -30,6 +30,7 @@ LONG_CAPITAL_TWD = 1_000_000
 LONG_PICK_COUNT_PER_MARKET = 1
 LONG_ALLOCATION_TWD = 500_000
 LONG_HOLD_MONTHS = 6
+ROUND_TRIP_COST_PCT = {"TW": 0.685, "US": 0.20}
 
 
 def _finite(value: Any, fallback: float = 0.0) -> float:
@@ -106,6 +107,8 @@ def _empty_medium_market(market: str) -> dict[str, Any]:
         "last_valuation_date": None,
         "gross_profit_twd": 0.0,
         "gross_return_pct": 0.0,
+        "net_profit_twd": 0.0,
+        "net_return_pct": 0.0,
         "realized": False,
     }
 
@@ -121,6 +124,8 @@ def _empty_long() -> dict[str, Any]:
         "last_valuation_date": {"TW": None, "US": None},
         "gross_profit_twd": 0.0,
         "gross_return_pct": 0.0,
+        "net_profit_twd": 0.0,
+        "net_return_pct": 0.0,
         "realized": False,
     }
 
@@ -149,7 +154,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "duplicates": "同一股票若同時入選中期與長期，兩個模擬帳戶都照買並分開計算",
             "entry": "2026-08-24起，使用前一完成交易日排名並按下一交易日官方開盤價",
             "valuation_exit": "持有期間用官方收盤價估值；到期後第一個交易日官方收盤價賣出",
-            "costs": "顯示毛損益；未扣手續費、證交稅與匯差",
+            "round_trip_cost_pct": ROUND_TRIP_COST_PCT,
+            "costs": "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
         "medium": {market: _empty_medium_market(market) for market in MARKETS},
@@ -246,6 +252,7 @@ def _enter_positions(
             target = _add_months(session_date, int(hold_months or 0))
         allocation = _finite(pick.get("allocation_twd"))
         return_pct = ((close_price / open_price) - 1) * 100 if close_price > 0 else 0.0
+        net_return_pct = return_pct - ROUND_TRIP_COST_PCT[market]
         positions.append({
             **pick,
             "entry_session_date": session_date,
@@ -255,6 +262,9 @@ def _enter_positions(
             "last_valuation_date": session_date,
             "gross_return_pct": round(return_pct, 4),
             "gross_profit_twd": round(allocation * return_pct / 100, 2),
+            "net_return_pct": round(net_return_pct, 4),
+            "net_profit_twd": round(allocation * net_return_pct / 100, 2),
+            "estimated_cost_twd": round(allocation * ROUND_TRIP_COST_PCT[market] / 100, 2),
             "exit_session_date": None,
             "exit_price": None,
             "realized": False,
@@ -274,10 +284,14 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
         entry_price = _finite(position.get("entry_price"))
         allocation = _finite(position.get("allocation_twd"))
         return_pct = ((close_price / entry_price) - 1) * 100 if entry_price > 0 else 0.0
+        net_return_pct = return_pct - ROUND_TRIP_COST_PCT[market]
         position["last_price"] = round(close_price, 4)
         position["last_valuation_date"] = session_date
         position["gross_return_pct"] = round(return_pct, 4)
         position["gross_profit_twd"] = round(allocation * return_pct / 100, 2)
+        position["net_return_pct"] = round(net_return_pct, 4)
+        position["net_profit_twd"] = round(allocation * net_return_pct / 100, 2)
+        position["estimated_cost_twd"] = round(allocation * ROUND_TRIP_COST_PCT[market] / 100, 2)
         if session_date >= str(position.get("target_exit_date") or "9999-12-31"):
             position["exit_session_date"] = session_date
             position["exit_price"] = round(close_price, 4)
@@ -286,9 +300,12 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
 
 def _summarize(portfolio: dict[str, Any], positions: list[dict[str, Any]]) -> None:
     profit = sum(_finite(position.get("gross_profit_twd")) for position in positions)
+    net_profit = sum(_finite(position.get("net_profit_twd")) for position in positions)
     capital = _finite(portfolio.get("capital_twd"))
     portfolio["gross_profit_twd"] = round(profit, 2)
     portfolio["gross_return_pct"] = round(profit / capital * 100, 4) if capital else 0.0
+    portfolio["net_profit_twd"] = round(net_profit, 2)
+    portfolio["net_return_pct"] = round(net_profit / capital * 100, 4) if capital else 0.0
     portfolio["realized"] = bool(positions) and all(position.get("realized") is True for position in positions)
     if portfolio["realized"]:
         portfolio["status"] = "complete"
@@ -347,7 +364,16 @@ def update_state(
     intraday: bool = False,
 ) -> dict[str, Any]:
     state["updated_at"] = updated_at
+    state.setdefault("policy", {})["round_trip_cost_pct"] = ROUND_TRIP_COST_PCT
+    state["policy"]["costs"] = (
+        "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入"
+    )
     for market in MARKETS:
+        state["medium"].setdefault(market, _empty_medium_market(market))
+        state["medium"][market].setdefault("net_profit_twd", 0.0)
+        state["medium"][market].setdefault("net_return_pct", 0.0)
+        state.setdefault("long", _empty_long()).setdefault("net_profit_twd", 0.0)
+        state["long"].setdefault("net_return_pct", 0.0)
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         prepare_pending(state, rows, market, updated_at)

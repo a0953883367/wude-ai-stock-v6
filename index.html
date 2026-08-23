@@ -526,24 +526,24 @@ function millionPositionDetails(day){
     var result=strategies[definition[0]]||{},positions=Array.isArray(result.positions)?result.positions:[];
     var rows=positions.map(function(position){
       var available=position.data_available===true;
-      return '<tr><td>'+esc(position.rank)+'. '+esc(position.name)+'（'+esc(marketCode(position.symbol))+'）</td><td>'+esc(available?number(position.open_price,4):'缺資料')+'</td><td>'+esc(available?number(position.sell_price,4):'缺資料')+'</td><td class="'+millionProfitClass(position.gross_profit_twd)+'">'+esc(available?millionMoney(position.gross_profit_twd):'0 元')+'</td></tr>';
+      return '<tr><td>'+esc(position.rank)+'. '+esc(position.name)+'（'+esc(marketCode(position.symbol))+'）</td><td>'+esc(available?number(position.open_price,4):'缺資料')+'</td><td>'+esc(available?number(position.sell_price,4):'缺資料')+'</td><td class="'+millionProfitClass(position.net_profit_twd)+'">'+esc(available?millionMoney(position.net_profit_twd):'0 元')+'<br><span class="holding-meta">毛 '+esc(millionMoney(position.gross_profit_twd))+'</span></td></tr>';
     }).join('');
-    return '<div class="million-strategy"><h3>'+esc(definition[1])+'｜'+millionMoney(result.gross_profit_twd)+'</h3><div class="million-table-wrap"><table class="million-table"><thead><tr><th>標的</th><th>開盤買入</th><th>收盤賣出</th><th>損益</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    return '<div class="million-strategy"><h3>'+esc(definition[1])+'｜淨 '+millionMoney(result.net_profit_twd)+'｜毛 '+millionMoney(result.gross_profit_twd)+'</h3><div class="million-table-wrap"><table class="million-table"><thead><tr><th>標的</th><th>開盤買入</th><th>收盤賣出</th><th>扣成本損益</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }).join('');
 }
 function millionMarketHtml(market){
   market=market||{};var days=Array.isArray(market.days)?market.days:[],cumulative=0;
   var dayRows=days.map(function(day){
-    cumulative+=Number(day.gross_profit_twd||0);
+    cumulative+=Number(day.net_profit_twd||0);
     var strategies=day.strategies||{},overall=strategies.overall||{},short=strategies.short||{};
-    return '<tr><td>第'+esc(day.day)+'日｜'+esc(day.session_date)+'</td><td class="'+millionProfitClass(overall.gross_profit_twd)+'">'+esc(millionMoney(overall.gross_profit_twd))+'</td><td class="'+millionProfitClass(short.gross_profit_twd)+'">'+esc(millionMoney(short.gross_profit_twd))+'</td><td class="'+millionProfitClass(day.gross_profit_twd)+'">'+esc(millionMoney(day.gross_profit_twd))+'</td><td class="'+millionProfitClass(cumulative)+'">'+esc(millionMoney(cumulative))+'</td></tr>';
+    return '<tr><td>第'+esc(day.day)+'日｜'+esc(day.session_date)+'</td><td class="'+millionProfitClass(overall.net_profit_twd)+'">'+esc(millionMoney(overall.net_profit_twd))+'</td><td class="'+millionProfitClass(short.net_profit_twd)+'">'+esc(millionMoney(short.net_profit_twd))+'</td><td class="'+millionProfitClass(day.net_profit_twd)+'">'+esc(millionMoney(day.net_profit_twd))+'</td><td class="'+millionProfitClass(cumulative)+'">'+esc(millionMoney(cumulative))+'</td></tr>';
   }).join('');
   var details=days.map(function(day){return '<details class="million-day-details"><summary>查看第'+esc(day.day)+'日20筆模擬買賣明細</summary><div class="million-strategies">'+millionPositionDetails(day)+'</div></details>';}).join('');
   var pending=market.pending||{},pendingStrategies=pending.strategies||{};
   var pendingHtml=market.status==='complete'
     ?'<div class="million-empty">五個交易日已完成，不再新增部位。</div>'
     :'<div class="million-note">下一次模擬買進使用 '+esc(pending.signal_session_date||'等待中')+' 的完成排名快照；下一交易日開盤買進、收盤價代理收盤前賣出。</div><div class="million-strategies">'+millionPendingStrategy('綜合排名前10名',pendingStrategies.overall)+millionPendingStrategy('短線排名前10名',pendingStrategies.short)+'</div>';
-  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(market.label||market.market)+'｜100萬元</div><div class="million-progress">已完成 '+esc(market.completed_days||0)+' / '+esc(market.target_trading_days||5)+' 個交易日</div></div><div class="million-total '+millionProfitClass(market.cumulative_gross_profit_twd)+'">累計<br>'+esc(millionMoney(market.cumulative_gross_profit_twd))+'</div></div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>交易日</th><th>綜合前10</th><th>短線前10</th><th>當日合計</th><th>累計</th></tr></thead><tbody>'+(dayRows||'<tr><td>等待下週一開始</td><td>—</td><td>—</td><td>—</td><td>0 元</td></tr>')+'</tbody></table></div>'+details+'<div class="group">下一交易日名單</div>'+pendingHtml+'</section>';
+  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(market.label||market.market)+'｜100萬元</div><div class="million-progress">已完成 '+esc(market.completed_days||0)+' / '+esc(market.target_trading_days||5)+' 個交易日｜毛損益 '+esc(millionMoney(market.cumulative_gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(market.cumulative_net_profit_twd)+'">扣成本累計<br>'+esc(millionMoney(market.cumulative_net_profit_twd))+'</div></div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>交易日</th><th>綜合前10淨損益</th><th>短線前10淨損益</th><th>當日淨合計</th><th>淨累計</th></tr></thead><tbody>'+(dayRows||'<tr><td>等待下週一開始</td><td>—</td><td>—</td><td>—</td><td>0 元</td></tr>')+'</tbody></table></div>'+details+'<div class="group">下一交易日名單</div>'+pendingHtml+'</section>';
 }
 function showMillionSimulation(){
   STATE.view='MILLION';setActive('#marketButtons button','data-view','MILLION');clearOtherNav('#marketButtons button');
@@ -555,7 +555,7 @@ function showMillionSimulation(){
   }
   var policy=simulation.policy||{};
   document.getElementById('status').textContent='開始日 '+esc(policy.start_date||'2026-08-24')+'｜帳本更新 '+esc(simulation.updated_at||'等待中')+'｜純網頁影子交易';
-  var policyHtml='<div class="million-policy"><b>固定規則：</b>台股與美股各100萬元；綜合前10名各5萬元＋短線前10名各5萬元。同股重複視為兩個策略部位。使用前一個完成交易日排名，下一交易日開盤模擬買入，官方收盤價代理收盤前賣出，連續5個交易日。<br><b>目前顯示毛損益，尚未扣手續費、台股證交稅及美股匯差；全程不送券商訂單。</b></div>';
+  var policyHtml='<div class="million-policy"><b>固定規則：</b>台股與美股各100萬元；綜合前10名各5萬元＋短線前10名各5萬元。同股重複視為兩個策略部位。使用前一個完成交易日排名，下一交易日開盤模擬買入，官方收盤價代理收盤前賣出，連續5個交易日。<br><b>成本口徑：</b>台股來回0.685%，美股來回0.20%；畫面以淨損益為主並保留毛損益，美股匯率另列；全程不送券商訂單。</div>';
   document.getElementById('results').innerHTML=policyHtml+'<div class="million-grid">'+millionMarketHtml(simulation.markets.TW)+millionMarketHtml(simulation.markets.US)+'</div>';
 }
 function weightPendingHtml(model){
@@ -589,18 +589,18 @@ function holdingPositionsHtml(positions){
   positions=Array.isArray(positions)?positions:[];
   return positions.length?positions.map(function(position){
     var completed=position.realized===true,price=completed?position.exit_price:position.last_price;
-    return '<div class="holding-position"><div><div class="holding-name">'+esc(position.name)+'（'+esc(marketCode(position.symbol,position.market))+'）｜'+esc(millionMoney(position.allocation_twd))+'</div><div class="holding-meta">'+esc(position.entry_session_date)+' 開盤 '+esc(number(position.entry_price,4))+' 買入｜'+(completed?'到期賣出':'目前估值')+' '+esc(number(price,4))+'<br>預定到期 '+esc(position.target_exit_date)+(completed?'｜實際賣出 '+esc(position.exit_session_date):'')+'</div></div><div class="holding-profit '+millionProfitClass(position.gross_profit_twd)+'">'+esc(millionMoney(position.gross_profit_twd))+'<br><span class="holding-meta">'+esc(percent(position.gross_return_pct))+'</span></div></div>';
+    return '<div class="holding-position"><div><div class="holding-name">'+esc(position.name)+'（'+esc(marketCode(position.symbol,position.market))+'）｜'+esc(millionMoney(position.allocation_twd))+'</div><div class="holding-meta">'+esc(position.entry_session_date)+' 開盤 '+esc(number(position.entry_price,4))+' 買入｜'+(completed?'到期賣出':'目前估值')+' '+esc(number(price,4))+'<br>預定到期 '+esc(position.target_exit_date)+(completed?'｜實際賣出 '+esc(position.exit_session_date):'')+'</div></div><div class="holding-profit '+millionProfitClass(position.net_profit_twd)+'">淨 '+esc(millionMoney(position.net_profit_twd))+'<br><span class="holding-meta">'+esc(percent(position.net_return_pct))+'｜毛 '+esc(millionMoney(position.gross_profit_twd))+'</span></div></div>';
   }).join(''):'<div class="million-empty">尚未建立持倉</div>';
 }
 function holdingMediumCard(portfolio){
   portfolio=portfolio||{};var pending=portfolio.pending;
-  return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'</div></div><div class="million-total '+millionProfitClass(portfolio.gross_profit_twd)+'">目前損益<br>'+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；買入後不換股，到期後第一個交易日以官方收盤價模擬賣出。</div>'+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions))+'</section>';
+  return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；買入後不換股，到期後第一個交易日以官方收盤價模擬賣出。</div>'+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions))+'</section>';
 }
 function holdingLongCard(portfolio){
   portfolio=portfolio||{};var pending=portfolio.pending||{},pendingHtml='';
   if(pending.TW)pendingHtml+=holdingPendingHtml(pending.TW,'長期台股第1名｜50萬元');
   if(pending.US)pendingHtml+=holdingPendingHtml(pending.US,'長期美股第1名｜50萬元');
-  return '<section class="holding-card long"><div class="million-head"><div><div class="million-title">長期｜台美股合計100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'</div></div><div class="million-total '+millionProfitClass(portfolio.gross_profit_twd)+'">目前損益<br>'+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">6個月</div></div><div class="item"><div class="label">持股數</div><div class="value">2檔</div></div></div><div class="holding-target">台股中長線第1名與美股中長線第1名各50萬元。若與中期名單重複仍照買，兩個帳戶分開計算；各檔從實際買入日起持有6個月。</div>'+holdingPositionsHtml(portfolio.positions)+pendingHtml+'</section>';
+  return '<section class="holding-card long"><div class="million-head"><div><div class="million-title">長期｜台美股合計100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">6個月</div></div><div class="item"><div class="label">持股數</div><div class="value">2檔</div></div></div><div class="holding-target">台股中長線第1名與美股中長線第1名各50萬元。若與中期名單重複仍照買，兩個帳戶分開計算；各檔從實際買入日起持有6個月。</div>'+holdingPositionsHtml(portfolio.positions)+pendingHtml+'</section>';
 }
 function showHoldingSimulation(){
   STATE.view='HOLDING';setActive('#marketButtons button','data-view','HOLDING');clearOtherNav('#marketButtons button');
@@ -612,7 +612,7 @@ function showHoldingSimulation(){
   }
   var policy=simulation.policy||{};
   document.getElementById('status').textContent='開始日 '+esc(policy.start_date||'2026-08-24')+'｜帳本更新 '+esc(simulation.updated_at||'等待中')+'｜純網頁影子持倉';
-  var notice='<div class="million-policy"><b>中期：</b>台股與美股各100萬元，中長線前5名每檔20萬元，持有45天。<br><b>長期：</b>台美股合計100萬元，只買台股第1名與美股第1名，各50萬元，持有6個月。<br>重複股票仍分別買入；顯示毛損益，未扣手續費、證交稅與匯差；全程不送券商訂單。</div>';
+  var notice='<div class="million-policy"><b>中期：</b>台股與美股各100萬元，中長線前5名每檔20萬元，持有45天。<br><b>長期：</b>台美股合計100萬元，只買台股第1名與美股第1名，各50萬元，持有6個月。<br>重複股票仍分別買入；台股來回成本0.685%、美股0.20%，畫面以估算淨損益為主並保留毛損益，美股匯率另列；全程不送券商訂單。</div>';
   document.getElementById('results').innerHTML=notice+'<div class="holding-layout">'+holdingMediumCard(simulation.medium.TW)+holdingMediumCard(simulation.medium.US)+holdingLongCard(simulation.long)+'</div>';
 }
 function showMarket(view){

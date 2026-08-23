@@ -79,6 +79,9 @@ def test_next_session_open_to_close_profit_is_recorded_without_lookahead():
     assert len(market["days"]) == 1
     assert market["days"][0]["session_date"] == "2026-08-24"
     assert market["days"][0]["gross_profit_twd"] > 0
+    assert market["days"][0]["net_profit_twd"] < market["days"][0]["gross_profit_twd"]
+    assert market["cumulative_net_profit_twd"] == market["days"][0]["net_profit_twd"]
+    assert market["days"][0]["strategies"]["overall"]["positions"][0]["estimated_cost_twd"] == 342.5
     assert market["days"][0]["ending_capital_twd"] > CAPITAL_PER_MARKET
     assert market["pending"]["signal_session_date"] == "2026-08-24"
 
