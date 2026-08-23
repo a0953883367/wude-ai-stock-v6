@@ -11,9 +11,10 @@ from typing import Any, Callable
 from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 
-HORIZONS = (1, 3, 5, 10, 20)
+HORIZONS = (1, 2, 3, 5, 10, 20)
+TRAINING_HORIZONS = (1, 2, 3, 5)
 METHODOLOGY_VERSION = 6
-AUDIT_SCHEMA_VERSION = 3
+AUDIT_SCHEMA_VERSION = 4
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
 TOP_K = (5, 10, 20)
@@ -42,6 +43,38 @@ def _outcome_return(value: Any, field: str = "close_to_close_return_pct") -> flo
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _is_validation_eligible(row: dict[str, Any]) -> bool:
+    """Keep legacy snapshots readable while enforcing the V4 data contract."""
+    return row.get("validation_eligible") is not False
+
+
+def _validation_contract(
+    row: dict[str, Any], tracks: dict[str, Any]
+) -> tuple[bool, list[str], float]:
+    """Decide whether a frozen row may enter automatic performance samples."""
+    missing: list[str] = []
+    if row.get("market_contract_valid") is not True:
+        missing.append("market_contract")
+    try:
+        quality = float(row.get("market_data_quality_score"))
+    except (TypeError, ValueError):
+        quality = 0.0
+    if quality < 60.0:
+        missing.append("market_data_quality")
+
+    models = (tracks.get("full_day", {}) or {}).get("models", {}) or {}
+    coverages: list[float] = []
+    for vote in models.values():
+        try:
+            coverages.append(float(vote.get("evidence_coverage_pct")))
+        except (AttributeError, TypeError, ValueError):
+            continue
+    evidence_coverage = sum(coverages) / len(coverages) if coverages else 0.0
+    if len(coverages) < len(MODEL_NAMES) or min(coverages, default=0.0) < 75.0:
+        missing.append("model_evidence")
+    return not missing, missing, round(evidence_coverage, 1)
 
 
 def _metric(records: list[tuple[float, str]], eligible: int = 0) -> dict[str, float | int]:
@@ -114,6 +147,8 @@ def _tw_threshold_calibration(snapshots: list[dict[str, Any]]) -> dict[str, Any]
                 for row in snapshot.get("predictions", []):
                     if str(row.get("cohort")) != cohort:
                         continue
+                    if not _is_validation_eligible(row):
+                        continue
                     value = _outcome_return(row.get("outcomes", {}).get("1"))
                     if value is None:
                         continue
@@ -158,6 +193,8 @@ def _tw_accumulation_metric(
         local: list[float] = []
         for row in snapshot.get("predictions", []):
             if str(row.get("cohort")) != "TW_STOCK" or not row.get(signal_field):
+                continue
+            if not _is_validation_eligible(row):
                 continue
             outcome = row.get("outcomes", {}).get(horizon)
             gross = _outcome_return(outcome)
@@ -295,6 +332,8 @@ def _metric_bundle(
             for row in snapshot.get("predictions", []):
                 if not predicate(row):
                     continue
+                if not _is_validation_eligible(row):
+                    continue
                 value = _outcome_return(row.get("outcomes", {}).get(key))
                 if value is None:
                     continue
@@ -319,6 +358,8 @@ def _track_bundle(
         for snapshot in snapshots:
             for row in snapshot.get("predictions", []):
                 if not predicate(row):
+                    continue
+                if not _is_validation_eligible(row):
                     continue
                 value = _outcome_return(row.get("outcomes", {}).get("1"), field)
                 if value is None:
@@ -378,6 +419,197 @@ def _max_drawdown_pct(returns: list[float]) -> float:
     return round(maximum, 2)
 
 
+def _portfolio_metric(
+    snapshots: list[dict[str, Any]],
+    *,
+    market: str,
+    horizon: str,
+    predicate: Callable[[dict[str, Any]], bool],
+    direction_for: Callable[[dict[str, Any]], str],
+) -> dict[str, Any]:
+    """Build a chronological equal-weight shadow portfolio for risk metrics."""
+    sample_returns: list[float] = []
+    session_returns: list[float] = []
+    eligible = 0
+    for snapshot in sorted(snapshots, key=lambda item: str(item.get("session_date") or "")):
+        if str(snapshot.get("market") or "") != market:
+            continue
+        local: list[float] = []
+        for row in snapshot.get("predictions", []):
+            if not _is_validation_eligible(row) or not predicate(row):
+                continue
+            actual = _outcome_return(row.get("outcomes", {}).get(horizon))
+            if actual is None:
+                continue
+            eligible += 1
+            direction = direction_for(row)
+            if evaluate_direction(direction, actual) is None:
+                continue
+            directional = actual if direction == "UP" else -actual
+            sample_returns.append(directional)
+            local.append(directional)
+        if local:
+            session_returns.append(sum(local) / len(local))
+
+    wins = sum(value > 0 for value in sample_returns)
+    gains = sum(value for value in sample_returns if value > 0)
+    losses = abs(sum(value for value in sample_returns if value < 0))
+    equity = 1.0
+    for value in session_returns:
+        equity *= 1 + value / 100
+    return {
+        "samples": len(sample_returns),
+        "eligible_samples": eligible,
+        "sessions": len(session_returns),
+        "coverage_pct": round(len(sample_returns) / max(eligible, 1) * 100, 1),
+        "win_rate_pct": round(wins / len(sample_returns) * 100, 1) if sample_returns else 0.0,
+        "avg_return_pct": round(sum(sample_returns) / len(sample_returns), 2) if sample_returns else 0.0,
+        "cumulative_return_pct": round((equity - 1) * 100, 2) if session_returns else 0.0,
+        "max_drawdown_pct": _max_drawdown_pct(session_returns),
+        "drawdown_basis": (
+            "每日不重疊等權方向報酬序列"
+            if horizon == "1"
+            else "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線"
+        ),
+        "profit_factor": round(gains / losses, 2) if losses > 0 else None,
+        "sample_status": _sample_status(len(sample_returns)),
+    }
+
+
+def _portfolio_statistics(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    strategies = {
+        "current_consensus": (lambda _row: True, _consensus_direction),
+        "top10_consensus": (lambda row: _within_rank(row, 10), _consensus_direction),
+        "buy_trigger": (lambda row: bool(row.get("trade_triggered")), _trade_direction),
+    }
+    return {
+        market: {
+            name: {
+                str(horizon): _portfolio_metric(
+                    snapshots,
+                    market=market,
+                    horizon=str(horizon),
+                    predicate=predicate,
+                    direction_for=direction_for,
+                )
+                for horizon in TRAINING_HORIZONS
+            }
+            for name, (predicate, direction_for) in strategies.items()
+        }
+        for market in ("TW", "US")
+    }
+
+
+def _automated_ab_testing(
+    snapshots: list[dict[str, Any]], trading_days: int
+) -> dict[str, Any]:
+    statistics = _portfolio_statistics(snapshots)
+    markets: dict[str, Any] = {}
+    candidates: list[dict[str, Any]] = []
+    for market in ("TW", "US"):
+        baseline = statistics[market]["current_consensus"]["1"]
+        challenger = statistics[market]["top10_consensus"]["1"]
+        market_days = len({
+            str(snapshot.get("session_date"))
+            for snapshot in snapshots
+            if str(snapshot.get("market") or "") == market
+            and snapshot.get("session_date")
+            and snapshot.get("predictions")
+        })
+        sample_gate = int(challenger.get("samples") or 0) >= MINIMUM_CONSENSUS_SAMPLES
+        better = bool(
+            sample_gate
+            and float(challenger.get("avg_return_pct") or 0) > float(baseline.get("avg_return_pct") or 0)
+            and float(challenger.get("win_rate_pct") or 0) >= float(baseline.get("win_rate_pct") or 0)
+            and float(challenger.get("max_drawdown_pct") or 0) <= float(baseline.get("max_drawdown_pct") or 0)
+        )
+        candidate = market_days >= MINIMUM_TRADING_DAYS and better
+        markets[market] = {
+            "A_current_consensus": baseline,
+            "B_top10_consensus": challenger,
+            "trading_days_collected": market_days,
+            "minimum_trading_days": MINIMUM_TRADING_DAYS,
+            "candidate_upgrade": candidate,
+            "decision": "candidate_review" if candidate else "keep_collecting",
+        }
+        if candidate:
+            candidates.append({
+                "market": market,
+                "variant": "B_top10_consensus",
+                "reason": "隔日平均報酬與勝率不低於A組，且最大回撤未惡化",
+            })
+    return {
+        "mode": "automatic_shadow_ab",
+        "horizon": 1,
+        "overall_trading_days_collected": trading_days,
+        "minimum_trading_days": MINIMUM_TRADING_DAYS,
+        "minimum_samples": MINIMUM_CONSENSUS_SAMPLES,
+        "markets": markets,
+        "candidates": candidates,
+        "candidate_upgrade_only": True,
+        "automatic_promotion": False,
+        "automatic_merge": False,
+        "affects_ai_score": False,
+    }
+
+
+def _error_cases(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for snapshot in snapshots:
+        for row in snapshot.get("predictions", []):
+            if not _is_validation_eligible(row):
+                continue
+            direction = _consensus_direction(row)
+            if direction not in {"UP", "DOWN"}:
+                continue
+            for horizon in TRAINING_HORIZONS:
+                outcome = row.get("outcomes", {}).get(str(horizon))
+                actual = _outcome_return(outcome)
+                if actual is None or evaluate_direction(direction, actual) is not False:
+                    continue
+                directional = actual if direction == "UP" else -actual
+                rows.append({
+                    "market": snapshot.get("market"),
+                    "market_regime": (snapshot.get("market_regime") or {}).get("regime"),
+                    "source_session_date": snapshot.get("session_date"),
+                    "evaluated_session_date": (outcome or {}).get("evaluated_session_date"),
+                    "horizon": horizon,
+                    "symbol": row.get("symbol"),
+                    "name": row.get("name"),
+                    "rank": row.get("rank"),
+                    "predicted_direction": direction,
+                    "actual_return_pct": actual,
+                    "directional_return_pct": round(directional, 4),
+                    "reason": "預測方向與完成交易日結果相反",
+                })
+    rows.sort(key=lambda item: (float(item["directional_return_pct"]), str(item["source_session_date"])))
+    return {
+        "automatic_collection": True,
+        "valid_samples_only": True,
+        "count": len(rows),
+        "recent_worst": rows[:200],
+    }
+
+
+def _data_quality_summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    valid = invalid = 0
+    reasons: dict[str, int] = {}
+    for snapshot in snapshots:
+        for row in snapshot.get("predictions", []):
+            if _is_validation_eligible(row):
+                valid += 1
+                continue
+            invalid += 1
+            for reason in row.get("validation_missing_fields") or ["unknown"]:
+                reasons[str(reason)] = reasons.get(str(reason), 0) + 1
+    return {
+        "valid_frozen_rows": valid,
+        "invalid_frozen_rows": invalid,
+        "invalid_reason_counts": reasons,
+        "rule": "缺少資料契約、行情品質或模型證據涵蓋的資料只記錄，不列入勝率、報酬、回撤或A/B有效樣本。",
+    }
+
+
 def _regime_metric(
     snapshots: list[dict[str, Any]],
     *,
@@ -400,6 +632,8 @@ def _regime_metric(
         local_returns: list[float] = []
         for row in snapshot.get("predictions", []):
             if str(row.get("cohort")) != f"{market}_STOCK":
+                continue
+            if not _is_validation_eligible(row):
                 continue
             if not predicate(row):
                 continue
@@ -576,6 +810,8 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         collected >= MINIMUM_TRADING_DAYS
         and one_day_samples >= MINIMUM_CONSENSUS_SAMPLES
     )
+    portfolio_statistics = _portfolio_statistics(snapshots)
+    automated_ab = _automated_ab_testing(snapshots, collected)
     return {
         "methodology_version": METHODOLOGY_VERSION,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
@@ -591,6 +827,10 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "regime_validation": _regime_validation(snapshots),
         "tw_accumulation_validation": _tw_accumulation_validation(snapshots),
         "tw_threshold_calibration": _tw_threshold_calibration(snapshots),
+        "portfolio_statistics": portfolio_statistics,
+        "ab_testing": automated_ab,
+        "error_cases": _error_cases(snapshots),
+        "data_quality": _data_quality_summary(snapshots),
         "calibration": {
             "trading_days_collected": collected,
             "minimum_trading_days": MINIMUM_TRADING_DAYS,
@@ -606,12 +846,17 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             # never silently change the production ranking model.
             "ready_for_model_selection": ready_for_model_selection,
             "affects_ai_score": False,
+            "candidate_upgrade_only": True,
+            "automatic_ranking_changes": False,
+            "automatic_merge": False,
+            "broker_orders": False,
             "eligible_one_day_samples": one_day_samples,
             "legacy_history_reset": legacy_reset,
         },
         "note": (
             "V6延續三段分離驗證，分開研究方向與強訊號，並使用台美股各自收盤檢查點；"
-            "台股、台灣ETF、美股、美國ETF分開統計。未通過樣本門檻前不影響AI排名。"
+            "台股、台灣ETF、美股、美國ETF分開統計。缺資料不列有效樣本；"
+            "60日前鎖定正式排名，60日後也只標記候選升級，不自動改分、Merge或下單。"
         ),
     }
 
@@ -695,6 +940,9 @@ def _new_snapshot(
             continue
         seen.add(symbol)
         tracks = track_predictions(row)
+        validation_eligible, validation_missing, evidence_coverage = _validation_contract(
+            row, tracks
+        )
         full_day = tracks["full_day"]
         is_etf = "ETF" in str(row.get("type", "")) or str(row.get("backtest_group", "")).endswith("ETF")
         cohort = f"{market}_{'ETF' if is_etf else 'STOCK'}"
@@ -709,6 +957,9 @@ def _new_snapshot(
             "market_model": row.get("next_session_market_model") or row.get("market_model_version"),
             "official_session_date": session_date,
             "official_price": round(price, 4),
+            "validation_eligible": validation_eligible,
+            "validation_missing_fields": validation_missing,
+            "evidence_coverage_pct": evidence_coverage,
             "entry_low": row.get("short_term_entry_low"),
             "entry_high": row.get("short_term_entry_high"),
             "stop_price": row.get("short_term_stop"),
@@ -951,6 +1202,35 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
         "tracks": summary.get("tracks", {}),
         "regime_validation": summary.get("regime_validation", {}),
         "tw_accumulation_validation": summary.get("tw_accumulation_validation", {}),
+        "portfolio_statistics": summary.get("portfolio_statistics", {}),
+        "ab_testing": summary.get("ab_testing", {}),
+        "error_cases": summary.get("error_cases", {}),
+        "data_quality": summary.get("data_quality", {}),
+        "automation": {
+            "mode": "fully_automatic_validation",
+            "close_snapshots": {
+                "TW": "每日台股完成收盤後由 evening 排程固定快照",
+                "US": "每日美股完成收盤後由 morning 排程固定快照",
+            },
+            "tracked_horizons": list(TRAINING_HORIZONS),
+            "missing_data_is_valid_sample": False,
+            "automatic_error_collection": True,
+            "automatic_ab_testing": True,
+            "market_regime_segmentation": True,
+            "promotion_gate": {
+                "trading_days_collected": summary.get("calibration", {}).get("trading_days_collected", 0),
+                "minimum_trading_days": MINIMUM_TRADING_DAYS,
+                "status": (
+                    "candidate_review_only"
+                    if summary.get("calibration", {}).get("ready_for_model_selection")
+                    else "formal_ranking_locked"
+                ),
+                "candidate_upgrade_only": True,
+                "automatic_ranking_changes": False,
+                "automatic_merge": False,
+                "broker_orders": False,
+            },
+        },
         "recent": recent[:200],
     }
 
