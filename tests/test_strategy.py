@@ -4,7 +4,40 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+from strategy import _assign_group_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+
+
+def test_tw_institutional_accumulation_requires_complete_history_and_is_shadow_only():
+    row = {
+        "market": "TW", "type": "個股", "institution_available": True,
+        "institution_multiday_available": True, "avg_volume20": 1_000_000,
+        "trust_5d": 150_000, "foreign_5d": 250_000, "institution_5d": 400_000,
+        "trust_buy_days_5": 4, "institution_buy_days_5": 5,
+        "price": 100, "ma20": 98, "atr14": 2, "ma20_slope5_pct": 1,
+        "recent_low5": 99, "tw_return_5d_pct": 2, "tw_volume_contraction_ratio": .7,
+        "breakdown20": False, "kline_pattern": "多方實體",
+        "daily_volume_ratio": 1.4, "breakout20": True,
+        "tw_breakout_quality_score": 80, "ma20_distance_pct": 2,
+    }
+    result = _tw_institutional_accumulation(row)
+    assert result["tw_accumulation_available"] is True
+    assert result["tw_accumulation_score"] >= 80
+    assert result["tw_accumulation_strong"] is True
+    assert result["tw_accumulation_launch_confirmed"] is True
+    assert result["tw_accumulation_affects_score"] is False
+
+    missing = dict(row, trust_buy_days_5=None)
+    missing_result = _tw_institutional_accumulation(missing)
+    assert missing_result["tw_accumulation_available"] is False
+    assert missing_result["tw_accumulation_candidate"] is False
+
+    selling = dict(row, institution_5d=-400_000, institution_buy_days_5=2)
+    selling_result = _tw_institutional_accumulation(selling)
+    assert selling_result["tw_accumulation_candidate"] is False
+    assert "連買未確認" in selling_result["tw_accumulation_status"] or selling_result["tw_accumulation_score"] < 70
+
+    us = _tw_institutional_accumulation({**row, "market": "US"})
+    assert us["tw_accumulation_available"] is False
 
 
 def test_market_session_fraction_uses_each_markets_clock():
@@ -58,6 +91,23 @@ def test_build_features_exposes_split_adjusted_official_open_and_close():
     assert result["official_close_price"] == 100.0
     assert result["official_adjusted_open_price"] == 49.5
     assert result["official_adjusted_close_price"] == 50.0
+
+
+def test_build_features_never_turns_missing_multiday_institution_history_into_zero():
+    dates = pd.date_range("2026-05-01", periods=65, freq="B")
+    daily = pd.DataFrame({
+        "close": [100.0] * 65, "open": [99.0] * 65,
+        "high": [101.0] * 65, "low": [98.0] * 65,
+        "volume": [1_000_000] * 65,
+    }, index=dates)
+    result = build_features(
+        {"symbol": "2330.TW", "market": "TW", "name": "測試", "type": "個股", "theme": "半導體"},
+        daily, None,
+        {"available": 1, "institution_1d": 100_000, "foreign": 80_000, "trust": 20_000},
+    )
+    assert result is not None
+    assert result["institution_5d"] is None
+    assert result["institution_multiday_available"] is False
 
 
 def test_candidate_scoring_has_prices_and_ranking():

@@ -6,10 +6,83 @@ from performance import (
     _snapshot_integrity,
     _summary,
     _tw_threshold_calibration,
+    _tw_accumulation_validation,
     load_frozen_forecasts,
     load_performance_context,
     update_performance,
 )
+
+
+def test_tw_accumulation_validation_deducts_costs_and_needs_diverse_samples():
+    snapshots = []
+    for day in range(20):
+        rows = []
+        for symbol_index in range(10):
+            rows.append({
+                "symbol": f"T{symbol_index}.TW", "cohort": "TW_STOCK",
+                "tw_accumulation_candidate": True,
+                "tw_accumulation_strong": True,
+                "tw_accumulation_launch_confirmed": True,
+                "outcomes": {"5": {
+                    "return_pct": 2.0,
+                    "close_to_close_return_pct": 2.0,
+                    "benchmark_close_to_close_return_pct": .5,
+                }},
+            })
+        snapshots.append({
+            "market": "TW", "session_date": f"2026-09-{day + 1:02d}",
+            "market_regime": {"regime": "bull"}, "predictions": rows,
+        })
+    result = _tw_accumulation_validation(snapshots)
+    metric = result["regimes"]["all"]["signals"]["candidate_70"]["5"]
+    assert metric["samples"] == 200
+    assert metric["sessions"] == 20
+    assert metric["unique_symbols"] == 10
+    assert metric["avg_net_return_pct"] == 1.31
+    assert metric["avg_excess_return_pct"] == .81
+    assert metric["status"] == "驗證有效"
+    assert result["affects_ai_score"] is False
+
+    concentrated = [dict(snapshots[0], predictions=[snapshots[0]["predictions"][0]]) for _ in range(100)]
+    concentrated_result = _tw_accumulation_validation(concentrated)
+    concentrated_metric = concentrated_result["regimes"]["all"]["signals"]["candidate_70"]["5"]
+    assert concentrated_metric["samples"] == 100
+    assert concentrated_metric["unique_symbols"] == 1
+    assert concentrated_metric["status"] == "樣本不足"
+
+
+def test_tw_accumulation_signal_is_frozen_then_evaluated_next_session(tmp_path: Path):
+    regimes = {"TW": {
+        "2026-08-18": {"benchmark": "加權指數", "regime": "bull", "benchmark_close": 100},
+        "2026-08-19": {"benchmark": "加權指數", "regime": "bull", "benchmark_close": 101},
+    }}
+    first = _row(100, "2026-08-18")
+    first.update({
+        "tw_accumulation_available": True,
+        "tw_accumulation_score": 85,
+        "tw_accumulation_candidate": True,
+        "tw_accumulation_strong": True,
+        "tw_accumulation_launch_confirmed": False,
+    })
+    update_performance(
+        tmp_path, [first], [first], "2026-08-18 20:00:00", "evening",
+        market_regimes=regimes,
+    )
+    second = _row(110, "2026-08-19", open_price=105)
+    summary = update_performance(
+        tmp_path, [second], [second], "2026-08-19 20:00:00", "evening",
+        market_regimes=regimes,
+    )
+    metric = summary["tw_accumulation_validation"]["regimes"]["bull"]["signals"]["strong_80"]["1"]
+    assert metric["samples"] == 1
+    assert metric["avg_gross_return_pct"] == 10.0
+    assert metric["avg_net_return_pct"] == 9.31
+    assert metric["avg_excess_return_pct"] == 8.31
+    assert metric["status"] == "樣本不足"
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    frozen = history["snapshots"][0]["predictions"][0]
+    assert frozen["tw_accumulation_score"] == 85
+    assert frozen["tw_accumulation_strong"] is True
 
 
 def _row(

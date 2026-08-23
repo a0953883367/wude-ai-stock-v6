@@ -142,6 +142,31 @@ def test_institution_merge_does_not_relabel_stale_history_as_current():
     assert result["institution_1d"] == -900
     assert result["institution_5d"] is None
     assert result["institution_multiday_available"] is False
+    assert result["trust_buy_days_5"] is None
+
+
+def test_same_day_official_institution_merge_updates_group_windows_and_buy_days():
+    fallback = {"2330": {
+        "institution_date": "2026-08-21", "institution_1d": 100,
+        "institution_3d": 300, "institution_5d": 500,
+        "foreign": 80, "foreign_5d": 300, "foreign_buy_days_5": 4,
+        "trust": 20, "trust_5d": 100, "trust_buy_days_5": 3,
+        "institution_buy_days_5": 4, "institution_multiday_available": True,
+    }}
+    current = {"2330": {
+        "institution_date": "2026-08-21", "institution_1d": -50,
+        "foreign": -60, "trust": 10, "dealer": 0,
+        "institution_source": "TWSE T86", "institution_unit": "shares",
+    }}
+    result = official.merge_official_with_fallback(
+        fallback, current, kind="institution"
+    )["2330"]
+    assert result["institution_5d"] == 350
+    assert result["foreign_5d"] == 160
+    assert result["trust_5d"] == 90
+    assert result["foreign_buy_days_5"] == 3
+    assert result["trust_buy_days_5"] == 3
+    assert result["institution_buy_days_5"] == 3
 
 
 def test_credit_merge_drops_stale_multiday_delta():

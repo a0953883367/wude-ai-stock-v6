@@ -662,6 +662,7 @@ def main() -> int:
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
             "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
+            "institutional_accumulation": "台股法人蓄力影子分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；先累積扣成本結果，不影響正式排名",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }

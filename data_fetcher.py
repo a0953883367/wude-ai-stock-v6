@@ -582,6 +582,13 @@ def _aggregate_institutional_rows(
                 sum(by_date[d][group] for group in ("foreign", "trust", "dealer"))
                 for d in selected
             )
+        selected5 = dates[:5]
+        item["foreign_buy_days_5"] = sum(by_date[d]["foreign"] > 0 for d in selected5)
+        item["trust_buy_days_5"] = sum(by_date[d]["trust"] > 0 for d in selected5)
+        item["institution_buy_days_5"] = sum(
+            sum(by_date[d][group] for group in ("foreign", "trust", "dealer")) > 0
+            for d in selected5
+        )
         output[sid] = item
     return output
 

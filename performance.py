@@ -11,7 +11,7 @@ from typing import Any, Callable
 from model_lab import MODEL_NAMES, evaluate_direction, track_predictions
 
 
-HORIZONS = (1, 5, 10, 20)
+HORIZONS = (1, 3, 5, 10, 20)
 METHODOLOGY_VERSION = 6
 AUDIT_SCHEMA_VERSION = 3
 MINIMUM_TRADING_DAYS = 60
@@ -32,6 +32,7 @@ RETURN_TRACKS = {
     "session": "open_to_close_return_pct",
     "full_day": "close_to_close_return_pct",
 }
+TW_ACCUMULATION_ROUND_TRIP_COST_PCT = 0.685
 
 
 def _outcome_return(value: Any, field: str = "close_to_close_return_pct") -> float | None:
@@ -132,6 +133,135 @@ def _tw_threshold_calibration(snapshots: list[dict[str, Any]]) -> dict[str, Any]
         "automatic_promotion": False,
         "cohorts": cohorts,
         "note": "只比較已固定台股預測的完成結果；不讀取美股，也不自動修改正式權重。",
+    }
+
+
+def _tw_accumulation_metric(
+    snapshots: list[dict[str, Any]],
+    *,
+    horizon: str,
+    signal_field: str,
+    regime: str | None,
+) -> dict[str, Any]:
+    gross_returns: list[float] = []
+    net_returns: list[float] = []
+    excess_returns: list[float] = []
+    benchmark_returns: list[float] = []
+    session_returns: list[float] = []
+    symbols: set[str] = set()
+    for snapshot in sorted(snapshots, key=lambda item: str(item.get("session_date") or "")):
+        if str(snapshot.get("market")) != "TW":
+            continue
+        source_regime = (snapshot.get("market_regime") or {}).get("regime")
+        if regime is not None and source_regime != regime:
+            continue
+        local: list[float] = []
+        for row in snapshot.get("predictions", []):
+            if str(row.get("cohort")) != "TW_STOCK" or not row.get(signal_field):
+                continue
+            outcome = row.get("outcomes", {}).get(horizon)
+            gross = _outcome_return(outcome)
+            if gross is None:
+                continue
+            net = gross - TW_ACCUMULATION_ROUND_TRIP_COST_PCT
+            gross_returns.append(gross)
+            net_returns.append(net)
+            local.append(net)
+            symbols.add(str(row.get("symbol") or ""))
+            if isinstance(outcome, dict):
+                benchmark = _outcome_return(outcome.get("benchmark_close_to_close_return_pct"))
+                if benchmark is not None:
+                    benchmark_returns.append(benchmark)
+                    excess_returns.append(net - benchmark)
+        if local:
+            session_returns.append(sum(local) / len(local))
+    samples = len(net_returns)
+    wins = sum(value > 0 for value in net_returns)
+    gains = sum(value for value in net_returns if value > 0)
+    losses = abs(sum(value for value in net_returns if value < 0))
+    minimum = 100 if regime is None else 30
+    minimum_sessions = 20 if regime is None else 10
+    minimum_symbols = 10 if regime is None else 5
+    win_rate = wins / samples * 100 if samples else 0.0
+    avg_net = sum(net_returns) / samples if samples else 0.0
+    avg_excess = sum(excess_returns) / len(excess_returns) if excess_returns else None
+    profit_factor = gains / losses if losses > 0 else None
+    max_drawdown = _max_drawdown_pct(session_returns) if horizon == "1" else None
+    thresholds_passed = bool(
+        samples >= minimum
+        and len(session_returns) >= minimum_sessions
+        and len(symbols) >= minimum_symbols
+        and win_rate >= 55
+        and avg_net > 0
+        and avg_excess is not None and avg_excess > 0
+        and ((profit_factor is not None and profit_factor >= 1.2) or (losses == 0 and gains > 0))
+        and (max_drawdown is None or max_drawdown <= 8)
+    )
+    if samples < minimum or len(session_returns) < minimum_sessions or len(symbols) < minimum_symbols:
+        status = "樣本不足"
+    elif thresholds_passed:
+        status = "驗證有效"
+    else:
+        status = "驗證未通過"
+    return {
+        "samples": samples,
+        "sessions": len(session_returns),
+        "unique_symbols": len(symbols),
+        "minimum_samples": minimum,
+        "minimum_sessions": minimum_sessions,
+        "minimum_symbols": minimum_symbols,
+        "win_rate_pct": round(win_rate, 1),
+        "avg_gross_return_pct": round(sum(gross_returns) / samples, 2) if samples else 0.0,
+        "avg_net_return_pct": round(avg_net, 2),
+        "benchmark_avg_return_pct": round(sum(benchmark_returns) / len(benchmark_returns), 2) if benchmark_returns else None,
+        "avg_excess_return_pct": round(avg_excess, 2) if avg_excess is not None else None,
+        "profit_factor": round(profit_factor, 2) if profit_factor is not None else None,
+        "max_drawdown_pct": max_drawdown,
+        "status": status,
+        "effective": thresholds_passed,
+    }
+
+
+def _tw_accumulation_validation(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    signals = {
+        "candidate_70": "蓄力分數≥70",
+        "strong_80": "蓄力分數≥80",
+        "launch_confirmed": "蓄力≥80且放量突破",
+    }
+    fields = {
+        "candidate_70": "tw_accumulation_candidate",
+        "strong_80": "tw_accumulation_strong",
+        "launch_confirmed": "tw_accumulation_launch_confirmed",
+    }
+    regimes: dict[str, Any] = {}
+    for regime in (None, *MARKET_REGIMES):
+        key = "all" if regime is None else regime
+        regimes[key] = {
+            "label": "全部行情" if regime is None else MARKET_REGIME_LABELS[regime],
+            "signals": {
+                name: {
+                    horizon: _tw_accumulation_metric(
+                        snapshots,
+                        horizon=horizon,
+                        signal_field=fields[name],
+                        regime=regime,
+                    )
+                    for horizon in map(str, HORIZONS)
+                }
+                for name in signals
+            },
+        }
+    return {
+        "mode": "shadow_only",
+        "affects_ai_score": False,
+        "automatic_promotion": False,
+        "round_trip_cost_pct": TW_ACCUMULATION_ROUND_TRIP_COST_PCT,
+        "cost_assumption": "台股買賣手續費0.285%＋證交稅0.3%＋滑價0.1%",
+        "overall_minimum_samples": 100,
+        "per_regime_minimum_samples": 30,
+        "pass_rule": "整體至少100筆／20交易日／10檔，分行情至少30筆／10交易日／5檔；勝率≥55%、平均淨報酬>0、平均超額>0、獲利因子≥1.2、隔日最大回撤≤8%",
+        "signals": signals,
+        "regimes": regimes,
     }
 
 
@@ -459,6 +589,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "model_leaderboards": leaderboards,
         "groups": groups,
         "regime_validation": _regime_validation(snapshots),
+        "tw_accumulation_validation": _tw_accumulation_validation(snapshots),
         "tw_threshold_calibration": _tw_threshold_calibration(snapshots),
         "calibration": {
             "trading_days_collected": collected,
@@ -588,6 +719,11 @@ def _new_snapshot(
             "model_predictions": full_day["models"],
             "consensus": full_day["consensus"],
             "trade_triggered": _trade_triggered(row, price),
+            "tw_accumulation_available": bool(row.get("tw_accumulation_available")),
+            "tw_accumulation_score": row.get("tw_accumulation_score"),
+            "tw_accumulation_candidate": bool(row.get("tw_accumulation_candidate")),
+            "tw_accumulation_strong": bool(row.get("tw_accumulation_strong")),
+            "tw_accumulation_launch_confirmed": bool(row.get("tw_accumulation_launch_confirmed")),
             "outcomes": {},
         })
     snapshot = {
@@ -814,6 +950,7 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
         "groups": public_groups,
         "tracks": summary.get("tracks", {}),
         "regime_validation": summary.get("regime_validation", {}),
+        "tw_accumulation_validation": summary.get("tw_accumulation_validation", {}),
         "recent": recent[:200],
     }
 
