@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from historical_lab import _five_day_metrics, build_features, build_report, evaluate_market
+from historical_lab import _five_day_metrics, _holding_horizon_comparison, build_features, build_report, evaluate_market
 
 
 def history(start: str, rows: int, slope: float = 0.15, jump_index: int | None = None) -> pd.DataFrame:
@@ -97,6 +97,22 @@ def test_five_day_rounds_reset_capital_and_do_not_overlap():
     assert metrics["recent_rounds"][0]["end_trade_date"] == "2024-01-06"
 
 
+def test_holding_horizons_use_same_entry_and_later_exit_without_stacking_capital():
+    histories = all_histories(110)
+    candidates = {row["symbol"]: build_features(histories[row["symbol"]]) for row in universe() if row["market"] == "US"}
+    benchmark = build_features(histories["VOO"])
+    comparison = _holding_horizon_comparison(candidates, benchmark, "US", 0.002, 0.002)
+    assert comparison["capital_is_not_stacked"] is True
+    assert comparison["cost_charged_once_per_position"] is True
+    assert set(comparison["horizons"]) == {"1", "2", "3", "5"}
+    one = comparison["horizons"]["1"]
+    five = comparison["horizons"]["5"]
+    assert one["strict"]["event_count"] > five["strict"]["event_count"]
+    assert one["recent_events"][-1]["entry_date"] == one["recent_events"][-1]["exit_date"]
+    assert five["recent_events"][-1]["entry_date"] < five["recent_events"][-1]["exit_date"]
+    assert five["strict"]["average_net_return_pct"] > one["strict"]["average_net_return_pct"]
+
+
 def test_report_is_explicitly_isolated_and_not_exact_v6(tmp_path: Path):
     report = build_report(all_histories(), universe(), tmp_path, "5y")
     assert report["mode"] == "historical_lab_only"
@@ -108,6 +124,7 @@ def test_report_is_explicitly_isolated_and_not_exact_v6(tmp_path: Path):
     assert report["methodology"]["signal_timing"].startswith("交易日收盤後")
     assert set(report["markets"]) == {"TW_STOCK", "US_STOCK", "TW_ETF", "US_ETF"}
     assert report["methodology"]["primary_evaluation"].startswith("每5個交易日")
+    assert "1、2、3、5" in report["methodology"]["exit_comparison"]
 
 
 def test_missing_market_data_is_not_treated_as_zero_return():
