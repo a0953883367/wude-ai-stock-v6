@@ -1,0 +1,81 @@
+name: 獨立歷史驗證實驗室
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - historical_lab.py
+      - search_data.json
+      - .github/workflows/historical-lab.yml
+  schedule:
+    # Weekdays 21:30 Asia/Taipei: restore the cache and append recent sessions.
+    - cron: "30 13 * * 1-5"
+    # Sunday 02:00 Asia/Taipei: redownload all five years for a clean verification.
+    - cron: "0 18 * * 6"
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: 資料更新方式
+        required: true
+        default: incremental
+        type: choice
+        options: [incremental, full]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: historical-lab
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Restore resumable market-data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/historical_lab
+          key: historical-lab-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            historical-lab-${{ runner.os }}-
+      - name: Select full or incremental refresh
+        id: mode
+        shell: bash
+        run: |
+          refresh="${{ inputs.refresh }}"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 18 * * 6" ]; then
+            refresh="full"
+          fi
+          if [ "$refresh" = "full" ]; then
+            echo "argument=--full-refresh" >> "$GITHUB_OUTPUT"
+          else
+            echo "argument=" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run the complete search and watchlist union in isolated five-year lab
+        run: python historical_lab.py --period 5y ${{ steps.mode.outputs.argument }}
+      - name: Save cache for failed-run continuation
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/historical_lab
+          key: historical-lab-${{ runner.os }}-${{ github.run_id }}
+      - name: Publish only the independent report
+        shell: bash
+        run: |
+          if git diff --quiet -- reports/historical_lab.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/historical_lab.json
+          git commit -m "更新獨立歷史驗證報表"
+          git pull --rebase origin main
+          git push origin HEAD:main
