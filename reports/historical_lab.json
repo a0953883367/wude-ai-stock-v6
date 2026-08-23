@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-23 17:53:06",
+  "generated_at": "2026-08-23 19:17:30",
   "mode": "historical_lab_only",
   "status": "partial",
   "requested_period": "5y",
@@ -9,13 +9,14 @@
   "official_ranking_affected": false,
   "official_ledgers_affected": false,
   "methodology": {
-    "version": "V6-HIST-CORE-1",
+    "version": "V6-HIST-CORE-2",
     "signal_timing": "交易日收盤後，以當日及以前資料排名",
     "execution_timing": "下一交易日官方開盤買入、同日收盤賣出",
     "portfolio": "前10名各配置10%；嚴格組未達資格保留現金；帳戶報酬與回撤採逐日複利淨值",
     "costs": "台股個股來回0.685%、台股ETF來回0.385%；美股來回0.20%；匯率另列",
     "regimes": "大盤當日收盤、MA20、MA60與20日動能分多頭／空頭／盤整",
-    "methodology_hash": "71ff4b92310bcb85"
+    "methodology_hash": "cf18cbe11e861887",
+    "primary_evaluation": "每5個交易日為一個不重疊試跑；每輪100萬元重新開始，五年各輪不串接"
   },
   "markets": {
     "TW_STOCK": {
@@ -153,6 +154,533 @@
             "average_daily_net_return_pct": -0.3833,
             "win_rate_pct": 25.37
           }
+        }
+      },
+      "five_day_rounds": {
+        "rank": {
+          "round_length_sessions": 5,
+          "round_count": 230,
+          "evaluated_sessions": 1150,
+          "unused_tail_sessions": 3,
+          "profitable_round_pct": 9.13,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -5.0216,
+          "median_net_return_pct": -4.8681,
+          "best_net_return_pct": 5.3332,
+          "worst_net_return_pct": -15.6718,
+          "p10_net_return_pct": -10.5003,
+          "p90_net_return_pct": -0.4198,
+          "average_net_profit_twd": -50215.87,
+          "worst_round_loss_twd": -156718.08,
+          "worst_round_drawdown_pct": -15.6718,
+          "average_positions": 10.0,
+          "regimes": {
+            "bull": {
+              "rounds": 97,
+              "profitable_round_pct": 13.4,
+              "average_net_return_pct": -4.4878,
+              "median_net_return_pct": -4.1272,
+              "worst_net_return_pct": -15.6718
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 3.23,
+              "average_net_return_pct": -5.9007,
+              "median_net_return_pct": -6.6536,
+              "worst_net_return_pct": -11.787
+            },
+            "sideways": {
+              "rounds": 102,
+              "profitable_round_pct": 6.86,
+              "average_net_return_pct": -5.262,
+              "median_net_return_pct": -5.448,
+              "worst_net_return_pct": -13.9244
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 219,
+              "start_signal_date": "2026-05-25",
+              "end_trade_date": "2026-06-01",
+              "regime": "bull",
+              "gross_profit_twd": -69285.27,
+              "net_profit_twd": -103535.27,
+              "net_return_pct": -10.3535,
+              "max_drawdown_pct": -10.6841,
+              "average_positions": 10.0
+            },
+            {
+              "round": 220,
+              "start_signal_date": "2026-06-01",
+              "end_trade_date": "2026-06-08",
+              "regime": "bull",
+              "gross_profit_twd": -38258.53,
+              "net_profit_twd": -72508.53,
+              "net_return_pct": -7.2509,
+              "max_drawdown_pct": -10.2003,
+              "average_positions": 10.0
+            },
+            {
+              "round": 221,
+              "start_signal_date": "2026-06-08",
+              "end_trade_date": "2026-06-15",
+              "regime": "bull",
+              "gross_profit_twd": -78009.9,
+              "net_profit_twd": -112259.9,
+              "net_return_pct": -11.226,
+              "max_drawdown_pct": -12.6808,
+              "average_positions": 10.0
+            },
+            {
+              "round": 222,
+              "start_signal_date": "2026-06-15",
+              "end_trade_date": "2026-06-23",
+              "regime": "bull",
+              "gross_profit_twd": 11196.75,
+              "net_profit_twd": -23053.25,
+              "net_return_pct": -2.3053,
+              "max_drawdown_pct": -5.2255,
+              "average_positions": 10.0
+            },
+            {
+              "round": 223,
+              "start_signal_date": "2026-06-23",
+              "end_trade_date": "2026-06-30",
+              "regime": "bull",
+              "gross_profit_twd": 1375.55,
+              "net_profit_twd": -32874.45,
+              "net_return_pct": -3.2874,
+              "max_drawdown_pct": -8.8518,
+              "average_positions": 10.0
+            },
+            {
+              "round": 224,
+              "start_signal_date": "2026-06-30",
+              "end_trade_date": "2026-07-07",
+              "regime": "bull",
+              "gross_profit_twd": -101762.23,
+              "net_profit_twd": -136012.23,
+              "net_return_pct": -13.6012,
+              "max_drawdown_pct": -13.6012,
+              "average_positions": 10.0
+            },
+            {
+              "round": 225,
+              "start_signal_date": "2026-07-07",
+              "end_trade_date": "2026-07-14",
+              "regime": "sideways",
+              "gross_profit_twd": -38414.6,
+              "net_profit_twd": -72664.6,
+              "net_return_pct": -7.2665,
+              "max_drawdown_pct": -7.2665,
+              "average_positions": 10.0
+            },
+            {
+              "round": 226,
+              "start_signal_date": "2026-07-14",
+              "end_trade_date": "2026-07-21",
+              "regime": "sideways",
+              "gross_profit_twd": -18243.86,
+              "net_profit_twd": -52493.86,
+              "net_return_pct": -5.2494,
+              "max_drawdown_pct": -8.3128,
+              "average_positions": 10.0
+            },
+            {
+              "round": 227,
+              "start_signal_date": "2026-07-21",
+              "end_trade_date": "2026-07-28",
+              "regime": "sideways",
+              "gross_profit_twd": -96602.06,
+              "net_profit_twd": -130852.06,
+              "net_return_pct": -13.0852,
+              "max_drawdown_pct": -13.0852,
+              "average_positions": 10.0
+            },
+            {
+              "round": 228,
+              "start_signal_date": "2026-07-28",
+              "end_trade_date": "2026-08-04",
+              "regime": "sideways",
+              "gross_profit_twd": -13549.09,
+              "net_profit_twd": -47799.09,
+              "net_return_pct": -4.7799,
+              "max_drawdown_pct": -10.8495,
+              "average_positions": 10.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-08-04",
+              "end_trade_date": "2026-08-11",
+              "regime": "sideways",
+              "gross_profit_twd": 6491.2,
+              "net_profit_twd": -27758.8,
+              "net_return_pct": -2.7759,
+              "max_drawdown_pct": -2.7759,
+              "average_positions": 10.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-08-11",
+              "end_trade_date": "2026-08-18",
+              "regime": "sideways",
+              "gross_profit_twd": -30322.81,
+              "net_profit_twd": -64572.81,
+              "net_return_pct": -6.4573,
+              "max_drawdown_pct": -7.3276,
+              "average_positions": 10.0
+            }
+          ]
+        },
+        "strict": {
+          "round_length_sessions": 5,
+          "round_count": 230,
+          "evaluated_sessions": 1150,
+          "unused_tail_sessions": 3,
+          "profitable_round_pct": 10.0,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -2.9424,
+          "median_net_return_pct": -2.8824,
+          "best_net_return_pct": 2.8388,
+          "worst_net_return_pct": -9.4848,
+          "p10_net_return_pct": -6.0889,
+          "p90_net_return_pct": -0.0177,
+          "average_net_profit_twd": -29424.13,
+          "worst_round_loss_twd": -94847.86,
+          "worst_round_drawdown_pct": -9.7981,
+          "average_positions": 5.78,
+          "regimes": {
+            "bull": {
+              "rounds": 97,
+              "profitable_round_pct": 11.34,
+              "average_net_return_pct": -2.7014,
+              "median_net_return_pct": -2.5183,
+              "worst_net_return_pct": -9.4848
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 6.45,
+              "average_net_return_pct": -3.2454,
+              "median_net_return_pct": -3.4699,
+              "worst_net_return_pct": -7.357
+            },
+            "sideways": {
+              "rounds": 102,
+              "profitable_round_pct": 9.8,
+              "average_net_return_pct": -3.0795,
+              "median_net_return_pct": -3.128,
+              "worst_net_return_pct": -8.763
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 219,
+              "start_signal_date": "2026-05-25",
+              "end_trade_date": "2026-06-01",
+              "regime": "bull",
+              "gross_profit_twd": -45871.83,
+              "net_profit_twd": -66421.83,
+              "net_return_pct": -6.6422,
+              "max_drawdown_pct": -7.4767,
+              "average_positions": 6.0
+            },
+            {
+              "round": 220,
+              "start_signal_date": "2026-06-01",
+              "end_trade_date": "2026-06-08",
+              "regime": "bull",
+              "gross_profit_twd": 4182.04,
+              "net_profit_twd": -10202.96,
+              "net_return_pct": -1.0203,
+              "max_drawdown_pct": -3.0513,
+              "average_positions": 4.2
+            },
+            {
+              "round": 221,
+              "start_signal_date": "2026-06-08",
+              "end_trade_date": "2026-06-15",
+              "regime": "bull",
+              "gross_profit_twd": -77037.86,
+              "net_profit_twd": -94847.86,
+              "net_return_pct": -9.4848,
+              "max_drawdown_pct": -9.7981,
+              "average_positions": 5.2
+            },
+            {
+              "round": 222,
+              "start_signal_date": "2026-06-15",
+              "end_trade_date": "2026-06-23",
+              "regime": "bull",
+              "gross_profit_twd": -4431.93,
+              "net_profit_twd": -17446.93,
+              "net_return_pct": -1.7447,
+              "max_drawdown_pct": -1.749,
+              "average_positions": 3.8
+            },
+            {
+              "round": 223,
+              "start_signal_date": "2026-06-23",
+              "end_trade_date": "2026-06-30",
+              "regime": "bull",
+              "gross_profit_twd": 3863.52,
+              "net_profit_twd": -5726.48,
+              "net_return_pct": -0.5726,
+              "max_drawdown_pct": -2.1251,
+              "average_positions": 2.8
+            },
+            {
+              "round": 224,
+              "start_signal_date": "2026-06-30",
+              "end_trade_date": "2026-07-07",
+              "regime": "bull",
+              "gross_profit_twd": -57941.83,
+              "net_profit_twd": -73696.83,
+              "net_return_pct": -7.3697,
+              "max_drawdown_pct": -8.0532,
+              "average_positions": 4.6
+            },
+            {
+              "round": 225,
+              "start_signal_date": "2026-07-07",
+              "end_trade_date": "2026-07-14",
+              "regime": "sideways",
+              "gross_profit_twd": -29283.14,
+              "net_profit_twd": -39558.14,
+              "net_return_pct": -3.9558,
+              "max_drawdown_pct": -3.9558,
+              "average_positions": 3.0
+            },
+            {
+              "round": 226,
+              "start_signal_date": "2026-07-14",
+              "end_trade_date": "2026-07-21",
+              "regime": "sideways",
+              "gross_profit_twd": -3076.92,
+              "net_profit_twd": -22256.92,
+              "net_return_pct": -2.2257,
+              "max_drawdown_pct": -4.0773,
+              "average_positions": 5.6
+            },
+            {
+              "round": 227,
+              "start_signal_date": "2026-07-21",
+              "end_trade_date": "2026-07-28",
+              "regime": "sideways",
+              "gross_profit_twd": -60454.98,
+              "net_profit_twd": -78264.98,
+              "net_return_pct": -7.8265,
+              "max_drawdown_pct": -7.8265,
+              "average_positions": 5.2
+            },
+            {
+              "round": 228,
+              "start_signal_date": "2026-07-28",
+              "end_trade_date": "2026-08-04",
+              "regime": "sideways",
+              "gross_profit_twd": -807.21,
+              "net_profit_twd": -14507.21,
+              "net_return_pct": -1.4507,
+              "max_drawdown_pct": -4.1661,
+              "average_positions": 4.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-08-04",
+              "end_trade_date": "2026-08-11",
+              "regime": "sideways",
+              "gross_profit_twd": 6337.77,
+              "net_profit_twd": -11472.23,
+              "net_return_pct": -1.1472,
+              "max_drawdown_pct": -1.1745,
+              "average_positions": 5.2
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-08-11",
+              "end_trade_date": "2026-08-18",
+              "regime": "sideways",
+              "gross_profit_twd": -11290.71,
+              "net_profit_twd": -16770.71,
+              "net_return_pct": -1.6771,
+              "max_drawdown_pct": -1.6771,
+              "average_positions": 1.6
+            }
+          ]
+        },
+        "benchmark": {
+          "round_length_sessions": 5,
+          "round_count": 230,
+          "evaluated_sessions": 1150,
+          "unused_tail_sessions": 3,
+          "profitable_round_pct": 13.04,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -1.8788,
+          "median_net_return_pct": -1.9823,
+          "best_net_return_pct": 4.4036,
+          "worst_net_return_pct": -8.5471,
+          "p10_net_return_pct": -3.8604,
+          "p90_net_return_pct": 0.4119,
+          "average_net_profit_twd": -18787.64,
+          "worst_round_loss_twd": -85471.14,
+          "worst_round_drawdown_pct": -8.5471,
+          "average_positions": 1.0,
+          "regimes": {
+            "bull": {
+              "rounds": 97,
+              "profitable_round_pct": 21.65,
+              "average_net_return_pct": -1.3348,
+              "median_net_return_pct": -1.4757,
+              "worst_net_return_pct": -6.0087
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 6.45,
+              "average_net_return_pct": -2.7997,
+              "median_net_return_pct": -2.9414,
+              "worst_net_return_pct": -8.5471
+            },
+            "sideways": {
+              "rounds": 102,
+              "profitable_round_pct": 6.86,
+              "average_net_return_pct": -2.1161,
+              "median_net_return_pct": -2.1518,
+              "worst_net_return_pct": -6.2432
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 219,
+              "start_signal_date": "2026-05-25",
+              "end_trade_date": "2026-06-01",
+              "regime": "bull",
+              "gross_profit_twd": -23259.6,
+              "net_profit_twd": -42509.6,
+              "net_return_pct": -4.251,
+              "max_drawdown_pct": -5.8503,
+              "average_positions": 1.0
+            },
+            {
+              "round": 220,
+              "start_signal_date": "2026-06-01",
+              "end_trade_date": "2026-06-08",
+              "regime": "bull",
+              "gross_profit_twd": 12543.85,
+              "net_profit_twd": -6706.15,
+              "net_return_pct": -0.6706,
+              "max_drawdown_pct": -3.2433,
+              "average_positions": 1.0
+            },
+            {
+              "round": 221,
+              "start_signal_date": "2026-06-08",
+              "end_trade_date": "2026-06-15",
+              "regime": "bull",
+              "gross_profit_twd": -21856.03,
+              "net_profit_twd": -41106.03,
+              "net_return_pct": -4.1106,
+              "max_drawdown_pct": -5.047,
+              "average_positions": 1.0
+            },
+            {
+              "round": 222,
+              "start_signal_date": "2026-06-15",
+              "end_trade_date": "2026-06-23",
+              "regime": "bull",
+              "gross_profit_twd": 9481.09,
+              "net_profit_twd": -9768.91,
+              "net_return_pct": -0.9769,
+              "max_drawdown_pct": -2.0587,
+              "average_positions": 1.0
+            },
+            {
+              "round": 223,
+              "start_signal_date": "2026-06-23",
+              "end_trade_date": "2026-06-30",
+              "regime": "bull",
+              "gross_profit_twd": -17565.02,
+              "net_profit_twd": -36815.02,
+              "net_return_pct": -3.6815,
+              "max_drawdown_pct": -4.8649,
+              "average_positions": 1.0
+            },
+            {
+              "round": 224,
+              "start_signal_date": "2026-06-30",
+              "end_trade_date": "2026-07-07",
+              "regime": "bull",
+              "gross_profit_twd": 2567.21,
+              "net_profit_twd": -16682.79,
+              "net_return_pct": -1.6683,
+              "max_drawdown_pct": -3.5966,
+              "average_positions": 1.0
+            },
+            {
+              "round": 225,
+              "start_signal_date": "2026-07-07",
+              "end_trade_date": "2026-07-14",
+              "regime": "sideways",
+              "gross_profit_twd": -28233.34,
+              "net_profit_twd": -47483.34,
+              "net_return_pct": -4.7483,
+              "max_drawdown_pct": -4.7483,
+              "average_positions": 1.0
+            },
+            {
+              "round": 226,
+              "start_signal_date": "2026-07-14",
+              "end_trade_date": "2026-07-21",
+              "regime": "sideways",
+              "gross_profit_twd": 7758.47,
+              "net_profit_twd": -11491.53,
+              "net_return_pct": -1.1492,
+              "max_drawdown_pct": -4.3889,
+              "average_positions": 1.0
+            },
+            {
+              "round": 227,
+              "start_signal_date": "2026-07-21",
+              "end_trade_date": "2026-07-28",
+              "regime": "sideways",
+              "gross_profit_twd": -28586.71,
+              "net_profit_twd": -47836.71,
+              "net_return_pct": -4.7837,
+              "max_drawdown_pct": -4.7837,
+              "average_positions": 1.0
+            },
+            {
+              "round": 228,
+              "start_signal_date": "2026-07-28",
+              "end_trade_date": "2026-08-04",
+              "regime": "sideways",
+              "gross_profit_twd": -3951.81,
+              "net_profit_twd": -23201.81,
+              "net_return_pct": -2.3202,
+              "max_drawdown_pct": -4.0152,
+              "average_positions": 1.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-08-04",
+              "end_trade_date": "2026-08-11",
+              "regime": "sideways",
+              "gross_profit_twd": 468.48,
+              "net_profit_twd": -18781.52,
+              "net_return_pct": -1.8782,
+              "max_drawdown_pct": -2.0217,
+              "average_positions": 1.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-08-11",
+              "end_trade_date": "2026-08-18",
+              "regime": "sideways",
+              "gross_profit_twd": -17314.36,
+              "net_profit_twd": -36564.36,
+              "net_return_pct": -3.6564,
+              "max_drawdown_pct": -3.6564,
+              "average_positions": 1.0
+            }
+          ]
         }
       },
       "audit_hash": "80a229ef7c255d9b",
@@ -2410,6 +2938,533 @@
           }
         }
       },
+      "five_day_rounds": {
+        "rank": {
+          "round_length_sessions": 5,
+          "round_count": 231,
+          "evaluated_sessions": 1155,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 6.93,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -2.1155,
+          "median_net_return_pct": -2.0834,
+          "best_net_return_pct": 2.1474,
+          "worst_net_return_pct": -7.7737,
+          "p10_net_return_pct": -4.1379,
+          "p90_net_return_pct": -0.4199,
+          "average_net_profit_twd": -21154.72,
+          "worst_round_loss_twd": -77736.63,
+          "worst_round_drawdown_pct": -7.8466,
+          "average_positions": 10.0,
+          "regimes": {
+            "bull": {
+              "rounds": 96,
+              "profitable_round_pct": 10.42,
+              "average_net_return_pct": -1.8906,
+              "median_net_return_pct": -1.8039,
+              "worst_net_return_pct": -7.7737
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 3.23,
+              "average_net_return_pct": -2.5237,
+              "median_net_return_pct": -2.3629,
+              "worst_net_return_pct": -6.7578
+            },
+            "sideways": {
+              "rounds": 104,
+              "profitable_round_pct": 4.81,
+              "average_net_return_pct": -2.2014,
+              "median_net_return_pct": -2.2173,
+              "worst_net_return_pct": -6.4269
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 220,
+              "start_signal_date": "2026-05-28",
+              "end_trade_date": "2026-06-04",
+              "regime": "bull",
+              "gross_profit_twd": -15240.36,
+              "net_profit_twd": -34490.36,
+              "net_return_pct": -3.449,
+              "max_drawdown_pct": -3.449,
+              "average_positions": 10.0
+            },
+            {
+              "round": 221,
+              "start_signal_date": "2026-06-04",
+              "end_trade_date": "2026-06-11",
+              "regime": "bull",
+              "gross_profit_twd": 8318.57,
+              "net_profit_twd": -10931.43,
+              "net_return_pct": -1.0931,
+              "max_drawdown_pct": -3.2522,
+              "average_positions": 10.0
+            },
+            {
+              "round": 222,
+              "start_signal_date": "2026-06-11",
+              "end_trade_date": "2026-06-18",
+              "regime": "bull",
+              "gross_profit_twd": 7482.24,
+              "net_profit_twd": -11767.76,
+              "net_return_pct": -1.1768,
+              "max_drawdown_pct": -2.1324,
+              "average_positions": 10.0
+            },
+            {
+              "round": 223,
+              "start_signal_date": "2026-06-18",
+              "end_trade_date": "2026-06-26",
+              "regime": "bull",
+              "gross_profit_twd": -52213.86,
+              "net_profit_twd": -71463.86,
+              "net_return_pct": -7.1464,
+              "max_drawdown_pct": -7.8466,
+              "average_positions": 10.0
+            },
+            {
+              "round": 224,
+              "start_signal_date": "2026-06-26",
+              "end_trade_date": "2026-07-03",
+              "regime": "sideways",
+              "gross_profit_twd": 32120.27,
+              "net_profit_twd": 12870.27,
+              "net_return_pct": 1.287,
+              "max_drawdown_pct": -0.9874,
+              "average_positions": 10.0
+            },
+            {
+              "round": 225,
+              "start_signal_date": "2026-07-03",
+              "end_trade_date": "2026-07-10",
+              "regime": "bull",
+              "gross_profit_twd": -58486.63,
+              "net_profit_twd": -77736.63,
+              "net_return_pct": -7.7737,
+              "max_drawdown_pct": -7.7737,
+              "average_positions": 10.0
+            },
+            {
+              "round": 226,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -32871.56,
+              "net_profit_twd": -52121.56,
+              "net_return_pct": -5.2122,
+              "max_drawdown_pct": -5.2122,
+              "average_positions": 10.0
+            },
+            {
+              "round": 227,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -5810.15,
+              "net_profit_twd": -25060.15,
+              "net_return_pct": -2.506,
+              "max_drawdown_pct": -2.5283,
+              "average_positions": 10.0
+            },
+            {
+              "round": 228,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": -22490.71,
+              "net_profit_twd": -41740.71,
+              "net_return_pct": -4.1741,
+              "max_drawdown_pct": -5.5916,
+              "average_positions": 10.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "sideways",
+              "gross_profit_twd": 3472.45,
+              "net_profit_twd": -15777.55,
+              "net_return_pct": -1.5778,
+              "max_drawdown_pct": -1.9229,
+              "average_positions": 10.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "sideways",
+              "gross_profit_twd": 1138.33,
+              "net_profit_twd": -18111.67,
+              "net_return_pct": -1.8112,
+              "max_drawdown_pct": -1.8129,
+              "average_positions": 10.0
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "sideways",
+              "gross_profit_twd": -24849.08,
+              "net_profit_twd": -44099.08,
+              "net_return_pct": -4.4099,
+              "max_drawdown_pct": -4.4099,
+              "average_positions": 10.0
+            }
+          ]
+        },
+        "strict": {
+          "round_length_sessions": 5,
+          "round_count": 231,
+          "evaluated_sessions": 1155,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 10.39,
+          "flat_round_pct": 20.78,
+          "average_net_return_pct": -0.599,
+          "median_net_return_pct": -0.3173,
+          "best_net_return_pct": 1.813,
+          "worst_net_return_pct": -5.4288,
+          "p10_net_return_pct": -1.7348,
+          "p90_net_return_pct": 0.0052,
+          "average_net_profit_twd": -5990.43,
+          "worst_round_loss_twd": -54287.9,
+          "worst_round_drawdown_pct": -5.5143,
+          "average_positions": 3.2,
+          "regimes": {
+            "bull": {
+              "rounds": 96,
+              "profitable_round_pct": 17.71,
+              "average_net_return_pct": -0.927,
+              "median_net_return_pct": -0.7567,
+              "worst_net_return_pct": -5.4288
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 3.23,
+              "average_net_return_pct": -0.0703,
+              "median_net_return_pct": 0.0,
+              "worst_net_return_pct": -0.5105
+            },
+            "sideways": {
+              "rounds": 104,
+              "profitable_round_pct": 5.77,
+              "average_net_return_pct": -0.4539,
+              "median_net_return_pct": -0.1819,
+              "worst_net_return_pct": -2.5371
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 220,
+              "start_signal_date": "2026-05-28",
+              "end_trade_date": "2026-06-04",
+              "regime": "bull",
+              "gross_profit_twd": -5744.69,
+              "net_profit_twd": -21529.69,
+              "net_return_pct": -2.153,
+              "max_drawdown_pct": -2.153,
+              "average_positions": 8.2
+            },
+            {
+              "round": 221,
+              "start_signal_date": "2026-06-04",
+              "end_trade_date": "2026-06-11",
+              "regime": "bull",
+              "gross_profit_twd": 14590.85,
+              "net_profit_twd": 2270.85,
+              "net_return_pct": 0.2271,
+              "max_drawdown_pct": -1.4994,
+              "average_positions": 6.4
+            },
+            {
+              "round": 222,
+              "start_signal_date": "2026-06-11",
+              "end_trade_date": "2026-06-18",
+              "regime": "bull",
+              "gross_profit_twd": 4741.26,
+              "net_profit_twd": -2188.74,
+              "net_return_pct": -0.2189,
+              "max_drawdown_pct": -0.4323,
+              "average_positions": 3.6
+            },
+            {
+              "round": 223,
+              "start_signal_date": "2026-06-18",
+              "end_trade_date": "2026-06-26",
+              "regime": "bull",
+              "gross_profit_twd": -37414.57,
+              "net_profit_twd": -51274.57,
+              "net_return_pct": -5.1275,
+              "max_drawdown_pct": -5.3099,
+              "average_positions": 7.2
+            },
+            {
+              "round": 224,
+              "start_signal_date": "2026-06-26",
+              "end_trade_date": "2026-07-03",
+              "regime": "sideways",
+              "gross_profit_twd": 15617.7,
+              "net_profit_twd": 7532.7,
+              "net_return_pct": 0.7533,
+              "max_drawdown_pct": -0.1354,
+              "average_positions": 4.2
+            },
+            {
+              "round": 225,
+              "start_signal_date": "2026-07-03",
+              "end_trade_date": "2026-07-10",
+              "regime": "bull",
+              "gross_profit_twd": -36600.02,
+              "net_profit_twd": -43530.02,
+              "net_return_pct": -4.353,
+              "max_drawdown_pct": -4.353,
+              "average_positions": 3.6
+            },
+            {
+              "round": 226,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": 1124.46,
+              "net_profit_twd": -415.54,
+              "net_return_pct": -0.0416,
+              "max_drawdown_pct": -0.0766,
+              "average_positions": 0.8
+            },
+            {
+              "round": 227,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": 229.44,
+              "net_profit_twd": -540.56,
+              "net_return_pct": -0.0541,
+              "max_drawdown_pct": -0.0541,
+              "average_positions": 0.4
+            },
+            {
+              "round": 228,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": 0.0,
+              "net_profit_twd": 0.0,
+              "net_return_pct": 0.0,
+              "max_drawdown_pct": 0.0,
+              "average_positions": 0.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "sideways",
+              "gross_profit_twd": 2230.56,
+              "net_profit_twd": -79.44,
+              "net_return_pct": -0.0079,
+              "max_drawdown_pct": -0.1464,
+              "average_positions": 1.2
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "sideways",
+              "gross_profit_twd": -190.84,
+              "net_profit_twd": -575.84,
+              "net_return_pct": -0.0576,
+              "max_drawdown_pct": -0.0576,
+              "average_positions": 0.2
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "sideways",
+              "gross_profit_twd": -619.8,
+              "net_profit_twd": -1774.8,
+              "net_return_pct": -0.1775,
+              "max_drawdown_pct": -0.1775,
+              "average_positions": 0.6
+            }
+          ]
+        },
+        "benchmark": {
+          "round_length_sessions": 5,
+          "round_count": 231,
+          "evaluated_sessions": 1155,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 14.72,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -1.873,
+          "median_net_return_pct": -1.95,
+          "best_net_return_pct": 4.4036,
+          "worst_net_return_pct": -8.5471,
+          "p10_net_return_pct": -4.0266,
+          "p90_net_return_pct": 0.5038,
+          "average_net_profit_twd": -18730.32,
+          "worst_round_loss_twd": -85471.14,
+          "worst_round_drawdown_pct": -8.5471,
+          "average_positions": 1.0,
+          "regimes": {
+            "bull": {
+              "rounds": 96,
+              "profitable_round_pct": 25.0,
+              "average_net_return_pct": -1.3842,
+              "median_net_return_pct": -1.4781,
+              "worst_net_return_pct": -6.3437
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 6.45,
+              "average_net_return_pct": -2.7997,
+              "median_net_return_pct": -2.9414,
+              "worst_net_return_pct": -8.5471
+            },
+            "sideways": {
+              "rounds": 104,
+              "profitable_round_pct": 7.69,
+              "average_net_return_pct": -2.048,
+              "median_net_return_pct": -2.168,
+              "worst_net_return_pct": -6.2432
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 220,
+              "start_signal_date": "2026-05-28",
+              "end_trade_date": "2026-06-04",
+              "regime": "bull",
+              "gross_profit_twd": 14755.56,
+              "net_profit_twd": -4494.44,
+              "net_return_pct": -0.4494,
+              "max_drawdown_pct": -2.1585,
+              "average_positions": 1.0
+            },
+            {
+              "round": 221,
+              "start_signal_date": "2026-06-04",
+              "end_trade_date": "2026-06-11",
+              "regime": "bull",
+              "gross_profit_twd": 10789.03,
+              "net_profit_twd": -8460.97,
+              "net_return_pct": -0.8461,
+              "max_drawdown_pct": -3.1363,
+              "average_positions": 1.0
+            },
+            {
+              "round": 222,
+              "start_signal_date": "2026-06-11",
+              "end_trade_date": "2026-06-18",
+              "regime": "bull",
+              "gross_profit_twd": -250.46,
+              "net_profit_twd": -19500.46,
+              "net_return_pct": -1.95,
+              "max_drawdown_pct": -2.4128,
+              "average_positions": 1.0
+            },
+            {
+              "round": 223,
+              "start_signal_date": "2026-06-18",
+              "end_trade_date": "2026-06-26",
+              "regime": "bull",
+              "gross_profit_twd": -38531.51,
+              "net_profit_twd": -57781.51,
+              "net_return_pct": -5.7782,
+              "max_drawdown_pct": -6.8662,
+              "average_positions": 1.0
+            },
+            {
+              "round": 224,
+              "start_signal_date": "2026-06-26",
+              "end_trade_date": "2026-07-03",
+              "regime": "sideways",
+              "gross_profit_twd": 51086.83,
+              "net_profit_twd": 31836.83,
+              "net_return_pct": 3.1837,
+              "max_drawdown_pct": -0.7855,
+              "average_positions": 1.0
+            },
+            {
+              "round": 225,
+              "start_signal_date": "2026-07-03",
+              "end_trade_date": "2026-07-10",
+              "regime": "bull",
+              "gross_profit_twd": -37446.2,
+              "net_profit_twd": -56696.2,
+              "net_return_pct": -5.6696,
+              "max_drawdown_pct": -5.6696,
+              "average_positions": 1.0
+            },
+            {
+              "round": 226,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -27033.81,
+              "net_profit_twd": -46283.81,
+              "net_return_pct": -4.6284,
+              "max_drawdown_pct": -4.6284,
+              "average_positions": 1.0
+            },
+            {
+              "round": 227,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -2846.15,
+              "net_profit_twd": -22096.15,
+              "net_return_pct": -2.2096,
+              "max_drawdown_pct": -2.9202,
+              "average_positions": 1.0
+            },
+            {
+              "round": 228,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": -14672.41,
+              "net_profit_twd": -33922.41,
+              "net_return_pct": -3.3922,
+              "max_drawdown_pct": -5.8572,
+              "average_positions": 1.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "sideways",
+              "gross_profit_twd": -8186.01,
+              "net_profit_twd": -27436.01,
+              "net_return_pct": -2.7436,
+              "max_drawdown_pct": -2.7436,
+              "average_positions": 1.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "sideways",
+              "gross_profit_twd": 5431.03,
+              "net_profit_twd": -13818.97,
+              "net_return_pct": -1.3819,
+              "max_drawdown_pct": -1.4759,
+              "average_positions": 1.0
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "sideways",
+              "gross_profit_twd": -9255.64,
+              "net_profit_twd": -28505.64,
+              "net_return_pct": -2.8506,
+              "max_drawdown_pct": -3.2844,
+              "average_positions": 1.0
+            }
+          ]
+        }
+      },
       "audit_hash": "49613e6e85f68162",
       "recent_days": [
         {
@@ -4658,6 +5713,533 @@
             "average_daily_net_return_pct": -0.196,
             "win_rate_pct": 40.72
           }
+        }
+      },
+      "five_day_rounds": {
+        "rank": {
+          "round_length_sessions": 5,
+          "round_count": 239,
+          "evaluated_sessions": 1195,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 40.59,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -0.9708,
+          "median_net_return_pct": -1.3086,
+          "best_net_return_pct": 15.2987,
+          "worst_net_return_pct": -20.4029,
+          "p10_net_return_pct": -6.3553,
+          "p90_net_return_pct": 5.5312,
+          "average_net_profit_twd": -9708.28,
+          "worst_round_loss_twd": -204029.41,
+          "worst_round_drawdown_pct": -21.8221,
+          "average_positions": 10.0,
+          "regimes": {
+            "bull": {
+              "rounds": 83,
+              "profitable_round_pct": 48.19,
+              "average_net_return_pct": -0.5149,
+              "median_net_return_pct": -0.8044,
+              "worst_net_return_pct": -12.3812
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 35.48,
+              "average_net_return_pct": -1.8522,
+              "median_net_return_pct": -1.7059,
+              "worst_net_return_pct": -8.9744
+            },
+            "sideways": {
+              "rounds": 125,
+              "profitable_round_pct": 36.8,
+              "average_net_return_pct": -1.055,
+              "median_net_return_pct": -1.2692,
+              "worst_net_return_pct": -20.4029
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 228,
+              "start_signal_date": "2026-05-27",
+              "end_trade_date": "2026-06-03",
+              "regime": "bull",
+              "gross_profit_twd": -60353.8,
+              "net_profit_twd": -70353.8,
+              "net_return_pct": -7.0354,
+              "max_drawdown_pct": -7.3548,
+              "average_positions": 10.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-06-03",
+              "end_trade_date": "2026-06-10",
+              "regime": "sideways",
+              "gross_profit_twd": -108793.59,
+              "net_profit_twd": -118793.59,
+              "net_return_pct": -11.8794,
+              "max_drawdown_pct": -15.0829,
+              "average_positions": 10.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-06-10",
+              "end_trade_date": "2026-06-17",
+              "regime": "sideways",
+              "gross_profit_twd": 57126.54,
+              "net_profit_twd": 47126.54,
+              "net_return_pct": 4.7127,
+              "max_drawdown_pct": -3.1259,
+              "average_positions": 10.0
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-06-17",
+              "end_trade_date": "2026-06-25",
+              "regime": "sideways",
+              "gross_profit_twd": -1432.96,
+              "net_profit_twd": -11432.96,
+              "net_return_pct": -1.1433,
+              "max_drawdown_pct": -2.8451,
+              "average_positions": 10.0
+            },
+            {
+              "round": 232,
+              "start_signal_date": "2026-06-25",
+              "end_trade_date": "2026-07-02",
+              "regime": "sideways",
+              "gross_profit_twd": -42074.22,
+              "net_profit_twd": -52074.22,
+              "net_return_pct": -5.2074,
+              "max_drawdown_pct": -11.8289,
+              "average_positions": 10.0
+            },
+            {
+              "round": 233,
+              "start_signal_date": "2026-07-02",
+              "end_trade_date": "2026-07-10",
+              "regime": "sideways",
+              "gross_profit_twd": -7478.28,
+              "net_profit_twd": -17478.28,
+              "net_return_pct": -1.7478,
+              "max_drawdown_pct": -2.9315,
+              "average_positions": 10.0
+            },
+            {
+              "round": 234,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -33673.53,
+              "net_profit_twd": -43673.53,
+              "net_return_pct": -4.3674,
+              "max_drawdown_pct": -4.588,
+              "average_positions": 10.0
+            },
+            {
+              "round": 235,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -29245.84,
+              "net_profit_twd": -39245.84,
+              "net_return_pct": -3.9246,
+              "max_drawdown_pct": -4.0404,
+              "average_positions": 10.0
+            },
+            {
+              "round": 236,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": 1073.47,
+              "net_profit_twd": -8926.53,
+              "net_return_pct": -0.8927,
+              "max_drawdown_pct": -1.6015,
+              "average_positions": 10.0
+            },
+            {
+              "round": 237,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "bull",
+              "gross_profit_twd": 63382.22,
+              "net_profit_twd": 53382.22,
+              "net_return_pct": 5.3382,
+              "max_drawdown_pct": -1.2855,
+              "average_positions": 10.0
+            },
+            {
+              "round": 238,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "bull",
+              "gross_profit_twd": 1955.87,
+              "net_profit_twd": -8044.13,
+              "net_return_pct": -0.8044,
+              "max_drawdown_pct": -2.8148,
+              "average_positions": 10.0
+            },
+            {
+              "round": 239,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "bull",
+              "gross_profit_twd": -28307.53,
+              "net_profit_twd": -38307.53,
+              "net_return_pct": -3.8308,
+              "max_drawdown_pct": -4.2305,
+              "average_positions": 10.0
+            }
+          ]
+        },
+        "strict": {
+          "round_length_sessions": 5,
+          "round_count": 239,
+          "evaluated_sessions": 1195,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 41.84,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -0.4295,
+          "median_net_return_pct": -0.3475,
+          "best_net_return_pct": 10.4823,
+          "worst_net_return_pct": -7.3533,
+          "p10_net_return_pct": -3.3439,
+          "p90_net_return_pct": 2.5318,
+          "average_net_profit_twd": -4294.67,
+          "worst_round_loss_twd": -73533.27,
+          "worst_round_drawdown_pct": -7.364,
+          "average_positions": 4.78,
+          "regimes": {
+            "bull": {
+              "rounds": 83,
+              "profitable_round_pct": 48.19,
+              "average_net_return_pct": -0.2948,
+              "median_net_return_pct": -0.1511,
+              "worst_net_return_pct": -6.2736
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 32.26,
+              "average_net_return_pct": -0.154,
+              "median_net_return_pct": -0.0572,
+              "worst_net_return_pct": -4.32
+            },
+            "sideways": {
+              "rounds": 125,
+              "profitable_round_pct": 40.0,
+              "average_net_return_pct": -0.5872,
+              "median_net_return_pct": -0.4835,
+              "worst_net_return_pct": -7.3533
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 228,
+              "start_signal_date": "2026-05-27",
+              "end_trade_date": "2026-06-03",
+              "regime": "bull",
+              "gross_profit_twd": 3314.42,
+              "net_profit_twd": 1114.42,
+              "net_return_pct": 0.1114,
+              "max_drawdown_pct": -0.6559,
+              "average_positions": 2.2
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-06-03",
+              "end_trade_date": "2026-06-10",
+              "regime": "sideways",
+              "gross_profit_twd": -58421.85,
+              "net_profit_twd": -64221.85,
+              "net_return_pct": -6.4222,
+              "max_drawdown_pct": -7.1173,
+              "average_positions": 5.8
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-06-10",
+              "end_trade_date": "2026-06-17",
+              "regime": "sideways",
+              "gross_profit_twd": 39194.06,
+              "net_profit_twd": 35794.06,
+              "net_return_pct": 3.5794,
+              "max_drawdown_pct": -1.1978,
+              "average_positions": 3.4
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-06-17",
+              "end_trade_date": "2026-06-25",
+              "regime": "sideways",
+              "gross_profit_twd": 1943.95,
+              "net_profit_twd": -2256.05,
+              "net_return_pct": -0.2256,
+              "max_drawdown_pct": -1.4287,
+              "average_positions": 4.2
+            },
+            {
+              "round": 232,
+              "start_signal_date": "2026-06-25",
+              "end_trade_date": "2026-07-02",
+              "regime": "sideways",
+              "gross_profit_twd": -47560.57,
+              "net_profit_twd": -51760.57,
+              "net_return_pct": -5.1761,
+              "max_drawdown_pct": -7.364,
+              "average_positions": 4.2
+            },
+            {
+              "round": 233,
+              "start_signal_date": "2026-07-02",
+              "end_trade_date": "2026-07-10",
+              "regime": "sideways",
+              "gross_profit_twd": -11401.79,
+              "net_profit_twd": -17201.79,
+              "net_return_pct": -1.7202,
+              "max_drawdown_pct": -2.0953,
+              "average_positions": 5.8
+            },
+            {
+              "round": 234,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -12332.91,
+              "net_profit_twd": -15732.91,
+              "net_return_pct": -1.5733,
+              "max_drawdown_pct": -2.2846,
+              "average_positions": 3.4
+            },
+            {
+              "round": 235,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -17848.82,
+              "net_profit_twd": -22648.82,
+              "net_return_pct": -2.2649,
+              "max_drawdown_pct": -2.2649,
+              "average_positions": 4.8
+            },
+            {
+              "round": 236,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": 6248.23,
+              "net_profit_twd": -351.77,
+              "net_return_pct": -0.0352,
+              "max_drawdown_pct": -0.4264,
+              "average_positions": 6.6
+            },
+            {
+              "round": 237,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "bull",
+              "gross_profit_twd": 27057.15,
+              "net_profit_twd": 20457.15,
+              "net_return_pct": 2.0457,
+              "max_drawdown_pct": -1.9933,
+              "average_positions": 6.6
+            },
+            {
+              "round": 238,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "bull",
+              "gross_profit_twd": 2988.37,
+              "net_profit_twd": -411.63,
+              "net_return_pct": -0.0412,
+              "max_drawdown_pct": -1.2761,
+              "average_positions": 3.4
+            },
+            {
+              "round": 239,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "bull",
+              "gross_profit_twd": -5863.94,
+              "net_profit_twd": -9863.94,
+              "net_return_pct": -0.9864,
+              "max_drawdown_pct": -1.1362,
+              "average_positions": 4.0
+            }
+          ]
+        },
+        "benchmark": {
+          "round_length_sessions": 5,
+          "round_count": 239,
+          "evaluated_sessions": 1195,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 29.29,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -0.8895,
+          "median_net_return_pct": -0.7895,
+          "best_net_return_pct": 3.9908,
+          "worst_net_return_pct": -6.9731,
+          "p10_net_return_pct": -3.354,
+          "p90_net_return_pct": 1.2445,
+          "average_net_profit_twd": -8895.34,
+          "worst_round_loss_twd": -69730.54,
+          "worst_round_drawdown_pct": -6.9731,
+          "average_positions": 1.0,
+          "regimes": {
+            "bull": {
+              "rounds": 83,
+              "profitable_round_pct": 27.71,
+              "average_net_return_pct": -0.6771,
+              "median_net_return_pct": -0.5508,
+              "worst_net_return_pct": -3.8912
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 41.94,
+              "average_net_return_pct": -0.6016,
+              "median_net_return_pct": -0.881,
+              "worst_net_return_pct": -5.2769
+            },
+            "sideways": {
+              "rounds": 125,
+              "profitable_round_pct": 27.2,
+              "average_net_return_pct": -1.102,
+              "median_net_return_pct": -0.9355,
+              "worst_net_return_pct": -6.9731
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 228,
+              "start_signal_date": "2026-05-27",
+              "end_trade_date": "2026-06-03",
+              "regime": "bull",
+              "gross_profit_twd": 8519.49,
+              "net_profit_twd": -1480.51,
+              "net_return_pct": -0.1481,
+              "max_drawdown_pct": -0.7294,
+              "average_positions": 1.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-06-03",
+              "end_trade_date": "2026-06-10",
+              "regime": "sideways",
+              "gross_profit_twd": -38328.3,
+              "net_profit_twd": -48328.3,
+              "net_return_pct": -4.8328,
+              "max_drawdown_pct": -5.2694,
+              "average_positions": 1.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-06-10",
+              "end_trade_date": "2026-06-17",
+              "regime": "sideways",
+              "gross_profit_twd": -2346.58,
+              "net_profit_twd": -12346.58,
+              "net_return_pct": -1.2347,
+              "max_drawdown_pct": -2.316,
+              "average_positions": 1.0
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-06-17",
+              "end_trade_date": "2026-06-25",
+              "regime": "sideways",
+              "gross_profit_twd": -17118.93,
+              "net_profit_twd": -27118.93,
+              "net_return_pct": -2.7119,
+              "max_drawdown_pct": -2.7119,
+              "average_positions": 1.0
+            },
+            {
+              "round": 232,
+              "start_signal_date": "2026-06-25",
+              "end_trade_date": "2026-07-02",
+              "regime": "sideways",
+              "gross_profit_twd": 12365.12,
+              "net_profit_twd": 2365.12,
+              "net_return_pct": 0.2365,
+              "max_drawdown_pct": -0.5998,
+              "average_positions": 1.0
+            },
+            {
+              "round": 233,
+              "start_signal_date": "2026-07-02",
+              "end_trade_date": "2026-07-10",
+              "regime": "sideways",
+              "gross_profit_twd": 12404.49,
+              "net_profit_twd": 2404.49,
+              "net_return_pct": 0.2404,
+              "max_drawdown_pct": -0.5616,
+              "average_positions": 1.0
+            },
+            {
+              "round": 234,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -3548.16,
+              "net_profit_twd": -13548.16,
+              "net_return_pct": -1.3548,
+              "max_drawdown_pct": -1.3548,
+              "average_positions": 1.0
+            },
+            {
+              "round": 235,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -3500.06,
+              "net_profit_twd": -13500.06,
+              "net_return_pct": -1.35,
+              "max_drawdown_pct": -1.35,
+              "average_positions": 1.0
+            },
+            {
+              "round": 236,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": -8687.51,
+              "net_profit_twd": -18687.51,
+              "net_return_pct": -1.8688,
+              "max_drawdown_pct": -2.5589,
+              "average_positions": 1.0
+            },
+            {
+              "round": 237,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "bull",
+              "gross_profit_twd": 17899.18,
+              "net_profit_twd": 7899.18,
+              "net_return_pct": 0.7899,
+              "max_drawdown_pct": -1.3643,
+              "average_positions": 1.0
+            },
+            {
+              "round": 238,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "bull",
+              "gross_profit_twd": -6334.19,
+              "net_profit_twd": -16334.19,
+              "net_return_pct": -1.6334,
+              "max_drawdown_pct": -1.6334,
+              "average_positions": 1.0
+            },
+            {
+              "round": 239,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "bull",
+              "gross_profit_twd": -12875.9,
+              "net_profit_twd": -22875.9,
+              "net_return_pct": -2.2876,
+              "max_drawdown_pct": -2.2876,
+              "average_positions": 1.0
+            }
+          ]
         }
       },
       "audit_hash": "48de9064adeb68d5",
@@ -6910,6 +8492,533 @@
             "average_daily_net_return_pct": -0.196,
             "win_rate_pct": 40.72
           }
+        }
+      },
+      "five_day_rounds": {
+        "rank": {
+          "round_length_sessions": 5,
+          "round_count": 239,
+          "evaluated_sessions": 1195,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 35.56,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -0.9729,
+          "median_net_return_pct": -0.9411,
+          "best_net_return_pct": 6.2988,
+          "worst_net_return_pct": -9.1195,
+          "p10_net_return_pct": -4.1533,
+          "p90_net_return_pct": 2.1802,
+          "average_net_profit_twd": -9728.53,
+          "worst_round_loss_twd": -91195.11,
+          "worst_round_drawdown_pct": -10.5128,
+          "average_positions": 10.0,
+          "regimes": {
+            "bull": {
+              "rounds": 83,
+              "profitable_round_pct": 33.73,
+              "average_net_return_pct": -0.9203,
+              "median_net_return_pct": -0.9365,
+              "worst_net_return_pct": -4.8635
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 48.39,
+              "average_net_return_pct": -0.3922,
+              "median_net_return_pct": -0.6155,
+              "worst_net_return_pct": -6.8378
+            },
+            "sideways": {
+              "rounds": 125,
+              "profitable_round_pct": 33.6,
+              "average_net_return_pct": -1.1518,
+              "median_net_return_pct": -1.1704,
+              "worst_net_return_pct": -9.1195
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 228,
+              "start_signal_date": "2026-05-27",
+              "end_trade_date": "2026-06-03",
+              "regime": "bull",
+              "gross_profit_twd": 34331.84,
+              "net_profit_twd": 24331.84,
+              "net_return_pct": 2.4332,
+              "max_drawdown_pct": -1.7011,
+              "average_positions": 10.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-06-03",
+              "end_trade_date": "2026-06-10",
+              "regime": "sideways",
+              "gross_profit_twd": -81195.11,
+              "net_profit_twd": -91195.11,
+              "net_return_pct": -9.1195,
+              "max_drawdown_pct": -10.5128,
+              "average_positions": 10.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-06-10",
+              "end_trade_date": "2026-06-17",
+              "regime": "sideways",
+              "gross_profit_twd": 7630.93,
+              "net_profit_twd": -2369.07,
+              "net_return_pct": -0.2369,
+              "max_drawdown_pct": -3.5562,
+              "average_positions": 10.0
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-06-17",
+              "end_trade_date": "2026-06-25",
+              "regime": "sideways",
+              "gross_profit_twd": -31540.5,
+              "net_profit_twd": -41540.5,
+              "net_return_pct": -4.154,
+              "max_drawdown_pct": -4.154,
+              "average_positions": 10.0
+            },
+            {
+              "round": 232,
+              "start_signal_date": "2026-06-25",
+              "end_trade_date": "2026-07-02",
+              "regime": "sideways",
+              "gross_profit_twd": 27696.99,
+              "net_profit_twd": 17696.99,
+              "net_return_pct": 1.7697,
+              "max_drawdown_pct": -1.4961,
+              "average_positions": 10.0
+            },
+            {
+              "round": 233,
+              "start_signal_date": "2026-07-02",
+              "end_trade_date": "2026-07-10",
+              "regime": "sideways",
+              "gross_profit_twd": 7048.76,
+              "net_profit_twd": -2951.24,
+              "net_return_pct": -0.2951,
+              "max_drawdown_pct": -2.0073,
+              "average_positions": 10.0
+            },
+            {
+              "round": 234,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": 10765.26,
+              "net_profit_twd": 765.26,
+              "net_return_pct": 0.0765,
+              "max_drawdown_pct": -2.6295,
+              "average_positions": 10.0
+            },
+            {
+              "round": 235,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -27208.83,
+              "net_profit_twd": -37208.83,
+              "net_return_pct": -3.7209,
+              "max_drawdown_pct": -3.7209,
+              "average_positions": 10.0
+            },
+            {
+              "round": 236,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": 7024.67,
+              "net_profit_twd": -2975.33,
+              "net_return_pct": -0.2975,
+              "max_drawdown_pct": -1.5356,
+              "average_positions": 10.0
+            },
+            {
+              "round": 237,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "bull",
+              "gross_profit_twd": 42482.53,
+              "net_profit_twd": 32482.53,
+              "net_return_pct": 3.2483,
+              "max_drawdown_pct": -1.2847,
+              "average_positions": 10.0
+            },
+            {
+              "round": 238,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "bull",
+              "gross_profit_twd": 24739.79,
+              "net_profit_twd": 14739.79,
+              "net_return_pct": 1.474,
+              "max_drawdown_pct": -1.3485,
+              "average_positions": 10.0
+            },
+            {
+              "round": 239,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "bull",
+              "gross_profit_twd": -21428.11,
+              "net_profit_twd": -31428.11,
+              "net_return_pct": -3.1428,
+              "max_drawdown_pct": -3.5471,
+              "average_positions": 10.0
+            }
+          ]
+        },
+        "strict": {
+          "round_length_sessions": 5,
+          "round_count": 239,
+          "evaluated_sessions": 1195,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 28.03,
+          "flat_round_pct": 12.55,
+          "average_net_return_pct": -0.4942,
+          "median_net_return_pct": -0.1938,
+          "best_net_return_pct": 3.765,
+          "worst_net_return_pct": -9.59,
+          "p10_net_return_pct": -2.0753,
+          "p90_net_return_pct": 0.6727,
+          "average_net_profit_twd": -4942.2,
+          "worst_round_loss_twd": -95900.44,
+          "worst_round_drawdown_pct": -10.1223,
+          "average_positions": 3.75,
+          "regimes": {
+            "bull": {
+              "rounds": 83,
+              "profitable_round_pct": 38.55,
+              "average_net_return_pct": -0.5715,
+              "median_net_return_pct": -0.3078,
+              "worst_net_return_pct": -4.4292
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 3.23,
+              "average_net_return_pct": -0.1467,
+              "median_net_return_pct": 0.0,
+              "worst_net_return_pct": -0.9458
+            },
+            "sideways": {
+              "rounds": 125,
+              "profitable_round_pct": 27.2,
+              "average_net_return_pct": -0.5291,
+              "median_net_return_pct": -0.1968,
+              "worst_net_return_pct": -9.59
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 228,
+              "start_signal_date": "2026-05-27",
+              "end_trade_date": "2026-06-03",
+              "regime": "bull",
+              "gross_profit_twd": 34575.27,
+              "net_profit_twd": 26975.27,
+              "net_return_pct": 2.6975,
+              "max_drawdown_pct": -0.9946,
+              "average_positions": 7.6
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-06-03",
+              "end_trade_date": "2026-06-10",
+              "regime": "sideways",
+              "gross_profit_twd": -88500.44,
+              "net_profit_twd": -95900.44,
+              "net_return_pct": -9.59,
+              "max_drawdown_pct": -10.1223,
+              "average_positions": 7.4
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-06-10",
+              "end_trade_date": "2026-06-17",
+              "regime": "sideways",
+              "gross_profit_twd": -24450.98,
+              "net_profit_twd": -30050.98,
+              "net_return_pct": -3.0051,
+              "max_drawdown_pct": -3.0051,
+              "average_positions": 5.6
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-06-17",
+              "end_trade_date": "2026-06-25",
+              "regime": "sideways",
+              "gross_profit_twd": -9962.4,
+              "net_profit_twd": -14562.4,
+              "net_return_pct": -1.4562,
+              "max_drawdown_pct": -1.4562,
+              "average_positions": 4.6
+            },
+            {
+              "round": 232,
+              "start_signal_date": "2026-06-25",
+              "end_trade_date": "2026-07-02",
+              "regime": "sideways",
+              "gross_profit_twd": 9469.43,
+              "net_profit_twd": 6669.43,
+              "net_return_pct": 0.6669,
+              "max_drawdown_pct": -0.5563,
+              "average_positions": 2.8
+            },
+            {
+              "round": 233,
+              "start_signal_date": "2026-07-02",
+              "end_trade_date": "2026-07-10",
+              "regime": "sideways",
+              "gross_profit_twd": 5583.35,
+              "net_profit_twd": 2783.35,
+              "net_return_pct": 0.2783,
+              "max_drawdown_pct": -0.8625,
+              "average_positions": 2.8
+            },
+            {
+              "round": 234,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -5722.15,
+              "net_profit_twd": -7322.15,
+              "net_return_pct": -0.7322,
+              "max_drawdown_pct": -0.7322,
+              "average_positions": 1.6
+            },
+            {
+              "round": 235,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -12111.99,
+              "net_profit_twd": -13911.99,
+              "net_return_pct": -1.3912,
+              "max_drawdown_pct": -1.3912,
+              "average_positions": 1.8
+            },
+            {
+              "round": 236,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": 1680.59,
+              "net_profit_twd": -319.41,
+              "net_return_pct": -0.0319,
+              "max_drawdown_pct": -0.4174,
+              "average_positions": 2.0
+            },
+            {
+              "round": 237,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "bull",
+              "gross_profit_twd": 23782.56,
+              "net_profit_twd": 18382.56,
+              "net_return_pct": 1.8383,
+              "max_drawdown_pct": -0.7359,
+              "average_positions": 5.4
+            },
+            {
+              "round": 238,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "bull",
+              "gross_profit_twd": 14753.32,
+              "net_profit_twd": 12553.32,
+              "net_return_pct": 1.2553,
+              "max_drawdown_pct": -0.2523,
+              "average_positions": 2.2
+            },
+            {
+              "round": 239,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "bull",
+              "gross_profit_twd": -15580.49,
+              "net_profit_twd": -18780.49,
+              "net_return_pct": -1.878,
+              "max_drawdown_pct": -1.878,
+              "average_positions": 3.2
+            }
+          ]
+        },
+        "benchmark": {
+          "round_length_sessions": 5,
+          "round_count": 239,
+          "evaluated_sessions": 1195,
+          "unused_tail_sessions": 0,
+          "profitable_round_pct": 29.29,
+          "flat_round_pct": 0.0,
+          "average_net_return_pct": -0.8895,
+          "median_net_return_pct": -0.7895,
+          "best_net_return_pct": 3.9908,
+          "worst_net_return_pct": -6.9731,
+          "p10_net_return_pct": -3.354,
+          "p90_net_return_pct": 1.2445,
+          "average_net_profit_twd": -8895.34,
+          "worst_round_loss_twd": -69730.54,
+          "worst_round_drawdown_pct": -6.9731,
+          "average_positions": 1.0,
+          "regimes": {
+            "bull": {
+              "rounds": 83,
+              "profitable_round_pct": 27.71,
+              "average_net_return_pct": -0.6771,
+              "median_net_return_pct": -0.5508,
+              "worst_net_return_pct": -3.8912
+            },
+            "bear": {
+              "rounds": 31,
+              "profitable_round_pct": 41.94,
+              "average_net_return_pct": -0.6016,
+              "median_net_return_pct": -0.881,
+              "worst_net_return_pct": -5.2769
+            },
+            "sideways": {
+              "rounds": 125,
+              "profitable_round_pct": 27.2,
+              "average_net_return_pct": -1.102,
+              "median_net_return_pct": -0.9355,
+              "worst_net_return_pct": -6.9731
+            }
+          },
+          "recent_rounds": [
+            {
+              "round": 228,
+              "start_signal_date": "2026-05-27",
+              "end_trade_date": "2026-06-03",
+              "regime": "bull",
+              "gross_profit_twd": 8519.49,
+              "net_profit_twd": -1480.51,
+              "net_return_pct": -0.1481,
+              "max_drawdown_pct": -0.7294,
+              "average_positions": 1.0
+            },
+            {
+              "round": 229,
+              "start_signal_date": "2026-06-03",
+              "end_trade_date": "2026-06-10",
+              "regime": "sideways",
+              "gross_profit_twd": -38328.3,
+              "net_profit_twd": -48328.3,
+              "net_return_pct": -4.8328,
+              "max_drawdown_pct": -5.2694,
+              "average_positions": 1.0
+            },
+            {
+              "round": 230,
+              "start_signal_date": "2026-06-10",
+              "end_trade_date": "2026-06-17",
+              "regime": "sideways",
+              "gross_profit_twd": -2346.58,
+              "net_profit_twd": -12346.58,
+              "net_return_pct": -1.2347,
+              "max_drawdown_pct": -2.316,
+              "average_positions": 1.0
+            },
+            {
+              "round": 231,
+              "start_signal_date": "2026-06-17",
+              "end_trade_date": "2026-06-25",
+              "regime": "sideways",
+              "gross_profit_twd": -17118.93,
+              "net_profit_twd": -27118.93,
+              "net_return_pct": -2.7119,
+              "max_drawdown_pct": -2.7119,
+              "average_positions": 1.0
+            },
+            {
+              "round": 232,
+              "start_signal_date": "2026-06-25",
+              "end_trade_date": "2026-07-02",
+              "regime": "sideways",
+              "gross_profit_twd": 12365.12,
+              "net_profit_twd": 2365.12,
+              "net_return_pct": 0.2365,
+              "max_drawdown_pct": -0.5998,
+              "average_positions": 1.0
+            },
+            {
+              "round": 233,
+              "start_signal_date": "2026-07-02",
+              "end_trade_date": "2026-07-10",
+              "regime": "sideways",
+              "gross_profit_twd": 12404.49,
+              "net_profit_twd": 2404.49,
+              "net_return_pct": 0.2404,
+              "max_drawdown_pct": -0.5616,
+              "average_positions": 1.0
+            },
+            {
+              "round": 234,
+              "start_signal_date": "2026-07-10",
+              "end_trade_date": "2026-07-17",
+              "regime": "sideways",
+              "gross_profit_twd": -3548.16,
+              "net_profit_twd": -13548.16,
+              "net_return_pct": -1.3548,
+              "max_drawdown_pct": -1.3548,
+              "average_positions": 1.0
+            },
+            {
+              "round": 235,
+              "start_signal_date": "2026-07-17",
+              "end_trade_date": "2026-07-24",
+              "regime": "sideways",
+              "gross_profit_twd": -3500.06,
+              "net_profit_twd": -13500.06,
+              "net_return_pct": -1.35,
+              "max_drawdown_pct": -1.35,
+              "average_positions": 1.0
+            },
+            {
+              "round": 236,
+              "start_signal_date": "2026-07-24",
+              "end_trade_date": "2026-07-31",
+              "regime": "sideways",
+              "gross_profit_twd": -8687.51,
+              "net_profit_twd": -18687.51,
+              "net_return_pct": -1.8688,
+              "max_drawdown_pct": -2.5589,
+              "average_positions": 1.0
+            },
+            {
+              "round": 237,
+              "start_signal_date": "2026-07-31",
+              "end_trade_date": "2026-08-07",
+              "regime": "bull",
+              "gross_profit_twd": 17899.18,
+              "net_profit_twd": 7899.18,
+              "net_return_pct": 0.7899,
+              "max_drawdown_pct": -1.3643,
+              "average_positions": 1.0
+            },
+            {
+              "round": 238,
+              "start_signal_date": "2026-08-07",
+              "end_trade_date": "2026-08-14",
+              "regime": "bull",
+              "gross_profit_twd": -6334.19,
+              "net_profit_twd": -16334.19,
+              "net_return_pct": -1.6334,
+              "max_drawdown_pct": -1.6334,
+              "average_positions": 1.0
+            },
+            {
+              "round": 239,
+              "start_signal_date": "2026-08-14",
+              "end_trade_date": "2026-08-21",
+              "regime": "bull",
+              "gross_profit_twd": -12875.9,
+              "net_profit_twd": -22875.9,
+              "net_return_pct": -2.2876,
+              "max_drawdown_pct": -2.2876,
+              "average_positions": 1.0
+            }
+          ]
         }
       },
       "audit_hash": "f7f2d3390f362d1a",
