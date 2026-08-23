@@ -76,6 +76,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-short="TW">🇹🇼 台股短線</button>
     <button data-short="US">🇺🇸 美股短線</button>
     <button data-short="ETF">📊 ETF短線</button>
+    <button data-short="ACCUMULATION">🏦 法人蓄力榜</button>
   </div>
 
   <div class="nav-label">🌳 中長線布局（3～12個月）</div>
@@ -132,7 +133,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="live_config.js?v=633"></script>
 <script src="live_client.js?v=633"></script>
 <script src="live_analysis.js?v=633"></script>
-<script src="ranking.js?v=634"></script>
+<script src="ranking.js?v=635"></script>
 <script src="capital_test.js"></script>
 <script>
 'use strict';
@@ -187,7 +188,7 @@ function normalizeReport(row){
     twRelativeStrengthAvailable:row.tw_relative_strength_available,twRelativeStrengthScore:row.tw_relative_strength_score,twRelativeStrengthStatus:row.tw_relative_strength_status,twMarketRelative5d:row.tw_market_relative_5d_pct,twMarketRelative20d:row.tw_market_relative_20d_pct,twSectorRelative5d:row.tw_sector_relative_5d_pct,twSectorRelative20d:row.tw_sector_relative_20d_pct,
     twVolumeContractionStatus:row.tw_volume_contraction_status,twVolumeContractionBreakout:row.tw_volume_contraction_breakout,twBreakoutQualityScore:row.tw_breakout_quality_score,twBreakoutQualityStatus:row.tw_breakout_quality_status,twFalseBreakout:row.tw_false_breakout,
     twIntradayMomentumAvailable:row.tw_intraday_momentum_available,twIntradaySessionDate:row.tw_intraday_session_date,twIntradayIsCurrentSession:row.tw_intraday_is_current_session,twIntradayMomentumStatus:row.tw_intraday_momentum_status,twIntradayVwap:row.tw_intraday_vwap,twIntradayVwapDistance:row.tw_intraday_vwap_distance_pct,twOpeningHigh15m:row.tw_opening_high_15m,twOpeningHigh30m:row.tw_opening_high_30m,twAboveVwap:row.tw_above_vwap,twBreakoutOpening15m:row.tw_breakout_opening_15m,twBreakoutOpening30m:row.tw_breakout_opening_30m,
-    twAccumulationAvailable:row.tw_accumulation_available,twAccumulationScore:row.tw_accumulation_score,twAccumulationStatus:row.tw_accumulation_status,twAccumulationCandidate:row.tw_accumulation_candidate,twAccumulationStrong:row.tw_accumulation_strong,twAccumulationLaunchConfirmed:row.tw_accumulation_launch_confirmed,twAccumulationCoverage:row.tw_accumulation_data_coverage,twAccumulationIntensity:row.tw_accumulation_intensity_score,twAccumulationContinuity:row.tw_accumulation_continuity_score,twAccumulationStability:row.tw_accumulation_stability_score,twAccumulationAbsorption:row.tw_accumulation_absorption_score,twAccumulationContraction:row.tw_accumulation_contraction_score,twAccumulationTrustRatio:row.tw_accumulation_trust_ratio_5d_pct,twAccumulationForeignRatio:row.tw_accumulation_foreign_ratio_5d_pct,twAccumulationTrustDays:row.tw_accumulation_trust_buy_days_5,twAccumulationInstitutionDays:row.tw_accumulation_institution_buy_days_5,twAccumulationFormula:row.tw_accumulation_formula,twAccumulationAffectsScore:row.tw_accumulation_affects_score,
+    twAccumulationAvailable:row.tw_accumulation_available,twAccumulationScore:row.tw_accumulation_score,twAccumulationStatus:row.tw_accumulation_status,twAccumulationCandidate:row.tw_accumulation_candidate,twAccumulationStrong:row.tw_accumulation_strong,twAccumulationLaunchConfirmed:row.tw_accumulation_launch_confirmed,twAccumulationCoverage:row.tw_accumulation_data_coverage,twAccumulationIntensity:row.tw_accumulation_intensity_score,twAccumulationContinuity:row.tw_accumulation_continuity_score,twAccumulationStability:row.tw_accumulation_stability_score,twAccumulationAbsorption:row.tw_accumulation_absorption_score,twAccumulationContraction:row.tw_accumulation_contraction_score,twAccumulationTrustRatio:row.tw_accumulation_trust_ratio_5d_pct,twAccumulationForeignRatio:row.tw_accumulation_foreign_ratio_5d_pct,twAccumulationTrustDays:row.tw_accumulation_trust_buy_days_5,twAccumulationInstitutionDays:row.tw_accumulation_institution_buy_days_5,twAccumulationFormula:row.tw_accumulation_formula,twAccumulationAffectsScore:row.tw_accumulation_affects_score,twAccumulationRankTier:row.tw_accumulation_rank_tier,twAccumulationRankingScore:row.tw_accumulation_ranking_score,twAccumulationRank:row.tw_accumulation_rank,twAccumulationDisplayRank:row.tw_accumulation_display_rank,twAccumulationGroupCount:row.tw_accumulation_group_count,
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
@@ -195,7 +196,7 @@ function normalizeReport(row){
     overallEligible:row.overall_eligible,overallRankTier:row.overall_rank_tier,overallRankingScore:row.overall_ranking_score,overallRank:row.overall_rank,overallDisplayRank:row.overall_display_rank,
     buySetupEligible:row.buy_setup_eligible,buyTriggerReady:row.buy_trigger_ready,liveBuyRequired:row.live_buy_required,
     buyCandidateEligible:row.buy_candidate_eligible,buyCandidateStatus:row.buy_candidate_status,buyCandidateReasons:Array.isArray(row.buy_candidate_reasons)?row.buy_candidate_reasons:[],
-    shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,shortTermDisplayRank:row.short_term_display_rank,
+    shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,shortTermDisplayRank:row.short_term_display_rank,shortTermBaseScore:row.short_term_base_score,shortTermBaseRankingScore:row.short_term_base_ranking_score,shortTermAccumulationWeight:row.short_term_accumulation_weight,shortTermAccumulationAdjustment:row.short_term_accumulation_adjustment,shortTermAccumulationAffectsRanking:row.short_term_accumulation_affects_ranking,
     midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,midLongDisplayRank:row.mid_long_display_rank,rankingGroupCount:row.ranking_group_count,
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
     usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
@@ -280,7 +281,8 @@ function stockCard(stock,index){
     outlook='<div class="databox">📆 <b>1～5日趨勢（不是隔日漲跌）</b><br><b class="'+outlookClass+'">'+esc(stock.outlookDirection)+'</b>｜'+esc(stock.outlookHorizon||'未來1～5個交易日')+'｜信心度 <b>'+esc(number(stock.outlookConfidence,1))+'%</b>｜資料 '+esc(stock.outlookQuality||'—')+'<br>'+outlookReasons+'<br><span class="muted">轉向條件：'+esc(stock.outlookChangeCondition||'等待更多資料')+'</span></div>';
   }
   var longPlan=stock.midLongStatus?'<div class="databox">🌳 <b>'+esc(stock.midLongStatus)+'</b>｜中長線分數 '+esc(number(stock.midLongScore,1))+'｜'+esc(stock.midLongPeriod)+'<br>第一布局區：<b>'+esc(number(stock.midLongBatch1Low,2))+' ～ '+esc(number(stock.midLongBatch1High,2))+'</b><br>第二布局區：<b>'+esc(number(stock.midLongBatch2Low,2))+' ～ '+esc(number(stock.midLongBatch2High,2))+'</b><br>資金配置：<b>'+esc(stock.midLongAllocation)+'</b><br>中長線風控：<b class="down">'+esc(number(stock.midLongStop,2))+'</b>｜第一目標：<b>'+esc(number(stock.midLongTarget1,2))+'</b>｜第二目標：<b>'+esc(number(stock.midLongTarget2,2))+'</b><br>'+esc(stock.midLongReason)+'<br>退場：'+esc(stock.midLongExit)+'</div>':'';
-  var shortPlan=stock.shortTermStatus?'<div class="databox">⚡ <b>'+esc(stock.shortTermStatus)+'</b>｜短線分數 '+esc(number(stock.shortTermScore,1))+'｜'+esc(stock.shortTermPeriod)+'<br>型態：<b>'+esc(stock.shortTermSetup)+'</b>｜資料 '+esc(stock.shortTermQuality)+'<br>進場區：<b>'+esc(number(stock.shortTermEntryLow,2))+' ～ '+esc(number(stock.shortTermEntryHigh,2))+'</b><br>觸發：<b>'+esc(stock.shortTermTrigger)+'</b><br>停損：<b class="down">'+esc(number(stock.shortTermStop,2))+'</b>｜第一停利：<b>'+esc(number(stock.shortTermTarget1,2))+'</b>｜第二停利：<b>'+esc(number(stock.shortTermTarget2,2))+'</b>｜風報比 '+esc(number(stock.shortTermRr,2))+'<br>'+esc(stock.shortTermReason)+'<br>出場：'+esc(stock.shortTermExit)+'</div>':'';
+  var shortRankAudit=stock.shortTermAccumulationAffectsRanking?'<br>台股短線排名分：<b>'+esc(number(stock.shortTermRankingScore,1))+'</b>｜原排名分 '+esc(number(stock.shortTermBaseRankingScore,1))+'｜法人20%調整 '+(Number(stock.shortTermAccumulationAdjustment)>=0?'+':'')+esc(number(stock.shortTermAccumulationAdjustment,1)):'';
+  var shortPlan=stock.shortTermStatus?'<div class="databox">⚡ <b>'+esc(stock.shortTermStatus)+'</b>｜原短線分數 '+esc(number(stock.shortTermScore,1))+'｜'+esc(stock.shortTermPeriod)+shortRankAudit+'<br>型態：<b>'+esc(stock.shortTermSetup)+'</b>｜資料 '+esc(stock.shortTermQuality)+'<br>進場區：<b>'+esc(number(stock.shortTermEntryLow,2))+' ～ '+esc(number(stock.shortTermEntryHigh,2))+'</b><br>觸發：<b>'+esc(stock.shortTermTrigger)+'</b><br>停損：<b class="down">'+esc(number(stock.shortTermStop,2))+'</b>｜第一停利：<b>'+esc(number(stock.shortTermTarget1,2))+'</b>｜第二停利：<b>'+esc(number(stock.shortTermTarget2,2))+'</b>｜風報比 '+esc(number(stock.shortTermRr,2))+'<br>'+esc(stock.shortTermReason)+'<br>出場：'+esc(stock.shortTermExit)+'</div>':'';
   var change=Number.isFinite(Number(stock.change))?percent(stock.change):esc(stock.change);
   var volume=stock.volume==='—'?'—':number(stock.volume,2)+'x';
   var hasMarketDetail=[stock.ma5,stock.ma10,stock.ma20,stock.ma60,stock.avgVolume5,stock.avgVolume10,stock.avgVolume20].some(function(v){return Number.isFinite(Number(v));});
@@ -301,8 +303,8 @@ function stockCard(stock,index){
       data+='<br>⏱️ 盤中確認（'+esc(stock.twIntradaySessionDate||'—')+'）：<b>'+esc(stock.twIntradayMomentumStatus)+'</b>｜VWAP '+number(stock.twIntradayVwap,2)+'（'+percent(stock.twIntradayVwapDistance)+'）｜15／30分高 '+number(stock.twOpeningHigh15m,2)+'／'+number(stock.twOpeningHigh30m,2);
     }
     if(stock.market==='TW'&&stock.twAccumulationStatus){
-      data+='<br>🏦 法人蓄力（影子）：<b>'+esc(stock.twAccumulationStatus)+'</b>｜'+number(stock.twAccumulationScore,1)+'分｜資料 '+esc(stock.twAccumulationCoverage||'—');
-      if(stock.twAccumulationAvailable)data+='<br>　強度／連買／K穩／吸收／量縮：<b>'+[stock.twAccumulationIntensity,stock.twAccumulationContinuity,stock.twAccumulationStability,stock.twAccumulationAbsorption,stock.twAccumulationContraction].map(function(v){return number(v,1);}).join('／')+'</b>｜投信／外資5日量比 '+percent(stock.twAccumulationTrustRatio)+'／'+percent(stock.twAccumulationForeignRatio)+'｜買超天數 '+number(stock.twAccumulationTrustDays,0)+'／'+number(stock.twAccumulationInstitutionDays,0)+'<br>　<span class="muted">'+esc(stock.twAccumulationFormula||'')+'；目前只驗證，不影響AI排名。</span>';
+      data+='<br>🏦 法人蓄力：<b>'+esc(stock.twAccumulationStatus)+'</b>｜'+number(stock.twAccumulationScore,1)+'分｜資料 '+esc(stock.twAccumulationCoverage||'—');
+      if(stock.twAccumulationAvailable)data+='<br>　強度／連買／K穩／吸收／量縮：<b>'+[stock.twAccumulationIntensity,stock.twAccumulationContinuity,stock.twAccumulationStability,stock.twAccumulationAbsorption,stock.twAccumulationContraction].map(function(v){return number(v,1);}).join('／')+'</b>｜投信／外資5日量比 '+percent(stock.twAccumulationTrustRatio)+'／'+percent(stock.twAccumulationForeignRatio)+'｜買超天數 '+number(stock.twAccumulationTrustDays,0)+'／'+number(stock.twAccumulationInstitutionDays,0)+'<br>　<span class="muted">'+esc(stock.twAccumulationFormula||'')+'；資料完整時占台股個股短線排名20%，不改原短線分數。</span>';
     }
     if(Number(stock.institutionAvailable)>0)data+='<br>🏦 法人合計 1／5／10日：<b>'+[stock.institution1d,stock.institution5d,stock.institution10d].map(compact).join('／')+'</b>';
     if(Number(stock.creditAvailable)>0){
@@ -409,15 +411,20 @@ function showShortTerm(group){
   STATE.view='SHORT:'+group;
   setActive('#shortButtons button','data-short',group);
   clearOtherNav('#shortButtons button');
-  var rows=STATE.normalized.filter(function(stock){
+  var accumulationMode=group==='ACCUMULATION';
+  var sourceRows=accumulationMode?buildAllAnalysisPool():STATE.normalized;
+  var rows=sourceRows.filter(function(stock){
+    if(accumulationMode)return stock.market==='TW'&&String(stock.type||'').toUpperCase()!=='ETF'&&stock.twAccumulationAvailable;
     if(group==='ETF')return String(stock.type||'').toUpperCase()==='ETF';
     return stock.market===group&&String(stock.type||'').toUpperCase()!=='ETF';
   });
-  rows=WudeRanking.sortShort(rows).slice(0,20);
-  var titles={TW:'🇹🇼 台股短線進出場',US:'🇺🇸 美股短線進出場',ETF:'📊 ETF短線進出場'};
+  rows=(accumulationMode?WudeRanking.sortAccumulation(rows):WudeRanking.sortShort(rows)).slice(0,20);
+  var titles={TW:'🇹🇼 台股短線進出場',US:'🇺🇸 美股短線進出場',ETF:'📊 ETF短線進出場',ACCUMULATION:'🏦 台股法人蓄力排名'};
   document.getElementById('title').textContent=titles[group];
-  var eligibleCount=rows.filter(function(stock){return WudeRanking.shortTier(stock)===2;}).length;
-  document.getElementById('status').textContent='短線合格 '+eligibleCount+' 檔｜合格者顯示短線 TOP；觀察與阻擋顯示同組分析排序，不代表可買。須等15～30分鐘觸發。';
+  var eligibleCount=rows.filter(function(stock){return accumulationMode?WudeRanking.accumulationTier(stock)===2:WudeRanking.shortTier(stock)===2;}).length;
+  document.getElementById('status').textContent=accumulationMode
+    ?'法人蓄力候選 '+eligibleCount+' 檔｜僅列資料完整台股；70分且近5日至少3日法人買超才合格。此分數占台股短線排名20%，不代表保證上漲或直接買進。'
+    :'短線合格 '+eligibleCount+' 檔｜台股個股資料完整時採原短線80%＋法人蓄力20%；美股與ETF不變。須等15～30分鐘觸發。';
   renderStocks(rows);
 }
 
