@@ -184,6 +184,9 @@ function normalizeReport(row){
     brokerAvailable:row.broker_available,topBrokersBuy:row.top_brokers_buy||[],topBrokersSell:row.top_brokers_sell||[],
     klinePattern:row.kline_pattern,klineScore:row.kline_score,dailyVolumeRatio:row.daily_volume_ratio,volumePricePattern:row.volume_price_pattern,breakout20:row.breakout20,breakdown20:row.breakdown20,
     twHeadShouldersPattern:row.tw_head_shoulders_pattern,twHeadShouldersStatus:row.tw_head_shoulders_status,twHeadShouldersNeckline:row.tw_head_shoulders_neckline,twHeadShouldersTarget:row.tw_head_shoulders_target,twHeadShouldersVolumeConfirmed:row.tw_head_shoulders_volume_confirmed,twHeadShouldersTwoDayConfirmed:row.tw_head_shoulders_two_day_confirmed,
+    twRelativeStrengthAvailable:row.tw_relative_strength_available,twRelativeStrengthScore:row.tw_relative_strength_score,twRelativeStrengthStatus:row.tw_relative_strength_status,twMarketRelative5d:row.tw_market_relative_5d_pct,twMarketRelative20d:row.tw_market_relative_20d_pct,twSectorRelative5d:row.tw_sector_relative_5d_pct,twSectorRelative20d:row.tw_sector_relative_20d_pct,
+    twVolumeContractionStatus:row.tw_volume_contraction_status,twVolumeContractionBreakout:row.tw_volume_contraction_breakout,twBreakoutQualityScore:row.tw_breakout_quality_score,twBreakoutQualityStatus:row.tw_breakout_quality_status,twFalseBreakout:row.tw_false_breakout,
+    twIntradayMomentumAvailable:row.tw_intraday_momentum_available,twIntradaySessionDate:row.tw_intraday_session_date,twIntradayIsCurrentSession:row.tw_intraday_is_current_session,twIntradayMomentumStatus:row.tw_intraday_momentum_status,twIntradayVwap:row.tw_intraday_vwap,twIntradayVwapDistance:row.tw_intraday_vwap_distance_pct,twOpeningHigh15m:row.tw_opening_high_15m,twOpeningHigh30m:row.tw_opening_high_30m,twAboveVwap:row.tw_above_vwap,twBreakoutOpening15m:row.tw_breakout_opening_15m,twBreakoutOpening30m:row.tw_breakout_opening_30m,
     fundamentalAvailable:row.fundamental_available,per:row.per,pbr:row.pbr,dividendYield:row.dividend_yield,revenueYoy:row.revenue_yoy_pct,revenueMom:row.revenue_mom_pct,valuationScore:row.valuation_score,
     financialQualityAvailable:row.financial_quality_available,eps:row.eps,epsYoy:row.eps_yoy_pct,grossMargin:row.gross_margin_pct,operatingMargin:row.operating_margin_pct,roe:row.roe_pct,debtRatio:row.debt_ratio_pct,operatingCashFlowPositive:row.operating_cash_flow_positive,financialQualityScore:row.financial_quality_score,financialReportDate:row.financial_report_date,
     positioningScore:row.positioning_score,positioningSignal:row.positioning_signal,positioningQuality:row.positioning_data_quality,positioningEvidence:row.positioning_evidence||[],positioningDisclaimer:row.positioning_disclaimer,positioningAffectsScore:row.positioning_affects_ai_score,
@@ -286,6 +289,15 @@ function stockCard(stock,index){
     if(stock.klinePattern)data+='<br>🕯️ K線：<b>'+esc(stock.klinePattern)+'</b>｜'+esc(stock.volumePricePattern||'量價中性')+'｜日量 '+number(stock.dailyVolumeRatio,2)+'x';
     if(stock.market==='TW'&&stock.twHeadShouldersPattern&&stock.twHeadShouldersPattern!=='未偵測'){
       data+='<br>👤 頭肩型態：<b>'+esc(stock.twHeadShouldersStatus)+'</b>｜頸線 '+number(stock.twHeadShouldersNeckline,2)+'｜推估目標 '+number(stock.twHeadShouldersTarget,2)+'｜放量確認 '+(stock.twHeadShouldersVolumeConfirmed?'是':'否')+'｜連續2日確認 '+(stock.twHeadShouldersTwoDayConfirmed?'是':'否');
+    }
+    if(stock.market==='TW'&&stock.twRelativeStrengthAvailable){
+      data+='<br>🏁 相對強弱：<b>'+esc(stock.twRelativeStrengthStatus)+'</b>｜'+number(stock.twRelativeStrengthScore,1)+'分｜大盤5／20日 '+percent(stock.twMarketRelative5d)+'／'+percent(stock.twMarketRelative20d)+'｜族群5／20日 '+percent(stock.twSectorRelative5d)+'／'+percent(stock.twSectorRelative20d);
+    }
+    if(stock.market==='TW'&&stock.twBreakoutQualityStatus){
+      data+='<br>🚀 突破品質：<b>'+esc(stock.twBreakoutQualityStatus)+'</b>｜'+number(stock.twBreakoutQualityScore,1)+'分｜'+esc(stock.twVolumeContractionStatus||'—');
+    }
+    if(stock.market==='TW'&&stock.twIntradayMomentumAvailable){
+      data+='<br>⏱️ 盤中確認（'+esc(stock.twIntradaySessionDate||'—')+'）：<b>'+esc(stock.twIntradayMomentumStatus)+'</b>｜VWAP '+number(stock.twIntradayVwap,2)+'（'+percent(stock.twIntradayVwapDistance)+'）｜15／30分高 '+number(stock.twOpeningHigh15m,2)+'／'+number(stock.twOpeningHigh30m,2);
     }
     if(Number(stock.institutionAvailable)>0)data+='<br>🏦 法人合計 1／5／10日：<b>'+[stock.institution1d,stock.institution5d,stock.institution10d].map(compact).join('／')+'</b>';
     if(Number(stock.creditAvailable)>0){
