@@ -139,7 +139,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,holdingSimulation:null,historicalLab:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
@@ -634,6 +634,17 @@ function historicalHorizonRows(market){
     return '<tr><td>持有'+esc(key)+'日</td><td>'+esc(strict.event_count||0)+'</td><td>'+esc(number(strict.profitable_event_pct,2))+'%</td><td class="'+millionProfitClass(strict.average_net_return_pct)+'">'+esc(percent(strict.average_net_return_pct))+'</td><td>'+esc(percent(strict.median_net_return_pct))+'</td><td>'+esc(percent(strict.worst_net_return_pct))+'</td><td>'+esc(percent(benchmark.average_net_return_pct))+'</td></tr>';
   }).join('');
 }
+function forwardExitMarketCard(market){
+  if(!market)return '';
+  var horizons=market.horizons||{},pending=market.pending||{};
+  var rows=['1','2','3','5'].map(function(key){var horizon=horizons[key]||{},strict=horizon.strict||{},benchmark=horizon.benchmark||{};return '<tr><td>持有'+esc(key)+'日</td><td>'+esc(horizon.status==='complete'?'已結算':'等待')+'</td><td>'+esc(horizon.exit_session_date||'—')+'</td><td>'+esc(strict.executed_positions||0)+'檔／現金'+esc(millionMoney(strict.idle_twd))+'</td><td class="'+millionProfitClass(strict.net_profit_twd)+'">'+esc(horizon.status==='complete'?millionMoney(strict.net_profit_twd):'—')+'</td><td>'+esc(horizon.status==='complete'&&benchmark.data_available?millionMoney(benchmark.net_profit_twd):'—')+'</td></tr>';}).join('');
+  return '<div class="million-strategy"><h3>'+(market.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+'｜'+esc(market.status)+'</h3><div class="million-note">排名快照 '+esc((pending.snapshot_id)||'已凍結／等待建立')+'｜訊號日 '+esc((pending.signal_session_date)||'—')+'｜進場日 '+esc(market.entry_session_date||'等待下一交易日')+'</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>出場</th><th>狀態</th><th>結算日</th><th>嚴格組</th><th>扣成本損益</th><th>大盤同期</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function forwardExitHtml(){
+  var state=STATE.exitHorizonForward;
+  if(!state||!state.markets)return '<div class="million-note"><b>星期一前向出場比較：</b>等待建立第一份排名快照。</div>';
+  return '<div class="group">星期一前向A/B/C/D出場比較</div><div class="million-policy">同一份短線前10名與同一開盤價，分別持有1、2、3、5日；嚴格組未達資格保留現金。每組只是獨立影子帳本，不疊加四倍資金、不送券商訂單。</div><div class="million-strategies">'+forwardExitMarketCard(state.markets.TW)+forwardExitMarketCard(state.markets.US)+'</div>';
+}
 function historicalMarketCard(market){
   var statusLabel={complete:'完整',partial:'部分資料',data_insufficient:'資料不足'}[market.status]||market.status;
   var regimeRows=historicalRegimeRows(market);
@@ -652,7 +663,7 @@ function showHistoricalLab(){
   var archiveHtml='<div class="million-note"><b>完整V6向前快照：</b>'+esc(archive.snapshot_count||0)+' 份，涵蓋 '+esc(archive.session_count||0)+' 個交易日（'+esc(archive.date_start||'等待累積')+' ～ '+esc(archive.date_end||'—')+'）。歷史核心代理只用來檢查方向，不能自動修改正式模型。</div>';
   var cards=['TW_STOCK','US_STOCK','TW_ETF','US_ETF'].filter(function(key){return markets[key];}).map(function(key){return historicalMarketCard(markets[key]);}).join('');
   var limitations=(report.limitations||[]).map(function(note){return '<li>'+esc(note)+'</li>';}).join('');
-  document.getElementById('results').innerHTML=notice+archiveHtml+(cards?'<div class="million-grid">'+cards+'</div>':'<div class="empty">已建立獨立頁面，等待全股票首輪資料下載完成。</div>')+'<div class="million-note"><b>資料與判讀限制</b><ul>'+limitations+'</ul></div>';
+  document.getElementById('results').innerHTML=notice+archiveHtml+forwardExitHtml()+(cards?'<div class="million-grid">'+cards+'</div>':'<div class="empty">已建立獨立頁面，等待全股票首輪資料下載完成。</div>')+'<div class="million-note"><b>資料與判讀限制</b><ul>'+limitations+'</ul></div>';
 }
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
@@ -826,10 +837,11 @@ async function loadAll(){
       fetchJSON('reports/million_simulation.json').catch(function(){return null;}),
       fetchJSON('reports/tw_weight_experiment.json').catch(function(){return null;}),
       fetchJSON('reports/holding_simulation.json').catch(function(){return null;}),
-      fetchJSON('reports/historical_lab.json').catch(function(){return null;})
+      fetchJSON('reports/historical_lab.json').catch(function(){return null;}),
+      fetchJSON('reports/exit_horizon_experiment.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.holdingSimulation=pair[9];STATE.historicalLab=pair[10];STATE.fubonQuotes={};
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.holdingSimulation=pair[9];STATE.historicalLab=pair[10];STATE.exitHorizonForward=pair[11];STATE.fubonQuotes={};
     if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
     if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
