@@ -627,12 +627,20 @@ function historicalRegimeRows(market){
   var labels={bull:'多頭',bear:'空頭',sideways:'盤整',unknown:'未分類'};
   return ['bull','bear','sideways','unknown'].filter(function(key){return regimes[key];}).map(function(key){var row=regimes[key];return '<tr><td>'+esc(labels[key])+'</td><td>'+esc(row.rounds)+'</td><td>'+esc(percent(row.average_net_return_pct))+'</td><td>'+esc(number(row.profitable_round_pct,2))+'%</td></tr>';}).join('');
 }
+function historicalHorizonRows(market){
+  var comparison=market.holding_horizon_comparison||{},horizons=comparison.horizons||{};
+  return ['1','2','3','5'].filter(function(key){return horizons[key];}).map(function(key){
+    var horizon=horizons[key]||{},strict=horizon.strict||{},benchmark=horizon.benchmark||{};
+    return '<tr><td>持有'+esc(key)+'日</td><td>'+esc(strict.event_count||0)+'</td><td>'+esc(number(strict.profitable_event_pct,2))+'%</td><td class="'+millionProfitClass(strict.average_net_return_pct)+'">'+esc(percent(strict.average_net_return_pct))+'</td><td>'+esc(percent(strict.median_net_return_pct))+'</td><td>'+esc(percent(strict.worst_net_return_pct))+'</td><td>'+esc(percent(benchmark.average_net_return_pct))+'</td></tr>';
+  }).join('');
+}
 function historicalMarketCard(market){
   var statusLabel={complete:'完整',partial:'部分資料',data_insufficient:'資料不足'}[market.status]||market.status;
   var regimeRows=historicalRegimeRows(market);
   var rounds=market.five_day_rounds||{};
+  var horizonRows=historicalHorizonRows(market);
   var marketLabel=market.market==='TW'?'🇹🇼 台股':'🇺🇸 美股',assetLabel=market.asset_class==='ETF'?'ETF':'個股';
-  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(marketLabel)+' '+esc(assetLabel)+'｜5日分輪驗證</div><div class="million-progress">'+esc(statusLabel)+'｜'+esc(market.loaded_symbols||0)+' / '+esc(market.expected_symbols||0)+' 檔｜覆蓋 '+esc(number(market.coverage_pct,2))+'%</div></div><div class="million-total">'+esc(market.date_start||'等待資料')+'<br>'+esc(market.date_end||'—')+'</div></div>'+(market.reason?'<div class="million-note">'+esc(market.reason)+'</div>':'')+'<div class="million-strategies">'+historicalMetricsCard('純排名前10組',rounds.rank)+historicalMetricsCard('嚴格達標才買組',rounds.strict)+historicalMetricsCard('大盤基準 '+esc((market.benchmark||{}).label||''),rounds.benchmark)+'</div><div class="group">嚴格組分行情驗證</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>行情</th><th>5日輪數</th><th>平均5日報酬</th><th>獲利機率</th></tr></thead><tbody>'+(regimeRows||'<tr><td>多頭／空頭／盤整</td><td>等待</td><td>—</td><td>—</td></tr>')+'</tbody></table></div></section>';
+  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(marketLabel)+' '+esc(assetLabel)+'｜5日分輪驗證</div><div class="million-progress">'+esc(statusLabel)+'｜'+esc(market.loaded_symbols||0)+' / '+esc(market.expected_symbols||0)+' 檔｜覆蓋 '+esc(number(market.coverage_pct,2))+'%</div></div><div class="million-total">'+esc(market.date_start||'等待資料')+'<br>'+esc(market.date_end||'—')+'</div></div>'+(market.reason?'<div class="million-note">'+esc(market.reason)+'</div>':'')+'<div class="million-strategies">'+historicalMetricsCard('純排名前10組',rounds.rank)+historicalMetricsCard('嚴格達標才買組',rounds.strict)+historicalMetricsCard('大盤基準 '+esc((market.benchmark||{}).label||''),rounds.benchmark)+'</div><div class="group">A/B/C/D出場時間比較｜嚴格組</div><div class="million-note">每個訊號事件各自使用同一筆100萬元研究本金；樣本日期可能重疊，但不會疊加成四倍資金或合併成帳戶報酬。成本每檔只扣一次來回。</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>賣出規則</th><th>樣本</th><th>獲利機率</th><th>平均淨報酬</th><th>中位數</th><th>最差</th><th>大盤平均</th></tr></thead><tbody>'+(horizonRows||'<tr><td>持有1／2／3／5日</td><td>等待</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>')+'</tbody></table></div><div class="group">嚴格組分行情驗證</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>行情</th><th>5日輪數</th><th>平均5日報酬</th><th>獲利機率</th></tr></thead><tbody>'+(regimeRows||'<tr><td>多頭／空頭／盤整</td><td>等待</td><td>—</td><td>—</td></tr>')+'</tbody></table></div></section>';
 }
 function showHistoricalLab(){
   var report=STATE.historicalLab;
