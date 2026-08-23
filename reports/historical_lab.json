@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-23 19:17:30",
+  "generated_at": "2026-08-23 19:42:23",
   "mode": "historical_lab_only",
   "status": "partial",
   "requested_period": "5y",
@@ -9,14 +9,15 @@
   "official_ranking_affected": false,
   "official_ledgers_affected": false,
   "methodology": {
-    "version": "V6-HIST-CORE-2",
+    "version": "V6-HIST-CORE-3",
     "signal_timing": "交易日收盤後，以當日及以前資料排名",
     "execution_timing": "下一交易日官方開盤買入、同日收盤賣出",
     "portfolio": "前10名各配置10%；嚴格組未達資格保留現金；帳戶報酬與回撤採逐日複利淨值",
     "costs": "台股個股來回0.685%、台股ETF來回0.385%；美股來回0.20%；匯率另列",
     "regimes": "大盤當日收盤、MA20、MA60與20日動能分多頭／空頭／盤整",
-    "methodology_hash": "cf18cbe11e861887",
-    "primary_evaluation": "每5個交易日為一個不重疊試跑；每輪100萬元重新開始，五年各輪不串接"
+    "methodology_hash": "2208893e801cf4ce",
+    "primary_evaluation": "每5個交易日為一個不重疊試跑；每輪100萬元重新開始，五年各輪不串接",
+    "exit_comparison": "相同收盤排名訊號分別持有1、2、3、5個交易日；各事件獨立，不疊加資金或串接報酬"
   },
   "markets": {
     "TW_STOCK": {
@@ -681,6 +682,1283 @@
               "average_positions": 1.0
             }
           ]
+        }
+      },
+      "holding_horizon_comparison": {
+        "method": "independent_signal_events",
+        "capital_is_not_stacked": true,
+        "entry_timing": "訊號後下一交易日開盤",
+        "exit_timing": "持有第N個交易日收盤",
+        "cost_charged_once_per_position": true,
+        "horizons": {
+          "1": {
+            "holding_sessions": 1,
+            "rank": {
+              "event_count": 1153,
+              "profitable_event_pct": 29.4,
+              "average_net_return_pct": -1.0055,
+              "median_net_return_pct": -0.9467,
+              "best_net_return_pct": 4.9269,
+              "worst_net_return_pct": -8.611,
+              "p10_net_return_pct": -3.1873,
+              "p90_net_return_pct": 1.1537,
+              "average_net_profit_twd": -10055.27,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 464,
+                  "profitable_event_pct": 32.33,
+                  "average_net_return_pct": -0.9032,
+                  "median_net_return_pct": -0.8437
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 26.8,
+                  "average_net_return_pct": -1.1007,
+                  "median_net_return_pct": -1.0634
+                },
+                "sideways": {
+                  "events": 536,
+                  "profitable_event_pct": 27.61,
+                  "average_net_return_pct": -1.0669,
+                  "median_net_return_pct": -1.0504
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1153,
+              "profitable_event_pct": 28.1,
+              "average_net_return_pct": -0.5884,
+              "median_net_return_pct": -0.5463,
+              "best_net_return_pct": 2.556,
+              "worst_net_return_pct": -4.9109,
+              "p10_net_return_pct": -1.9517,
+              "p90_net_return_pct": 0.7344,
+              "average_net_profit_twd": -5884.25,
+              "average_positions": 5.77,
+              "regimes": {
+                "bull": {
+                  "events": 464,
+                  "profitable_event_pct": 30.6,
+                  "average_net_return_pct": -0.5723,
+                  "median_net_return_pct": -0.5918
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 28.1,
+                  "average_net_return_pct": -0.5638,
+                  "median_net_return_pct": -0.4356
+                },
+                "sideways": {
+                  "events": 536,
+                  "profitable_event_pct": 25.93,
+                  "average_net_return_pct": -0.6094,
+                  "median_net_return_pct": -0.5337
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1153,
+              "profitable_event_pct": 27.06,
+              "average_net_return_pct": -0.3754,
+              "median_net_return_pct": -0.385,
+              "best_net_return_pct": 4.2573,
+              "worst_net_return_pct": -5.1255,
+              "p10_net_return_pct": -1.3024,
+              "p90_net_return_pct": 0.6214,
+              "average_net_profit_twd": -3753.57,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 464,
+                  "profitable_event_pct": 29.53,
+                  "average_net_return_pct": -0.3086,
+                  "median_net_return_pct": -0.3723
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 25.49,
+                  "average_net_return_pct": -0.55,
+                  "median_net_return_pct": -0.5065
+                },
+                "sideways": {
+                  "events": 536,
+                  "profitable_event_pct": 25.37,
+                  "average_net_return_pct": -0.3833,
+                  "median_net_return_pct": -0.385
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 8346.6,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 3341.88,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -3365.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -11265.48,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -6947.37,
+                  "executed_positions": 8
+                },
+                "benchmark": {
+                  "net_profit_twd": -13002.26,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -3066.4,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2844.89,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -481.39,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-11",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -9910.35,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7645.42,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 1435.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 9390.87,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -1945.27,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -6664.45,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -2442.27,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -20358.49,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -3293.7,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -10385.92,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -20776.36,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -6013.89,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -3380.12,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -26164.38,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7463.12,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -18410.78,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 10579.63,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2635.84,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -3364.84,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -20671.67,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5738.73,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -7688.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-20",
+                "entry_date": "2026-08-21",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -33982.41,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -13884.0,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 4338.81,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "2": {
+            "holding_sessions": 2,
+            "rank": {
+              "event_count": 1151,
+              "profitable_event_pct": 40.83,
+              "average_net_return_pct": -0.7888,
+              "median_net_return_pct": -0.7025,
+              "best_net_return_pct": 8.5148,
+              "worst_net_return_pct": -11.4454,
+              "p10_net_return_pct": -4.3425,
+              "p90_net_return_pct": 2.5893,
+              "average_net_profit_twd": -7888.43,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 45.57,
+                  "average_net_return_pct": -0.5705,
+                  "median_net_return_pct": -0.5171
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 35.29,
+                  "average_net_return_pct": -1.1206,
+                  "median_net_return_pct": -0.8941
+                },
+                "sideways": {
+                  "events": 535,
+                  "profitable_event_pct": 38.32,
+                  "average_net_return_pct": -0.8829,
+                  "median_net_return_pct": -0.7637
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1151,
+              "profitable_event_pct": 35.36,
+              "average_net_return_pct": -0.5057,
+              "median_net_return_pct": -0.4675,
+              "best_net_return_pct": 5.9241,
+              "worst_net_return_pct": -9.4155,
+              "p10_net_return_pct": -2.5458,
+              "p90_net_return_pct": 1.5701,
+              "average_net_profit_twd": -5057.03,
+              "average_positions": 5.77,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 39.31,
+                  "average_net_return_pct": -0.4289,
+                  "median_net_return_pct": -0.4158
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 32.03,
+                  "average_net_return_pct": -0.6818,
+                  "median_net_return_pct": -0.3892
+                },
+                "sideways": {
+                  "events": 535,
+                  "profitable_event_pct": 32.9,
+                  "average_net_return_pct": -0.5218,
+                  "median_net_return_pct": -0.5241
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1151,
+              "profitable_event_pct": 43.09,
+              "average_net_return_pct": -0.2599,
+              "median_net_return_pct": -0.2571,
+              "best_net_return_pct": 9.7328,
+              "worst_net_return_pct": -11.2747,
+              "p10_net_return_pct": -2.09,
+              "p90_net_return_pct": 1.6642,
+              "average_net_profit_twd": -2599.42,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 43.41,
+                  "average_net_return_pct": -0.1582,
+                  "median_net_return_pct": -0.2321
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 40.52,
+                  "average_net_return_pct": -0.6166,
+                  "median_net_return_pct": -0.4662
+                },
+                "sideways": {
+                  "events": 535,
+                  "profitable_event_pct": 43.55,
+                  "average_net_return_pct": -0.246,
+                  "median_net_return_pct": -0.2203
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-06",
+                "regime": "bear",
+                "rank": {
+                  "net_profit_twd": 34.25,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -434.85,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -8187.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 5910.97,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -87.82,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -7724.11,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 20057.95,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 15687.33,
+                  "executed_positions": 8
+                },
+                "benchmark": {
+                  "net_profit_twd": 485.23,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-11",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -13894.63,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -2282.44,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": 2887.22,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 7633.09,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -6503.81,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 7202.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 37688.44,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 12340.45,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 684.46,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -5257.8,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -41474.45,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -6337.18,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -9919.11,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -37280.48,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7356.8,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -17947.74,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -59395.97,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -16718.25,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -35320.16,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 7929.11,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -754.73,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 3428.02,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -39715.47,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -18497.45,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": 468.66,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "3": {
+            "holding_sessions": 3,
+            "rank": {
+              "event_count": 1150,
+              "profitable_event_pct": 44.35,
+              "average_net_return_pct": -0.5573,
+              "median_net_return_pct": -0.4753,
+              "best_net_return_pct": 12.8574,
+              "worst_net_return_pct": -14.162,
+              "p10_net_return_pct": -5.0191,
+              "p90_net_return_pct": 3.621,
+              "average_net_profit_twd": -5573.1,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 47.08,
+                  "average_net_return_pct": -0.2682,
+                  "median_net_return_pct": -0.1265
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 42.48,
+                  "average_net_return_pct": -1.0321,
+                  "median_net_return_pct": -0.652
+                },
+                "sideways": {
+                  "events": 534,
+                  "profitable_event_pct": 42.51,
+                  "average_net_return_pct": -0.6719,
+                  "median_net_return_pct": -0.6941
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1150,
+              "profitable_event_pct": 40.35,
+              "average_net_return_pct": -0.3938,
+              "median_net_return_pct": -0.3486,
+              "best_net_return_pct": 8.168,
+              "worst_net_return_pct": -9.6817,
+              "p10_net_return_pct": -2.9909,
+              "p90_net_return_pct": 2.2165,
+              "average_net_profit_twd": -3938.02,
+              "average_positions": 5.77,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 42.98,
+                  "average_net_return_pct": -0.2779,
+                  "median_net_return_pct": -0.2962
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 38.56,
+                  "average_net_return_pct": -0.7003,
+                  "median_net_return_pct": -0.2883
+                },
+                "sideways": {
+                  "events": 534,
+                  "profitable_event_pct": 38.58,
+                  "average_net_return_pct": -0.4065,
+                  "median_net_return_pct": -0.4291
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1150,
+              "profitable_event_pct": 46.7,
+              "average_net_return_pct": -0.1441,
+              "median_net_return_pct": -0.186,
+              "best_net_return_pct": 8.8227,
+              "worst_net_return_pct": -14.5742,
+              "p10_net_return_pct": -2.6051,
+              "p90_net_return_pct": 2.4559,
+              "average_net_profit_twd": -1441.09,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 48.16,
+                  "average_net_return_pct": 0.0115,
+                  "median_net_return_pct": -0.0666
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 43.14,
+                  "average_net_return_pct": -0.6306,
+                  "median_net_return_pct": -0.3424
+                },
+                "sideways": {
+                  "events": 534,
+                  "profitable_event_pct": 46.44,
+                  "average_net_return_pct": -0.1397,
+                  "median_net_return_pct": -0.2116
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 65783.91,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 39795.28,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 22478.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-07",
+                "regime": "bear",
+                "rank": {
+                  "net_profit_twd": -1005.39,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -2883.37,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -12524.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 30396.52,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10915.33,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 5835.23,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-11",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -4164.92,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -12933.45,
+                  "executed_positions": 8
+                },
+                "benchmark": {
+                  "net_profit_twd": 3857.08,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 8253.96,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1199.5,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": 8661.99,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 26088.11,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 5905.56,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 21618.47,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 37337.73,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 9483.35,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 28.11,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -4788.58,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -53884.55,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -10105.29,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -24391.52,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -68244.85,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -18139.55,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -34865.07,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -58742.07,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -17672.98,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -28744.26,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -12721.14,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1291.98,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 11676.43,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "5": {
+            "holding_sessions": 5,
+            "rank": {
+              "event_count": 1148,
+              "profitable_event_pct": 48.61,
+              "average_net_return_pct": -0.0844,
+              "median_net_return_pct": -0.0851,
+              "best_net_return_pct": 17.0432,
+              "worst_net_return_pct": -16.2326,
+              "p10_net_return_pct": -5.4473,
+              "p90_net_return_pct": 5.6819,
+              "average_net_profit_twd": -844.0,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 51.19,
+                  "average_net_return_pct": 0.3271,
+                  "median_net_return_pct": 0.0936
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 37.91,
+                  "average_net_return_pct": -1.1806,
+                  "median_net_return_pct": -0.6467
+                },
+                "sideways": {
+                  "events": 532,
+                  "profitable_event_pct": 49.44,
+                  "average_net_return_pct": -0.1273,
+                  "median_net_return_pct": -0.0607
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1148,
+              "profitable_event_pct": 45.64,
+              "average_net_return_pct": -0.1627,
+              "median_net_return_pct": -0.167,
+              "best_net_return_pct": 12.6578,
+              "worst_net_return_pct": -11.6573,
+              "p10_net_return_pct": -3.4355,
+              "p90_net_return_pct": 3.1256,
+              "average_net_profit_twd": -1627.2,
+              "average_positions": 5.78,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 47.08,
+                  "average_net_return_pct": 0.0284,
+                  "median_net_return_pct": -0.1556
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 38.56,
+                  "average_net_return_pct": -0.9255,
+                  "median_net_return_pct": -0.2595
+                },
+                "sideways": {
+                  "events": 532,
+                  "profitable_event_pct": 46.43,
+                  "average_net_return_pct": -0.1097,
+                  "median_net_return_pct": -0.1339
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1148,
+              "profitable_event_pct": 50.17,
+              "average_net_return_pct": 0.087,
+              "median_net_return_pct": 0.0109,
+              "best_net_return_pct": 11.4629,
+              "worst_net_return_pct": -16.1684,
+              "p10_net_return_pct": -3.3803,
+              "p90_net_return_pct": 3.4723,
+              "average_net_profit_twd": 870.11,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 463,
+                  "profitable_event_pct": 53.56,
+                  "average_net_return_pct": 0.4007,
+                  "median_net_return_pct": 0.2365
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 50.33,
+                  "average_net_return_pct": -0.6701,
+                  "median_net_return_pct": 0.0187
+                },
+                "sideways": {
+                  "events": 532,
+                  "profitable_event_pct": 47.18,
+                  "average_net_return_pct": 0.0318,
+                  "median_net_return_pct": -0.1406
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-07-30",
+                "entry_date": "2026-07-31",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 55508.91,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 15276.66,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 29150.03,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-07-31",
+                "entry_date": "2026-08-03",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 67708.0,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 26321.87,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 4483.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 91541.02,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 68924.58,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 31917.5,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-11",
+                "regime": "bear",
+                "rank": {
+                  "net_profit_twd": 27274.86,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 9384.43,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 4342.76,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 27718.38,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -522.38,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 15036.17,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 33083.82,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 23974.04,
+                  "executed_positions": 8
+                },
+                "benchmark": {
+                  "net_profit_twd": 24088.28,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 31379.48,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 22534.96,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": 20211.6,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 67624.4,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 23748.12,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 19215.77,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 27715.55,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -4802.37,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -1182.26,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -36229.21,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -73002.56,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -10395.15,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -34662.28,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -81344.3,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -17932.63,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -20297.37,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          }
         }
       },
       "audit_hash": "80a229ef7c255d9b",
@@ -3465,6 +4743,1283 @@
           ]
         }
       },
+      "holding_horizon_comparison": {
+        "method": "independent_signal_events",
+        "capital_is_not_stacked": true,
+        "entry_timing": "訊號後下一交易日開盤",
+        "exit_timing": "持有第N個交易日收盤",
+        "cost_charged_once_per_position": true,
+        "horizons": {
+          "1": {
+            "holding_sessions": 1,
+            "rank": {
+              "event_count": 1155,
+              "profitable_event_pct": 23.2,
+              "average_net_return_pct": -0.4231,
+              "median_net_return_pct": -0.3839,
+              "best_net_return_pct": 1.9888,
+              "worst_net_return_pct": -4.7873,
+              "p10_net_return_pct": -1.1355,
+              "p90_net_return_pct": 0.3095,
+              "average_net_profit_twd": -4230.94,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 24.25,
+                  "average_net_return_pct": -0.3914,
+                  "median_net_return_pct": -0.3341
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 28.1,
+                  "average_net_return_pct": -0.4788,
+                  "median_net_return_pct": -0.4434
+                },
+                "sideways": {
+                  "events": 536,
+                  "profitable_event_pct": 20.9,
+                  "average_net_return_pct": -0.4347,
+                  "median_net_return_pct": -0.4094
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1155,
+              "profitable_event_pct": 15.5,
+              "average_net_return_pct": -0.1198,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 1.8962,
+              "worst_net_return_pct": -3.5018,
+              "p10_net_return_pct": -0.4614,
+              "p90_net_return_pct": 0.0558,
+              "average_net_profit_twd": -1198.09,
+              "average_positions": 3.2,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 22.53,
+                  "average_net_return_pct": -0.1975,
+                  "median_net_return_pct": -0.1252
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 3.92,
+                  "average_net_return_pct": -0.0079,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 536,
+                  "profitable_event_pct": 12.69,
+                  "average_net_return_pct": -0.0842,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1155,
+              "profitable_event_pct": 27.1,
+              "average_net_return_pct": -0.3746,
+              "median_net_return_pct": -0.385,
+              "best_net_return_pct": 4.2573,
+              "worst_net_return_pct": -5.1255,
+              "p10_net_return_pct": -1.3023,
+              "p90_net_return_pct": 0.6209,
+              "average_net_profit_twd": -3746.06,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 29.61,
+                  "average_net_return_pct": -0.307,
+                  "median_net_return_pct": -0.3594
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 25.49,
+                  "average_net_return_pct": -0.55,
+                  "median_net_return_pct": -0.5065
+                },
+                "sideways": {
+                  "events": 536,
+                  "profitable_event_pct": 25.37,
+                  "average_net_return_pct": -0.3833,
+                  "median_net_return_pct": -0.385
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -3086.99,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -724.46,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -3365.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -11353.46,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -741.76,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -13002.26,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 17.22,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -481.39,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-11",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -1076.82,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -575.84,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 1435.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -167.07,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -1945.27,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -2832.01,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -2442.27,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -14052.99,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -10385.92,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -4362.51,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -3380.12,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -23745.27,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -18410.78,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -7216.56,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -895.76,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -3364.84,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -7792.47,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -421.27,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -7688.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-20",
+                "entry_date": "2026-08-21",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -982.27,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -457.77,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 4338.81,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "2": {
+            "holding_sessions": 2,
+            "rank": {
+              "event_count": 1154,
+              "profitable_event_pct": 42.46,
+              "average_net_return_pct": -0.3186,
+              "median_net_return_pct": -0.2383,
+              "best_net_return_pct": 7.647,
+              "worst_net_return_pct": -12.8469,
+              "p10_net_return_pct": -2.3017,
+              "p90_net_return_pct": 1.5304,
+              "average_net_profit_twd": -3186.36,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 40.56,
+                  "average_net_return_pct": -0.268,
+                  "median_net_return_pct": -0.2914
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 44.44,
+                  "average_net_return_pct": -0.5048,
+                  "median_net_return_pct": -0.274
+                },
+                "sideways": {
+                  "events": 535,
+                  "profitable_event_pct": 43.55,
+                  "average_net_return_pct": -0.3095,
+                  "median_net_return_pct": -0.1823
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1154,
+              "profitable_event_pct": 27.82,
+              "average_net_return_pct": -0.0708,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 4.3256,
+              "worst_net_return_pct": -6.0202,
+              "p10_net_return_pct": -0.6801,
+              "p90_net_return_pct": 0.4841,
+              "average_net_profit_twd": -707.63,
+              "average_positions": 3.2,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 37.55,
+                  "average_net_return_pct": -0.1216,
+                  "median_net_return_pct": -0.0536
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 5.88,
+                  "average_net_return_pct": -0.0106,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 535,
+                  "profitable_event_pct": 25.61,
+                  "average_net_return_pct": -0.0437,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1154,
+              "profitable_event_pct": 43.07,
+              "average_net_return_pct": -0.2589,
+              "median_net_return_pct": -0.2572,
+              "best_net_return_pct": 9.7328,
+              "worst_net_return_pct": -11.2747,
+              "p10_net_return_pct": -2.0897,
+              "p90_net_return_pct": 1.6618,
+              "average_net_profit_twd": -2588.99,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 43.35,
+                  "average_net_return_pct": -0.1562,
+                  "median_net_return_pct": -0.2446
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 40.52,
+                  "average_net_return_pct": -0.6166,
+                  "median_net_return_pct": -0.4662
+                },
+                "sideways": {
+                  "events": 535,
+                  "profitable_event_pct": 43.55,
+                  "average_net_return_pct": -0.246,
+                  "median_net_return_pct": -0.2203
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-06",
+                "regime": "bear",
+                "rank": {
+                  "net_profit_twd": -11738.03,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -917.29,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -8187.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -8266.07,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1568.59,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -7724.11,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 6640.31,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1113.4,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 485.23,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-11",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 1136.89,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 2887.22,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 6732.42,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 187.52,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 7202.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 12196.69,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 12340.45,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -1669.03,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -5257.8,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -14379.1,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -9919.11,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -28356.44,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -17947.74,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -42560.92,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -35320.16,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -4548.08,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 162.25,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 3428.02,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -11142.19,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -783.99,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 468.66,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "3": {
+            "holding_sessions": 3,
+            "rank": {
+              "event_count": 1153,
+              "profitable_event_pct": 47.09,
+              "average_net_return_pct": -0.2221,
+              "median_net_return_pct": -0.1393,
+              "best_net_return_pct": 8.4045,
+              "worst_net_return_pct": -14.5367,
+              "p10_net_return_pct": -2.9646,
+              "p90_net_return_pct": 2.3165,
+              "average_net_profit_twd": -2220.62,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 47.85,
+                  "average_net_return_pct": -0.1234,
+                  "median_net_return_pct": -0.0862
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 45.1,
+                  "average_net_return_pct": -0.4686,
+                  "median_net_return_pct": -0.2823
+                },
+                "sideways": {
+                  "events": 534,
+                  "profitable_event_pct": 47.0,
+                  "average_net_return_pct": -0.2375,
+                  "median_net_return_pct": -0.1474
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1153,
+              "profitable_event_pct": 31.22,
+              "average_net_return_pct": -0.0344,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 5.5588,
+              "worst_net_return_pct": -5.6507,
+              "p10_net_return_pct": -0.9331,
+              "p90_net_return_pct": 0.826,
+              "average_net_profit_twd": -343.9,
+              "average_positions": 3.2,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 43.78,
+                  "average_net_return_pct": -0.0698,
+                  "median_net_return_pct": 0.0
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 5.88,
+                  "average_net_return_pct": -0.0022,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 534,
+                  "profitable_event_pct": 27.53,
+                  "average_net_return_pct": -0.0127,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1153,
+              "profitable_event_pct": 46.83,
+              "average_net_return_pct": -0.1425,
+              "median_net_return_pct": -0.1783,
+              "best_net_return_pct": 8.8227,
+              "worst_net_return_pct": -14.5742,
+              "p10_net_return_pct": -2.5978,
+              "p90_net_return_pct": 2.4526,
+              "average_net_profit_twd": -1425.14,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 48.5,
+                  "average_net_return_pct": 0.0145,
+                  "median_net_return_pct": -0.0511
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 43.14,
+                  "average_net_return_pct": -0.6306,
+                  "median_net_return_pct": -0.3424
+                },
+                "sideways": {
+                  "events": 534,
+                  "profitable_event_pct": 46.44,
+                  "average_net_return_pct": -0.1397,
+                  "median_net_return_pct": -0.2116
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 32848.69,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2364.27,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 22478.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-07",
+                "regime": "bear",
+                "rank": {
+                  "net_profit_twd": -18754.03,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1272.15,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -12524.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 9313.93,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 3015.61,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 5835.23,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-11",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 7481.12,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1113.4,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 3857.08,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 7349.83,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 8661.99,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 19235.48,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 760.04,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 21618.47,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 11781.38,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 9483.35,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 1596.97,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -4788.58,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -36351.23,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -24391.52,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -47592.02,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -34865.07,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -36842.74,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -28744.26,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -8068.11,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -202.58,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 11676.43,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "5": {
+            "holding_sessions": 5,
+            "rank": {
+              "event_count": 1151,
+              "profitable_event_pct": 52.39,
+              "average_net_return_pct": 0.0101,
+              "median_net_return_pct": 0.1414,
+              "best_net_return_pct": 12.1968,
+              "worst_net_return_pct": -17.419,
+              "p10_net_return_pct": -3.8831,
+              "p90_net_return_pct": 3.6836,
+              "average_net_profit_twd": 101.17,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 54.08,
+                  "average_net_return_pct": 0.2594,
+                  "median_net_return_pct": 0.2412
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 50.33,
+                  "average_net_return_pct": -0.4959,
+                  "median_net_return_pct": 0.0596
+                },
+                "sideways": {
+                  "events": 532,
+                  "profitable_event_pct": 51.5,
+                  "average_net_return_pct": -0.0627,
+                  "median_net_return_pct": 0.073
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1151,
+              "profitable_event_pct": 33.62,
+              "average_net_return_pct": 0.0778,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 8.4695,
+              "worst_net_return_pct": -7.4476,
+              "p10_net_return_pct": -1.0454,
+              "p90_net_return_pct": 1.4038,
+              "average_net_profit_twd": 778.35,
+              "average_positions": 3.2,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 46.78,
+                  "average_net_return_pct": 0.1479,
+                  "median_net_return_pct": 0.0
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 8.5,
+                  "average_net_return_pct": 0.0253,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 532,
+                  "profitable_event_pct": 29.32,
+                  "average_net_return_pct": 0.0316,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1151,
+              "profitable_event_pct": 50.22,
+              "average_net_return_pct": 0.0915,
+              "median_net_return_pct": 0.014,
+              "best_net_return_pct": 11.4629,
+              "worst_net_return_pct": -16.1684,
+              "p10_net_return_pct": -3.3653,
+              "p90_net_return_pct": 3.4686,
+              "average_net_profit_twd": 915.21,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 466,
+                  "profitable_event_pct": 53.65,
+                  "average_net_return_pct": 0.4098,
+                  "median_net_return_pct": 0.2438
+                },
+                "bear": {
+                  "events": 153,
+                  "profitable_event_pct": 50.33,
+                  "average_net_return_pct": -0.6701,
+                  "median_net_return_pct": 0.0187
+                },
+                "sideways": {
+                  "events": 532,
+                  "profitable_event_pct": 47.18,
+                  "average_net_return_pct": 0.0318,
+                  "median_net_return_pct": -0.1406
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-07-30",
+                "entry_date": "2026-07-31",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 46057.1,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 29150.03,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-07-31",
+                "entry_date": "2026-08-03",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 23323.24,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 5691.72,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 4483.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 44522.87,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 3903.86,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 31917.5,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-11",
+                "regime": "bear",
+                "rank": {
+                  "net_profit_twd": -4246.65,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 573.13,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 4342.76,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-12",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 10607.96,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2502.11,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 15036.17,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-13",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 22576.92,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -599.05,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 24088.28,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-14",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 18336.99,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": 20211.6,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-17",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 19534.22,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 760.04,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 19215.77,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-18",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -8549.99,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -4802.37,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-19",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -40456.85,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -36229.21,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-20",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -48781.67,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -34662.28,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-21",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": -44458.46,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -20297.37,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          }
+        }
+      },
       "audit_hash": "49613e6e85f68162",
       "recent_days": [
         {
@@ -6240,6 +8795,1283 @@
               "average_positions": 1.0
             }
           ]
+        }
+      },
+      "holding_horizon_comparison": {
+        "method": "independent_signal_events",
+        "capital_is_not_stacked": true,
+        "entry_timing": "訊號後下一交易日開盤",
+        "exit_timing": "持有第N個交易日收盤",
+        "cost_charged_once_per_position": true,
+        "horizons": {
+          "1": {
+            "holding_sessions": 1,
+            "rank": {
+              "event_count": 1195,
+              "profitable_event_pct": 46.36,
+              "average_net_return_pct": -0.1942,
+              "median_net_return_pct": -0.1636,
+              "best_net_return_pct": 16.3065,
+              "worst_net_return_pct": -12.5967,
+              "p10_net_return_pct": -3.0424,
+              "p90_net_return_pct": 2.5624,
+              "average_net_profit_twd": -1941.66,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 436,
+                  "profitable_event_pct": 45.87,
+                  "average_net_return_pct": -0.1897,
+                  "median_net_return_pct": -0.1873
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 38.62,
+                  "average_net_return_pct": -0.461,
+                  "median_net_return_pct": -0.4379
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 48.53,
+                  "average_net_return_pct": -0.1343,
+                  "median_net_return_pct": -0.0775
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1195,
+              "profitable_event_pct": 43.18,
+              "average_net_return_pct": -0.0859,
+              "median_net_return_pct": -0.0611,
+              "best_net_return_pct": 7.3116,
+              "worst_net_return_pct": -7.102,
+              "p10_net_return_pct": -1.1812,
+              "p90_net_return_pct": 1.0742,
+              "average_net_profit_twd": -858.93,
+              "average_positions": 4.78,
+              "regimes": {
+                "bull": {
+                  "events": 436,
+                  "profitable_event_pct": 44.04,
+                  "average_net_return_pct": -0.1034,
+                  "median_net_return_pct": -0.0943
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 35.17,
+                  "average_net_return_pct": -0.0608,
+                  "median_net_return_pct": -0.0402
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 44.46,
+                  "average_net_return_pct": -0.0794,
+                  "median_net_return_pct": -0.0545
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1195,
+              "profitable_event_pct": 41.17,
+              "average_net_return_pct": -0.1779,
+              "median_net_return_pct": -0.1463,
+              "best_net_return_pct": 9.8576,
+              "worst_net_return_pct": -4.9824,
+              "p10_net_return_pct": -1.2028,
+              "p90_net_return_pct": 0.7761,
+              "average_net_profit_twd": -1779.07,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 436,
+                  "profitable_event_pct": 38.99,
+                  "average_net_return_pct": -0.1726,
+                  "median_net_return_pct": -0.1471
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 49.66,
+                  "average_net_return_pct": -0.1172,
+                  "median_net_return_pct": -0.0035
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 40.72,
+                  "average_net_return_pct": -0.196,
+                  "median_net_return_pct": -0.1529
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-06",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -1907.84,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1966.49,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": -4161.19,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-07",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 7272.14,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7178.25,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 793.79,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-10",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 20686.52,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 9730.63,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -1521.3,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -646.43,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2778.84,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -6972.24,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -15741.59,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1236.18,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -4738.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -7281.16,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -2748.34,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 1720.38,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -5061.47,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -8936.58,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -4822.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -17525.61,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -6526.95,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -6552.79,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5369.61,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -3712.35,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -3150.56,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -516.4,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -3807.47,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -15075.81,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5475.98,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -6317.84,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-20",
+                "entry_date": "2026-08-21",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 3997.24,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1498.05,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -2511.29,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "2": {
+            "holding_sessions": 2,
+            "rank": {
+              "event_count": 1194,
+              "profitable_event_pct": 49.41,
+              "average_net_return_pct": -0.0243,
+              "median_net_return_pct": -0.0282,
+              "best_net_return_pct": 31.0929,
+              "worst_net_return_pct": -12.4662,
+              "p10_net_return_pct": -4.4557,
+              "p90_net_return_pct": 4.2812,
+              "average_net_profit_twd": -243.37,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 435,
+                  "profitable_event_pct": 49.89,
+                  "average_net_return_pct": 0.1116,
+                  "median_net_return_pct": -0.0052
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 44.14,
+                  "average_net_return_pct": -0.6189,
+                  "median_net_return_pct": -0.3977
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 50.33,
+                  "average_net_return_pct": 0.0198,
+                  "median_net_return_pct": 0.0091
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1194,
+              "profitable_event_pct": 47.4,
+              "average_net_return_pct": 0.0028,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 7.8634,
+              "worst_net_return_pct": -8.9131,
+              "p10_net_return_pct": -1.8969,
+              "p90_net_return_pct": 1.966,
+              "average_net_profit_twd": 27.53,
+              "average_positions": 4.78,
+              "regimes": {
+                "bull": {
+                  "events": 435,
+                  "profitable_event_pct": 47.82,
+                  "average_net_return_pct": 0.0392,
+                  "median_net_return_pct": -0.0202
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 37.24,
+                  "average_net_return_pct": -0.1874,
+                  "median_net_return_pct": -0.0505
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 49.51,
+                  "average_net_return_pct": 0.0219,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1194,
+              "profitable_event_pct": 48.99,
+              "average_net_return_pct": -0.1262,
+              "median_net_return_pct": -0.0263,
+              "best_net_return_pct": 6.3147,
+              "worst_net_return_pct": -7.2818,
+              "p10_net_return_pct": -1.8116,
+              "p90_net_return_pct": 1.4318,
+              "average_net_profit_twd": -1261.6,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 435,
+                  "profitable_event_pct": 47.59,
+                  "average_net_return_pct": -0.1523,
+                  "median_net_return_pct": -0.0593
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 55.86,
+                  "average_net_return_pct": 0.0719,
+                  "median_net_return_pct": 0.187
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 48.37,
+                  "average_net_return_pct": -0.1544,
+                  "median_net_return_pct": -0.0421
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-06",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -44843.6,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -42836.36,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": -11451.15,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-07",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 22468.31,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10300.4,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": 1926.98,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-10",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 23412.85,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1872.75,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 709.13,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 21655.49,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 8272.95,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -4660.83,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -10013.03,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 3870.49,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -4514.24,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -2769.97,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 13757.57,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": 1974.07,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -13218.96,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 380.97,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -160.89,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -30122.84,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -14960.04,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -9489.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -37218.84,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -13352.45,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -14546.0,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5939.0,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -1575.45,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -22086.3,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -11568.26,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -12138.51,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 245.46,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5950.44,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -2482.87,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "3": {
+            "holding_sessions": 3,
+            "rank": {
+              "event_count": 1193,
+              "profitable_event_pct": 50.63,
+              "average_net_return_pct": 0.1314,
+              "median_net_return_pct": 0.0558,
+              "best_net_return_pct": 34.7121,
+              "worst_net_return_pct": -17.588,
+              "p10_net_return_pct": -5.2213,
+              "p90_net_return_pct": 5.5897,
+              "average_net_profit_twd": 1314.19,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 434,
+                  "profitable_event_pct": 51.84,
+                  "average_net_return_pct": 0.321,
+                  "median_net_return_pct": 0.2079
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 44.83,
+                  "average_net_return_pct": -0.7253,
+                  "median_net_return_pct": -0.484
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 51.14,
+                  "average_net_return_pct": 0.1998,
+                  "median_net_return_pct": 0.1493
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1193,
+              "profitable_event_pct": 47.61,
+              "average_net_return_pct": 0.0517,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 9.4962,
+              "worst_net_return_pct": -11.0454,
+              "p10_net_return_pct": -2.2716,
+              "p90_net_return_pct": 2.4753,
+              "average_net_profit_twd": 516.89,
+              "average_positions": 4.78,
+              "regimes": {
+                "bull": {
+                  "events": 434,
+                  "profitable_event_pct": 48.62,
+                  "average_net_return_pct": 0.1029,
+                  "median_net_return_pct": -0.0004
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 38.62,
+                  "average_net_return_pct": -0.2186,
+                  "median_net_return_pct": -0.0516
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 49.02,
+                  "average_net_return_pct": 0.0794,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1193,
+              "profitable_event_pct": 50.46,
+              "average_net_return_pct": -0.0731,
+              "median_net_return_pct": 0.0122,
+              "best_net_return_pct": 10.8246,
+              "worst_net_return_pct": -8.9466,
+              "p10_net_return_pct": -2.1555,
+              "p90_net_return_pct": 1.7986,
+              "average_net_profit_twd": -731.47,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 434,
+                  "profitable_event_pct": 49.54,
+                  "average_net_return_pct": -0.1045,
+                  "median_net_return_pct": -0.0161
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 51.03,
+                  "average_net_return_pct": 0.1647,
+                  "median_net_return_pct": 0.0193
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 50.98,
+                  "average_net_return_pct": -0.1071,
+                  "median_net_return_pct": 0.0565
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 15971.78,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1902.06,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 8355.36,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-07",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -21071.88,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -31256.59,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": -5407.46,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-10",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 47119.5,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 30154.19,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": 1842.23,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 24182.21,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1345.09,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -2437.4,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 12967.52,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 6947.67,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -2197.12,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 20114.61,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10428.74,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 2199.66,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -12026.34,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 5052.28,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": 92.33,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -14820.64,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -3605.85,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -4849.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -48304.94,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -22813.69,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -16295.07,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -51610.03,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -11236.2,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -39439.86,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -11589.01,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -9925.13,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -7686.74,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7386.11,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -8325.96,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "5": {
+            "holding_sessions": 5,
+            "rank": {
+              "event_count": 1191,
+              "profitable_event_pct": 51.05,
+              "average_net_return_pct": 0.4226,
+              "median_net_return_pct": 0.2194,
+              "best_net_return_pct": 61.7947,
+              "worst_net_return_pct": -22.1446,
+              "p10_net_return_pct": -7.1782,
+              "p90_net_return_pct": 7.8746,
+              "average_net_profit_twd": 4225.99,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 432,
+                  "profitable_event_pct": 54.17,
+                  "average_net_return_pct": 0.8814,
+                  "median_net_return_pct": 0.5
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 37.93,
+                  "average_net_return_pct": -1.0882,
+                  "median_net_return_pct": -1.0009
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 51.95,
+                  "average_net_return_pct": 0.4565,
+                  "median_net_return_pct": 0.3271
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1191,
+              "profitable_event_pct": 49.37,
+              "average_net_return_pct": 0.1487,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 12.4532,
+              "worst_net_return_pct": -14.2633,
+              "p10_net_return_pct": -2.7645,
+              "p90_net_return_pct": 3.428,
+              "average_net_profit_twd": 1486.6,
+              "average_positions": 4.78,
+              "regimes": {
+                "bull": {
+                  "events": 432,
+                  "profitable_event_pct": 50.23,
+                  "average_net_return_pct": 0.2484,
+                  "median_net_return_pct": 0.0263
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 33.79,
+                  "average_net_return_pct": -0.3389,
+                  "median_net_return_pct": -0.1671
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 52.44,
+                  "average_net_return_pct": 0.1936,
+                  "median_net_return_pct": 0.0801
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1191,
+              "profitable_event_pct": 54.58,
+              "average_net_return_pct": 0.0309,
+              "median_net_return_pct": 0.1962,
+              "best_net_return_pct": 8.9227,
+              "worst_net_return_pct": -10.6677,
+              "p10_net_return_pct": -2.663,
+              "p90_net_return_pct": 2.488,
+              "average_net_profit_twd": 309.37,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 432,
+                  "profitable_event_pct": 53.94,
+                  "average_net_return_pct": -0.0182,
+                  "median_net_return_pct": 0.1674
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 53.1,
+                  "average_net_return_pct": 0.3341,
+                  "median_net_return_pct": 0.3422
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 55.37,
+                  "average_net_return_pct": -0.0061,
+                  "median_net_return_pct": 0.2326
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-07-30",
+                "entry_date": "2026-07-31",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 40743.47,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 26844.05,
+                  "executed_positions": 9
+                },
+                "benchmark": {
+                  "net_profit_twd": 29994.19,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-07-31",
+                "entry_date": "2026-08-03",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 60467.93,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 38238.81,
+                  "executed_positions": 8
+                },
+                "benchmark": {
+                  "net_profit_twd": 29764.01,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 72157.54,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 35549.03,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 14434.08,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 4331.93,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -15615.47,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": -8618.66,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 52022.29,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 34380.46,
+                  "executed_positions": 7
+                },
+                "benchmark": {
+                  "net_profit_twd": 1164.14,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 48457.39,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 15194.01,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 6776.31,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 18177.59,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10225.15,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 2645.84,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -15306.05,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1672.07,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -4373.73,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -55023.86,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5355.68,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -11436.57,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -83349.27,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5648.21,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -9567.06,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -67224.33,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -25723.24,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -22429.54,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -63573.89,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -15721.06,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          }
         }
       },
       "audit_hash": "48de9064adeb68d5",
@@ -9019,6 +12851,1283 @@
               "average_positions": 1.0
             }
           ]
+        }
+      },
+      "holding_horizon_comparison": {
+        "method": "independent_signal_events",
+        "capital_is_not_stacked": true,
+        "entry_timing": "訊號後下一交易日開盤",
+        "exit_timing": "持有第N個交易日收盤",
+        "cost_charged_once_per_position": true,
+        "horizons": {
+          "1": {
+            "holding_sessions": 1,
+            "rank": {
+              "event_count": 1195,
+              "profitable_event_pct": 43.26,
+              "average_net_return_pct": -0.1946,
+              "median_net_return_pct": -0.2084,
+              "best_net_return_pct": 11.1959,
+              "worst_net_return_pct": -5.0475,
+              "p10_net_return_pct": -1.7155,
+              "p90_net_return_pct": 1.2128,
+              "average_net_profit_twd": -1945.71,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 436,
+                  "profitable_event_pct": 41.06,
+                  "average_net_return_pct": -0.2358,
+                  "median_net_return_pct": -0.2215
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 46.21,
+                  "average_net_return_pct": -0.0808,
+                  "median_net_return_pct": -0.0593
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 44.14,
+                  "average_net_return_pct": -0.1921,
+                  "median_net_return_pct": -0.206
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1195,
+              "profitable_event_pct": 31.05,
+              "average_net_return_pct": -0.0988,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 2.4211,
+              "worst_net_return_pct": -5.0475,
+              "p10_net_return_pct": -0.6734,
+              "p90_net_return_pct": 0.398,
+              "average_net_profit_twd": -988.44,
+              "average_positions": 3.75,
+              "regimes": {
+                "bull": {
+                  "events": 436,
+                  "profitable_event_pct": 38.99,
+                  "average_net_return_pct": -0.1528,
+                  "median_net_return_pct": -0.0885
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 13.1,
+                  "average_net_return_pct": -0.0246,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 29.64,
+                  "average_net_return_pct": -0.0781,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1195,
+              "profitable_event_pct": 41.17,
+              "average_net_return_pct": -0.1779,
+              "median_net_return_pct": -0.1463,
+              "best_net_return_pct": 9.8576,
+              "worst_net_return_pct": -4.9824,
+              "p10_net_return_pct": -1.2028,
+              "p90_net_return_pct": 0.7761,
+              "average_net_profit_twd": -1779.07,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 436,
+                  "profitable_event_pct": 38.99,
+                  "average_net_return_pct": -0.1726,
+                  "median_net_return_pct": -0.1471
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 49.66,
+                  "average_net_return_pct": -0.1172,
+                  "median_net_return_pct": -0.0035
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 40.72,
+                  "average_net_return_pct": -0.196,
+                  "median_net_return_pct": -0.1529
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-06",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 2486.11,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1775.58,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": -4161.19,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-07",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 4574.37,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 1315.56,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 793.79,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-10",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 14533.72,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 15114.86,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -1521.3,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -1169.4,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1070.52,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -6972.24,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -105.94,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -473.83,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -4738.32,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 15351.85,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1017.19,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 1720.38,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -13870.44,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -4822.71,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -12139.64,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5263.75,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -6526.95,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -111.46,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -46.18,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -3712.35,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -11008.87,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -5109.11,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -3807.47,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -12211.53,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7450.37,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -6317.84,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-20",
+                "entry_date": "2026-08-21",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 4043.39,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -911.08,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -2511.29,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "2": {
+            "holding_sessions": 2,
+            "rank": {
+              "event_count": 1194,
+              "profitable_event_pct": 50.0,
+              "average_net_return_pct": -0.1191,
+              "median_net_return_pct": -0.0054,
+              "best_net_return_pct": 8.0059,
+              "worst_net_return_pct": -7.9205,
+              "p10_net_return_pct": -2.646,
+              "p90_net_return_pct": 2.2504,
+              "average_net_profit_twd": -1191.25,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 435,
+                  "profitable_event_pct": 48.28,
+                  "average_net_return_pct": -0.1836,
+                  "median_net_return_pct": -0.0835
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 53.79,
+                  "average_net_return_pct": 0.081,
+                  "median_net_return_pct": 0.3036
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 50.33,
+                  "average_net_return_pct": -0.1207,
+                  "median_net_return_pct": 0.0071
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1194,
+              "profitable_event_pct": 36.77,
+              "average_net_return_pct": -0.0658,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 4.3317,
+              "worst_net_return_pct": -5.6245,
+              "p10_net_return_pct": -0.987,
+              "p90_net_return_pct": 0.8288,
+              "average_net_profit_twd": -658.15,
+              "average_positions": 3.75,
+              "regimes": {
+                "bull": {
+                  "events": 435,
+                  "profitable_event_pct": 48.05,
+                  "average_net_return_pct": -0.0865,
+                  "median_net_return_pct": -0.0032
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 15.17,
+                  "average_net_return_pct": -0.0358,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 33.88,
+                  "average_net_return_pct": -0.0582,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1194,
+              "profitable_event_pct": 48.99,
+              "average_net_return_pct": -0.1262,
+              "median_net_return_pct": -0.0263,
+              "best_net_return_pct": 6.3147,
+              "worst_net_return_pct": -7.2818,
+              "p10_net_return_pct": -1.8116,
+              "p90_net_return_pct": 1.4318,
+              "average_net_profit_twd": -1261.6,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 435,
+                  "profitable_event_pct": 47.59,
+                  "average_net_return_pct": -0.1523,
+                  "median_net_return_pct": -0.0593
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 55.86,
+                  "average_net_return_pct": 0.0719,
+                  "median_net_return_pct": 0.187
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 48.37,
+                  "average_net_return_pct": -0.1544,
+                  "median_net_return_pct": -0.0421
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-06",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -23790.81,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -13988.69,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -11451.15,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-07",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 25412.52,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10840.2,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 1926.98,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-10",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 20202.44,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10542.91,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 709.13,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 12875.71,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 13383.41,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -4660.83,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 50.24,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -561.93,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -4514.24,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 18613.53,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 197.41,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 1974.07,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 4962.0,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -32.23,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -160.89,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -28212.02,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -9489.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -14983.38,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7689.42,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -13352.45,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -9693.9,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -7669.23,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -1575.45,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -26421.21,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -9436.21,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -12138.51,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-19",
+                "entry_date": "2026-08-20",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -4086.72,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -3588.27,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -2482.87,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "3": {
+            "holding_sessions": 3,
+            "rank": {
+              "event_count": 1193,
+              "profitable_event_pct": 51.47,
+              "average_net_return_pct": -0.0501,
+              "median_net_return_pct": 0.0685,
+              "best_net_return_pct": 12.3698,
+              "worst_net_return_pct": -10.4891,
+              "p10_net_return_pct": -3.1644,
+              "p90_net_return_pct": 2.8661,
+              "average_net_profit_twd": -500.68,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 434,
+                  "profitable_event_pct": 49.54,
+                  "average_net_return_pct": -0.1379,
+                  "median_net_return_pct": -0.0084
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 53.1,
+                  "average_net_return_pct": 0.2143,
+                  "median_net_return_pct": 0.3252
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 52.44,
+                  "average_net_return_pct": -0.0504,
+                  "median_net_return_pct": 0.1049
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1193,
+              "profitable_event_pct": 36.97,
+              "average_net_return_pct": -0.0609,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 6.3918,
+              "worst_net_return_pct": -5.8445,
+              "p10_net_return_pct": -1.2815,
+              "p90_net_return_pct": 1.1128,
+              "average_net_profit_twd": -609.47,
+              "average_positions": 3.76,
+              "regimes": {
+                "bull": {
+                  "events": 434,
+                  "profitable_event_pct": 48.39,
+                  "average_net_return_pct": -0.0643,
+                  "median_net_return_pct": 0.0
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 14.48,
+                  "average_net_return_pct": -0.0529,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 34.2,
+                  "average_net_return_pct": -0.0605,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1193,
+              "profitable_event_pct": 50.46,
+              "average_net_return_pct": -0.0731,
+              "median_net_return_pct": 0.0122,
+              "best_net_return_pct": 10.8246,
+              "worst_net_return_pct": -8.9466,
+              "p10_net_return_pct": -2.1555,
+              "p90_net_return_pct": 1.7986,
+              "average_net_profit_twd": -731.47,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 434,
+                  "profitable_event_pct": 49.54,
+                  "average_net_return_pct": -0.1045,
+                  "median_net_return_pct": -0.0161
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 51.03,
+                  "average_net_return_pct": 0.1647,
+                  "median_net_return_pct": 0.0193
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 50.98,
+                  "average_net_return_pct": -0.1071,
+                  "median_net_return_pct": 0.0565
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 14701.75,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 10119.0,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 8355.36,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-07",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -706.82,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -4974.04,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -5407.46,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-10",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 38572.15,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 20338.79,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 1842.23,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 19289.29,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 9640.95,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -2437.4,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 14514.23,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 13419.42,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -2197.12,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 18313.0,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2006.31,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": 2199.66,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 8379.23,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 9.23,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": 92.33,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -7813.51,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1065.9,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -4849.88,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -34222.48,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -16295.07,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -25285.63,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -15950.65,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -11236.2,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-17",
+                "entry_date": "2026-08-18",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -30448.75,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -18478.53,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -9925.13,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-18",
+                "entry_date": "2026-08-19",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -18070.94,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -6397.63,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": -8325.96,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          },
+          "5": {
+            "holding_sessions": 5,
+            "rank": {
+              "event_count": 1191,
+              "profitable_event_pct": 53.65,
+              "average_net_return_pct": 0.0925,
+              "median_net_return_pct": 0.2443,
+              "best_net_return_pct": 12.4423,
+              "worst_net_return_pct": -11.5851,
+              "p10_net_return_pct": -4.0235,
+              "p90_net_return_pct": 3.9725,
+              "average_net_profit_twd": 924.82,
+              "average_positions": 10.0,
+              "regimes": {
+                "bull": {
+                  "events": 432,
+                  "profitable_event_pct": 51.39,
+                  "average_net_return_pct": -0.0558,
+                  "median_net_return_pct": 0.1104
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 53.79,
+                  "average_net_return_pct": 0.3408,
+                  "median_net_return_pct": 0.4084
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 55.21,
+                  "average_net_return_pct": 0.1382,
+                  "median_net_return_pct": 0.3808
+                }
+              }
+            },
+            "strict": {
+              "event_count": 1191,
+              "profitable_event_pct": 39.13,
+              "average_net_return_pct": -0.0095,
+              "median_net_return_pct": 0.0,
+              "best_net_return_pct": 6.7976,
+              "worst_net_return_pct": -6.5995,
+              "p10_net_return_pct": -1.6452,
+              "p90_net_return_pct": 1.6311,
+              "average_net_profit_twd": -94.83,
+              "average_positions": 3.76,
+              "regimes": {
+                "bull": {
+                  "events": 432,
+                  "profitable_event_pct": 50.46,
+                  "average_net_return_pct": -0.0124,
+                  "median_net_return_pct": 0.0073
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 12.41,
+                  "average_net_return_pct": -0.0497,
+                  "median_net_return_pct": 0.0
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 37.46,
+                  "average_net_return_pct": 0.002,
+                  "median_net_return_pct": 0.0
+                }
+              }
+            },
+            "benchmark": {
+              "event_count": 1191,
+              "profitable_event_pct": 54.58,
+              "average_net_return_pct": 0.0309,
+              "median_net_return_pct": 0.1962,
+              "best_net_return_pct": 8.9227,
+              "worst_net_return_pct": -10.6677,
+              "p10_net_return_pct": -2.663,
+              "p90_net_return_pct": 2.488,
+              "average_net_profit_twd": 309.37,
+              "average_positions": 1.0,
+              "regimes": {
+                "bull": {
+                  "events": 432,
+                  "profitable_event_pct": 53.94,
+                  "average_net_return_pct": -0.0182,
+                  "median_net_return_pct": 0.1674
+                },
+                "bear": {
+                  "events": 145,
+                  "profitable_event_pct": 53.1,
+                  "average_net_return_pct": 0.3341,
+                  "median_net_return_pct": 0.3422
+                },
+                "sideways": {
+                  "events": 614,
+                  "profitable_event_pct": 55.37,
+                  "average_net_return_pct": -0.0061,
+                  "median_net_return_pct": 0.2326
+                }
+              }
+            },
+            "recent_events": [
+              {
+                "signal_date": "2026-07-30",
+                "entry_date": "2026-07-31",
+                "exit_date": "2026-08-06",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 46899.7,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 12668.72,
+                  "executed_positions": 2
+                },
+                "benchmark": {
+                  "net_profit_twd": 29994.19,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-07-31",
+                "entry_date": "2026-08-03",
+                "exit_date": "2026-08-07",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 58680.23,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 30021.91,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 29764.01,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-03",
+                "entry_date": "2026-08-04",
+                "exit_date": "2026-08-10",
+                "regime": "sideways",
+                "rank": {
+                  "net_profit_twd": 51733.69,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 36362.07,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 14434.08,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-04",
+                "entry_date": "2026-08-05",
+                "exit_date": "2026-08-11",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 14142.37,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 2794.26,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": -8618.66,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-05",
+                "entry_date": "2026-08-06",
+                "exit_date": "2026-08-12",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 40708.92,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 18760.57,
+                  "executed_positions": 5
+                },
+                "benchmark": {
+                  "net_profit_twd": 1164.14,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-06",
+                "entry_date": "2026-08-07",
+                "exit_date": "2026-08-13",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 41590.81,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 20990.48,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 6776.31,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-07",
+                "entry_date": "2026-08-10",
+                "exit_date": "2026-08-14",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": 23798.37,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 19636.09,
+                  "executed_positions": 6
+                },
+                "benchmark": {
+                  "net_profit_twd": 2645.84,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-10",
+                "entry_date": "2026-08-11",
+                "exit_date": "2026-08-17",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -5764.08,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -4016.69,
+                  "executed_positions": 3
+                },
+                "benchmark": {
+                  "net_profit_twd": -4373.73,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-11",
+                "entry_date": "2026-08-12",
+                "exit_date": "2026-08-18",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -9424.68,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -1143.66,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -11436.57,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-12",
+                "entry_date": "2026-08-13",
+                "exit_date": "2026-08-19",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -19854.56,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -3068.28,
+                  "executed_positions": 1
+                },
+                "benchmark": {
+                  "net_profit_twd": -9567.06,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-13",
+                "entry_date": "2026-08-14",
+                "exit_date": "2026-08-20",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -59390.95,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": 0.0,
+                  "executed_positions": 0
+                },
+                "benchmark": {
+                  "net_profit_twd": -22429.54,
+                  "executed_positions": 1
+                }
+              },
+              {
+                "signal_date": "2026-08-14",
+                "entry_date": "2026-08-17",
+                "exit_date": "2026-08-21",
+                "regime": "bull",
+                "rank": {
+                  "net_profit_twd": -39287.44,
+                  "executed_positions": 10
+                },
+                "strict": {
+                  "net_profit_twd": -24200.08,
+                  "executed_positions": 4
+                },
+                "benchmark": {
+                  "net_profit_twd": -15721.06,
+                  "executed_positions": 1
+                }
+              }
+            ]
+          }
         }
       },
       "audit_hash": "f7f2d3390f362d1a",
