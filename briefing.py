@@ -16,6 +16,7 @@ from data_fetcher import (
     fetch_broker_branches,
     fetch_core_market,
     fetch_macro_history,
+    fetch_market_regime_history,
     fetch_credit_flows,
     fetch_fundamentals,
     fetch_financial_quality,
@@ -462,6 +463,7 @@ def main() -> int:
             row["us_market_risk_score"] = market_risk_score
             row["us_market_vix"] = vix or None
     macro_history = _stage("總經歷史", fetch_macro_history)
+    market_regime_history = _stage("多空盤整歷史", fetch_market_regime_history)
     macro_regime = _stage(
         "總經判斷",
         lambda: update_macro_regime(
@@ -592,6 +594,7 @@ def main() -> int:
             ranked,
             now.strftime("%Y-%m-%d %H:%M:%S"),
             args.period,
+            market_regimes=market_regime_history,
         )
 
     report = {
@@ -658,6 +661,7 @@ def main() -> int:
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
+            "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }

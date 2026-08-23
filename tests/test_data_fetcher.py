@@ -5,8 +5,10 @@ from data_fetcher import (
     _aggregate_institutional_rows,
     _dataset_for_ids,
     _parse_finra_short_volume,
+    _classify_market_regime_frame,
 )
 from datetime import date
+import pandas as pd
 
 
 def test_credit_rows_have_latest_and_five_day_changes():
@@ -166,3 +168,28 @@ def test_finmind_per_stock_fallback_uses_bounded_timeout(monkeypatch):
     assert all(stock_id in {"2330", "2317"} for stock_id, _ in calls)
     assert len(calls) == 2
     assert all(timeout is not None and timeout <= 8 for _, timeout in calls)
+
+
+def test_market_regime_classification_is_point_in_time_and_has_three_states():
+    dates = pd.date_range("2026-01-01", periods=100, freq="B")
+    bull = pd.DataFrame({"open": [100 + i * .5 for i in range(100)], "close": [100 + i * .5 for i in range(100)]}, index=dates)
+    bear = pd.DataFrame({"open": [150 - i * .5 for i in range(100)], "close": [150 - i * .5 for i in range(100)]}, index=dates)
+    sideways = pd.DataFrame({"open": [100.0] * 100, "close": [100.0] * 100}, index=dates)
+
+    bull_result = _classify_market_regime_frame(bull, market="TW", benchmark="加權指數")
+    bear_result = _classify_market_regime_frame(bear, market="TW", benchmark="加權指數")
+    sideways_result = _classify_market_regime_frame(sideways, market="TW", benchmark="加權指數")
+    last = dates[-1].date().isoformat()
+    assert bull_result[last]["regime"] == "bull"
+    assert bear_result[last]["regime"] == "bear"
+    assert sideways_result[last]["regime"] == "sideways"
+
+    # Future prices may not change a label already calculated for an old date.
+    prior = dates[-1].date().isoformat()
+    extended_dates = pd.date_range(dates[0], periods=110, freq="B")
+    extended = pd.DataFrame({
+        "open": [100 + i * .5 for i in range(100)] + [80.0] * 10,
+        "close": [100 + i * .5 for i in range(100)] + [80.0] * 10,
+    }, index=extended_dates)
+    extended_result = _classify_market_regime_frame(extended, market="TW", benchmark="加權指數")
+    assert extended_result[prior] == bull_result[prior]
