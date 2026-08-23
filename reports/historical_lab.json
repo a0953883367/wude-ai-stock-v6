@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "mode": "historical_lab_only",
+  "status": "data_insufficient",
+  "requested_period": "5y",
+  "configured_universe_count": 372,
+  "is_exact_v6_backtest": false,
+  "official_ranking_affected": false,
+  "official_ledgers_affected": false,
+  "methodology": {
+    "version": "V6-HIST-CORE-1",
+    "signal_timing": "交易日收盤後，以當日及以前資料排名",
+    "execution_timing": "下一交易日官方開盤買入、同日收盤賣出",
+    "portfolio": "前10名各配置10萬元；嚴格組未達資格保留現金",
+    "costs": "台股個股來回0.685%、台股ETF來回0.385%；美股來回0.20%；匯率另列",
+    "regimes": "大盤當日收盤、MA20、MA60與20日動能分多頭／空頭／盤整",
+    "methodology_hash": "waiting"
+  },
+  "markets": {},
+  "exact_forward_archive": {
+    "source": "reports/prediction_history.json",
+    "snapshot_count": 0,
+    "session_count": 0,
+    "date_start": null,
+    "date_end": null,
+    "description": "完整 V6 只能由當時凍結快照向前累積；歷史核心代理不取代此正式證據。"
+  },
+  "limitations": [
+    "這是可由OHLCV重建的短線核心代理，不是完整V6歷史回測。",
+    "目前使用今日維護的股票池，存在存活者偏差；下市股與歷史成分股尚未完整納入。",
+    "歷史法人、投信、新聞、盤中攻擊量與當時交易阻擋資料未加入，不能據此改寫正式權重。",
+    "資料缺漏標為partial或data_insufficient，不以零報酬或假成交補值。",
+    "所有訊號只使用當日收盤以前資料，並於下一交易日開盤後執行。"
+  ]
+}
