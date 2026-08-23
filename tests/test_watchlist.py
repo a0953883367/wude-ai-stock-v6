@@ -31,6 +31,21 @@ def test_power_theme_and_friend_requested_mxic_are_in_fixed_watchlist():
     assert by_symbol["2337.TW"]["theme"] == "記憶體"
 
 
+def test_user_requested_us_listings_and_screenshot_symbols_are_in_fixed_watchlist():
+    rows = load_watchlist()
+    by_symbol = {row["symbol"]: row for row in rows}
+
+    screenshot_symbols = {"PATH", "SPCX", "MRVL", "GLW", "UMC", "NOK", "SKHY", "AVGO", "EUV"}
+    assert screenshot_symbols | {"HNHPF"} <= by_symbol.keys()
+    assert by_symbol["SPCX"]["name"] == "SpaceX"
+    assert by_symbol["SKHY"]["theme"] == "AI記憶體／HBM"
+    assert by_symbol["UMC"]["name"] == "聯電 ADR"
+    assert by_symbol["HNHPF"]["name"] == "鴻海 OTC"
+    assert by_symbol["PATH"]["industry"] == "RPA軟體"
+    assert by_symbol["GLW"]["theme"] == "光通訊／CPO"
+    assert all(by_symbol[symbol]["market"] == "US" for symbol in screenshot_symbols | {"HNHPF"})
+
+
 def test_mobile_report_has_no_raw_markdown_headings():
     row = {
         "symbol": "2327.TW", "name": "國巨", "market": "TW", "price": 100,
