@@ -17,6 +17,7 @@ on:
       - inverse_experiment.py
       - inverse_experiment_watchlist.json
       - missed_strength_validation.py
+      - system_guard.py
       - million_simulation.py
       - weight_experiment.py
       - model_lab.py
@@ -149,11 +150,14 @@ jobs:
           fi
           python briefing.py "${args[@]}"
       - name: Publish sanitized friend-site data
+        id: friend_publish
+        continue-on-error: true
         env:
           FRIEND_SITE_URL: ${{ secrets.FRIEND_SITE_URL }}
           FRIEND_SITE_BYPASS_TOKEN: ${{ secrets.FRIEND_SITE_BYPASS_TOKEN }}
         run: python tools/publish_friend_data.py
       - name: Publish complete owner-site data
+        id: owner_publish
         # The report is already complete at this point. A temporary owner-site
         # 5xx must not prevent the verified snapshot from being committed and
         # published through the normal report channel.
@@ -161,6 +165,12 @@ jobs:
         env:
           OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
         run: python tools/publish_owner_data.py
+      - name: Run independent system guard
+        if: ${{ always() && steps.generate.outcome == 'success' }}
+        run: >-
+          python system_guard.py
+          --friend-publish "${{ steps.friend_publish.outcome }}"
+          --owner-publish "${{ steps.owner_publish.outcome }}"
       - name: Keep reports and recent archive
         if: ${{ steps.generate.outcome == 'success' }}
         shell: bash

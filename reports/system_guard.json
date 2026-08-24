@@ -1,0 +1,93 @@
+{
+  "system": "武得 AI 系統值班員 V1",
+  "status": "warning",
+  "status_label": "🟡 需要注意",
+  "checked_at": "2026-08-24T21:21:00+08:00",
+  "timezone": "Asia/Taipei",
+  "report_updated_at": "2026-08-24 16:04:10",
+  "report_age_minutes": 316.8,
+  "counts": {
+    "ok": 3,
+    "info": 2,
+    "warning": 3,
+    "critical": 0
+  },
+  "checks": [
+    {
+      "code": "report_freshness",
+      "title": "股票資料更新",
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 5.3 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+    },
+    {
+      "code": "report_consistency",
+      "title": "三份報表一致性",
+      "level": "ok",
+      "label": "正常",
+      "detail": "排行、完整分析與首頁報表時間一致",
+      "action": ""
+    },
+    {
+      "code": "analysis_output",
+      "title": "分析輸出",
+      "level": "ok",
+      "label": "正常",
+      "detail": "完成 364/376 檔；排行 218 檔",
+      "action": ""
+    },
+    {
+      "code": "tw_core_data",
+      "title": "台股核心資料",
+      "level": "ok",
+      "label": "正常",
+      "detail": "價格 175、法人 176、信用 175",
+      "action": ""
+    },
+    {
+      "code": "broker_data",
+      "title": "券商分點",
+      "level": "warning",
+      "label": "注意",
+      "detail": "目前沒有取得券商分點資料",
+      "action": "保留黃燈；不要用其他資料冒充分點資料"
+    },
+    {
+      "code": "financial_quality",
+      "title": "財務品質",
+      "level": "warning",
+      "label": "注意",
+      "detail": "已取得 59/67 檔，仍在分批補齊",
+      "action": "缺少財報的股票限制中長線資格"
+    },
+    {
+      "code": "publish_friend",
+      "title": "朋友版同步",
+      "level": "info",
+      "label": "資訊",
+      "detail": "尚未取得這次發布結果",
+      "action": "等待下一次股票報告排程"
+    },
+    {
+      "code": "publish_owner",
+      "title": "本人版同步",
+      "level": "info",
+      "label": "資訊",
+      "detail": "尚未取得這次發布結果",
+      "action": "等待下一次股票報告排程"
+    }
+  ],
+  "action_required": [
+    "若已跨過下一個排程時間，檢查排程是否延遲",
+    "保留黃燈；不要用其他資料冒充分點資料",
+    "缺少財報的股票限制中長線資格"
+  ],
+  "safety": {
+    "changes_rankings": false,
+    "places_orders": false,
+    "deletes_data": false,
+    "automatic_fix": false,
+    "note": "只監控、診斷與通報；不改模型、不下單、不刪除資料。"
+  }
+}
