@@ -45,6 +45,7 @@ from inverse_experiment import (
     load_inverse_experiment_watchlist,
     update_inverse_experiment,
 )
+from missed_strength_validation import update_missed_strength_validation
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from tw_official_data import (
@@ -742,6 +743,16 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         watchlist=inverse_watchlist,
+    )
+    # Research-only forward audit.  It reads the already-final ranking but can
+    # neither change that ranking nor use the same session as its outcome.
+    update_missed_strength_validation(
+        SETTINGS.reports_dir,
+        ranked,
+        market_regime_history,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
     )
     ranking_payload = {
         "updated_at": report["updated_at"],
