@@ -35,8 +35,9 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 .accuracy-entry{width:100%;margin:10px 0 15px;background:#155e75;border-color:#22d3ee;color:#ecfeff}.accuracy-note{margin:12px 0;padding:12px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#d1fae5;font-size:13px;line-height:1.65}.accuracy-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.accuracy-card{background:#172033;border:1px solid #334155;border-radius:14px;padding:12px}.accuracy-card h3{font-size:16px;margin:0 0 8px}.accuracy-line{font-size:12px;line-height:1.65;color:#cbd5e1}.accuracy-line b{color:#4ade80}.accuracy-recent{margin-top:15px}.accuracy-row{background:#0d1727;border:1px solid #26364d;border-radius:13px;padding:11px;margin:8px 0}.accuracy-row-head{display:flex;justify-content:space-between;gap:8px;font-weight:850}.accuracy-row-meta{color:#94a3b8;font-size:11px;margin-top:5px;line-height:1.5}.accuracy-row-result{font-size:13px;margin-top:7px;line-height:1.55}.accuracy-ok{color:#4ade80}.accuracy-bad{color:#fb7185}.accuracy-wait{color:#facc15}
 .training-hero{background:linear-gradient(145deg,#132238,#17142b);border:1px solid #4c3f83;border-radius:18px;padding:16px;margin-bottom:14px;line-height:1.7}.training-hero b{color:#c4b5fd}.training-grid{display:grid;grid-template-columns:1fr;gap:12px}.training-card{background:#0f1b2d;border:1px solid #334155;border-radius:17px;padding:14px}.training-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.training-card-title{font-size:17px;font-weight:900}.training-chip{white-space:nowrap;border-radius:999px;padding:5px 8px;background:#1e293b;color:#facc15;font-size:11px;font-weight:850}.training-chip.ready{background:#0b2c22;color:#4ade80}.training-chip.blocked{background:#2a1720;color:#fda4af}.training-detail{color:#cbd5e1;font-size:12px;line-height:1.65;margin-top:8px}.training-bar{height:9px;background:#253247;border-radius:999px;overflow:hidden;margin-top:11px}.training-bar-fill{height:100%;background:linear-gradient(90deg,#2563eb,#22c55e);border-radius:999px}.training-progress{display:flex;justify-content:space-between;gap:8px;color:#94a3b8;font-size:11px;margin-top:5px}.training-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:11px}.training-metric{background:#172033;border-radius:10px;padding:9px}.training-metric span{display:block;color:#94a3b8;font-size:10px}.training-metric b{display:block;margin-top:3px;font-size:13px}.training-open{width:100%;margin-top:11px;padding:10px;background:#312e81;border-color:#6366f1;color:#e0e7ff;font-size:13px}.training-gate{background:#2a1720;border:1px solid #9f1239;border-radius:16px;padding:14px;margin-top:14px;color:#fecdd3;font-size:13px;line-height:1.7}.training-gate.ready{background:#0b2c22;border-color:#15803d;color:#dcfce7}
 .training-auto{margin-top:12px;padding:12px;border-radius:13px;background:#10261e;border:1px solid #24553d;color:#d1fae5;font-size:12px;line-height:1.7}
+.guard-hero{border-radius:18px;padding:16px;margin-bottom:14px;border:1px solid #24553d;background:#10261e;line-height:1.7}.guard-hero.warning{border-color:#a16207;background:#2b2210}.guard-hero.critical{border-color:#be123c;background:#32151e}.guard-title{font-size:21px;font-weight:900}.guard-grid{display:grid;grid-template-columns:1fr;gap:10px}.guard-card{background:#0f1b2d;border:1px solid #334155;border-radius:15px;padding:13px}.guard-card.warning{border-color:#a16207}.guard-card.critical{border-color:#be123c}.guard-head{display:flex;justify-content:space-between;gap:10px;font-weight:900}.guard-detail{color:#cbd5e1;font-size:12px;line-height:1.65;margin-top:7px}.guard-action{color:#facc15;font-size:12px;line-height:1.6;margin-top:7px}.guard-safety{margin-top:14px;padding:12px;border-radius:13px;background:#111827;border:1px solid #263244;color:#94a3b8;font-size:12px;line-height:1.7}
 @media(min-width:640px){.buttons{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(4,1fr)}}
-@media(min-width:700px){.million-grid,.million-strategies,.holding-layout,.training-grid{grid-template-columns:repeat(2,1fr)}.holding-card.long{grid-column:1/-1}}
+@media(min-width:700px){.million-grid,.million-strategies,.holding-layout,.training-grid,.guard-grid{grid-template-columns:repeat(2,1fr)}.holding-card.long{grid-column:1/-1}}
 @media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}.accuracy-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -58,6 +59,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
     <button data-view="HOLDING">📆 中長期試走</button>
     <button data-view="HISTORY">🧪 歷史驗證</button>
     <button data-view="TRAINING">🧠 AI 模型訓練中心</button>
+    <button data-view="GUARD">🛡️ AI 系統值班員</button>
   </div>
 
   <div class="nav-label">⚛️ 量子概念股專區</div>
@@ -142,7 +144,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,missedStrengthValidation:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,missedStrengthValidation:null,systemGuard:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
@@ -772,6 +774,19 @@ function showHistoricalLab(){
   var limitations=(report.limitations||[]).map(function(note){return '<li>'+esc(note)+'</li>';}).join('');
   document.getElementById('results').innerHTML=notice+archiveHtml+forwardExitHtml()+(cards?'<div class="million-grid">'+cards+'</div>':'<div class="empty">已建立獨立頁面，等待全股票首輪資料下載完成。</div>')+'<div class="million-note"><b>資料與判讀限制</b><ul>'+limitations+'</ul></div>';
 }
+function showSystemGuard(){
+  STATE.view='GUARD';setActive('#marketButtons button','data-view','GUARD');clearOtherNav('#marketButtons button');
+  var guard=STATE.systemGuard;
+  document.getElementById('title').textContent='🛡️ 武得 AI 系統值班員 V1';
+  if(!guard){document.getElementById('status').textContent='等待第一份健康檢查報告';document.getElementById('results').innerHTML='<div class="empty">下一次股票報告或每小時獨立巡檢完成後，會在這裡顯示系統健康狀態。</div>';return;}
+  var status=String(guard.status||'warning'),counts=guard.counts||{},checks=Array.isArray(guard.checks)?guard.checks:[];
+  document.getElementById('status').textContent='巡檢 '+esc(guard.checked_at||'—')+'｜股票資料 '+esc(guard.report_updated_at||'—')+'｜紅燈 '+Number(counts.critical||0)+'｜黃燈 '+Number(counts.warning||0);
+  var cards=checks.map(function(item){var level=String(item.level||'info'),icon=level==='critical'?'🔴':level==='warning'?'🟡':level==='ok'?'🟢':'⚪';return '<section class="guard-card '+esc(level)+'"><div class="guard-head"><span>'+icon+' '+esc(item.title||item.code)+'</span><span>'+esc(item.label||level)+'</span></div><div class="guard-detail">'+esc(item.detail||'—')+'</div>'+(item.action?'<div class="guard-action">處理方式：'+esc(item.action)+'</div>':'')+'</section>';}).join('');
+  var safety=guard.safety||{};
+  var hero='<div class="guard-hero '+esc(status)+'"><div class="guard-title">'+esc(guard.status_label||'系統狀態待確認')+'</div><div>值班員只監控資料更新、檔案一致性、資料涵蓋與網站同步，不會更動任何股票分數。</div></div>';
+  var safetyHtml='<div class="guard-safety">🔒 '+esc(safety.note||'只監控與診斷')+'<br>自動改排名：關閉｜自動下單：關閉｜自動刪除：關閉｜自動修復：關閉</div>';
+  document.getElementById('results').innerHTML=hero+'<div class="guard-grid">'+cards+'</div>'+safetyHtml;
+}
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
   var map={TW:['🇹🇼 台股買進候選排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 買進／風控排名',STATE.etf]};
@@ -782,6 +797,7 @@ function showMarket(view){
   if(view==='INVERSE'){showInverseExperiment();return;}
   if(view==='MISSED_STRENGTH'){showMissedStrengthValidation();return;}
   if(view==='TRAINING'){showTrainingCenter();return;}
+  if(view==='GUARD'){showSystemGuard();return;}
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
     document.getElementById('title').textContent='🧪 2萬元實盤測試資格';
@@ -958,10 +974,11 @@ async function loadAll(){
       fetchJSON('reports/exit_horizon_experiment.json').catch(function(){return null;}),
       fetchJSON('reports/accuracy.json').catch(function(){return null;}),
       fetchJSON('reports/inverse_experiment.json').catch(function(){return null;}),
-      fetchJSON('reports/missed_strength_validation.json').catch(function(){return null;})
+      fetchJSON('reports/missed_strength_validation.json').catch(function(){return null;}),
+      fetchJSON('reports/system_guard.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.holdingSimulation=pair[9];STATE.historicalLab=pair[10];STATE.exitHorizonForward=pair[11];STATE.accuracy=pair[12];STATE.inverseExperiment=pair[13];STATE.missedStrengthValidation=pair[14];STATE.fubonQuotes={};
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.holdingSimulation=pair[9];STATE.historicalLab=pair[10];STATE.exitHorizonForward=pair[11];STATE.accuracy=pair[12];STATE.inverseExperiment=pair[13];STATE.missedStrengthValidation=pair[14];STATE.systemGuard=pair[15];STATE.fubonQuotes={};
     if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
     if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
