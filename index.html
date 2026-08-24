@@ -142,7 +142,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,missedStrengthValidation:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
@@ -685,6 +685,38 @@ function showInverseExperiment(){
   var caveat='<div class="million-note">反向 ETF 是每日重設 -1x；持有多日可能因複利、波動與追蹤誤差偏離指數累積跌幅，因此四種持有天數各自統計。重疊 cohort 的累積報酬與回撤只代表研究樣本序列，不冒充單一可同時執行帳戶。</div>';
   document.getElementById('results').innerHTML=notice+'<div class="million-grid">'+inverseMarketCard(report.markets.TW,watchlist)+inverseMarketCard(report.markets.US,watchlist)+'</div>'+caveat;
 }
+function missedTop10WinRate(market){
+  var group=(((STATE.accuracy||{}).groups||{})[market+'_STOCK']||{}),top=((group.top_k||{})['10']||{}),tracks=top.tracks||{},full=tracks.full_day||{},one=(top.horizons||{})['1']||{};
+  var source=Number(full.samples||0)>0?full:one;
+  return {samples:Number(source.samples||0),winRate:source.win_rate_pct,status:source.sample_status||'樣本不足'};
+}
+function missedRegimeRows(market){
+  var regimes=((market.summary||{}).regimes)||{},labels={bull:'多頭',bear:'空頭',sideways:'盤整',unknown:'未分類'};
+  return ['bull','bear','sideways','unknown'].map(function(key){var row=regimes[key]||{};return '<tr><td>'+esc(labels[key])+'</td><td>'+esc(row.valid_sessions||0)+'</td><td>'+esc(row.top10_captured_total||0)+' / '+esc(row.top10_actual_total||0)+'</td><td>'+esc(percent(row.top10_capture_rate_pct))+'</td><td>'+esc(row.top20_captured_total||0)+' / '+esc(row.top20_actual_total||0)+'</td><td>'+esc(percent(row.top20_capture_rate_pct))+'</td><td>'+esc(row.model_judgment_misses||0)+'</td><td>'+esc(row.data_incomplete_misses||0)+'</td></tr>';}).join('');
+}
+function missedRecentRows(market){
+  var outcomes=(market.outcomes||[]).filter(function(item){return item.status==='valid';}),latest=outcomes.length?outcomes[outcomes.length-1]:null;
+  if(!latest)return '<tr><td colspan="9">等待第一個「事前快照 → 下一交易日正式收盤」有效樣本</td></tr>';
+  return (latest.actual_top20||[]).filter(function(item){return item.error_type!=='captured';}).map(function(item){
+    var prior=item.prior||{},judgment=prior.judgment||{},pressures=(prior.pressure_factors||[]).slice(0,3).map(function(value){return value.reason||value.label+(value.value===null||value.value===undefined?'':' '+number(value.value,2));}).join('；');
+    var classification=item.error_type==='data_incomplete'?'資料不完整':'資料完整但模型判斷失誤';
+    return '<tr><td>'+esc(item.actual_rank)+'</td><td>'+esc(item.symbol)+'<br>'+esc(item.name)+'</td><td class="up">'+esc(percent(item.actual_return_pct))+'</td><td>'+esc(prior.display_rank||'未列入')+'</td><td>'+esc(number(prior.ranking_score,2))+'</td><td>'+esc(judgment.buy_candidate_status||judgment.action||'—')+'</td><td>'+esc(pressures||'未找到明確低分因子')+'</td><td>'+esc(number(item.volume_ratio,2))+' 倍<br>'+esc(item.volume_price_result||'—')+'</td><td>'+esc(classification)+'</td></tr>';
+  }).join('')||'<tr><td colspan="9">最新樣本的實際強勢股已全部被相同級距排名捕捉。</td></tr>';
+}
+function missedMarketCard(market){
+  market=market||{};var summary=market.summary||{},overall=summary.overall||{},gate=summary.review_gate||{},pending=market.pending_snapshot||{},win=missedTop10WinRate(market.market||'');
+  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+(market.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+'｜強勢股漏選驗證</div><div class="million-progress">有效 '+esc(overall.valid_sessions||0)+' 日｜無效隔離 '+esc(overall.invalid_sessions||0)+' 日｜待驗快照 '+esc(pending.signal_session_date||'等待建立')+'</div></div><div class="million-total">20／60日閘門<br>'+esc(gate.valid_trading_days||0)+' / 60</div></div><div class="holding-summary"><div class="item"><div class="label">實際TOP10捕捉</div><div class="value">'+esc(overall.top10_captured_total||0)+' / '+esc(overall.top10_actual_total||0)+'｜'+esc(percent(overall.top10_capture_rate_pct))+'</div></div><div class="item"><div class="label">實際TOP20捕捉</div><div class="value">'+esc(overall.top20_captured_total||0)+' / '+esc(overall.top20_actual_total||0)+'｜'+esc(percent(overall.top20_capture_rate_pct))+'</div></div><div class="item"><div class="label">資料完整但判斷失誤</div><div class="value">'+esc(overall.model_judgment_misses||0)+' 檔</div></div><div class="item"><div class="label">資料不完整</div><div class="value">'+esc(overall.data_incomplete_misses||0)+' 檔</div></div><div class="item"><div class="label">既有TOP10勝率</div><div class="value">'+esc(win.samples?number(win.winRate,2)+'%｜'+win.samples+'筆':win.status)+'</div></div><div class="item"><div class="label">共同特徵分析</div><div class="value">'+esc(gate.status||'collecting')+'</div></div></div><div class="group">多頭／空頭／盤整分開統計</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>行情</th><th>有效日</th><th>TOP10命中</th><th>捕捉率</th><th>TOP20命中</th><th>捕捉率</th><th>模型判斷失誤</th><th>資料不完整</th></tr></thead><tbody>'+missedRegimeRows(market)+'</tbody></table></div><div class="group">最新有效樣本漏選明細</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>實際名次</th><th>股票</th><th>正式漲幅</th><th>事前排名</th><th>事前分數</th><th>事前判斷</th><th>壓低因子</th><th>量能／量價</th><th>分類</th></tr></thead><tbody>'+missedRecentRows(market)+'</tbody></table></div></section>';
+}
+function showMissedStrengthValidation(){
+  STATE.view='MISSED_STRENGTH';setActive('#marketButtons button','data-view','MISSED_STRENGTH');clearOtherNav('#marketButtons button');
+  var report=STATE.missedStrengthValidation;
+  document.getElementById('title').textContent='強勢股漏選驗證 V1';
+  if(!report||!report.markets){document.getElementById('status').textContent='等待第一份正式收盤排名快照';document.getElementById('results').innerHTML='<div class="empty">第一個完成收盤只會凍結完整排名；必須等下一交易日正式收盤後才會產生漏選結果。今天盤中上漲股票不列入正式結果。</div>';return;}
+  document.getElementById('status').textContent='更新 '+esc(report.updated_at||'等待排程')+'｜只累積驗證資料｜狀態 '+esc(report.status||'waiting');
+  var notice='<div class="million-policy"><b>這不是資料漏抓：</b>驗證的是股票原本存在完整排名中，但模型沒有排進相同級距 TOP10／TOP20，後來卻成為下一交易日正式漲幅強勢股。<br><b>嚴格順序：</b>上一完成交易日凍結完整排名、分數、理由與雜湊 → 下一交易日正式收盤 → 才計算實際漲幅 TOP10／TOP20。盤中資料、同日收盤後排名及未來資料都不能回頭改結果。<br><b>安全邊界：</b>只累積資料；不修改 V6、ALL、TOP10、60日閘門，不自動 Merge、不下單。</div>';
+  var common=['TW','US'].map(function(key){var list=(((report.markets[key]||{}).summary||{}).common_missed_features)||[];return '<div class="million-note"><b>'+(key==='TW'?'台股':'美股')+'共同特徵：</b>'+(list.length?list.map(function(item){return esc(item.label)+' '+esc(item.missed_count)+'次（'+esc(number(item.share_of_model_misses_pct,2))+'%）';}).join('、'):'未滿20個有效交易日，禁止提前歸納。')+'</div>';}).join('');
+  document.getElementById('results').innerHTML=notice+'<div class="million-grid">'+missedMarketCard(report.markets.TW)+missedMarketCard(report.markets.US)+'</div>'+common;
+}
 function showTrainingCenter(){
   STATE.view='TRAINING';setActive('#marketButtons button','data-view','TRAINING');clearOtherNav('#marketButtons button');
   var historical=STATE.historicalLab||{},historicalMarkets=historical.markets||{},loaded=0,expected=0;
@@ -700,6 +732,7 @@ function showTrainingCenter(){
   var holding=STATE.holdingSimulation||{},medium=holding.medium||{},longBook=holding.long||{},holdingBooks=[medium.TW||{},medium.US||{},longBook];
   var holdingStarted=holdingBooks.filter(function(book){return ['active','complete'].indexOf(book.status)>=0;}).length;
   var inverse=STATE.inverseExperiment||{},inverseMarkets=inverse.markets||{},inverseCohorts=Number(((inverseMarkets.TW||{}).cohorts||[]).length)+Number(((inverseMarkets.US||{}).cohorts||[]).length),inverseQuarantined=Number((inverseMarkets.TW||{}).quarantined_count||0)+Number((inverseMarkets.US||{}).quarantined_count||0);
+  var missed=STATE.missedStrengthValidation||{},missedMarkets=missed.markets||{},twMissedDays=Number(((((missedMarkets.TW||{}).summary||{}).overall||{}).valid_sessions)||0),usMissedDays=Number(((((missedMarkets.US||{}).summary||{}).overall||{}).valid_sessions)||0),missedJudgment=Number(((((missedMarkets.TW||{}).summary||{}).overall||{}).model_judgment_misses)||0)+Number(((((missedMarkets.US||{}).summary||{}).overall||{}).model_judgment_misses)||0);
   var ready=calibration.ready_for_model_selection===true&&snapshotDays>=minimumDays;
   var cards=[
     trainingStageHtml({title:'① 歷史資料代理驗證',status:historical.status==='complete'?'已完成':'持續補資料',state:historical.status==='complete'?'ready':'',done:loaded,total:expected||Number(historical.configured_universe_count||0),progressLabel:'可下載歷史行情',detail:'用歷史日線檢查方向、成本與多頭／空頭／盤整差異；不冒充完整 V6 回測。',metrics:[['設定股票池',number(historical.configured_universe_count||expected,0)+' 檔'],['更新時間',historical.generated_at||'等待排程']],target:'HISTORY'}),
@@ -709,7 +742,8 @@ function showTrainingCenter(){
     trainingStageHtml({title:'⑤ 自動 A/B 測試＋法人權重校準',status:(ab.candidates||[]).length?'發現候選、待人工審查':weightDone>=5?'持續公平比較':'固定權重試跑',state:ready?'ready':'',done:weightDone,total:5,progressLabel:'100/0、90/10、80/20公平比較',detail:'A組正式共識與B組前10名共識自動比較勝率、平均報酬及最大回撤；法人三組使用相同日期、資金與成本。',metrics:[['候選升級',number((ab.candidates||[]).length,0)+' 組'],['目前權重勝出',weights.winner_model||'尚未決定']],target:'ACCURACY'}),
     trainingStageHtml({title:'⑥ 中期45天＋長期6個月',status:holdingStarted>=3?'持倉追蹤中':'等待建立持倉',state:holdingStarted>=3?'ready':'',done:holdingStarted,total:3,progressLabel:'台股中期／美股中期／台美長期',detail:'中期每市場前5名，長期台美股各1檔；與0050、VOO同期比較，帳本完全獨立。',metrics:[['台股中期',(medium.TW||{}).status||'等待'],['美股中期',(medium.US||{}).status||'等待'],['長期帳本',longBook.status||'等待'],['最後更新',holding.updated_at||'等待排程']],target:'HOLDING'}),
     trainingStageHtml({title:'⑦ 錯誤案例與缺資料隔離',status:Number(quality.invalid_frozen_rows||0)?'缺資料已隔離':'自動收集中',state:'',done:Number(quality.valid_frozen_rows||0),total:Number(quality.valid_frozen_rows||0)+Number(quality.invalid_frozen_rows||0),progressLabel:'有效凍結資料比例',detail:'預測方向相反的完成結果會自動收進錯誤案例庫；缺少資料契約、行情品質或模型證據的紀錄只留存，不計入有效樣本。',metrics:[['錯誤案例',number(errors.count||0,0)+' 筆'],['缺資料隔離',number(quality.invalid_frozen_rows||0,0)+' 筆']],target:'ACCURACY'}),
-    trainingStageHtml({title:'⑧ 🔴空頭反向影子實驗',status:inverseCohorts?'空頭樣本追蹤中':'等待空頭訊號',state:inverseCohorts?'ready':'',done:inverseCohorts,total:Math.max(1,inverseCohorts),progressLabel:'事前凍結空頭 cohort',detail:'台美股分開比較原 TOP10 做多、100% 現金與 -1x 反向 ETF，追蹤1／2／3／5日；缺資料不列有效樣本。',metrics:[['已凍結樣本',number(inverseCohorts,0)+' 組'],['隔離樣本',number(inverseQuarantined,0)+' 組']],target:'INVERSE'})
+    trainingStageHtml({title:'⑧ 🔴空頭反向影子實驗',status:inverseCohorts?'空頭樣本追蹤中':'等待空頭訊號',state:inverseCohorts?'ready':'',done:inverseCohorts,total:Math.max(1,inverseCohorts),progressLabel:'事前凍結空頭 cohort',detail:'台美股分開比較原 TOP10 做多、100% 現金與 -1x 反向 ETF，追蹤1／2／3／5日；缺資料不列有效樣本。',metrics:[['已凍結樣本',number(inverseCohorts,0)+' 組'],['隔離樣本',number(inverseQuarantined,0)+' 組']],target:'INVERSE'}),
+    trainingStageHtml({title:'⑨ 強勢股漏選驗證 V1',status:twMissedDays>=20&&usMissedDays>=20?'可做20日初步分析':'只累積、不改模型',state:twMissedDays>=20&&usMissedDays>=20?'ready':'blocked',done:twMissedDays+usMissedDays,total:40,progressLabel:'台股20日＋美股20日',detail:'以前一完成收盤凍結的完整排名，對照下一交易日正式漲幅TOP10／TOP20；分開資料不完整與模型判斷失誤。',metrics:[['台股有效',number(twMissedDays,0)+' 日'],['美股有效',number(usMissedDays,0)+' 日'],['判斷失誤',number(missedJudgment,0)+' 檔']],target:'MISSED_STRENGTH'})
   ];
   document.getElementById('title').textContent='🧠 AI 模型訓練中心';
   document.getElementById('status').textContent='目前正式前向資料 '+snapshotDays+' / '+minimumDays+' 個交易日｜歷史代理與真實前向證據分開計算';
@@ -746,6 +780,7 @@ function showMarket(view){
   if(view==='HOLDING'){showHoldingSimulation();return;}
   if(view==='HISTORY'){showHistoricalLab();return;}
   if(view==='INVERSE'){showInverseExperiment();return;}
+  if(view==='MISSED_STRENGTH'){showMissedStrengthValidation();return;}
   if(view==='TRAINING'){showTrainingCenter();return;}
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
@@ -922,10 +957,11 @@ async function loadAll(){
       fetchJSON('reports/historical_lab.json').catch(function(){return null;}),
       fetchJSON('reports/exit_horizon_experiment.json').catch(function(){return null;}),
       fetchJSON('reports/accuracy.json').catch(function(){return null;}),
-      fetchJSON('reports/inverse_experiment.json').catch(function(){return null;})
+      fetchJSON('reports/inverse_experiment.json').catch(function(){return null;}),
+      fetchJSON('reports/missed_strength_validation.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.holdingSimulation=pair[9];STATE.historicalLab=pair[10];STATE.exitHorizonForward=pair[11];STATE.accuracy=pair[12];STATE.inverseExperiment=pair[13];STATE.fubonQuotes={};
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.holdingSimulation=pair[9];STATE.historicalLab=pair[10];STATE.exitHorizonForward=pair[11];STATE.accuracy=pair[12];STATE.inverseExperiment=pair[13];STATE.missedStrengthValidation=pair[14];STATE.fubonQuotes={};
     if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
     if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
