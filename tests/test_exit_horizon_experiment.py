@@ -69,6 +69,40 @@ def test_tw_and_us_only_advance_on_their_completed_report_periods():
     assert state["markets"]["US"]["pending"] is not None
 
 
+def test_entry_waits_for_all_ten_prices_and_never_opens_partial_cohort():
+    state = empty_state()
+    update_state(state, rows("US", "2026-08-21"), period="morning", updated_at="signal")
+    missing = state["markets"]["US"]["pending"]["picks"][0]["symbol"]
+    partial = [item for item in rows("US", "2026-08-24") if item["symbol"] != missing]
+    update_state(state, partial, period="morning", updated_at="partial")
+
+    market = state["markets"]["US"]
+    assert market["entry_session_date"] is None
+    assert market["positions"] == []
+    assert market["status"] == "waiting_data"
+    assert missing in market["pending"]["missing_symbols"]
+
+    update_state(state, rows("US", "2026-08-24"), period="morning", updated_at="retry")
+    assert market["entry_session_date"] == "2026-08-24"
+    assert len(market["positions"]) == 10
+    assert all(position["entry_available"] for position in market["positions"])
+
+
+def test_legacy_partial_entry_is_quarantined_before_new_snapshot():
+    state = empty_state()
+    update_state(state, rows("US", "2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, rows("US", "2026-08-24"), period="morning", updated_at="entry")
+    market = state["markets"]["US"]
+    market["positions"][0]["entry_available"] = False
+    market["positions"][0]["entry_price"] = None
+
+    update_state(state, rows("US", "2026-08-24"), period="morning", updated_at="migration")
+    assert market["entry_session_date"] is None
+    assert market["positions"] == []
+    assert market["pending"]["signal_session_date"] == "2026-08-24"
+    assert market["invalid_entries"][-1]["status"] == "data_insufficient"
+
+
 def test_intraday_updates_never_change_experiment():
     state = empty_state()
     before = deepcopy(state)
