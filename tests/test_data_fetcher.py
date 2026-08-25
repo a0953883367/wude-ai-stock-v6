@@ -11,6 +11,35 @@ from datetime import date
 import pandas as pd
 
 
+def test_download_history_retries_partial_batch_omissions_individually(monkeypatch):
+    from data_fetcher import download_history
+
+    dates = pd.date_range("2026-08-21", periods=2, freq="B")
+    calls = []
+
+    def frame(symbol):
+        return pd.DataFrame({
+            "open": [100.0, 101.0], "high": [102.0, 103.0],
+            "low": [99.0, 100.0], "close": [101.0, 102.0],
+            "volume": [1000, 1200],
+        }, index=dates)
+
+    def fake_download(*, tickers, **kwargs):
+        calls.append(tickers)
+        if isinstance(tickers, list):
+            batch = pd.concat({"ANET": frame("ANET")}, axis=1)
+            return batch
+        assert tickers == "QUBT"
+        return frame("QUBT")
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    result = download_history(["ANET", "QUBT"])
+
+    assert set(result) == {"ANET", "QUBT"}
+    assert calls == [["ANET", "QUBT"], "QUBT"]
+
+
 def test_credit_rows_have_latest_and_five_day_changes():
     margin_rows = [
         {
