@@ -133,6 +133,65 @@ def test_intraday_refresh_never_starts_or_settles_the_experiment():
     assert state["markets"]["TW"]["days"] == []
 
 
+def test_missing_frozen_prices_waits_and_never_counts_partial_profit():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    current = universe("2026-08-24")
+    missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
+    current = [item for item in current if item["symbol"] != missing_symbol]
+
+    update_state(state, current, period="morning", updated_at="first close attempt")
+    market = state["markets"]["US"]
+    assert market["completed_days"] == 0
+    assert market["days"] == []
+    assert market["status"] == "waiting_data"
+    assert market["pending"]["settlement_status"] == "waiting_for_official_prices"
+    assert market["pending"]["available_positions"] < 20
+    assert missing_symbol in market["pending"]["missing_symbols"]
+
+    update_state(state, universe("2026-08-24"), period="morning", updated_at="retry same close")
+    assert market["completed_days"] == 1
+    assert market["days"][0]["session_date"] == "2026-08-24"
+    assert market["days"][0]["net_profit_twd"] != 0
+
+
+def test_unresolved_prices_are_quarantined_when_next_session_arrives():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    current = universe("2026-08-24")
+    missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
+    current = [item for item in current if item["symbol"] != missing_symbol]
+    update_state(state, current, period="morning", updated_at="incomplete")
+
+    update_state(state, universe("2026-08-25"), period="morning", updated_at="next close")
+    market = state["markets"]["US"]
+    assert market["completed_days"] == 0
+    assert market["days"] == []
+    assert market["invalid_days"][-1]["status"] == "data_insufficient"
+    assert market["invalid_days"][-1]["session_date"] == "2026-08-24"
+    assert missing_symbol in market["invalid_days"][-1]["missing_symbols"]
+    assert market["pending"]["signal_session_date"] == "2026-08-25"
+
+
+def test_legacy_partial_day_is_removed_from_totals_and_quarantined():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-24"), period="morning", updated_at="close")
+    market = state["markets"]["US"]
+    market["days"][0]["strategies"]["overall"]["positions"][0].update({
+        "data_available": False,
+        "open_price": None,
+        "sell_price": None,
+    })
+    assert market["completed_days"] == 1
+
+    update_state(state, universe("2026-08-24"), period="morning", updated_at="migration")
+    assert market["completed_days"] == 0
+    assert market["days"] == []
+    assert market["cumulative_net_profit_twd"] == 0
+    assert market["invalid_days"][-1]["reason"].startswith("舊版曾在")
+
+
 def test_experiment_stops_after_five_completed_sessions():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="evening", updated_at="start")
