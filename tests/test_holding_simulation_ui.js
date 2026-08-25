@@ -18,6 +18,8 @@ const html = fs.readFileSync('index.html', 'utf8');
   '全程不送券商訂單'
 ].forEach((text) => assert.ok(html.includes(text), `missing holding UI contract: ${text}`));
 ['等待官方價格補齊','不以部分股票冒充完整組合','資料不足進場已隔離','5檔與同期基準的官方開盤價完整後才建立持倉'].forEach((text) => assert.ok(html.includes(text), `missing holding coverage UI: ${text}`));
+['等待下一完成交易日買入','部分持有｜','實際持股數','檔／目標2檔','大盤同期淨損益（已建立部分）','尚未建立的市場不列持股、基準與損益'].forEach((text) => assert.ok(html.includes(text), `missing accurate holding status UI: ${text}`));
+assert.ok(!html.includes("pending:'等待下週一買入'"), 'pending label must not assume a fixed weekday');
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
   .map((match) => match[1])
