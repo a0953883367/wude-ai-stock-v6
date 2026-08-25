@@ -88,6 +88,39 @@ def test_next_session_open_enters_medium_and_long_as_separate_accounts():
     assert state["medium"]["TW"]["positions"][0]["symbol"] == state["long"]["positions"][0]["symbol"]
 
 
+def test_medium_waits_until_all_five_prices_and_benchmark_are_available():
+    state = start_state()
+    monday = universe("2026-08-24", close_offset=2)
+    missing = state["medium"]["US"]["pending"]["picks"][0]["symbol"]
+    partial = [item for item in monday if item["symbol"] != missing]
+    update_state(state, partial, period="morning", updated_at="partial")
+
+    portfolio = state["medium"]["US"]
+    assert portfolio["positions"] == []
+    assert portfolio["status"] == "waiting_data"
+    assert portfolio["pending"]["available_positions"] == 4
+    assert missing in portfolio["pending"]["missing_symbols"]
+
+    update_state(state, monday, period="morning", updated_at="retry")
+    assert len(portfolio["positions"]) == 5
+    assert portfolio["status"] == "active"
+
+
+def test_legacy_partial_medium_positions_are_quarantined_and_reset():
+    state = start_state()
+    monday = universe("2026-08-24", close_offset=2)
+    update_state(state, monday, period="morning", updated_at="complete entry")
+    portfolio = state["medium"]["US"]
+    portfolio["positions"] = portfolio["positions"][:2]
+    portfolio["benchmark_positions"] = portfolio["benchmark_positions"][:1]
+
+    update_state(state, monday, period="morning", updated_at="migration")
+    assert portfolio["positions"] == []
+    assert portfolio["status"] == "pending"
+    assert len(portfolio["pending"]["picks"]) == 5
+    assert portfolio["invalid_entries"][-1]["available_positions"] == 2
+
+
 def test_medium_exits_after_45_days_while_long_remains_active():
     state = start_state()
     monday = universe("2026-08-24", close_offset=1)
