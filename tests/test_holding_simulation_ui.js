@@ -17,6 +17,7 @@ const html = fs.readFileSync('index.html', 'utf8');
   '台股0050、美股VOO',
   '全程不送券商訂單'
 ].forEach((text) => assert.ok(html.includes(text), `missing holding UI contract: ${text}`));
+['等待官方價格補齊','不以部分股票冒充完整組合','資料不足進場已隔離','5檔與同期基準的官方開盤價完整後才建立持倉'].forEach((text) => assert.ok(html.includes(text), `missing holding coverage UI: ${text}`));
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
   .map((match) => match[1])
