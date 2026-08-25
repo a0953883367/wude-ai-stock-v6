@@ -104,7 +104,15 @@ def _extract_frame(raw: pd.DataFrame, symbol: str, multi: bool) -> pd.DataFrame:
 
 
 def download_history(symbols: list[str], period: str = "3mo") -> dict[str, pd.DataFrame]:
-    """Download daily OHLCV in chunks so one bad ticker cannot stop the run."""
+    """Download daily OHLCV and retry bounded batch omissions one by one.
+
+    Yahoo occasionally returns a valid batch with a handful of ticker frames
+    missing.  Treating that partial response as complete is especially harmful
+    to frozen forward tests: an omitted ticker looks like a zero-return trade.
+    Retry a bounded number of omissions individually, while avoiding hundreds
+    of requests during a provider-wide outage.
+    """
+    symbols = list(dict.fromkeys(str(symbol).strip().upper() for symbol in symbols if symbol))
     result: dict[str, pd.DataFrame] = {}
     for chunk in _chunks(symbols, 35):
         try:
@@ -127,6 +135,37 @@ def download_history(symbols: list[str], period: str = "3mo") -> dict[str, pd.Da
         except Exception as exc:
             LOG.warning("daily batch failed (%s): %s", ",".join(chunk[:3]), exc)
         time.sleep(0.3)
+    missing = [symbol for symbol in symbols if symbol not in result]
+    retry_limit = 60
+    if missing and len(missing) <= retry_limit:
+        for symbol in missing:
+            for attempt in range(2):
+                try:
+                    raw = yf.download(
+                        tickers=symbol,
+                        period=period,
+                        interval="1d",
+                        auto_adjust=False,
+                        actions=False,
+                        threads=False,
+                        progress=False,
+                        timeout=SETTINGS.request_timeout,
+                    )
+                    frame = _extract_frame(raw, symbol, isinstance(raw.columns, pd.MultiIndex))
+                    if not frame.empty:
+                        result[symbol] = frame
+                        break
+                except Exception as exc:
+                    LOG.warning("daily individual retry failed (%s, %s/2): %s", symbol, attempt + 1, exc)
+                if attempt == 0:
+                    time.sleep(0.4)
+            if symbol not in result:
+                LOG.warning("daily data still unavailable after individual retry: %s", symbol)
+    elif missing:
+        LOG.warning(
+            "daily provider-wide gap (%s/%s); skip individual retry storm",
+            len(missing), len(symbols),
+        )
     return result
 
 
