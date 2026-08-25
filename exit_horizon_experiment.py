@@ -67,6 +67,7 @@ def _empty_market(market: str) -> dict[str, Any]:
         "pending": None,
         "entry_session_date": None,
         "observed_sessions": [],
+        "invalid_entries": [],
         "positions": [],
         "benchmark": {"symbol": symbol, "label": label, "entry_price": None},
         "horizons": {str(value): _empty_horizon(value) for value in HORIZONS},
@@ -86,6 +87,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "allocation_per_pick_twd": ALLOCATION_TWD,
             "selection": "同一份短線前10名快照；嚴格組只執行資格層2，其餘留現金",
             "entry": "訊號後下一完成交易日官方開盤",
+            "entry_coverage": "10檔與大盤基準官方開盤價完整才建立進場；不足即等待或隔離",
             "horizons": list(HORIZONS),
             "exit": "分別於持有第1、2、3、5個交易日官方收盤結算",
             "costs": "每檔每個實驗組只扣一次來回成本；台股0.685%、美股0.20%",
@@ -137,6 +139,37 @@ def _open_market(market_state: dict[str, Any], rows: list[dict[str, Any]], sessi
     if not pending or session_date < START_DATE or session_date <= str(pending.get("signal_session_date") or ""):
         return False
     row_map = {str(row.get("symbol") or ""): row for row in rows}
+    execution_date = str(pending.get("execution_session_date") or "")
+    if execution_date and session_date > execution_date:
+        market_state.setdefault("invalid_entries", []).append({
+            "status": "data_insufficient",
+            "signal_session_date": pending.get("signal_session_date"),
+            "entry_session_date": execution_date,
+            "snapshot_id": pending.get("snapshot_id"),
+            "missing_symbols": pending.get("missing_symbols", []),
+        })
+        market_state["invalid_entries"] = market_state["invalid_entries"][-20:]
+        market_state["pending"] = None
+        market_state["status"] = "waiting"
+        return False
+    pending.setdefault("execution_session_date", session_date)
+    missing = []
+    for pick in pending.get("picks") or []:
+        row = row_map.get(str(pick.get("symbol") or ""))
+        price = _finite(row.get("official_open_price")) if row and str(row.get("official_session_date") or "") == session_date else 0.0
+        if price <= 0:
+            missing.append(str(pick.get("symbol") or ""))
+    benchmark_row = row_map.get(market_state["benchmark"]["symbol"])
+    benchmark_open = _finite(benchmark_row.get("official_open_price")) if benchmark_row and str(benchmark_row.get("official_session_date") or "") == session_date else 0.0
+    if benchmark_open <= 0:
+        missing.append(market_state["benchmark"]["symbol"])
+    if missing or len(pending.get("picks") or []) != 10:
+        pending["settlement_status"] = "waiting_for_official_prices"
+        pending["available_positions"] = 10 - len([symbol for symbol in missing if symbol != market_state["benchmark"]["symbol"]])
+        pending["required_positions"] = 10
+        pending["missing_symbols"] = list(dict.fromkeys(missing))
+        market_state["status"] = "waiting_data"
+        return False
     positions = []
     for pick in pending.get("picks") or []:
         row = row_map.get(str(pick.get("symbol") or ""))
@@ -150,8 +183,6 @@ def _open_market(market_state: dict[str, Any], rows: list[dict[str, Any]], sessi
             "entry_available": entry_available,
             "strict_executed": strict_executed,
         })
-    benchmark_row = row_map.get(market_state["benchmark"]["symbol"])
-    benchmark_open = _finite(benchmark_row.get("official_open_price")) if benchmark_row and str(benchmark_row.get("official_session_date") or "") == session_date else 0.0
     market_state["positions"] = positions
     market_state["entry_session_date"] = session_date
     market_state["observed_sessions"] = [session_date]
@@ -163,7 +194,7 @@ def _open_market(market_state: dict[str, Any], rows: list[dict[str, Any]], sessi
 
 def _settle_horizon(market_state: dict[str, Any], rows: list[dict[str, Any]], session_date: str, holding_sessions: int) -> bool:
     horizon = market_state["horizons"][str(holding_sessions)]
-    if horizon.get("status") == "complete" or len(market_state.get("observed_sessions") or []) < holding_sessions:
+    if horizon.get("status") in {"complete", "data_insufficient"} or len(market_state.get("observed_sessions") or []) < holding_sessions:
         return False
     row_map = {str(row.get("symbol") or ""): row for row in rows}
     market = market_state["market"]
@@ -195,6 +226,20 @@ def _settle_horizon(market_state: dict[str, Any], rows: list[dict[str, Any]], se
     benchmark_close = _finite(benchmark_row.get("official_close_price")) if benchmark_row and str(benchmark_row.get("official_session_date") or "") == session_date else 0.0
     benchmark_open = _finite(market_state["benchmark"].get("entry_price"))
     benchmark_available = benchmark_open > 0 and benchmark_close > 0
+    missing_symbols = [
+        str(position.get("symbol") or "")
+        for position in positions if position.get("data_available") is not True
+    ]
+    if not benchmark_available:
+        missing_symbols.append(market_state["benchmark"]["symbol"])
+    if missing_symbols or len(positions) != 10:
+        horizon.update({
+            "status": "data_insufficient",
+            "exit_session_date": session_date,
+            "missing_symbols": list(dict.fromkeys(missing_symbols)),
+            "positions": positions,
+        })
+        return True
     benchmark_return = (benchmark_close / benchmark_open - 1) * 100 - cost_pct if benchmark_available else 0.0
     benchmark_profit = CAPITAL_TWD * benchmark_return / 100 if benchmark_available else 0.0
     horizon.update({
@@ -207,6 +252,36 @@ def _settle_horizon(market_state: dict[str, Any], rows: list[dict[str, Any]], se
     return True
 
 
+def _quarantine_legacy_partial_entry(market_state: dict[str, Any]) -> None:
+    if not market_state.get("entry_session_date"):
+        market_state.setdefault("invalid_entries", [])
+        return
+    positions = market_state.get("positions") or []
+    complete = (
+        len(positions) == 10
+        and all(position.get("entry_available") is True for position in positions)
+        and _finite(market_state.get("benchmark", {}).get("entry_price")) > 0
+    )
+    if complete:
+        market_state.setdefault("invalid_entries", [])
+        return
+    market = str(market_state.get("market") or "US")
+    replacement = _empty_market(market)
+    replacement["invalid_entries"] = list(market_state.get("invalid_entries") or []) + [{
+        "status": "data_insufficient",
+        "reason": "舊版在10檔官方開盤價未完整時提前建立進場，已撤銷且不列成績",
+        "entry_session_date": market_state.get("entry_session_date"),
+        "available_positions": sum(position.get("entry_available") is True for position in positions),
+        "required_positions": 10,
+        "missing_symbols": [
+            str(position.get("symbol") or "")
+            for position in positions if position.get("entry_available") is not True
+        ],
+    }]
+    market_state.clear()
+    market_state.update(replacement)
+
+
 def update_state(state: dict[str, Any], rows: list[dict[str, Any]], *, period: str, updated_at: str, intraday: bool = False) -> dict[str, Any]:
     state["updated_at"] = updated_at
     if intraday:
@@ -215,6 +290,7 @@ def update_state(state: dict[str, Any], rows: list[dict[str, Any]], *, period: s
         if period != CLOSED_PERIOD[market]:
             continue
         market_state = state["markets"][market]
+        _quarantine_legacy_partial_entry(market_state)
         if market_state.get("status") == "complete":
             continue
         session_date = _session_date(rows, market)
@@ -230,7 +306,7 @@ def update_state(state: dict[str, Any], rows: list[dict[str, Any]], *, period: s
         if market_state.get("entry_session_date"):
             for holding_sessions in HORIZONS:
                 _settle_horizon(market_state, rows, session_date, holding_sessions)
-            if all(item.get("status") == "complete" for item in market_state["horizons"].values()):
+            if all(item.get("status") in {"complete", "data_insufficient"} for item in market_state["horizons"].values()):
                 market_state["status"] = "complete"
     statuses = [state["markets"][market].get("status") for market in MARKETS]
     state["status"] = "complete" if all(value == "complete" for value in statuses) else ("running" if any(value == "running" for value in statuses) else "waiting")

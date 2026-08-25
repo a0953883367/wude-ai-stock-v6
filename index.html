@@ -534,24 +534,26 @@ function millionPositionDetails(day){
     var rows=positions.map(function(position){
       var available=position.data_available===true;
       var strictNote=position.strict_executed===true?'嚴格組有買':('嚴格組留現金'+(position.strict_block_reason?'｜'+position.strict_block_reason:''));
-      return '<tr><td>'+esc(position.rank)+'. '+esc(position.name)+'（'+esc(marketCode(position.symbol))+'）<br><span class="holding-meta">'+esc(strictNote)+'</span></td><td>'+esc(available?number(position.open_price,4):'缺資料')+'</td><td>'+esc(available?number(position.sell_price,4):'缺資料')+'</td><td class="'+millionProfitClass(position.net_profit_twd)+'">'+esc(available?millionMoney(position.net_profit_twd):'0 元')+'<br><span class="holding-meta">毛 '+esc(millionMoney(position.gross_profit_twd))+'</span></td></tr>';
+      return '<tr><td>'+esc(position.rank)+'. '+esc(position.name)+'（'+esc(marketCode(position.symbol))+'）<br><span class="holding-meta">'+esc(strictNote)+'</span></td><td>'+esc(available?number(position.open_price,4):'未成交')+'</td><td>'+esc(available?number(position.sell_price,4):'待補資料')+'</td><td class="'+(available?millionProfitClass(position.net_profit_twd):'')+'">'+esc(available?millionMoney(position.net_profit_twd):'不列損益')+'<br><span class="holding-meta">'+esc(available?'毛 '+millionMoney(position.gross_profit_twd):'資料不足不是0元')+'</span></td></tr>';
     }).join('');
     return '<div class="million-strategy"><h3>'+esc(definition[1])+'｜淨 '+millionMoney(result.net_profit_twd)+'｜毛 '+millionMoney(result.gross_profit_twd)+'</h3><div class="million-table-wrap"><table class="million-table"><thead><tr><th>標的</th><th>開盤買入</th><th>收盤賣出</th><th>扣成本損益</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }).join('');
 }
 function millionMarketHtml(market){
-  market=market||{};var days=Array.isArray(market.days)?market.days:[];
+  market=market||{};var days=Array.isArray(market.days)?market.days:[],invalidDays=Array.isArray(market.invalid_days)?market.invalid_days:[];
   var dayRows=days.map(function(day){
     var strict=day.strict_portfolio||{},benchmark=day.benchmark||{};
     return '<tr><td>第'+esc(day.day)+'日｜'+esc(day.session_date)+'<br><span class="holding-meta">快照 '+esc(day.ranking_snapshot_id||'舊資料')+'</span></td><td class="'+millionProfitClass(day.net_profit_twd)+'">'+esc(millionMoney(day.net_profit_twd))+'</td><td class="'+millionProfitClass(strict.net_profit_twd)+'">'+esc(millionMoney(strict.net_profit_twd))+'<br><span class="holding-meta">買 '+esc(strict.executed_positions||0)+' / '+esc(strict.planned_positions||20)+'｜現金 '+esc(millionMoney(strict.idle_twd))+'</span></td><td class="'+millionProfitClass(benchmark.net_profit_twd)+'">'+esc(benchmark.data_available===true?millionMoney(benchmark.net_profit_twd):'缺資料')+'<br><span class="holding-meta">'+esc(benchmark.label||'大盤基準')+'</span></td></tr>';
   }).join('');
   var details=days.map(function(day){return '<details class="million-day-details"><summary>查看第'+esc(day.day)+'日20筆模擬買賣明細</summary><div class="million-strategies">'+millionPositionDetails(day)+'</div></details>';}).join('');
   var pending=market.pending||{},pendingStrategies=pending.strategies||{};
+  var waitingForPrices=pending.settlement_status==='waiting_for_official_prices';
   var pendingHtml=market.status==='complete'
     ?'<div class="million-empty">五個交易日已完成，不再新增部位。</div>'
-    :'<div class="million-note">下一次使用 '+esc(pending.signal_session_date||'等待中')+' 完成排名；快照編號 '+esc(pending.snapshot_id||'等待建立')+'。排名組照前10名測試；嚴格組只買達標且可成交者，其餘留現金。</div><div class="million-strategies">'+millionPendingStrategy('綜合排名前10名',pendingStrategies.overall)+millionPendingStrategy('短線排名前10名',pendingStrategies.short)+'</div>';
+    :'<div class="million-note">'+(waitingForPrices?'<b>尚未結算：</b>目前取得 '+esc(pending.available_positions||0)+' / '+esc(pending.required_positions||20)+' 筆官方開收盤價；缺少 '+esc((pending.missing_symbols||[]).join('、')||'大盤基準')+'。資料補齊前不計損益、不增加完成日。<br>':'')+'下一次使用 '+esc(pending.signal_session_date||'等待中')+' 完成排名；快照編號 '+esc(pending.snapshot_id||'等待建立')+'。排名組照前10名測試；嚴格組只買達標且可成交者，其餘留現金。</div><div class="million-strategies">'+millionPendingStrategy('綜合排名前10名',pendingStrategies.overall)+millionPendingStrategy('短線排名前10名',pendingStrategies.short)+'</div>';
+  var invalidHtml=invalidDays.length?'<div class="million-note"><b>資料不足隔離 '+esc(invalidDays.length)+' 日（不列成績）：</b>'+invalidDays.map(function(item){return esc(item.session_date||'未知日期')+'｜取得 '+esc(item.available_positions||0)+' / '+esc(item.required_positions||20)+'｜缺 '+esc((item.missing_symbols||[]).join('、')||'官方基準資料');}).join('<br>')+'</div>':'';
   var compare='<div class="holding-summary"><div class="item"><div class="label">排名組淨損益</div><div class="value">'+esc(millionMoney(market.cumulative_net_profit_twd))+'</div></div><div class="item"><div class="label">嚴格達標組</div><div class="value">'+esc(millionMoney(market.cumulative_strict_net_profit_twd))+'</div></div><div class="item"><div class="label">大盤基準</div><div class="value">'+esc(millionMoney(market.cumulative_benchmark_net_profit_twd))+'</div></div></div>';
-  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(market.label||market.market)+'｜100萬元</div><div class="million-progress">已完成 '+esc(market.completed_days||0)+' / '+esc(market.target_trading_days||5)+' 個交易日｜毛損益 '+esc(millionMoney(market.cumulative_gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(market.cumulative_net_profit_twd)+'">排名組扣成本<br>'+esc(millionMoney(market.cumulative_net_profit_twd))+'</div></div>'+compare+'<div class="million-table-wrap"><table class="million-table"><thead><tr><th>交易日</th><th>排名前10組</th><th>嚴格達標組</th><th>大盤基準</th></tr></thead><tbody>'+(dayRows||'<tr><td>等待下週一開始</td><td>—</td><td>—</td><td>—</td></tr>')+'</tbody></table></div>'+details+'<div class="group">下一交易日名單</div>'+pendingHtml+'</section>';
+  return '<section class="million-market"><div class="million-head"><div><div class="million-title">'+esc(market.label||market.market)+'｜100萬元</div><div class="million-progress">有效完成 '+esc(market.completed_days||0)+' / '+esc(market.target_trading_days||5)+' 個交易日｜資料隔離 '+esc(invalidDays.length)+' 日｜毛損益 '+esc(millionMoney(market.cumulative_gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(market.cumulative_net_profit_twd)+'">排名組扣成本<br>'+esc(millionMoney(market.cumulative_net_profit_twd))+'</div></div>'+compare+invalidHtml+'<div class="million-table-wrap"><table class="million-table"><thead><tr><th>交易日</th><th>排名前10組</th><th>嚴格達標組</th><th>大盤基準</th></tr></thead><tbody>'+(dayRows||'<tr><td>等待完整官方成交資料</td><td>—</td><td>—</td><td>—</td></tr>')+'</tbody></table></div>'+details+'<div class="group">下一交易日名單</div>'+pendingHtml+'</section>';
 }
 function showMillionSimulation(){
   STATE.view='MILLION';setActive('#marketButtons button','data-view','MILLION');clearOtherNav('#marketButtons button');
@@ -563,7 +565,7 @@ function showMillionSimulation(){
   }
   var policy=simulation.policy||{};
   document.getElementById('status').textContent='開始日 '+esc(policy.start_date||'2026-08-24')+'｜帳本更新 '+esc(simulation.updated_at||'等待中')+'｜純網頁影子交易';
-  var policyHtml='<div class="million-policy"><b>三方正式比較：</b>排名前10組、嚴格達標才買組、相同100萬元大盤基準（台股0050／美股VOO）。未達資格、缺官方成交資料或台股鎖漲停時，嚴格組保留現金；人工暫時交易不列入正式成績。每次排名保存不可回改的快照編號。<br><b>成本口徑：</b>台股來回0.685%，美股來回0.20%；保留毛損益，美股匯率另列；全程不送券商訂單。</div>';
+  var policyHtml='<div class="million-policy"><b>三方正式比較：</b>排名前10組、嚴格達標才買組、相同100萬元大盤基準（台股0050／美股VOO）。20筆凍結標的與大盤基準必須全部取得同一交易日官方開收盤價才結算；不足時等待補抓，仍不足則隔離且不列成績。未成交不再顯示為0元。人工暫時交易不列入正式成績。<br><b>成本口徑：</b>台股來回0.685%，美股來回0.20%；保留毛損益，美股匯率另列；全程不送券商訂單。</div>';
   document.getElementById('results').innerHTML=policyHtml+'<div class="million-grid">'+millionMarketHtml(simulation.markets.TW)+millionMarketHtml(simulation.markets.US)+'</div>';
 }
 function weightPendingHtml(model){
@@ -586,10 +588,11 @@ function showWeightExperiment(){
   var notice='<div class="million-policy"><b>公平比較：</b>三組各100萬元、每日短線前10名各10萬元，使用前一完成交易日排名，下一交易日官方開盤買入、官方收盤賣出。<br><b>已扣成本：</b>'+esc(policy.cost_assumption||'台股來回成本0.685%')+'。比較淨報酬、淨勝率、最大回撤與排名換手率。5日只做第一次檢查，不會自動把勝出權重套回正式排名。</div>';
   document.getElementById('results').innerHTML=notice+'<div class="million-grid">'+order.map(function(key){return weightModelHtml(models[key]);}).join('')+'</div>';
 }
-function holdingStatusLabel(status){return {waiting:'等待排名',pending:'等待下週一買入',active:'持有中',complete:'已到期賣出'}[status]||status||'等待中';}
+function holdingStatusLabel(status){return {waiting:'等待排名',pending:'等待下週一買入',waiting_data:'等待官方價格補齊',active:'持有中',complete:'已到期賣出'}[status]||status||'等待中';}
 function holdingPendingHtml(pending,title){
   var picks=pending&&Array.isArray(pending.picks)?pending.picks:[];
-  return '<div class="holding-pending"><div class="holding-pending-title">'+esc(title)+'｜快照 '+esc(pending&&pending.snapshot_id||'等待建立')+'</div>'+(picks.length?picks.map(function(pick){
+  var coverage=pending&&pending.settlement_status==='waiting_for_official_prices'?'<div class="million-note">尚未建立持倉：官方開盤價 '+esc(pending.available_positions||0)+' / '+esc(pending.required_positions||picks.length)+'；缺少 '+esc((pending.missing_symbols||[]).join('、')||'同期基準')+'。不以部分股票冒充完整組合。</div>':'';
+  return '<div class="holding-pending"><div class="holding-pending-title">'+esc(title)+'｜快照 '+esc(pending&&pending.snapshot_id||'等待建立')+'</div>'+coverage+(picks.length?picks.map(function(pick){
     return '<div class="holding-position"><div><div class="holding-name">'+esc(pick.rank)+'. '+esc(pick.name)+'（'+esc(marketCode(pick.symbol,pick.market))+'）</div><div class="holding-meta">中長線排名分 '+esc(number(pick.ranking_score,1))+'｜配置 '+esc(millionMoney(pick.allocation_twd))+'</div></div><div class="holding-profit">等待買入</div></div>';
   }).join(''):'<div class="million-empty">等待完成交易日排名快照</div>')+'</div>';
 }
@@ -602,7 +605,8 @@ function holdingPositionsHtml(positions){
 }
 function holdingMediumCard(portfolio){
   portfolio=portfolio||{};var pending=portfolio.pending;
-  return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">大盤同期淨損益</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；買入後不換股，到期後第一個交易日以官方收盤價模擬賣出。大盤使用同日進出的0050或VOO。</div>'+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions))+'</section>';
+  var invalid=(portfolio.invalid_entries||[]).length?'<div class="million-note">資料不足進場已隔離 '+esc((portfolio.invalid_entries||[]).length)+' 次，不列持倉與損益。</div>':'';
+  return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">大盤同期淨損益</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；5檔與同期基準的官方開盤價完整後才建立持倉。買入後不換股，到期後第一個交易日以官方收盤價模擬賣出。</div>'+invalid+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions))+'</section>';
 }
 function holdingLongCard(portfolio){
   portfolio=portfolio||{};var pending=portfolio.pending||{},pendingHtml='';
@@ -641,9 +645,10 @@ function historicalHorizonRows(market){
 }
 function forwardExitMarketCard(market){
   if(!market)return '';
-  var horizons=market.horizons||{},pending=market.pending||{};
-  var rows=['1','2','3','5'].map(function(key){var horizon=horizons[key]||{},strict=horizon.strict||{},benchmark=horizon.benchmark||{};return '<tr><td>持有'+esc(key)+'日</td><td>'+esc(horizon.status==='complete'?'已結算':'等待')+'</td><td>'+esc(horizon.exit_session_date||'—')+'</td><td>'+esc(strict.executed_positions||0)+'檔／現金'+esc(millionMoney(strict.idle_twd))+'</td><td class="'+millionProfitClass(strict.net_profit_twd)+'">'+esc(horizon.status==='complete'?millionMoney(strict.net_profit_twd):'—')+'</td><td>'+esc(horizon.status==='complete'&&benchmark.data_available?millionMoney(benchmark.net_profit_twd):'—')+'</td></tr>';}).join('');
-  return '<div class="million-strategy"><h3>'+(market.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+'｜'+esc(market.status)+'</h3><div class="million-note">排名快照 '+esc((pending.snapshot_id)||'已凍結／等待建立')+'｜訊號日 '+esc((pending.signal_session_date)||'—')+'｜進場日 '+esc(market.entry_session_date||'等待下一交易日')+'</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>出場</th><th>狀態</th><th>結算日</th><th>嚴格組</th><th>扣成本損益</th><th>大盤同期</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  var horizons=market.horizons||{},pending=market.pending||{},invalid=market.invalid_entries||[];
+  var rows=['1','2','3','5'].map(function(key){var horizon=horizons[key]||{},strict=horizon.strict||{},benchmark=horizon.benchmark||{},complete=horizon.status==='complete',insufficient=horizon.status==='data_insufficient';return '<tr><td>持有'+esc(key)+'日</td><td>'+esc(complete?'已結算':insufficient?'資料不足隔離':'等待')+'</td><td>'+esc(horizon.exit_session_date||'—')+'</td><td>'+esc(strict.executed_positions||0)+'檔／現金'+esc(millionMoney(strict.idle_twd))+'</td><td class="'+millionProfitClass(strict.net_profit_twd)+'">'+esc(complete?millionMoney(strict.net_profit_twd):'—')+'</td><td>'+esc(complete&&benchmark.data_available?millionMoney(benchmark.net_profit_twd):'—')+'</td></tr>';}).join('');
+  var coverage=pending.settlement_status==='waiting_for_official_prices'?'<br><b>尚未進場：</b>官方開盤價 '+esc(pending.available_positions||0)+' / '+esc(pending.required_positions||10)+'；缺 '+esc((pending.missing_symbols||[]).join('、')||'大盤基準')+'。不建立部分組合。':'';
+  return '<div class="million-strategy"><h3>'+(market.market==='TW'?'🇹🇼 台股':'🇺🇸 美股')+'｜'+esc(market.status)+'</h3><div class="million-note">排名快照 '+esc((pending.snapshot_id)||'已凍結／等待建立')+'｜訊號日 '+esc((pending.signal_session_date)||'—')+'｜進場日 '+esc(market.entry_session_date||'等待下一交易日')+'｜資料不足隔離 '+esc(invalid.length)+' 次'+coverage+'</div><div class="million-table-wrap"><table class="million-table"><thead><tr><th>出場</th><th>狀態</th><th>結算日</th><th>嚴格組</th><th>扣成本損益</th><th>大盤同期</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function forwardExitHtml(){
   var state=STATE.exitHorizonForward;

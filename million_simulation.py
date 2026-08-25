@@ -114,6 +114,7 @@ def _empty_market(market: str) -> dict[str, Any]:
         "cumulative_benchmark_net_profit_twd": 0.0,
         "cumulative_benchmark_net_return_pct": 0.0,
         "days": [],
+        "invalid_days": [],
         "pending": None,
     }
 
@@ -137,6 +138,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "benchmark": {market: BENCHMARKS[market]["label"] for market in MARKETS},
             "strict_portfolio": "只有排名資格層2且可驗證成交者才買；其他配置保留現金",
             "execution": "官方開盤／收盤；台股開高低同價且漲幅達9.5%視為鎖漲停買不到；缺資料不成交；部分成交無逐筆委託簿資料時不捏造",
+            "settlement_coverage": "20筆凍結標的與大盤基準都取得同一交易日官方開收盤價後才結算；不足即等待補抓或隔離",
             "manual_trades": "使用者暫時人工交易不列入正式模型成績",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
@@ -300,6 +302,97 @@ def _settle_benchmark(rows: list[dict[str, Any]], market: str, session_date: str
     }
 
 
+def _settlement_coverage(
+    pending: dict[str, Any], rows: list[dict[str, Any]], market: str, session_date: str,
+) -> dict[str, Any]:
+    row_map = {
+        str(row.get("symbol") or ""): row
+        for row in rows if _is_stock(row, market)
+    }
+    missing: list[str] = []
+    available_positions = 0
+    for strategy in STRATEGIES:
+        for pick in pending.get("strategies", {}).get(strategy, []):
+            symbol = str(pick.get("symbol") or "")
+            row = row_map.get(symbol)
+            available = bool(
+                row
+                and str(row.get("official_session_date") or "") == session_date
+                and _finite(row.get("official_open_price")) > 0
+                and _finite(row.get("official_close_price")) > 0
+            )
+            if available:
+                available_positions += 1
+            else:
+                missing.append(symbol)
+    benchmark = _settle_benchmark(rows, market, session_date)
+    if not benchmark.get("data_available"):
+        missing.append(BENCHMARKS[market]["symbol"])
+    return {
+        "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+        "available_positions": available_positions,
+        "benchmark_available": benchmark.get("data_available") is True,
+        "missing_symbols": list(dict.fromkeys(missing)),
+        "complete": available_positions == PICKS_PER_STRATEGY * len(STRATEGIES)
+        and benchmark.get("data_available") is True,
+    }
+
+
+def _recalculate_market_totals(market_state: dict[str, Any]) -> None:
+    days = market_state.get("days") or []
+    market_state["completed_days"] = len(days)
+    mappings = (
+        ("gross_profit_twd", "cumulative_gross_profit_twd", "cumulative_gross_return_pct"),
+        ("net_profit_twd", "cumulative_net_profit_twd", "cumulative_net_return_pct"),
+        ("strict_portfolio.net_profit_twd", "cumulative_strict_net_profit_twd", "cumulative_strict_net_return_pct"),
+        ("benchmark.net_profit_twd", "cumulative_benchmark_net_profit_twd", "cumulative_benchmark_net_return_pct"),
+    )
+    for source, profit_key, return_key in mappings:
+        parts = source.split(".")
+        total = 0.0
+        for day in days:
+            value: Any = day
+            for part in parts:
+                value = value.get(part, {}) if isinstance(value, dict) else 0.0
+            total += _finite(value)
+        market_state[profit_key] = round(total, 2)
+        market_state[return_key] = round(total / CAPITAL_PER_MARKET * 100, 4)
+
+
+def _quarantine_incomplete_legacy_days(market_state: dict[str, Any]) -> None:
+    valid, invalid = [], list(market_state.get("invalid_days") or [])
+    for day in market_state.get("days") or []:
+        positions = [
+            position
+            for strategy in STRATEGIES
+            for position in day.get("strategies", {}).get(strategy, {}).get("positions", [])
+        ]
+        complete = (
+            len(positions) == PICKS_PER_STRATEGY * len(STRATEGIES)
+            and all(position.get("data_available") is True for position in positions)
+            and day.get("benchmark", {}).get("data_available") is True
+        )
+        if complete:
+            valid.append(day)
+            continue
+        invalid.append({
+            "status": "data_insufficient",
+            "reason": "舊版曾在官方成交資料未滿20筆時提前結算，已自動撤銷成績",
+            "signal_session_date": day.get("signal_session_date"),
+            "session_date": day.get("session_date"),
+            "ranking_snapshot_id": day.get("ranking_snapshot_id"),
+            "available_positions": sum(position.get("data_available") is True for position in positions),
+            "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+            "missing_symbols": list(dict.fromkeys(
+                str(position.get("symbol") or "")
+                for position in positions if position.get("data_available") is not True
+            )),
+        })
+    market_state["days"] = valid
+    market_state["invalid_days"] = invalid[-20:]
+    _recalculate_market_totals(market_state)
+
+
 def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], market: str) -> bool:
     pending = market_state.get("pending")
     if not pending:
@@ -318,6 +411,40 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
     pending.setdefault("model_versions", ["legacy-frozen-ranking"])
     if not session_date or session_date < START_DATE or session_date <= signal_date:
         return False
+    execution_date = str(pending.get("execution_session_date") or "")
+    if execution_date and session_date > execution_date:
+        market_state.setdefault("invalid_days", []).append({
+            "status": "data_insufficient",
+            "reason": "指定交易日官方成交資料未能在下一交易日前補齊，隔離且不列成績",
+            "signal_session_date": signal_date,
+            "session_date": execution_date,
+            "ranking_snapshot_id": pending.get("snapshot_id"),
+            "available_positions": pending.get("available_positions", 0),
+            "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+            "missing_symbols": pending.get("missing_symbols", []),
+        })
+        market_state["invalid_days"] = market_state["invalid_days"][-20:]
+        market_state["pending"] = None
+        market_state["status"] = "running"
+        return False
+    if not execution_date:
+        pending["execution_session_date"] = session_date
+    coverage = _settlement_coverage(pending, rows, market, session_date)
+    if not coverage["complete"]:
+        pending.update({
+            "settlement_status": "waiting_for_official_prices",
+            "available_positions": coverage["available_positions"],
+            "required_positions": coverage["required_positions"],
+            "benchmark_available": coverage["benchmark_available"],
+            "missing_symbols": coverage["missing_symbols"],
+        })
+        market_state["status"] = "waiting_data"
+        return False
+    for key in (
+        "settlement_status", "available_positions", "required_positions",
+        "benchmark_available", "missing_symbols",
+    ):
+        pending.pop(key, None)
     row_map = {
         str(row.get("symbol") or ""): row
         for row in rows
@@ -368,29 +495,7 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
     }
     market_state.setdefault("days", []).append(day)
     market_state["pending"] = None
-    market_state["completed_days"] = len(market_state["days"])
-    cumulative = sum(_finite(item.get("gross_profit_twd")) for item in market_state["days"])
-    market_state["cumulative_gross_profit_twd"] = round(cumulative, 2)
-    market_state["cumulative_gross_return_pct"] = round(cumulative / CAPITAL_PER_MARKET * 100, 4)
-    cumulative_net = sum(_finite(item.get("net_profit_twd")) for item in market_state["days"])
-    market_state["cumulative_net_profit_twd"] = round(cumulative_net, 2)
-    market_state["cumulative_net_return_pct"] = round(cumulative_net / CAPITAL_PER_MARKET * 100, 4)
-    cumulative_strict = sum(
-        _finite(item.get("strict_portfolio", {}).get("net_profit_twd"))
-        for item in market_state["days"]
-    )
-    market_state["cumulative_strict_net_profit_twd"] = round(cumulative_strict, 2)
-    market_state["cumulative_strict_net_return_pct"] = round(
-        cumulative_strict / CAPITAL_PER_MARKET * 100, 4
-    )
-    cumulative_benchmark = sum(
-        _finite(item.get("benchmark", {}).get("net_profit_twd"))
-        for item in market_state["days"]
-    )
-    market_state["cumulative_benchmark_net_profit_twd"] = round(cumulative_benchmark, 2)
-    market_state["cumulative_benchmark_net_return_pct"] = round(
-        cumulative_benchmark / CAPITAL_PER_MARKET * 100, 4
-    )
+    _recalculate_market_totals(market_state)
     market_state["status"] = "complete" if market_state["completed_days"] >= TARGET_TRADING_DAYS else "running"
     return True
 
@@ -412,7 +517,11 @@ def update_state(
     state["policy"]["strict_portfolio"] = "只有排名資格層2且可驗證成交者才買；其他配置保留現金"
     state["policy"]["execution"] = (
         "官方開盤／收盤；台股開高低同價且漲幅達9.5%視為鎖漲停買不到；"
-        "缺資料不成交；部分成交無逐筆委託簿資料時不捏造"
+        "20筆凍結標的與基準未完整時不結算；部分成交無逐筆委託簿資料時不捏造"
+    )
+    state["policy"]["settlement_coverage"] = (
+        "20筆凍結標的與大盤基準都取得同一交易日官方開收盤價後才結算；"
+        "不足即等待補抓，跨至下一交易日仍不足則隔離且不列成績"
     )
     state["policy"]["manual_trades"] = "使用者暫時人工交易不列入正式模型成績"
     for market in MARKETS:
@@ -423,6 +532,10 @@ def update_state(
         market_state.setdefault("cumulative_strict_net_return_pct", 0.0)
         market_state.setdefault("cumulative_benchmark_net_profit_twd", 0.0)
         market_state.setdefault("cumulative_benchmark_net_return_pct", 0.0)
+        market_state.setdefault("invalid_days", [])
+        _quarantine_incomplete_legacy_days(market_state)
+        if market_state.get("status") == "complete" and market_state.get("completed_days", 0) < TARGET_TRADING_DAYS:
+            market_state["status"] = "running"
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         if market_state.get("status") == "complete":
