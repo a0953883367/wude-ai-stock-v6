@@ -106,6 +106,7 @@ def _empty_medium_market(market: str) -> dict[str, Any]:
         "status": "waiting",
         "hold_days": MEDIUM_HOLD_DAYS,
         "pending": None,
+        "invalid_entries": [],
         "positions": [],
         "benchmark_positions": [],
         "entry_session_date": None,
@@ -129,6 +130,7 @@ def _empty_long() -> dict[str, Any]:
         "status": "waiting",
         "hold_months": LONG_HOLD_MONTHS,
         "pending": {"TW": None, "US": None},
+        "invalid_entries": [],
         "positions": [],
         "benchmark_positions": [],
         "last_valuation_date": {"TW": None, "US": None},
@@ -166,6 +168,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             },
             "duplicates": "同一股票若同時入選中期與長期，兩個模擬帳戶都照買並分開計算",
             "entry": "2026-08-24起，使用前一完成交易日排名並按下一交易日官方開盤價",
+            "entry_coverage": "中期5檔／長期各市場1檔與同期基準都取得同日官方開盤價後才建立持倉",
             "valuation_exit": "持有期間用官方收盤價估值；到期後第一個交易日官方收盤價賣出",
             "round_trip_cost_pct": ROUND_TRIP_COST_PCT,
             "costs": "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入",
@@ -353,6 +356,75 @@ def _enter_benchmark_position(
     }]
 
 
+def _entry_coverage_ready(
+    owner: dict[str, Any], pending: dict[str, Any], rows: list[dict[str, Any]],
+    market: str, session_date: str, expected_count: int,
+) -> bool:
+    execution_date = str(pending.get("execution_session_date") or "")
+    if execution_date and session_date > execution_date:
+        owner.setdefault("invalid_entries", []).append({
+            "status": "data_insufficient",
+            "market": market,
+            "signal_session_date": pending.get("signal_session_date"),
+            "entry_session_date": execution_date,
+            "snapshot_id": pending.get("snapshot_id"),
+            "available_positions": pending.get("available_positions", 0),
+            "required_positions": expected_count,
+            "missing_symbols": pending.get("missing_symbols", []),
+        })
+        owner["invalid_entries"] = owner["invalid_entries"][-20:]
+        return False
+    pending.setdefault("execution_session_date", session_date)
+    row_map = {str(row.get("symbol") or ""): row for row in rows}
+    missing = []
+    available = 0
+    for pick in pending.get("picks") or []:
+        row = row_map.get(str(pick.get("symbol") or ""))
+        price = _finite(row.get("official_open_price")) if row and str(row.get("official_session_date") or "") == session_date else 0.0
+        if price > 0:
+            available += 1
+        else:
+            missing.append(str(pick.get("symbol") or ""))
+    benchmark = row_map.get(BENCHMARKS[market]["symbol"])
+    benchmark_open = _finite(benchmark.get("official_open_price")) if benchmark and str(benchmark.get("official_session_date") or "") == session_date else 0.0
+    if benchmark_open <= 0:
+        missing.append(BENCHMARKS[market]["symbol"])
+    complete = available == expected_count and len(pending.get("picks") or []) == expected_count and benchmark_open > 0
+    if not complete:
+        pending.update({
+            "settlement_status": "waiting_for_official_prices",
+            "available_positions": available,
+            "required_positions": expected_count,
+            "missing_symbols": list(dict.fromkeys(missing)),
+        })
+    return complete
+
+
+def _quarantine_legacy_partial_medium(portfolio: dict[str, Any]) -> None:
+    positions = portfolio.get("positions") or []
+    benchmark_positions = portfolio.get("benchmark_positions") or []
+    if not positions or (
+        len(positions) == MEDIUM_PICK_COUNT and len(benchmark_positions) == 1
+    ):
+        portfolio.setdefault("invalid_entries", [])
+        return
+    market = str(portfolio.get("market") or "US")
+    invalid = list(portfolio.get("invalid_entries") or [])
+    invalid.append({
+        "status": "data_insufficient",
+        "market": market,
+        "reason": "舊版在5檔官方開盤價未完整時提前建立中期持倉，已撤銷且不列成績",
+        "entry_session_date": portfolio.get("entry_session_date"),
+        "available_positions": len(positions),
+        "required_positions": MEDIUM_PICK_COUNT,
+        "symbols_with_data": [str(position.get("symbol") or "") for position in positions],
+    })
+    replacement = _empty_medium_market(market)
+    replacement["invalid_entries"] = invalid[-20:]
+    portfolio.clear()
+    portfolio.update(replacement)
+
+
 def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]], market: str, session_date: str) -> None:
     row_map = {str(row.get("symbol") or ""): row for row in rows if _is_stock(row, market)}
     for position in positions:
@@ -439,6 +511,17 @@ def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: st
     if portfolio.get("status") == "complete":
         return
     if not portfolio.get("positions") and portfolio.get("pending"):
+        if session_date < START_DATE or session_date <= str(portfolio["pending"].get("signal_session_date") or ""):
+            return
+        if not _entry_coverage_ready(
+            portfolio, portfolio["pending"], rows, market, session_date, MEDIUM_PICK_COUNT
+        ):
+            if session_date > str(portfolio["pending"].get("execution_session_date") or session_date):
+                portfolio["pending"] = None
+                portfolio["status"] = "waiting"
+            else:
+                portfolio["status"] = "waiting_data"
+            return
         positions = _enter_positions(
             portfolio["pending"], rows, market, session_date, hold_days=MEDIUM_HOLD_DAYS
         )
@@ -468,6 +551,14 @@ def _update_long(state: dict[str, Any], rows: list[dict[str, Any]], market: str,
     pending = portfolio.setdefault("pending", {"TW": None, "US": None}).get(market)
     has_market_position = any(position.get("market") == market for position in portfolio.get("positions") or [])
     if not has_market_position and pending:
+        if session_date < START_DATE or session_date <= str(pending.get("signal_session_date") or ""):
+            return
+        if not _entry_coverage_ready(
+            portfolio, pending, rows, market, session_date, LONG_PICK_COUNT_PER_MARKET
+        ):
+            if session_date > str(pending.get("execution_session_date") or session_date):
+                portfolio["pending"][market] = None
+            return
         positions = _enter_positions(pending, rows, market, session_date, hold_months=LONG_HOLD_MONTHS)
         if positions:
             portfolio.setdefault("positions", []).extend(positions)
@@ -508,6 +599,10 @@ def update_state(
         "與模型同一交易日開盤進場、同一到期日收盤出場；"
         "中期各市場100萬元，長期台美各50萬元"
     )
+    state["policy"]["entry_coverage"] = (
+        "中期5檔／長期各市場1檔與同期基準都取得同日官方開盤價後才建立持倉；"
+        "不足即等待補抓或隔離"
+    )
     for market in MARKETS:
         state["medium"].setdefault(market, _empty_medium_market(market))
         state["medium"][market].setdefault("net_profit_twd", 0.0)
@@ -516,12 +611,15 @@ def update_state(
         state["medium"][market].setdefault("benchmark_net_profit_twd", 0.0)
         state["medium"][market].setdefault("benchmark_net_return_pct", 0.0)
         state["medium"][market].setdefault("benchmark_realized", False)
+        state["medium"][market].setdefault("invalid_entries", [])
+        _quarantine_legacy_partial_medium(state["medium"][market])
         state.setdefault("long", _empty_long()).setdefault("net_profit_twd", 0.0)
         state["long"].setdefault("net_return_pct", 0.0)
         state["long"].setdefault("benchmark_positions", [])
         state["long"].setdefault("benchmark_net_profit_twd", 0.0)
         state["long"].setdefault("benchmark_net_return_pct", 0.0)
         state["long"].setdefault("benchmark_realized", False)
+        state["long"].setdefault("invalid_entries", [])
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         prepare_pending(state, rows, market, updated_at)
