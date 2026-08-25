@@ -588,7 +588,7 @@ function showWeightExperiment(){
   var notice='<div class="million-policy"><b>公平比較：</b>三組各100萬元、每日短線前10名各10萬元，使用前一完成交易日排名，下一交易日官方開盤買入、官方收盤賣出。<br><b>已扣成本：</b>'+esc(policy.cost_assumption||'台股來回成本0.685%')+'。比較淨報酬、淨勝率、最大回撤與排名換手率。5日只做第一次檢查，不會自動把勝出權重套回正式排名。</div>';
   document.getElementById('results').innerHTML=notice+'<div class="million-grid">'+order.map(function(key){return weightModelHtml(models[key]);}).join('')+'</div>';
 }
-function holdingStatusLabel(status){return {waiting:'等待排名',pending:'等待下週一買入',waiting_data:'等待官方價格補齊',active:'持有中',complete:'已到期賣出'}[status]||status||'等待中';}
+function holdingStatusLabel(status){return {waiting:'等待排名',pending:'等待下一完成交易日買入',waiting_data:'等待官方價格補齊',active:'持有中',complete:'已到期賣出'}[status]||status||'等待中';}
 function holdingPendingHtml(pending,title){
   var picks=pending&&Array.isArray(pending.picks)?pending.picks:[];
   var coverage=pending&&pending.settlement_status==='waiting_for_official_prices'?'<div class="million-note">尚未建立持倉：官方開盤價 '+esc(pending.available_positions||0)+' / '+esc(pending.required_positions||picks.length)+'；缺少 '+esc((pending.missing_symbols||[]).join('、')||'同期基準')+'。不以部分股票冒充完整組合。</div>':'';
@@ -609,10 +609,15 @@ function holdingMediumCard(portfolio){
   return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">大盤同期淨損益</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；5檔與同期基準的官方開盤價完整後才建立持倉。買入後不換股，到期後第一個交易日以官方收盤價模擬賣出。</div>'+invalid+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions))+'</section>';
 }
 function holdingLongCard(portfolio){
-  portfolio=portfolio||{};var pending=portfolio.pending||{},pendingHtml='';
+  portfolio=portfolio||{};var pending=portfolio.pending||{},pendingHtml='',positions=Array.isArray(portfolio.positions)?portfolio.positions:[];
   if(pending.TW)pendingHtml+=holdingPendingHtml(pending.TW,'長期台股第1名｜50萬元');
   if(pending.US)pendingHtml+=holdingPendingHtml(pending.US,'長期美股第1名｜50萬元');
-  return '<section class="holding-card long"><div class="million-head"><div><div class="million-title">長期｜台美股合計100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">6個月</div></div><div class="item"><div class="label">大盤同期淨損益</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">持股數</div><div class="value">2檔</div></div></div><div class="holding-target">台股中長線第1名與美股中長線第1名各50萬元。若與中期名單重複仍照買，兩個帳戶分開計算；同期基準為0050與VOO各50萬元。</div>'+holdingPositionsHtml(portfolio.positions)+pendingHtml+'</section>';
+  var waitingMarkets=[];
+  if(pending.TW)waitingMarkets.push('台股');
+  if(pending.US)waitingMarkets.push('美股');
+  var status=positions.length&&waitingMarkets.length?'部分持有｜'+waitingMarkets.join('、')+'待資料':holdingStatusLabel(portfolio.status);
+  var benchmarkLabel=positions.length<2?'大盤同期淨損益（已建立部分）':'大盤同期淨損益';
+  return '<section class="holding-card long"><div class="million-head"><div><div class="million-title">長期｜台美股合計100萬元</div><div class="holding-status">'+esc(status)+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">6個月</div></div><div class="item"><div class="label">'+esc(benchmarkLabel)+'</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">實際持股數</div><div class="value">'+esc(positions.length)+'檔／目標2檔</div></div></div><div class="holding-target">台股中長線第1名與美股中長線第1名各50萬元。若與中期名單重複仍照買，兩個帳戶分開計算；同期基準為0050與VOO各50萬元。尚未建立的市場不列持股、基準與損益。</div>'+holdingPositionsHtml(positions)+pendingHtml+'</section>';
 }
 function showHoldingSimulation(){
   STATE.view='HOLDING';setActive('#marketButtons button','data-view','HOLDING');clearOtherNav('#marketButtons button');
