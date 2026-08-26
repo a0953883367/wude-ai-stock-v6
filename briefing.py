@@ -310,6 +310,29 @@ def _qualified_tw_market_top(ranked: list[dict], limit: int = 5) -> list[dict]:
     ][:limit]
 
 
+def _simulation_input_rows(
+    ranking_rows: list[dict], all_analysis_rows: list[dict]
+) -> list[dict]:
+    """Keep TOP order while exposing price rows for older frozen picks.
+
+    A forward experiment can need a symbol frozen yesterday that has since
+    moved outside today's TOP20. Passing only the current ranking makes that
+    valid price look missing even though it exists in the full analysis.
+    """
+    output = list(ranking_rows)
+    seen = {
+        (str(row.get("market") or ""), str(row.get("symbol") or ""))
+        for row in output
+    }
+    for row in all_analysis_rows:
+        key = (str(row.get("market") or ""), str(row.get("symbol") or ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        output.append(row)
+    return output
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--period", choices=["morning", "noon", "evening"], required=True)
@@ -693,30 +716,34 @@ def main() -> int:
     ranking_rows = []
     for group in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
         ranking_rows.extend(backtest_groups[group])
+    # Keep the public ranking payload compact, but let experiments see the
+    # full price universe. Otherwise yesterday's frozen pick is falsely marked
+    # missing as soon as it falls outside today's TOP20.
+    simulation_rows = _simulation_input_rows(ranking_rows, ranked)
     update_million_simulation(
         SETTINGS.reports_dir,
-        ranking_rows,
+        simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
     )
     update_weight_experiment(
         SETTINGS.reports_dir,
-        ranking_rows,
+        simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
     )
     update_holding_simulation(
         SETTINGS.reports_dir,
-        ranking_rows,
+        simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
     )
     update_exit_horizon_experiment(
         SETTINGS.reports_dir,
-        ranking_rows,
+        simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
@@ -736,7 +763,7 @@ def main() -> int:
     )
     update_inverse_experiment(
         SETTINGS.reports_dir,
-        ranking_rows,
+        simulation_rows,
         inverse_market_rows,
         market_regime_history,
         period=args.period,
