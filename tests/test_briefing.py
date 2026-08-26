@@ -1,6 +1,7 @@
 from briefing import (
     _attach_next_session_predictions,
     _qualified_tw_market_top,
+    _simulation_input_rows,
     _tw_intraday_enrichment,
 )
 
@@ -71,6 +72,24 @@ def test_market_top_excludes_observation_blocked_etf_and_us_rows():
     ]
 
     assert _qualified_tw_market_top(rows) == [qualified]
+
+
+def test_simulation_rows_include_frozen_pick_that_fell_outside_top20():
+    current_top = [
+        {"symbol": "AMZN", "market": "US", "official_close_price": 101},
+        {"symbol": "NVDA", "market": "US", "official_close_price": 202},
+    ]
+    all_rows = [
+        {"symbol": "AMZN", "market": "US", "official_close_price": 999},
+        {"symbol": "PATH", "market": "US", "official_close_price": 16.66},
+        {"symbol": "2330.TW", "market": "TW", "official_close_price": 2390},
+    ]
+
+    result = _simulation_input_rows(current_top, all_rows)
+
+    assert [row["symbol"] for row in result] == ["AMZN", "NVDA", "PATH", "2330.TW"]
+    assert result[0]["official_close_price"] == 101
+    assert next(row for row in result if row["symbol"] == "PATH")["official_close_price"] == 16.66
 
 
 def test_next_session_shadow_fields_do_not_change_ranking_or_action():
