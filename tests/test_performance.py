@@ -3,6 +3,7 @@ from pathlib import Path
 
 from model_lab import MODEL_NAMES, consensus_prediction, model_predictions, track_predictions
 from performance import (
+    AUDIT_SCHEMA_VERSION,
     _snapshot_integrity,
     _summary,
     _tw_threshold_calibration,
@@ -11,6 +12,54 @@ from performance import (
     load_performance_context,
     update_performance,
 )
+
+
+def test_current_v6_metrics_exclude_legacy_schema_but_keep_audit_count():
+    base = _row(100, "2026-08-24", "US", "NVDA", "US")
+    tracks = track_predictions(base)
+
+    def snapshot(session_date: str, schema: int, result: float) -> dict:
+        row = {
+            "symbol": "NVDA",
+            "name": "NVDA",
+            "market": "US",
+            "cohort": "US_STOCK",
+            "rank": 1,
+            "validation_eligible": True,
+            "track_predictions": tracks,
+            "consensus": tracks["full_day"]["consensus"],
+            "outcomes": {"1": {
+                "return_pct": result,
+                "close_to_close_return_pct": result,
+                "close_to_open_return_pct": result,
+                "open_to_close_return_pct": result,
+                "evaluated_session_date": "2026-08-26",
+            }},
+        }
+        return {
+            "id": f"US:{session_date}",
+            "audit_schema_version": schema,
+            "market": "US",
+            "session_date": session_date,
+            "market_regime": {"regime": "bull"},
+            "predictions": [row],
+        }
+
+    legacy = snapshot("2026-08-24", AUDIT_SCHEMA_VERSION - 1, -10.0)
+    current = snapshot("2026-08-25", AUDIT_SCHEMA_VERSION, 10.0)
+    summary = _summary([legacy, current])
+
+    metric = summary["groups"]["US_STOCK"]["tracks"]["full_day"]
+    assert metric["samples"] == 1
+    assert metric["win_rate_pct"] == 100.0
+    assert metric["avg_return_pct"] == 10.0
+    assert summary["snapshot_count"] == 1
+    assert summary["all_snapshot_count"] == 2
+    assert summary["calibration"]["trading_days_collected"] == 1
+    isolation = summary["version_isolation"]
+    assert isolation["current_snapshot_count"] == 1
+    assert isolation["legacy_reference_snapshot_count"] == 1
+    assert isolation["legacy_affects_headline_metrics"] is False
 
 
 def test_tw_accumulation_validation_deducts_costs_and_needs_diverse_samples():
@@ -365,6 +414,7 @@ def test_reaching_sample_gate_never_silently_changes_production_score():
                 "outcomes": {"1": {"return_pct": 1.0}},
             })
         snapshots.append({
+            "audit_schema_version": AUDIT_SCHEMA_VERSION,
             "market": "TW",
             "session_date": f"2026-09-{day + 1:02d}",
             "predictions": predictions,
