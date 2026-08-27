@@ -24,7 +24,7 @@ def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
     assert not ({"account", "inventory", "api_key", "certificate"} & result.keys())
 
 
-def test_friend_accuracy_only_contains_aggregate_metrics():
+def test_friend_accuracy_is_always_cleared():
     value = {
         "methodology_version": 5,
         "updated_at": "2026-08-22 20:00:00",
@@ -42,10 +42,8 @@ def test_friend_accuracy_only_contains_aggregate_metrics():
         "recent": [{"symbol": "2330.TW", "prediction": "private-row"}],
     }
     result = sanitize_accuracy(value)
-    assert result["groups"]["TW_STOCK"]["tracks"]["full_day"]["samples"] == 3
-    assert "recent" not in result
-    assert "models" not in result["groups"]["TW_STOCK"]
-    assert result["tw_threshold_calibration"]["mode"] == "shadow_only"
+    assert result == {}
+    assert "private-row" not in json.dumps(result, ensure_ascii=False)
 
 
 def test_friend_rotation_only_contains_sector_summary():
