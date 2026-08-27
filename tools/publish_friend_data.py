@@ -88,6 +88,51 @@ def sanitize_accuracy(value):
     }
 
 
+def sanitize_rotation(value):
+    """Publish sector-level context only; omit picks, scores and model records."""
+    if not isinstance(value, dict):
+        return {}
+    source_markets = value.get("markets")
+    if not isinstance(source_markets, dict):
+        return {}
+    markets = {}
+    for market in ("TW", "US"):
+        source = source_markets.get(market)
+        if not isinstance(source, dict):
+            continue
+        snapshots = source.get("snapshots")
+        latest = snapshots[-1] if isinstance(snapshots, list) and snapshots and isinstance(snapshots[-1], dict) else {}
+        sectors = []
+        source_sectors = latest.get("sectors")
+        if isinstance(source_sectors, list):
+            for item in source_sectors:
+                if not isinstance(item, dict) or item.get("eligible") is not True:
+                    continue
+                sectors.append({
+                    "industry": str(item.get("industry") or "—")[:80],
+                    "stage": str(item.get("stage") or "neutral")[:30],
+                    "memberCount": _number(item.get("member_count")),
+                    "upRatioPct": _number(item.get("up_ratio_pct")),
+                    "medianChangePct": _number(item.get("median_change_pct")),
+                    "volumeRatio": _number(item.get("median_volume_ratio")),
+                })
+                if len(sectors) >= 10:
+                    break
+        markets[market] = {
+            "sessionDate": str(latest.get("session_date") or "等待完成交易日")[:30],
+            "marketState": str(latest.get("market_state_label") or "等待判斷")[:50],
+            "stockCount": _number(latest.get("stock_count")),
+            "breadthUpPct": _number(latest.get("market_breadth_up_pct")),
+            "hotSectorCount": _number(latest.get("hot_sector_count")),
+            "sectors": sectors,
+        }
+    return {
+        "updatedAt": str(value.get("updated_at") or "等待更新")[:40],
+        "markets": markets,
+        "note": "族群輪動摘要僅供研究，不等於可買或保證獲利。",
+    }
+
+
 def main():
     site_url = os.getenv("FRIEND_SITE_URL", "").strip()
     for prefix in ("網址：", "網址:", "URL：", "URL:"):
@@ -111,9 +156,14 @@ def main():
         accuracy = json.loads(Path("reports/accuracy.json").read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, TypeError):
         accuracy = {}
+    try:
+        rotation = json.loads(Path("reports/market_rotation_shadow.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, TypeError):
+        rotation = {}
     payload = json.dumps({
         "stocks": stocks,
         "accuracy": sanitize_accuracy(accuracy),
+        "rotation": sanitize_rotation(rotation),
         "updated": source.get("updated_at", "等待更新"),
         "version": "AI股票助理・朋友版",
     }, ensure_ascii=False).encode("utf-8")

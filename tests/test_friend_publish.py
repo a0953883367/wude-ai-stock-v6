@@ -1,4 +1,6 @@
-from tools.publish_friend_data import sanitize, sanitize_accuracy
+import json
+
+from tools.publish_friend_data import sanitize, sanitize_accuracy, sanitize_rotation
 
 
 def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
@@ -44,3 +46,51 @@ def test_friend_accuracy_only_contains_aggregate_metrics():
     assert "recent" not in result
     assert "models" not in result["groups"]["TW_STOCK"]
     assert result["tw_threshold_calibration"]["mode"] == "shadow_only"
+
+
+def test_friend_rotation_only_contains_sector_summary():
+    secret = "MUST_NOT_LEAK_OWNER_MODEL"
+    value = {
+        "updated_at": "2026-08-27 20:00:00",
+        "policy": {"model_formula": secret},
+        "markets": {
+            "TW": {
+                "pending": {"models": {"baseline": {"picks": [{"symbol": secret}]}}},
+                "outcomes": [{"net_profit_twd": 12345, "owner": secret}],
+                "summary": {"rotation_net_profit_twd": 99999},
+                "snapshots": [{
+                    "session_date": "2026-08-27",
+                    "market_state_label": "多頭擴散",
+                    "stock_count": 147,
+                    "market_breadth_up_pct": 62.5,
+                    "hot_sector_count": 2,
+                    "integrity_sha256": secret,
+                    "sectors": [{
+                        "industry": "半導體", "stage": "expansion",
+                        "eligible": True, "member_count": 8,
+                        "up_ratio_pct": 75.0, "median_change_pct": 2.1,
+                        "median_volume_ratio": 1.6,
+                        "rotation_score": 88.8,
+                        "market_specific_evidence_score": 95,
+                        "strict_picks": [secret],
+                    }],
+                }],
+            },
+        },
+        "account": secret,
+        "broker_token": secret,
+    }
+    result = sanitize_rotation(value)
+    encoded = json.dumps(result, ensure_ascii=False)
+    tw = result["markets"]["TW"]
+    sector = tw["sectors"][0]
+    assert tw["marketState"] == "多頭擴散"
+    assert sector == {
+        "industry": "半導體", "stage": "expansion", "memberCount": 8,
+        "upRatioPct": 75.0, "medianChangePct": 2.1, "volumeRatio": 1.6,
+    }
+    assert secret not in encoded
+    assert "rotation_score" not in encoded
+    assert "pending" not in encoded
+    assert "outcomes" not in encoded
+    assert "net_profit" not in encoded
