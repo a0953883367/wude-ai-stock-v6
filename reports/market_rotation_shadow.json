@@ -1,0 +1,2698 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-27 19:05:44",
+  "mode": "forward_shadow_only",
+  "policy": {
+    "baseline": "A組＝正式V6短線排序；只讀取、不修改",
+    "shadow": "B組＝正式短線分數85%＋同市場族群輪動15%",
+    "tw_strict": "台股嚴格組＝產業轉強＋3檔共振＋量增突破＋法人連買＋未過熱，5/5",
+    "tw_practical": "台股實用組＝產業轉強＋3檔共振＋未過熱必須成立，量增突破／法人連買至少一項",
+    "market_isolation": "台股使用法人／量價；美股使用成長財報代理／量價",
+    "review_gate": "5日只查程式、20日初步比較、60日後只標候選",
+    "formal_ranking_locked": true,
+    "automatic_merge": false,
+    "broker_orders": false
+  },
+  "markets": {
+    "TW": {
+      "market": "TW",
+      "status": "collecting_only",
+      "snapshots": [
+        {
+          "market": "TW",
+          "session_date": "2026-08-27",
+          "universe_scope": "current_analyzed_stock_universe",
+          "stock_count": 146,
+          "market_median_change_pct": 0.99,
+          "market_breadth_up_pct": 69.18,
+          "market_state": "broad_bull",
+          "market_state_label": "普漲多頭",
+          "hot_sector_count": 9,
+          "sectors": [
+            {
+              "industry": "先進封裝設備",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": 6.47,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.41,
+              "volume_confirmation_pct": 66.67,
+              "relative_strength_score": 93.84,
+              "breadth_score": 100.0,
+              "volume_score": 65.39,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 100.0,
+              "leader_count": 2,
+              "co_movement_count": 3,
+              "three_stock_co_movement": true,
+              "rotation_score": 91.54,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "光通訊半導體",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 6.225,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.49,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 91.88,
+              "breadth_score": 100.0,
+              "volume_score": 59.43,
+              "market_specific_evidence_score": 50.0,
+              "leadership_score": 85.0,
+              "leader_count": 1,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 77.61,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI散熱",
+              "member_count": 4,
+              "eligible": true,
+              "median_change_pct": 1.94,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 3.58,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 57.6,
+              "breadth_score": 50.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 85.0,
+              "leader_count": 2,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 77.15,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "重電設備",
+              "member_count": 5,
+              "eligible": true,
+              "median_change_pct": 5.2,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.54,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 83.68,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 5,
+              "co_movement_count": 5,
+              "three_stock_co_movement": true,
+              "rotation_score": 75.92,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "矽晶圓",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": 2.34,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.76,
+              "volume_confirmation_pct": 33.33,
+              "relative_strength_score": 60.8,
+              "breadth_score": 100.0,
+              "volume_score": 37.88,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 68.33,
+              "leader_count": 1,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 73.03,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "無人機",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 3.005,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.965,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 66.12,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 85.0,
+              "leader_count": 1,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 69.28,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "衛星通訊",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 2.32,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 1.32,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 60.64,
+              "breadth_score": 50.0,
+              "volume_score": 56.16,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 85.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 69.14,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "光通訊",
+              "member_count": 8,
+              "eligible": true,
+              "median_change_pct": 1.715,
+              "up_ratio_pct": 75.0,
+              "median_volume_ratio": 3.08,
+              "volume_confirmation_pct": 87.5,
+              "relative_strength_score": 55.8,
+              "breadth_score": 75.0,
+              "volume_score": 94.38,
+              "market_specific_evidence_score": 60.0,
+              "leadership_score": 60.0,
+              "leader_count": 2,
+              "co_movement_count": 4,
+              "three_stock_co_movement": true,
+              "rotation_score": 68.83,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "半導體材料",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 0.79,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.19,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 48.4,
+              "breadth_score": 100.0,
+              "volume_score": 53.66,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 68.08,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "半導體設備",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": 0.95,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.68,
+              "volume_confirmation_pct": 66.67,
+              "relative_strength_score": 49.68,
+              "breadth_score": 100.0,
+              "volume_score": 85.0,
+              "market_specific_evidence_score": 50.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 64.67,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "工業自動化",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 5.46,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.65,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 85.76,
+              "breadth_score": 100.0,
+              "volume_score": 62.51,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 59.19,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "航太",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 0.935,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.195,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 49.56,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 57.64,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "半導體封測",
+              "member_count": 5,
+              "eligible": true,
+              "median_change_pct": 0.48,
+              "up_ratio_pct": 80.0,
+              "median_volume_ratio": 1.14,
+              "volume_confirmation_pct": 40.0,
+              "relative_strength_score": 45.92,
+              "breadth_score": 80.0,
+              "volume_score": 48.2,
+              "market_specific_evidence_score": 50.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 52.37,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "PCB／ABF",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 5.305,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.855,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 84.52,
+              "breadth_score": 100.0,
+              "volume_score": 24.71,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 51.32,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "電線電纜",
+              "member_count": 4,
+              "eligible": true,
+              "median_change_pct": 0.805,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 2.08,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 48.52,
+              "breadth_score": 50.0,
+              "volume_score": 93.29,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 60.0,
+              "leader_count": 1,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 49.79,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "機器人",
+              "member_count": 6,
+              "eligible": true,
+              "median_change_pct": 1.35,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.17,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 52.88,
+              "breadth_score": 100.0,
+              "volume_score": 53.27,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 4,
+              "three_stock_co_movement": true,
+              "rotation_score": 49.12,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "邊緣AI",
+              "member_count": 4,
+              "eligible": true,
+              "median_change_pct": -0.22,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 0.53,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 40.32,
+              "breadth_score": 50.0,
+              "volume_score": 18.45,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 49.02,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "記憶體",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 3.285,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.94,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 68.36,
+              "breadth_score": 100.0,
+              "volume_score": 26.35,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 47.61,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "自動化",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 1.19,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 2.235,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 51.6,
+              "breadth_score": 50.0,
+              "volume_score": 96.27,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 47.4,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "航太零組件",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": 0.71,
+              "up_ratio_pct": 66.67,
+              "median_volume_ratio": 2.15,
+              "volume_confirmation_pct": 66.67,
+              "relative_strength_score": 47.76,
+              "breadth_score": 66.67,
+              "volume_score": 79.64,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": 46.45,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "PCB",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 2.59,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.8,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 62.8,
+              "breadth_score": 100.0,
+              "volume_score": 23.65,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 45.68,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "面板",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 1.405,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 0.84,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 53.32,
+              "breadth_score": 50.0,
+              "volume_score": 46.92,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 85.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 45.46,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "被動元件",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 1.755,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.995,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 56.12,
+              "breadth_score": 100.0,
+              "volume_score": 27.4,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 44.76,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI伺服器機殼",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": 0.8,
+              "up_ratio_pct": 66.67,
+              "median_volume_ratio": 1.28,
+              "volume_confirmation_pct": 66.67,
+              "relative_strength_score": 48.48,
+              "breadth_score": 66.67,
+              "volume_score": 62.89,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 43.28,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "綠能售電",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 0.29,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 1.23,
+              "volume_confirmation_pct": 50.0,
+              "relative_strength_score": 44.4,
+              "breadth_score": 50.0,
+              "volume_score": 54.43,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": 37.24,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI連接器",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": 0.88,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 0.875,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 49.12,
+              "breadth_score": 50.0,
+              "volume_score": 25.09,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 32.55,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "半導體",
+              "member_count": 6,
+              "eligible": true,
+              "median_change_pct": 0.12,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 0.545,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 43.04,
+              "breadth_score": 50.0,
+              "volume_score": 18.74,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 2,
+              "three_stock_co_movement": false,
+              "rotation_score": 29.76,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "工具機",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": -0.11,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 1.62,
+              "volume_confirmation_pct": 66.67,
+              "relative_strength_score": 41.2,
+              "breadth_score": 0.0,
+              "volume_score": 69.44,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": 29.44,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI運算",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": -0.29,
+              "up_ratio_pct": 50.0,
+              "median_volume_ratio": 0.585,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 39.76,
+              "breadth_score": 50.0,
+              "volume_score": 19.51,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": 29.09,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI伺服器",
+              "member_count": 7,
+              "eligible": true,
+              "median_change_pct": -0.07,
+              "up_ratio_pct": 28.57,
+              "median_volume_ratio": 0.76,
+              "volume_confirmation_pct": 14.29,
+              "relative_strength_score": 41.52,
+              "breadth_score": 28.57,
+              "volume_score": 29.31,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 27.21,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI電源",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": -0.11,
+              "up_ratio_pct": 33.33,
+              "median_volume_ratio": 0.61,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 41.2,
+              "breadth_score": 33.33,
+              "volume_score": 19.99,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": 26.21,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "AI CCL",
+              "member_count": 2,
+              "eligible": true,
+              "median_change_pct": -4.895,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 2.12,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 2.92,
+              "breadth_score": 0.0,
+              "volume_score": 94.06,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": 24.79,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "ASIC",
+              "member_count": 3,
+              "eligible": true,
+              "median_change_pct": -2.22,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.58,
+              "volume_confirmation_pct": 33.33,
+              "relative_strength_score": 24.32,
+              "breadth_score": 0.0,
+              "volume_score": 34.41,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": 18.21,
+              "stage": "collecting",
+              "stage_reason": "首個完成交易日只建立基準，不倒推輪動階段"
+            },
+            {
+              "industry": "ABF",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 3.29,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.12,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 68.4,
+              "breadth_score": 100.0,
+              "volume_score": 94.06,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "ADAS",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 2.81,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.02,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 64.56,
+              "breadth_score": 100.0,
+              "volume_score": 27.89,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "AI PCB",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -1.44,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 1.04,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 30.56,
+              "breadth_score": 0.0,
+              "volume_score": 28.27,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "AI伺服器滑軌",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -1.41,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.87,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 30.8,
+              "breadth_score": 0.0,
+              "volume_score": 25.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "AI晶片｜晶圓代工",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -0.21,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.61,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 40.4,
+              "breadth_score": 0.0,
+              "volume_score": 19.99,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "AI測試",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.64,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.66,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 55.2,
+              "breadth_score": 100.0,
+              "volume_score": 20.96,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "AI電腦",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -3.17,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.7,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 16.72,
+              "breadth_score": 0.0,
+              "volume_score": 21.73,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "AI高速連接｜車用連接",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 2.74,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.82,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 64.0,
+              "breadth_score": 100.0,
+              "volume_score": 24.04,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "IC測試",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.15,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.9,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 51.28,
+              "breadth_score": 100.0,
+              "volume_score": 25.58,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "伺服馬達",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 2.94,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.82,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 65.6,
+              "breadth_score": 100.0,
+              "volume_score": 88.28,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "傳動元件",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 7.16,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.82,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 99.36,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "先進封裝",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.69,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.52,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 55.6,
+              "breadth_score": 100.0,
+              "volume_score": 18.26,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "光學感測",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.84,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.17,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 56.8,
+              "breadth_score": 100.0,
+              "volume_score": 95.02,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "國防電子",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.98,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.97,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 49.92,
+              "breadth_score": 100.0,
+              "volume_score": 26.92,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "工業電腦",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -1.6,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.42,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 29.28,
+              "breadth_score": 0.0,
+              "volume_score": 16.33,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "探針卡",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.69,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 6.24,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 47.6,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "智慧座艙",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.1,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.16,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 50.88,
+              "breadth_score": 100.0,
+              "volume_score": 30.58,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "機器人／車用",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 5.94,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.92,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 89.6,
+              "breadth_score": 100.0,
+              "volume_score": 90.21,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "液冷",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 9.62,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.01,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 100.0,
+              "breadth_score": 100.0,
+              "volume_score": 91.94,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "減速機",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.08,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.33,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 50.72,
+              "breadth_score": 100.0,
+              "volume_score": 14.6,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "測試介面",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.33,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 4.76,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 52.72,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "無人機PCB｜PCB",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 9.91,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.38,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 100.0,
+              "breadth_score": 100.0,
+              "volume_score": 99.06,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "無人機航太",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -2.29,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.94,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 23.76,
+              "breadth_score": 0.0,
+              "volume_score": 26.35,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "無人機通訊",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.56,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.28,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 54.56,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "無人載具",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.0,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 4.39,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 42.08,
+              "breadth_score": 0.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "玻璃基板",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -1.51,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.94,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 30.0,
+              "breadth_score": 0.0,
+              "volume_score": 26.35,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "精密傳動｜車用傳動",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 2.2,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.74,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 59.68,
+              "breadth_score": 100.0,
+              "volume_score": 86.75,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "精密零組件",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -1.69,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.63,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 28.56,
+              "breadth_score": 0.0,
+              "volume_score": 20.38,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "線性滑軌",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 9.67,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.72,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 100.0,
+              "breadth_score": 100.0,
+              "volume_score": 22.11,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "能源管理",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.91,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.43,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 57.36,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "自動化測試",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.51,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.81,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 46.16,
+              "breadth_score": 100.0,
+              "volume_score": 23.84,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "車用PCB",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 3.99,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 3.66,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 74.0,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "車用半導體",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.34,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.71,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 44.8,
+              "breadth_score": 100.0,
+              "volume_score": 21.92,
+              "market_specific_evidence_score": 100.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "車用雷達",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.0,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.74,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 42.08,
+              "breadth_score": 0.0,
+              "volume_score": 22.5,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "車聯網",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.45,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.4,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 53.68,
+              "breadth_score": 100.0,
+              "volume_score": 80.2,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "電力事業",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.53,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.74,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 46.32,
+              "breadth_score": 100.0,
+              "volume_score": 22.5,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "電動車",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 1.69,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.87,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 55.6,
+              "breadth_score": 100.0,
+              "volume_score": 100.0,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "電動車零組件",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 3.06,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.25,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 66.56,
+              "breadth_score": 100.0,
+              "volume_score": 77.31,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "電子材料",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 9.9,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 1.55,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 100.0,
+              "breadth_score": 100.0,
+              "volume_score": 83.09,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "電池模組",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 9.62,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 2.32,
+              "volume_confirmation_pct": 100.0,
+              "relative_strength_score": 100.0,
+              "breadth_score": 100.0,
+              "volume_score": 97.91,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 100.0,
+              "leader_count": 1,
+              "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "電源管理",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": 0.86,
+              "up_ratio_pct": 100.0,
+              "median_volume_ratio": 0.64,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 48.96,
+              "breadth_score": 100.0,
+              "volume_score": 20.57,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
+              "three_stock_co_movement": false,
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            }
+          ],
+          "integrity_sha256": "cc9b3f33909ba4f3fb70755d67e4032cb76da29f3db15d6d026781391b94090a"
+        }
+      ],
+      "pending": {
+        "signal_session_date": "2026-08-27",
+        "created_at": "2026-08-27 19:05:44",
+        "snapshot_integrity_sha256": "cc9b3f33909ba4f3fb70755d67e4032cb76da29f3db15d6d026781391b94090a",
+        "settlement_status": "waiting_next_completed_session",
+        "models": {
+          "baseline": {
+            "label": "A｜正式V6基準",
+            "picks": [
+              {
+                "rank": 1,
+                "symbol": "3363.TWO",
+                "name": "上詮",
+                "industry": "光通訊",
+                "rank_tier": 1,
+                "base_score": 69.1,
+                "shadow_score": 69.1,
+                "rotation_score": 68.83,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": false,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 704.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 2,
+                "symbol": "4979.TWO",
+                "name": "華星光",
+                "industry": "光通訊",
+                "rank_tier": 1,
+                "base_score": 60.1,
+                "shadow_score": 60.1,
+                "rotation_score": 68.83,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": true,
+                  "status": "practical_4of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 617.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 3,
+                "symbol": "8234.TWO",
+                "name": "新漢",
+                "industry": "邊緣AI",
+                "rank_tier": 1,
+                "base_score": 54.0,
+                "shadow_score": 54.0,
+                "rotation_score": 49.02,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 68.6,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 4,
+                "symbol": "3265.TWO",
+                "name": "台星科",
+                "industry": "半導體封測",
+                "rank_tier": 1,
+                "base_score": 49.9,
+                "shadow_score": 49.9,
+                "rotation_score": 52.37,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 1,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 176.5,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 5,
+                "symbol": "6182.TWO",
+                "name": "合晶",
+                "industry": "矽晶圓",
+                "rank_tier": 1,
+                "base_score": 48.3,
+                "shadow_score": 48.3,
+                "rotation_score": 73.03,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 109.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 6,
+                "symbol": "5328.TWO",
+                "name": "華容",
+                "industry": "被動元件",
+                "rank_tier": 1,
+                "base_score": 42.9,
+                "shadow_score": 42.9,
+                "rotation_score": 44.76,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 1,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 62.1,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 7,
+                "symbol": "6488.TWO",
+                "name": "環球晶",
+                "industry": "矽晶圓",
+                "rank_tier": 1,
+                "base_score": 39.2,
+                "shadow_score": 39.2,
+                "rotation_score": 73.03,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 958.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 8,
+                "symbol": "1303.TW",
+                "name": "南亞",
+                "industry": "電子材料",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 29.2,
+                "rotation_score": null,
+                "rotation_stage": "insufficient_members",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 1,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": false,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 227.5,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 9,
+                "symbol": "1503.TW",
+                "name": "士電",
+                "industry": "重電設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 29.2,
+                "rotation_score": 75.92,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": false,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 212.5,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 10,
+                "symbol": "1513.TW",
+                "name": "中興電",
+                "industry": "重電設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 29.2,
+                "rotation_score": 75.92,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": true,
+                  "status": "practical_4of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 170.5,
+                "allocation_twd": 100000
+              }
+            ]
+          },
+          "rotation": {
+            "label": "B｜市場規則＋輪動15%",
+            "picks": [
+              {
+                "rank": 1,
+                "symbol": "3363.TWO",
+                "name": "上詮",
+                "industry": "光通訊",
+                "rank_tier": 1,
+                "base_score": 69.1,
+                "shadow_score": 69.06,
+                "rotation_score": 68.83,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": false,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 704.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 2,
+                "symbol": "4979.TWO",
+                "name": "華星光",
+                "industry": "光通訊",
+                "rank_tier": 1,
+                "base_score": 60.1,
+                "shadow_score": 61.41,
+                "rotation_score": 68.83,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": true,
+                  "status": "practical_4of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 617.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 3,
+                "symbol": "8234.TWO",
+                "name": "新漢",
+                "industry": "邊緣AI",
+                "rank_tier": 1,
+                "base_score": 54.0,
+                "shadow_score": 53.25,
+                "rotation_score": 49.02,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 68.6,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 4,
+                "symbol": "6182.TWO",
+                "name": "合晶",
+                "industry": "矽晶圓",
+                "rank_tier": 1,
+                "base_score": 48.3,
+                "shadow_score": 52.01,
+                "rotation_score": 73.03,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 109.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 5,
+                "symbol": "3265.TWO",
+                "name": "台星科",
+                "industry": "半導體封測",
+                "rank_tier": 1,
+                "base_score": 49.9,
+                "shadow_score": 50.27,
+                "rotation_score": 52.37,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 1,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 176.5,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 6,
+                "symbol": "6488.TWO",
+                "name": "環球晶",
+                "industry": "矽晶圓",
+                "rank_tier": 1,
+                "base_score": 39.2,
+                "shadow_score": 44.27,
+                "rotation_score": 73.03,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 958.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 7,
+                "symbol": "5328.TWO",
+                "name": "華容",
+                "industry": "被動元件",
+                "rank_tier": 1,
+                "base_score": 42.9,
+                "shadow_score": 43.18,
+                "rotation_score": 44.76,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 1,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 62.1,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 8,
+                "symbol": "6187.TWO",
+                "name": "萬潤",
+                "industry": "先進封裝設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 38.55,
+                "rotation_score": 91.54,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 3,
+                  "available_count": 4,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "data_insufficient",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": false
+                    },
+                    "not_overextended": {
+                      "passed": false,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 1430.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 9,
+                "symbol": "6640.TWO",
+                "name": "均華",
+                "industry": "先進封裝設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 38.55,
+                "rotation_score": 91.54,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 3,
+                  "available_count": 4,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "data_insufficient",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": false
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 1075.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 10,
+                "symbol": "2467.TW",
+                "name": "志聖",
+                "industry": "先進封裝設備",
+                "rank_tier": 0,
+                "base_score": 27.9,
+                "shadow_score": 37.45,
+                "rotation_score": 91.54,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 3,
+                  "available_count": 4,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "data_insufficient",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": false
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 585.0,
+                "allocation_twd": 100000
+              }
+            ]
+          },
+          "strict_5of5": {
+            "label": "台股嚴格5／5研究條件符合（不等於可買）",
+            "picks": [
+              {
+                "rank": 1,
+                "symbol": "1514.TW",
+                "name": "亞力",
+                "industry": "重電設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 36.21,
+                "rotation_score": 75.92,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 5,
+                  "available_count": 5,
+                  "strict_5of5": true,
+                  "practical_4of5": true,
+                  "status": "strict_5of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 105.0,
+                "allocation_twd": 100000
+              }
+            ]
+          },
+          "practical_4of5": {
+            "label": "台股實用4／5研究條件符合（不等於可買）",
+            "picks": [
+              {
+                "rank": 1,
+                "symbol": "4979.TWO",
+                "name": "華星光",
+                "industry": "光通訊",
+                "rank_tier": 1,
+                "base_score": 60.1,
+                "shadow_score": 61.41,
+                "rotation_score": 68.83,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": true,
+                  "status": "practical_4of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 617.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 2,
+                "symbol": "1513.TW",
+                "name": "中興電",
+                "industry": "重電設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 36.21,
+                "rotation_score": 75.92,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": true,
+                  "status": "practical_4of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 170.5,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 3,
+                "symbol": "1514.TW",
+                "name": "亞力",
+                "industry": "重電設備",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 36.21,
+                "rotation_score": 75.92,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 5,
+                  "available_count": 5,
+                  "strict_5of5": true,
+                  "practical_4of5": true,
+                  "status": "strict_5of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 105.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 4,
+                "symbol": "4977.TW",
+                "name": "眾達-KY",
+                "industry": "光通訊",
+                "rank_tier": 0,
+                "base_score": 29.2,
+                "shadow_score": 35.14,
+                "rotation_score": 68.83,
+                "rotation_stage": "collecting",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 4,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": true,
+                  "status": "practical_4of5",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": true,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 171.5,
+                "allocation_twd": 100000
+              }
+            ]
+          }
+        }
+      },
+      "outcomes": [],
+      "summary": {
+        "valid_trading_days": 0,
+        "invalid_trading_days": 0,
+        "baseline_net_profit_twd": 0,
+        "rotation_net_profit_twd": 0,
+        "rotation_incremental_net_profit_twd": 0,
+        "baseline_net_return_pct": 0.0,
+        "rotation_net_return_pct": 0.0,
+        "strict_5of5_net_profit_twd": 0,
+        "practical_4of5_net_profit_twd": 0,
+        "review_status": "code_check_only",
+        "formal_ranking_locked": true,
+        "model_metrics": {
+          "baseline": {
+            "samples": 0,
+            "win_rate_pct": null,
+            "misjudgment_rate_pct": null,
+            "avg_net_return_pct": null,
+            "opening_gap_invalidated": 0
+          },
+          "rotation": {
+            "samples": 0,
+            "win_rate_pct": null,
+            "misjudgment_rate_pct": null,
+            "avg_net_return_pct": null,
+            "opening_gap_invalidated": 0
+          },
+          "strict_5of5": {
+            "samples": 0,
+            "win_rate_pct": null,
+            "misjudgment_rate_pct": null,
+            "avg_net_return_pct": null,
+            "opening_gap_invalidated": 0
+          },
+          "practical_4of5": {
+            "samples": 0,
+            "win_rate_pct": null,
+            "misjudgment_rate_pct": null,
+            "avg_net_return_pct": null,
+            "opening_gap_invalidated": 0
+          }
+        }
+      }
+    },
+    "US": {
+      "market": "US",
+      "status": "waiting_for_first_completed_session",
+      "snapshots": [],
+      "pending": null,
+      "outcomes": [],
+      "summary": {}
+    }
+  }
+}
