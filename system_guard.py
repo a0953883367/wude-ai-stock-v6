@@ -78,6 +78,7 @@ def build_guard(
     latest = _load(reports_dir / "latest.json")
     rankings = _load(reports_dir / "rankings.json")
     all_analysis = _load(reports_dir / "all_analysis.json")
+    rotation_health = _load(reports_dir / "market_rotation_shadow_health.json")
     checks: list[dict[str, Any]] = []
 
     updated = _parse_taipei(latest.get("updated_at"))
@@ -147,6 +148,26 @@ def build_guard(
         checks.append(_check("financial_quality", "財務品質", "warning", f"已取得 {financial}/{expected_tw} 檔，仍在分批補齊", "缺少財報的股票限制中長線資格"))
     else:
         checks.append(_check("financial_quality", "財務品質", "ok", f"已取得 {financial} 檔"))
+
+    rotation_status = str(rotation_health.get("status") or "missing").lower()
+    if rotation_status == "ok":
+        checks.append(_check(
+            "rotation_shadow", "市場規則／族群輪動", "ok",
+            "影子模組正常；與正式排名及下單完全隔離",
+        ))
+    elif rotation_status == "warning":
+        error_type = str(rotation_health.get("error_type") or "未分類錯誤")
+        checks.append(_check(
+            "rotation_shadow", "市場規則／族群輪動", "warning",
+            f"影子模組異常（{error_type}）；正式排名與早中晚報仍繼續",
+            "檢查輪動健康紀錄與本次報表執行日誌；不得因此修改正式排名",
+        ))
+    else:
+        checks.append(_check(
+            "rotation_shadow", "市場規則／族群輪動", "warning",
+            "尚未取得影子模組健康紀錄；不影響正式排名與報表",
+            "等待下一次完整股票報告建立獨立健康紀錄",
+        ))
 
     checks.append(_publish_check("friend", friend_publish, previous))
     checks.append(_publish_check("owner", owner_publish, previous))
