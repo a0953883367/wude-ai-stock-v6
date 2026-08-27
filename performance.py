@@ -50,6 +50,19 @@ def _is_validation_eligible(row: dict[str, Any]) -> bool:
     return row.get("validation_eligible") is not False
 
 
+def _is_current_validation_snapshot(snapshot: dict[str, Any]) -> bool:
+    """Only compare forecasts produced under the current audit contract.
+
+    Older snapshots remain immutable and visible in the audit trail, but mixing
+    their different evidence contract into the current V6 headline metrics can
+    materially distort win rate, return, drawdown and the 60-day A/B gate.
+    """
+    try:
+        return int(snapshot.get("audit_schema_version") or 0) == AUDIT_SCHEMA_VERSION
+    except (TypeError, ValueError):
+        return False
+
+
 def _validation_contract(
     row: dict[str, Any], tracks: dict[str, Any]
 ) -> tuple[bool, list[str], float]:
@@ -729,16 +742,18 @@ def _regime_validation(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dict[str, Any]:
-    horizons = _metric_bundle(snapshots, lambda _row: True, _consensus_direction)
-    tracks = _track_bundle(snapshots, lambda _row: True, _track_consensus_direction)
-    trade_horizons = _metric_bundle(snapshots, lambda _row: True, _trade_direction)
-    trade_tracks = _track_bundle(snapshots, lambda _row: True, _track_trade_direction)
+    current_snapshots = [item for item in snapshots if _is_current_validation_snapshot(item)]
+    legacy_snapshots = [item for item in snapshots if not _is_current_validation_snapshot(item)]
+    horizons = _metric_bundle(current_snapshots, lambda _row: True, _consensus_direction)
+    tracks = _track_bundle(current_snapshots, lambda _row: True, _track_consensus_direction)
+    trade_horizons = _metric_bundle(current_snapshots, lambda _row: True, _trade_direction)
+    trade_tracks = _track_bundle(current_snapshots, lambda _row: True, _track_trade_direction)
     models = {
         name: {
-            "horizons": _metric_bundle(snapshots, lambda _row: True, _model_direction(name)),
+            "horizons": _metric_bundle(current_snapshots, lambda _row: True, _model_direction(name)),
             "tracks": {
                 track: _track_bundle(
-                    snapshots,
+                    current_snapshots,
                     lambda _row: True,
                     lambda row, requested, model=name: _track_model_direction(row, requested, model),
                 )[track]
@@ -764,16 +779,16 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
     for group in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
         predicate = lambda row, expected=group: str(row.get("cohort")) == expected
         groups[group] = {
-            "horizons": _metric_bundle(snapshots, predicate, _consensus_direction),
-            "tracks": _track_bundle(snapshots, predicate, _track_consensus_direction),
-            "trade_signals": _metric_bundle(snapshots, predicate, _trade_direction),
-            "trade_tracks": _track_bundle(snapshots, predicate, _track_trade_direction),
+            "horizons": _metric_bundle(current_snapshots, predicate, _consensus_direction),
+            "tracks": _track_bundle(current_snapshots, predicate, _track_consensus_direction),
+            "trade_signals": _metric_bundle(current_snapshots, predicate, _trade_direction),
+            "trade_tracks": _track_bundle(current_snapshots, predicate, _track_trade_direction),
             "models": {
                 name: {
-                    "horizons": _metric_bundle(snapshots, predicate, _model_direction(name)),
+                    "horizons": _metric_bundle(current_snapshots, predicate, _model_direction(name)),
                     "tracks": {
                         track: _track_bundle(
-                            snapshots,
+                            current_snapshots,
                             predicate,
                             lambda row, requested, model=name: _track_model_direction(row, requested, model),
                         )[track]
@@ -785,14 +800,14 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "top_k": {
                 str(limit): {
                     "tracks": _track_bundle(
-                        snapshots,
+                        current_snapshots,
                         lambda row, base=predicate, maximum=limit: (
                             base(row) and _within_rank(row, maximum)
                         ),
                         _track_consensus_direction,
                     ),
                     "horizons": _metric_bundle(
-                        snapshots,
+                        current_snapshots,
                         lambda row, base=predicate, maximum=limit: (
                             base(row) and _within_rank(row, maximum)
                         ),
@@ -803,19 +818,34 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             },
         }
 
-    session_dates = {str(item.get("session_date")) for item in snapshots if item.get("predictions")}
+    session_dates = {
+        str(item.get("session_date"))
+        for item in current_snapshots
+        if item.get("predictions")
+    }
     collected = len(session_dates)
     one_day_samples = int(horizons["1"]["samples"])
     ready_for_model_selection = (
         collected >= MINIMUM_TRADING_DAYS
         and one_day_samples >= MINIMUM_CONSENSUS_SAMPLES
     )
-    portfolio_statistics = _portfolio_statistics(snapshots)
-    automated_ab = _automated_ab_testing(snapshots, collected)
+    portfolio_statistics = _portfolio_statistics(current_snapshots)
+    automated_ab = _automated_ab_testing(current_snapshots, collected)
     return {
         "methodology_version": METHODOLOGY_VERSION,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
-        "snapshot_count": len(snapshots),
+        "snapshot_count": len(current_snapshots),
+        "all_snapshot_count": len(snapshots),
+        "version_isolation": {
+            "current_audit_schema_version": AUDIT_SCHEMA_VERSION,
+            "current_snapshot_count": len(current_snapshots),
+            "legacy_reference_snapshot_count": len(legacy_snapshots),
+            "legacy_reference_row_count": sum(
+                len(item.get("predictions", [])) for item in legacy_snapshots
+            ),
+            "legacy_affects_headline_metrics": False,
+            "rule": "舊版快照保留供查核，但不列入目前V6命中率、報酬、回撤或60日A/B候選判定。",
+        },
         "horizons": horizons,
         "tracks": tracks,
         "trade_signals": trade_horizons,
@@ -824,13 +854,13 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "model_leaderboard": leaderboards["full_day"],
         "model_leaderboards": leaderboards,
         "groups": groups,
-        "regime_validation": _regime_validation(snapshots),
-        "tw_accumulation_validation": _tw_accumulation_validation(snapshots),
-        "tw_threshold_calibration": _tw_threshold_calibration(snapshots),
+        "regime_validation": _regime_validation(current_snapshots),
+        "tw_accumulation_validation": _tw_accumulation_validation(current_snapshots),
+        "tw_threshold_calibration": _tw_threshold_calibration(current_snapshots),
         "portfolio_statistics": portfolio_statistics,
         "ab_testing": automated_ab,
-        "error_cases": _error_cases(snapshots),
-        "data_quality": _data_quality_summary(snapshots),
+        "error_cases": _error_cases(current_snapshots),
+        "data_quality": _data_quality_summary(current_snapshots),
         "calibration": {
             "trading_days_collected": collected,
             "minimum_trading_days": MINIMUM_TRADING_DAYS,
@@ -856,6 +886,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "note": (
             "V6延續三段分離驗證，分開研究方向與強訊號，並使用台美股各自收盤檢查點；"
             "台股、台灣ETF、美股、美國ETF分開統計。缺資料不列有效樣本；"
+            "舊稽核版本只保留供查核，不混入目前V6主統計；"
             "60日前鎖定正式排名，60日後也只標記候選升級，不自動改分、Merge或下單。"
         ),
     }
@@ -1158,6 +1189,12 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
                 }
             recent.append({
                 "snapshot_id": snapshot.get("id"),
+                "audit_schema_version": snapshot.get("audit_schema_version"),
+                "validation_series": (
+                    "current_v6"
+                    if _is_current_validation_snapshot(snapshot)
+                    else "legacy_reference"
+                ),
                 "integrity": status,
                 "captured_at": snapshot.get("captured_at"),
                 "source_session_date": snapshot.get("session_date"),
@@ -1196,6 +1233,7 @@ def _accuracy_audit(snapshots: list[dict[str, Any]], summary: dict[str, Any]) ->
         "updated_at": summary.get("updated_at"),
         "immutable_rule": "同一市場與交易日只建立一次預測；結果只追加，不覆寫預測內容。",
         "integrity": integrity,
+        "version_isolation": summary.get("version_isolation", {}),
         "calibration": summary.get("calibration", {}),
         "tw_threshold_calibration": summary.get("tw_threshold_calibration", {}),
         "groups": public_groups,
