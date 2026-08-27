@@ -46,6 +46,7 @@ from inverse_experiment import (
     update_inverse_experiment,
 )
 from missed_strength_validation import update_missed_strength_validation
+from market_rotation_shadow import update_market_rotation_shadow
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from tw_official_data import (
@@ -777,6 +778,15 @@ def main() -> int:
         SETTINGS.reports_dir,
         ranked,
         market_regime_history,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+    )
+    # Research-only market-rule and sector-rotation A/B.  It reads the frozen
+    # V6 order but cannot write scores, ranks or broker instructions.
+    update_market_rotation_shadow(
+        SETTINGS.reports_dir,
+        simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
