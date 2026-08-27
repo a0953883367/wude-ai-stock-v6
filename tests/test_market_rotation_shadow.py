@@ -27,6 +27,9 @@ def _rows(market="TW", session_date="2026-08-27", second=False):
             "name": f"測試{index}", "market": market, "type": "個股",
             "industry": industry, "change_pct": change,
             "daily_volume_ratio": volume,
+            "breakout20": index < 10,
+            "rsi": 65 if index < 10 else 75,
+            "kline_pattern": "突破收高" if index < 10 else "上影壓力",
             "short_term_ranking_score": base,
             "short_term_score": base, "short_term_rank_tier": 2,
             "official_session_date": session_date,
@@ -34,6 +37,8 @@ def _rows(market="TW", session_date="2026-08-27", second=False):
             "official_close_price": 100 + change,
             "institution_available": market == "TW",
             "institution_net": institution if market == "TW" else None,
+            "institution_buy_days_5": 3 if market == "TW" and index < 10 else 1 if market == "TW" else None,
+            "institution_5d": institution * 5 if market == "TW" else None,
             "growth_score": growth if market == "US" else None,
             "revenue_yoy_pct": 30 if growth >= 60 else -5,
         })
@@ -69,6 +74,39 @@ def test_rotation_overlay_is_separate_from_unchanged_baseline_order():
     assert {pick["industry"] for pick in baseline} == {"退潮族"}
     assert {pick["industry"] for pick in rotation} == {"點火族"}
     assert all(pick["base_score"] == 82 for pick in baseline)
+
+
+def test_tw_strict_and_practical_qualifications_are_shadow_only():
+    rows = _rows()
+    snapshot = build_market_snapshot(rows, "TW")
+    strict = select_picks(
+        rows, "TW", snapshot, rotation_overlay=True,
+        qualification_mode="strict_5of5",
+    )
+    practical = select_picks(
+        rows, "TW", snapshot, rotation_overlay=True,
+        qualification_mode="practical_4of5",
+    )
+    assert len(strict) == 10
+    assert len(practical) == 10
+    assert all(pick["industry"] == "點火族" for pick in strict)
+    assert all(pick["tw_five_condition"]["strict_5of5"] for pick in strict)
+
+    no_institution = deepcopy(rows)
+    for row in no_institution[:10]:
+        row["institution_buy_days_5"] = None
+        row["institution_5d"] = None
+    snapshot = build_market_snapshot(no_institution, "TW")
+    assert select_picks(
+        no_institution, "TW", snapshot, rotation_overlay=True,
+        qualification_mode="strict_5of5",
+    ) == []
+    practical = select_picks(
+        no_institution, "TW", snapshot, rotation_overlay=True,
+        qualification_mode="practical_4of5",
+    )
+    assert len(practical) == 10
+    assert all(pick["tw_five_condition"]["status"] == "practical_4of5" for pick in practical)
 
 
 def test_tw_and_us_use_different_market_specific_evidence():

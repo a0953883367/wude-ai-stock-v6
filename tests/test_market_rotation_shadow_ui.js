@@ -17,7 +17,12 @@ const html = fs.readFileSync('index.html', 'utf8');
   '高潮期',
   '退潮期',
   '5日只查程式，20日初步比較，60日後仍只標升級候選',
-  '不改排名、不下單'
+  '不改排名、不下單',
+  '台股五條件研究資格｜不等於可買',
+  '嚴格組5／5全過',
+  '至少3檔共振',
+  '缺法人資料列資料不足',
+  '嚴格組跳空失效'
 ].forEach((text) => assert.ok(html.includes(text), `missing rotation UI contract: ${text}`));
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]

@@ -115,6 +115,7 @@ def _sector_components(
         change >= leader_threshold and volume >= 1.2
         for change, volume in zip(changes, volumes)
     )
+    co_movement = sum(change >= 1.0 for change in changes)
     leadership = _clamp(35 + leaders / len(members) * 100)
     if market == "TW":
         flow_values = [
@@ -152,6 +153,8 @@ def _sector_components(
         "market_specific_evidence_score": round(_clamp(evidence), 2),
         "leadership_score": round(leadership, 2),
         "leader_count": leaders,
+        "co_movement_count": co_movement,
+        "three_stock_co_movement": co_movement >= 3,
     }
 
 
@@ -262,6 +265,7 @@ def build_market_snapshot(
 def select_picks(
     rows: list[dict[str, Any]], market: str,
     snapshot: dict[str, Any], *, rotation_overlay: bool,
+    qualification_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     sector_map = {
         str(item.get("industry")): item
@@ -283,7 +287,12 @@ def select_picks(
         row["_adjusted"] = round(adjusted, 4)
         row["_rotation"] = rotation
         row["_rotation_stage"] = sector.get("stage")
+        row["_tw_setup"] = _tw_setup_qualification(row, sector) if market == "TW" else None
         ranked.append(row)
+    if qualification_mode == "strict_5of5":
+        ranked = [row for row in ranked if (row.get("_tw_setup") or {}).get("strict_5of5") is True]
+    elif qualification_mode == "practical_4of5":
+        ranked = [row for row in ranked if (row.get("_tw_setup") or {}).get("practical_4of5") is True]
     ranked.sort(key=lambda row: (
         -_rank_tier(row), -_number(row.get("_adjusted")),
         -_number(row.get("short_term_score")), str(row.get("symbol") or ""),
@@ -298,8 +307,80 @@ def select_picks(
         "shadow_score": round(_number(row.get("_adjusted")), 2),
         "rotation_score": round(_number(row.get("_rotation")), 2) if row.get("_rotation") is not None else None,
         "rotation_stage": row.get("_rotation_stage"),
+        "tw_five_condition": row.get("_tw_setup"),
+        "signal_close_price": _finite(row.get("official_close_price")),
         "allocation_twd": ALLOCATION_TWD,
     } for index, row in enumerate(ranked[:PICKS], 1)]
+
+
+def _tw_setup_qualification(
+    row: dict[str, Any], sector: dict[str, Any]
+) -> dict[str, Any]:
+    """Transparent TW-only five-condition setup; never changes V6 scores."""
+    change = _number(row.get("change_pct"))
+    volume = _number(
+        row.get("daily_volume_ratio"), _number(row.get("volume_pace"), 1.0)
+    )
+    pattern = " ".join((
+        str(row.get("kline_pattern") or ""),
+        str(row.get("volume_price_pattern") or ""),
+    ))
+    distribution = "上影" in pattern or "開高走低" in pattern or "爆量不漲" in pattern
+    sector_strong = bool(
+        sector.get("eligible")
+        and _number(sector.get("rotation_score")) >= 60
+        and _number(sector.get("relative_strength_score")) >= 55
+        and sector.get("stage") != "ebb"
+    )
+    co_movement = bool(_number(sector.get("co_movement_count")) >= 3)
+    volume_breakout = bool(
+        row.get("breakout20") is True
+        and volume >= 1.2 and change > 0 and not distribution
+    )
+    buy_days = _finite(row.get("institution_buy_days_5"))
+    institution_5d = _finite(row.get("institution_5d"))
+    institution_available = buy_days is not None and institution_5d is not None
+    institution_streak = bool(
+        institution_available and buy_days >= 3 and institution_5d > 0
+    )
+    rsi = _finite(row.get("rsi"))
+    position_available = rsi is not None
+    not_overextended = bool(
+        position_available and rsi <= 72 and change < 7
+        and sector.get("stage") != "climax" and not distribution
+    )
+    conditions = {
+        "industry_strengthening": {"passed": sector_strong, "available": bool(sector)},
+        "three_stock_co_movement": {"passed": co_movement, "available": bool(sector)},
+        "volume_breakout": {"passed": volume_breakout, "available": True},
+        "institution_consecutive_buy": {"passed": institution_streak, "available": institution_available},
+        "not_overextended": {"passed": not_overextended, "available": position_available},
+    }
+    passed = sum(item["passed"] for item in conditions.values())
+    available = sum(item["available"] for item in conditions.values())
+    strict = bool(available == 5 and passed == 5)
+    practical = bool(
+        sector_strong and co_movement and not_overextended
+        and (volume_breakout or institution_streak)
+    )
+    if strict:
+        status = "strict_5of5"
+    elif practical:
+        status = "practical_4of5"
+    elif not institution_available or not position_available:
+        status = "data_insufficient"
+    else:
+        status = "not_qualified"
+    return {
+        "market": "TW",
+        "passed_count": passed,
+        "available_count": available,
+        "strict_5of5": strict,
+        "practical_4of5": practical,
+        "status": status,
+        "distribution_blocked": distribution,
+        "conditions": conditions,
+    }
 
 
 def _empty_market(market: str) -> dict[str, Any]:
@@ -321,6 +402,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
         "policy": {
             "baseline": "A組＝正式V6短線排序；只讀取、不修改",
             "shadow": "B組＝正式短線分數85%＋同市場族群輪動15%",
+            "tw_strict": "台股嚴格組＝產業轉強＋3檔共振＋量增突破＋法人連買＋未過熱，5/5",
+            "tw_practical": "台股實用組＝產業轉強＋3檔共振＋未過熱必須成立，量增突破／法人連買至少一項",
             "market_isolation": "台股使用法人／量價；美股使用成長財報代理／量價",
             "review_gate": "5日只查程式、20日初步比較、60日後只標候選",
             "formal_ranking_locked": True,
@@ -394,6 +477,10 @@ def _settle_pending(
             close_price = _number(row.get("official_close_price"))
             gross_return = (close_price / open_price - 1) * 100
             net_return = gross_return - cost
+            signal_close = _number(pick.get("signal_close_price"))
+            opening_gap = (
+                (open_price / signal_close - 1) * 100 if signal_close > 0 else None
+            )
             allocation = _number(pick.get("allocation_twd"), ALLOCATION_TWD)
             gross_profit += allocation * gross_return / 100
             net_profit += allocation * net_return / 100
@@ -402,9 +489,14 @@ def _settle_pending(
                 "close_price": round(close_price, 4),
                 "gross_return_pct": round(gross_return, 4),
                 "net_return_pct": round(net_return, 4),
+                "opening_gap_pct": round(opening_gap, 4) if opening_gap is not None else None,
+                "opening_gap_invalidated": bool(opening_gap is not None and opening_gap >= 3.0),
             })
         models[key] = {
             "label": model.get("label"), "positions": positions,
+            "executed_positions": len(positions),
+            "invested_twd": len(positions) * ALLOCATION_TWD,
+            "idle_twd": CAPITAL_TWD - len(positions) * ALLOCATION_TWD,
             "gross_profit_twd": round(gross_profit, 2),
             "net_profit_twd": round(net_profit, 2),
             "net_return_pct": round(net_profit / CAPITAL_TWD * 100, 4),
@@ -430,7 +522,24 @@ def _summary(market_state: dict[str, Any]) -> dict[str, Any]:
     outcomes = [item for item in all_outcomes if item.get("status") == "valid"]
     baseline = sum(_number(((item.get("models") or {}).get("baseline") or {}).get("net_profit_twd")) for item in outcomes)
     rotation = sum(_number(((item.get("models") or {}).get("rotation") or {}).get("net_profit_twd")) for item in outcomes)
+    strict = sum(_number(((item.get("models") or {}).get("strict_5of5") or {}).get("net_profit_twd")) for item in outcomes)
+    practical = sum(_number(((item.get("models") or {}).get("practical_4of5") or {}).get("net_profit_twd")) for item in outcomes)
     days = len(outcomes)
+    model_metrics = {}
+    for key in ("baseline", "rotation", "strict_5of5", "practical_4of5"):
+        positions = [
+            position
+            for outcome in outcomes
+            for position in (((outcome.get("models") or {}).get(key) or {}).get("positions") or [])
+        ]
+        returns = [_number(position.get("net_return_pct")) for position in positions]
+        model_metrics[key] = {
+            "samples": len(positions),
+            "win_rate_pct": round(sum(value > 0 for value in returns) / len(returns) * 100, 4) if returns else None,
+            "misjudgment_rate_pct": round(sum(value <= 0 for value in returns) / len(returns) * 100, 4) if returns else None,
+            "avg_net_return_pct": round(sum(returns) / len(returns), 4) if returns else None,
+            "opening_gap_invalidated": sum(position.get("opening_gap_invalidated") is True for position in positions),
+        }
     return {
         "valid_trading_days": days,
         "invalid_trading_days": sum(item.get("status") != "valid" for item in all_outcomes),
@@ -439,8 +548,11 @@ def _summary(market_state: dict[str, Any]) -> dict[str, Any]:
         "rotation_incremental_net_profit_twd": round(rotation - baseline, 2),
         "baseline_net_return_pct": round(baseline / CAPITAL_TWD * 100, 4),
         "rotation_net_return_pct": round(rotation / CAPITAL_TWD * 100, 4),
+        "strict_5of5_net_profit_twd": round(strict, 2) if market_state.get("market") == "TW" else None,
+        "practical_4of5_net_profit_twd": round(practical, 2) if market_state.get("market") == "TW" else None,
         "review_status": "code_check_only" if days < 20 else "preliminary_review" if days < 60 else "candidate_review",
         "formal_ranking_locked": True,
+        "model_metrics": model_metrics,
     }
 
 
@@ -473,21 +585,39 @@ def update_market_rotation_shadow(
         else:
             snapshot = existing
         if not market_state.get("pending"):
+            models = {
+                "baseline": {
+                    "label": "A｜正式V6基準",
+                    "picks": select_picks(rows, market, snapshot, rotation_overlay=False),
+                },
+                "rotation": {
+                    "label": "B｜市場規則＋輪動15%",
+                    "picks": select_picks(rows, market, snapshot, rotation_overlay=True),
+                },
+            }
+            if market == "TW":
+                models.update({
+                    "strict_5of5": {
+                        "label": "台股嚴格5／5研究條件符合（不等於可買）",
+                        "picks": select_picks(
+                            rows, market, snapshot, rotation_overlay=True,
+                            qualification_mode="strict_5of5",
+                        ),
+                    },
+                    "practical_4of5": {
+                        "label": "台股實用4／5研究條件符合（不等於可買）",
+                        "picks": select_picks(
+                            rows, market, snapshot, rotation_overlay=True,
+                            qualification_mode="practical_4of5",
+                        ),
+                    },
+                })
             market_state["pending"] = {
                 "signal_session_date": session_date,
                 "created_at": updated_at,
                 "snapshot_integrity_sha256": snapshot.get("integrity_sha256"),
                 "settlement_status": "waiting_next_completed_session",
-                "models": {
-                    "baseline": {
-                        "label": "A｜正式V6基準",
-                        "picks": select_picks(rows, market, snapshot, rotation_overlay=False),
-                    },
-                    "rotation": {
-                        "label": "B｜市場規則＋輪動15%",
-                        "picks": select_picks(rows, market, snapshot, rotation_overlay=True),
-                    },
-                },
+                "models": models,
             }
         market_state["status"] = "collecting_only"
         market_state["summary"] = _summary(market_state)
