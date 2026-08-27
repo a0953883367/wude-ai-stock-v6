@@ -39,15 +39,18 @@ on:
     - cron: "0 4 * * *"
     - cron: "0 12 * * *"
 
-    # Silent background refreshes every two hours during Taiwan trading hours.
-    # 09:00 / 11:00 / 13:00 Asia/Taipei, weekdays.
+    # Silent hourly refreshes during Taiwan trading hours.
+    # 09:00 / 10:00 / 11:00 / 13:00 / 14:00 Asia/Taipei, weekdays.
+    # The fixed 12:00 report above is the hourly noon refresh.
     - cron: "0 1 * * 1-5"
+    - cron: "0 2 * * 1-5"
     - cron: "0 3 * * 1-5"
     - cron: "0 5 * * 1-5"
+    - cron: "0 6 * * 1-5"
 
-    # Silent background refreshes every two hours covering US trading hours.
-    # 13:30 / 15:30 / 17:30 / 19:30 / 21:30 UTC, weekdays.
-    - cron: "30 13,15,17,19,21 * * 1-5"
+    # Silent hourly refreshes covering US summer and winter trading hours.
+    # 13:30 through 21:30 UTC, weekdays (21:30 through 05:30 Asia/Taipei).
+    - cron: "30 13-21 * * 1-5"
   workflow_dispatch:
     inputs:
       period:
@@ -112,6 +115,11 @@ jobs:
                 intraday="true"
                 commit_message="靜默盤中更新 09:00"
                 ;;
+              "0 2 * * 1-5")
+                period="noon"
+                intraday="true"
+                commit_message="靜默盤中更新 10:00"
+                ;;
               "0 3 * * 1-5")
                 period="noon"
                 intraday="true"
@@ -121,6 +129,11 @@ jobs:
                 period="noon"
                 intraday="true"
                 commit_message="靜默盤中更新 13:00"
+                ;;
+              "0 6 * * 1-5")
+                period="noon"
+                intraday="true"
+                commit_message="靜默盤中更新 14:00"
                 ;;
               *)
                 period="evening"
