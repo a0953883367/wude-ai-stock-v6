@@ -46,7 +46,6 @@ from inverse_experiment import (
     update_inverse_experiment,
 )
 from missed_strength_validation import update_missed_strength_validation
-from market_rotation_shadow import update_market_rotation_shadow
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
 from tw_official_data import (
@@ -68,6 +67,77 @@ def _stage(label: str, action):
     result = action()
     logging.info("資料階段完成：%s（%.1f 秒）", label, time.monotonic() - started)
     return result
+
+
+def _update_market_rotation_shadow_safely(
+    reports_dir,
+    rows,
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> bool:
+    """Run the research-only module without risking the formal report pipeline."""
+    health_path = reports_dir / "market_rotation_shadow_health.json"
+    try:
+        previous = json.loads(health_path.read_text(encoding="utf-8"))
+        if not isinstance(previous, dict):
+            previous = {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        previous = {}
+    try:
+        # Keep this import inside the isolation boundary.  Import or runtime
+        # failures in the research module must not stop rankings or briefings.
+        from market_rotation_shadow import update_market_rotation_shadow
+
+        update_market_rotation_shadow(
+            reports_dir,
+            rows,
+            period=period,
+            updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate research isolation
+        logging.exception("族群輪動影子模組失敗；正式報表繼續")
+        health = {
+            "status": "warning",
+            "checked_at": updated_at,
+            "last_success_at": previous.get("last_success_at"),
+            "error_type": type(exc).__name__,
+            "detail": str(exc)[:300] or "輪動模組發生未分類錯誤",
+            "formal_pipeline_continues": True,
+            "changes_rankings": False,
+            "places_orders": False,
+        }
+        success = False
+    else:
+        if intraday:
+            # Intraday mode intentionally does not recalculate rotation.  Do
+            # not let that no-op erase a warning from the last full run.
+            health = {
+                **previous,
+                "status": previous.get("status") or "pending",
+                "checked_at": updated_at,
+                "detail": previous.get("detail") or "等待下一次完成交易日輪動檢查",
+                "formal_pipeline_continues": True,
+                "changes_rankings": False,
+                "places_orders": False,
+            }
+        else:
+            health = {
+                "status": "ok",
+                "checked_at": updated_at,
+                "last_success_at": updated_at,
+                "detail": "市場規則與族群輪動影子模組正常",
+                "formal_pipeline_continues": True,
+                "changes_rankings": False,
+                "places_orders": False,
+            }
+        success = True
+    tmp = reports_dir / "market_rotation_shadow_health.tmp"
+    tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(health_path)
+    return success
 
 
 _NEXT_SESSION_FIELDS = (
@@ -784,7 +854,7 @@ def main() -> int:
     )
     # Research-only market-rule and sector-rotation A/B.  It reads the frozen
     # V6 order but cannot write scores, ranks or broker instructions.
-    update_market_rotation_shadow(
+    _update_market_rotation_shadow_safely(
         SETTINGS.reports_dir,
         simulation_rows,
         period=args.period,

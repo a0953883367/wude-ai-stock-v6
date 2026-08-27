@@ -37,7 +37,7 @@ jobs:
       - name: 執行完整測試
         run: python -m pytest -q
       - name: 檢查主要程式可編譯
-        run: python -m py_compile briefing.py data_fetcher.py market_models.py strategy.py performance.py us_market_data.py live_api.py million_simulation.py weight_experiment.py holding_simulation.py exit_horizon_experiment.py inverse_experiment.py missed_strength_validation.py historical_lab.py system_guard.py
+        run: python -m py_compile briefing.py data_fetcher.py market_models.py strategy.py performance.py us_market_data.py live_api.py million_simulation.py weight_experiment.py holding_simulation.py exit_horizon_experiment.py inverse_experiment.py missed_strength_validation.py market_rotation_shadow.py historical_lab.py system_guard.py
       - name: 檢查 2 萬元實測規則
         run: node tests/test_capital_test.js
       - name: 檢查 100 萬元五日網頁試走
