@@ -220,6 +220,15 @@ def test_site_read_token_rejects_wrong_value(monkeypatch):
     assert handler._authorized() is False
 
 
+def test_vercel_app_site_token_override_is_accepted(monkeypatch):
+    token = "vercel-app-test-token"
+    monkeypatch.setenv("LIVE_SITE_TOKEN_SHA256", hashlib.sha256(b"old-site-token").hexdigest())
+    monkeypatch.setenv("VERCEL_APP_TOKEN_SHA256", hashlib.sha256(token.encode()).hexdigest())
+    handler = _handler_with_headers(X_Site_Live_Token=token)
+    assert handler._authorized() is True
+    assert handler._owner_authorized() is False
+
+
 def test_public_read_never_counts_as_owner_auth(monkeypatch):
     monkeypatch.delenv("LIVE_ACCESS_TOKEN", raising=False)
     monkeypatch.delenv("LIVE_TRUSTED_AUTH_HEADER", raising=False)
