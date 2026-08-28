@@ -635,20 +635,30 @@ function holdingPendingHtml(pending,title){
     return '<div class="holding-position"><div><div class="holding-name">'+esc(pick.rank)+'. '+esc(pick.name)+'（'+esc(marketCode(pick.symbol,pick.market))+'）</div><div class="holding-meta">中長線排名分 '+esc(number(pick.ranking_score,1))+'｜配置 '+esc(millionMoney(pick.allocation_twd))+'</div></div><div class="holding-profit">等待買入</div></div>';
   }).join(''):'<div class="million-empty">等待完成交易日排名快照</div>')+'</div>';
 }
-function holdingPositionsHtml(positions){
+function holdingValuationNotice(pending,consistent,lastDate){
+  if(consistent===false)return '<div class="million-note">估值日期不一致，本次持有損益不列有效；等待全部持股與同期基準取得同一官方收盤日後自動修復。</div>';
+  if(!pending||pending.status!=='waiting_for_common_official_close')return '';
+  return '<div class="million-note">新交易日 '+esc(pending.target_session_date||'待確認')+' 官方收盤價 '+esc(pending.available_assets||0)+' / '+esc(pending.required_assets||0)+'；缺少 '+esc((pending.missing_symbols||[]).join('、')||'待確認')+'。目前損益維持前一完整估值 '+esc(lastDate||'等待建立')+'，不混用日期。</div>';
+}
+function holdingPositionsHtml(positions,suppressProfit){
   positions=Array.isArray(positions)?positions:[];
   return positions.length?positions.map(function(position){
     var completed=position.realized===true,price=completed?position.exit_price:position.last_price;
-    return '<div class="holding-position"><div><div class="holding-name">'+esc(position.name)+'（'+esc(marketCode(position.symbol,position.market))+'）｜'+esc(millionMoney(position.allocation_twd))+'</div><div class="holding-meta">'+esc(position.entry_session_date)+' 開盤 '+esc(number(position.entry_price,4))+' 買入｜'+(completed?'到期賣出':'目前估值')+' '+esc(number(price,4))+'<br>預定到期 '+esc(position.target_exit_date)+(completed?'｜實際賣出 '+esc(position.exit_session_date):'')+'｜快照 '+esc(position.ranking_snapshot_id||'舊資料')+'</div></div><div class="holding-profit '+millionProfitClass(position.net_profit_twd)+'">淨 '+esc(millionMoney(position.net_profit_twd))+'<br><span class="holding-meta">'+esc(percent(position.net_return_pct))+'｜毛 '+esc(millionMoney(position.gross_profit_twd))+'</span></div></div>';
+    var profit=suppressProfit?'待共同估值':'淨 '+esc(millionMoney(position.net_profit_twd))+'<br><span class="holding-meta">'+esc(percent(position.net_return_pct))+'｜毛 '+esc(millionMoney(position.gross_profit_twd))+'</span>';
+    return '<div class="holding-position"><div><div class="holding-name">'+esc(position.name)+'（'+esc(marketCode(position.symbol,position.market))+'）｜'+esc(millionMoney(position.allocation_twd))+'</div><div class="holding-meta">'+esc(position.entry_session_date)+' 開盤 '+esc(number(position.entry_price,4))+' 買入｜'+(completed?'到期賣出':'目前估值')+' '+esc(number(price,4))+'｜估值日 '+esc(position.last_valuation_date||'待補')+'<br>預定到期 '+esc(position.target_exit_date)+(completed?'｜實際賣出 '+esc(position.exit_session_date):'')+'｜快照 '+esc(position.ranking_snapshot_id||'舊資料')+'</div></div><div class="holding-profit '+(suppressProfit?'':millionProfitClass(position.net_profit_twd))+'">'+profit+'</div></div>';
   }).join(''):'<div class="million-empty">尚未建立持倉</div>';
 }
 function holdingMediumCard(portfolio){
   portfolio=portfolio||{};var pending=portfolio.pending;
+  var valuationOk=portfolio.valuation_consistent!==false;
+  var valuationNotice=holdingValuationNotice(portfolio.valuation_pending,valuationOk,portfolio.last_valuation_date);
   var invalid=(portfolio.invalid_entries||[]).length?'<div class="million-note">資料不足進場已隔離 '+esc((portfolio.invalid_entries||[]).length)+' 次，不列持倉與損益。</div>':'';
-  return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">大盤同期淨損益</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；5檔與同期基準的官方開盤價完整後才建立持倉。買入後不換股，到期後第一個交易日以官方收盤價模擬賣出。</div>'+invalid+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions))+'</section>';
+  return '<section class="holding-card"><div class="million-head"><div><div class="million-title">中期｜'+esc(portfolio.label)+'100萬元</div><div class="holding-status">'+esc(holdingStatusLabel(portfolio.status))+'｜估值日 '+esc(portfolio.last_valuation_date||'待補')+'</div></div><div class="million-total '+(valuationOk?millionProfitClass(portfolio.net_profit_twd):'')+'">扣成本損益<br>'+esc(valuationOk?millionMoney(portfolio.net_profit_twd):'不列損益')+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">45天</div></div><div class="item"><div class="label">大盤同期淨損益</div><div class="value">'+esc(valuationOk?millionMoney(portfolio.benchmark_net_profit_twd):'待共同估值')+'</div></div><div class="item"><div class="label">到期日</div><div class="value">'+esc(portfolio.target_exit_date||'買入後計算')+'</div></div></div><div class="holding-target">前5名各20萬元；5檔與同期基準的官方開盤價完整後才建立持倉，每日估值也必須整組資料完整。新交易日資料未齊時保留前一完整估值，不混用日期。</div>'+invalid+valuationNotice+(pending?holdingPendingHtml(pending,'鎖定的中長線前5名'):holdingPositionsHtml(portfolio.positions,!valuationOk))+'</section>';
 }
 function holdingLongCard(portfolio){
   portfolio=portfolio||{};var pending=portfolio.pending||{},pendingHtml='',positions=Array.isArray(portfolio.positions)?portfolio.positions:[];
+  var valuationState=portfolio.valuation_consistent||{},valuationPending=portfolio.valuation_pending||{};
+  var valuationOk=valuationState.TW!==false&&valuationState.US!==false;
   if(pending.TW)pendingHtml+=holdingPendingHtml(pending.TW,'長期台股第1名｜50萬元');
   if(pending.US)pendingHtml+=holdingPendingHtml(pending.US,'長期美股第1名｜50萬元');
   var waitingMarkets=[];
@@ -656,7 +666,8 @@ function holdingLongCard(portfolio){
   if(pending.US)waitingMarkets.push('美股');
   var status=positions.length&&waitingMarkets.length?'部分持有｜'+waitingMarkets.join('、')+'待資料':holdingStatusLabel(portfolio.status);
   var benchmarkLabel=positions.length<2?'大盤同期淨損益（已建立部分）':'大盤同期淨損益';
-  return '<section class="holding-card long"><div class="million-head"><div><div class="million-title">長期｜台美股合計100萬元</div><div class="holding-status">'+esc(status)+'｜毛 '+esc(millionMoney(portfolio.gross_profit_twd))+'</div></div><div class="million-total '+millionProfitClass(portfolio.net_profit_twd)+'">扣成本損益<br>'+esc(millionMoney(portfolio.net_profit_twd))+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">6個月</div></div><div class="item"><div class="label">'+esc(benchmarkLabel)+'</div><div class="value">'+esc(millionMoney(portfolio.benchmark_net_profit_twd))+'</div></div><div class="item"><div class="label">實際持股數</div><div class="value">'+esc(positions.length)+'檔／目標2檔</div></div></div><div class="holding-target">台股中長線第1名與美股中長線第1名各50萬元。若與中期名單重複仍照買，兩個帳戶分開計算；同期基準為0050與VOO各50萬元。尚未建立的市場不列持股、基準與損益。</div>'+holdingPositionsHtml(positions)+pendingHtml+'</section>';
+  var valuationNotice=holdingValuationNotice(valuationPending.TW,valuationState.TW,(portfolio.last_valuation_date||{}).TW)+holdingValuationNotice(valuationPending.US,valuationState.US,(portfolio.last_valuation_date||{}).US);
+  return '<section class="holding-card long"><div class="million-head"><div><div class="million-title">長期｜台美股合計100萬元</div><div class="holding-status">'+esc(status)+'</div></div><div class="million-total '+(valuationOk?millionProfitClass(portfolio.net_profit_twd):'')+'">扣成本損益<br>'+esc(valuationOk?millionMoney(portfolio.net_profit_twd):'不列損益')+'</div></div><div class="holding-summary"><div class="item"><div class="label">持有期間</div><div class="value">6個月</div></div><div class="item"><div class="label">'+esc(benchmarkLabel)+'</div><div class="value">'+esc(valuationOk?millionMoney(portfolio.benchmark_net_profit_twd):'待共同估值')+'</div></div><div class="item"><div class="label">實際持股數</div><div class="value">'+esc(positions.length)+'檔／目標2檔</div></div></div><div class="holding-target">台股中長線第1名與美股中長線第1名各50萬元。每個市場的持股與同期基準必須使用同一官方估值日；資料不足時保留前一完整估值。尚未建立的市場不列持股、基準與損益。</div>'+valuationNotice+holdingPositionsHtml(positions,!valuationOk)+pendingHtml+'</section>';
 }
 function showHoldingSimulation(){
   STATE.view='HOLDING';setActive('#marketButtons button','data-view','HOLDING');clearOtherNav('#marketButtons button');
