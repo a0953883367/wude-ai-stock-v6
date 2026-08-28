@@ -30,7 +30,10 @@ from zoneinfo import ZoneInfo
 
 from fubon_runner import _login_fubon, parse_fubon_quote
 from fubon_broker import FubonTradingSession
+from large_buy_monitor import LargeBuyAlertService
+from large_buy_streams import LargeBuyStreams
 from live_trade_engine import LiveTradingEngine
+from notifier import send_telegram
 from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 
@@ -47,6 +50,13 @@ def _trading_state_path() -> Path:
     live = os.getenv("TRADING_MODE", "paper").strip().lower() == "live"
     filename = "live_trading_state.json" if live else "paper_trading_state.json"
     return Path("/data") / filename if Path("/data").is_dir() else Path("/tmp") / f"wude-{filename}"
+
+
+def _large_buy_state_path() -> Path:
+    configured = os.getenv("LARGE_BUY_STATE_PATH", "").strip()
+    if configured:
+        return Path(configured)
+    return Path("/data/large_buy_alerts.json") if Path("/data").is_dir() else Path("/tmp/wude-large-buy-alerts.json")
 
 
 def _paper_engine(service: "LiveDataService") -> PaperTradingEngine:
@@ -311,6 +321,11 @@ class MinuteRateLimiter:
 class LiveRequestHandler(BaseHTTPRequestHandler):
     service = LiveDataService()
     trading_engine = _trading_engine(service)
+    large_buy_service = LargeBuyAlertService(
+        Path(__file__).resolve().parent / "reports" / "all_analysis.json",
+        _large_buy_state_path(),
+        notifier=send_telegram,
+    )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
 
     def log_message(self, fmt: str, *args: Any) -> None:
@@ -375,9 +390,21 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         if parsed.path == "/health":
-            self._send(HTTPStatus.OK, self.service.health())
+            health = self.service.health()
+            monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
+            health["large_buy_monitor"] = {
+                "enabled": _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")),
+                "universe": monitor["universe"],
+                "streams": monitor["streams"],
+                "telegram_configured": bool(
+                    os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
+                ),
+            }
+            self._send(HTTPStatus.OK, health)
             return
-        if parsed.path not in {"/api/live", "/api/trading/status", "/api/trading/preview"}:
+        if parsed.path not in {
+            "/api/live", "/api/large-buy-alerts", "/api/trading/status", "/api/trading/preview"
+        }:
             self._send(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
         requires_owner = parsed.path.startswith("/api/trading/")
@@ -395,6 +422,24 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             return
 
         query = parse_qs(parsed.query)
+        if parsed.path == "/api/large-buy-alerts":
+            try:
+                after = max(0, int(query.get("after", ["0"])[0]))
+                limit = max(1, min(100, int(query.get("limit", ["50"])[0])))
+            except ValueError:
+                self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid alert cursor"})
+                return
+            self._send(HTTPStatus.OK, {
+                "ok": True,
+                **self.large_buy_service.snapshot(after=after, limit=limit),
+                "notifications": {
+                    "website": True,
+                    "telegram_configured": bool(
+                        os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
+                    ),
+                },
+            })
+            return
         try:
             result = self.service.fetch(
                 query.get("symbol", [""])[0],
@@ -502,11 +547,20 @@ def main() -> None:
         daemon=True,
     )
     monitor.start()
+    large_buy_streams: LargeBuyStreams | None = None
+    if _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")):
+        large_buy_streams = LargeBuyStreams(LiveRequestHandler.large_buy_service, _login_fubon)
+        large_buy_streams.start()
+    else:
+        for market in ("TW", "US"):
+            LiveRequestHandler.large_buy_service.set_stream_status(market, "disabled")
     LOG.info("Wude live API listening on %s:%s", host, port)
     try:
         server.serve_forever()
     finally:
         monitor_stop.set()
+        if large_buy_streams is not None:
+            large_buy_streams.stop()
 
 
 if __name__ == "__main__":
