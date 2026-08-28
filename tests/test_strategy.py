@@ -482,6 +482,32 @@ def test_us_scenario_without_extended_hours_is_not_labeled_complete():
     assert result["scenario_data_quality"] == "部分資料"
 
 
+def test_no_chase_zone_requires_meaningful_gap_above_live_price():
+    result = _next_day_scenario({
+        "market": "US",
+        "price": 464.97,
+        "atr14": 13.69,
+        "support1": 388.11,
+        "support2": 375.51,
+        "resistance1": 464.98,
+        "resistance2": 478.67,
+        "buy_zone_low": 450.60,
+        "buy_zone_high": 458.00,
+        "better_buy_low": 437.07,
+        "price_plan_quality": "完整",
+        "daily_volume_ratio": 2.27,
+        "intraday_available": True,
+        "extended_hours_available": True,
+        "extended_change_pct": -0.75,
+    })
+
+    assert result["scenario_no_chase_low"] == 478.66
+    assert result["scenario_no_chase_high"] == 493.02
+    assert result["scenario_breakout"] == 478.66
+    assert "若直接跳到 478.66～493.02" in result["scenario_no_chase"]
+    assert "無法站穩 478.66" in result["scenario_no_chase"]
+
+
 
 def test_tw_positioning_radar_uses_tw_disclosures_without_changing_score():
     row = {
