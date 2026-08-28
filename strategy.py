@@ -1062,8 +1062,20 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         defense_high = max(defense_low, min(price, structural_support1 * 1.015))
         breakdown = structural_support2
         level_source = "近期結構支撐"
-    no_chase_low = resistance1
-    no_chase_high = max(resistance1 * 1.03, min(resistance2, resistance1 * 1.05))
+    # A rolling high can be only one tick above the live quote.  Calling that
+    # a direct-jump/no-chase zone is misleading, so require at least one ATR
+    # (with a market floor) above the current price.
+    is_etf = _is_etf(row)
+    atr = _finite(row.get("atr14"))
+    minimum_gap_pct = (
+        0.012 if is_etf else 0.02 if market == "US" else 0.015
+    )
+    minimum_gap = max(atr, price * minimum_gap_pct)
+    no_chase_low = _market_price(row, max(resistance1, price + minimum_gap))
+    no_chase_high = _market_price(
+        row,
+        max(no_chase_low * 1.03, resistance2, no_chase_low + minimum_gap),
+    )
 
     if is_tw:
         market_label = "🇹🇼 台股明日劇本"
@@ -1113,7 +1125,7 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         "scenario_structural_support1": round(structural_support1, 2),
         "scenario_structural_support2": round(structural_support2, 2),
         "scenario_level_source": level_source,
-        "scenario_breakout": round(resistance1, 2),
+        "scenario_breakout": round(no_chase_low, 2),
         "scenario_no_chase_low": round(no_chase_low, 2),
         "scenario_no_chase_high": round(no_chase_high, 2),
         "scenario_basis": f"{flow_text}；{volume_text}；防守採{level_source}",
@@ -1122,7 +1134,7 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         ),
         "scenario_no_chase": (
             f"若直接跳到 {no_chase_low:.2f}～{no_chase_high:.2f}，爆量卻無法站穩 "
-            f"{resistance1:.2f}，不追，提防高檔換手"
+            f"{no_chase_low:.2f}，不追，提防高檔換手"
         ),
         "scenario_breakdown_text": (
             f"跌破 {defense_low:.2f} 且30分鐘無法收回先減碼；"
