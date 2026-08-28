@@ -8,6 +8,7 @@ from large_buy_monitor import (
     StockBaseline,
     format_large_buy_telegram,
 )
+from capital_flow_shadow import CapitalFlowShadow
 
 
 def baselines():
@@ -74,6 +75,13 @@ def test_trade_at_bid_is_not_mislabelled_as_buy():
     ) is None
 
 
+def test_special_condition_trade_does_not_trigger_large_buy_alert():
+    detector = LargeBuyDetector(baselines(), config=config())
+    assert detector.process_trade(
+        "NVDA", price=200, size=1_000_000, ask=200, conditions=["W"], timestamp=100
+    ) is None
+
+
 def test_json_store_persists_sequence_and_filters(tmp_path: Path):
     path = tmp_path / "alerts.json"
     store = JsonAlertStore(path)
@@ -92,6 +100,7 @@ def test_service_stores_and_notifies_without_broker_actions(tmp_path: Path):
     service.config = config()
     service.baselines = baselines()
     service.detector = LargeBuyDetector(service.baselines, config=service.config)
+    service.flow = CapitalFlowShadow(service.baselines, clock=lambda: 100)
     service.store = JsonAlertStore(tmp_path / "alerts.json")
     service.notifier = messages.append
     service._status = {market: {"state": "waiting", "subscribed": 0, "error": None} for market in ("TW", "US")}
@@ -104,6 +113,9 @@ def test_service_stores_and_notifies_without_broker_actions(tmp_path: Path):
     snapshot = service.snapshot()
     assert snapshot["policy"]["broker_orders"] is False
     assert snapshot["universe"] == {"TW": 1, "US": 1}
+    assert snapshot["capital_flow"]["policy"]["markets_separate"] is True
+    assert snapshot["capital_flow"]["markets"]["TW"]["windows"]["1m"]["trade_count"] == 1
+    assert snapshot["capital_flow"]["markets"]["US"]["windows"]["1m"]["trade_count"] == 0
 
 
 def test_telegram_text_states_information_only():
