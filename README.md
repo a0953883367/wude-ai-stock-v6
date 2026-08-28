@@ -50,6 +50,12 @@ powershell -ExecutionPolicy Bypass -File .\setup_fubon_windows.ps1
 secret store，公開 GitHub Pages 只接收計算結果。服務未部署或暫時失敗時，
 畫面保留最近一次背景快照，不會把舊資料偽裝成即時行情。
 
+即時逐筆成交另有 `capital_flow_shadow.py` 影子帳本。台股與美股完全分開，
+各自輸出 1／5／15／60 分鐘的主動買賣估算、市場廣度、ETF／個股、族群共振、
+個股流入與流出。美股會處理 SIP 成交更正、取消與不適合判斷即時方向的特殊
+成交條件。這些結果只代表成交方向推估，不能識別外資、法人、主力或真實帳戶，
+也不會更動 V6、ALL、TOP10、正式排名或下單邏輯。
+
 雲端服務至少需要下列 secrets：
 
 - 台股：`FUBON_ID`、`FUBON_API_KEY`、`FUBON_CERT_PASSWORD`、
