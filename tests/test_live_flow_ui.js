@@ -14,6 +14,14 @@ test('public report links to a standalone capital-flow page', () => {
   assert.match(html, /不讀取個別股票即時股價/);
 });
 
+test('report and capital-flow pages share the arrow app icon', () => {
+  for (const page of [index, html]) {
+    assert.match(page, /manifest\.webmanifest\?v=2/);
+    assert.match(page, /trend-arrow-icon-v2\.svg/);
+    assert.match(page, /trend-arrow-apple-v2\.png/);
+  }
+});
+
 test('standalone page reads only the aggregate alert endpoint', () => {
   assert.match(script, /\/api\/large-buy-alerts\?after=/);
   assert.doesNotMatch(script, /\/api\/live\?symbol=/);
