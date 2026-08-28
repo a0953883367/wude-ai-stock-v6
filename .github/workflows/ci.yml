@@ -60,5 +60,7 @@ jobs:
         run: node tests/test_ranking.js
       - name: 檢查即時服務前端接線
         run: node tests/test_live_client.js
+      - name: 檢查大量買賣與資金流網頁
+        run: node tests/test_live_flow_ui.js
       - name: 檢查 AI 系統值班員前端接線
         run: node tests/test_system_guard_ui.js
