@@ -154,6 +154,24 @@ def _first_level_price(levels: Any) -> float | None:
         return None
 
 
+def _quote_levels(levels: Any) -> list[dict[str, float | None]]:
+    """Keep the public five-level book without leaking SDK model objects."""
+    if not isinstance(levels, (list, tuple)):
+        return []
+    normalized: list[dict[str, float | None]] = []
+    for level in levels[:5]:
+        item = _to_dict(level)
+        price = _number(item.get("price"))
+        size = _number(item.get("size"))
+        if price is None and size is None:
+            continue
+        normalized.append({
+            "price": price,
+            "size": size,
+        })
+    return normalized
+
+
 def parse_fubon_quote(payload: Any) -> dict[str, Any]:
     obj = _quote_data(payload)
     last_price = _number(obj.get("lastPrice", obj.get("closePrice")))
@@ -161,12 +179,36 @@ def parse_fubon_quote(payload: Any) -> dict[str, Any]:
     ask_total = _level_total(obj.get("asks"))
     if last_price is None and bid_total is None and ask_total is None:
         return {}
+    bids = _quote_levels(obj.get("bids"))
+    asks = _quote_levels(obj.get("asks"))
+    last_trade_value = obj.get("lastTrade")
+    last_trade = _to_dict(last_trade_value) if last_trade_value is not None else {}
     return {
         "lastPrice": last_price,
+        "openPrice": _number(obj.get("openPrice", obj.get("open"))),
+        "highPrice": _number(obj.get("highPrice", obj.get("high"))),
+        "lowPrice": _number(obj.get("lowPrice", obj.get("low"))),
+        "referencePrice": _number(obj.get("referencePrice", obj.get("previousClose"))),
+        "avgPrice": _number(obj.get("avgPrice", obj.get("averagePrice"))),
+        "change": _number(obj.get("change")),
+        "changePercent": _number(obj.get("changePercent")),
+        "lastSize": _number(obj.get("lastSize", last_trade.get("size"))),
+        "totalVolume": _number(obj.get("totalVolume", obj.get("tradeVolume"))),
+        "totalValue": _number(obj.get("totalValue", obj.get("tradeValue"))),
+        "tradeVolumeAtBid": _number(obj.get("tradeVolumeAtBid")),
+        "tradeVolumeAtAsk": _number(obj.get("tradeVolumeAtAsk")),
         "bidPrice": _first_level_price(obj.get("bids")),
         "askPrice": _first_level_price(obj.get("asks")),
         "bidTotal": bid_total,
         "askTotal": ask_total,
+        "bids": bids,
+        "asks": asks,
+        "lastTrade": {
+            "price": _number(last_trade.get("price", last_price)),
+            "size": _number(last_trade.get("size", obj.get("lastSize"))),
+            "time": last_trade.get("time", obj.get("lastUpdated")),
+            "serial": last_trade.get("serial", obj.get("serial")),
+        },
         "quoteDate": obj.get("date"),
         "quoteType": obj.get("type"),
         "quoteMarket": obj.get("market"),
