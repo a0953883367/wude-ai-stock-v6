@@ -147,6 +147,15 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 'use strict';
 var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,rotationShadow:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,missedStrengthValidation:null,systemGuard:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
+try{
+  if(new URLSearchParams(window.location.search).get('transfer_live_token')==='1'){
+    var existingLiveToken=WudeLiveClient.accessToken(window.localStorage);
+    var ownerLiveUrl='https://wude-ai-stock-owner.a0953883367.chatgpt.site/live';
+    window.location.replace(existingLiveToken
+      ? ownerLiveUrl+'#live_token='+encodeURIComponent(existingLiveToken)
+      : ownerLiveUrl+'?live_transfer=missing');
+  }
+}catch(error){}
 
 function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function first(obj,names,fallback){for(var i=0;i<names.length;i++){var v=obj[names[i]];if(v!==undefined&&v!==null&&v!=='')return v;}return fallback===undefined?'—':fallback;}
