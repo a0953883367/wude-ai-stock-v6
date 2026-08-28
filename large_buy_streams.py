@@ -95,6 +95,9 @@ class FubonLargeBuyStream:
                             bid=data.get("bid"),
                             ask=data.get("ask"),
                             timestamp=_epoch(data.get("time")),
+                            trade_id=data.get("serial") or data.get("id"),
+                            conditions=data.get("conditions"),
+                            exchange=data.get("exchange"),
                         )
                     except Exception:
                         LOG.exception("Fubon large-buy message handling failed")
@@ -186,7 +189,10 @@ class AlpacaLargeBuyStream:
                             delay = 3.0
                         elif kind == "q":
                             self.service.update_quote(
-                                str(row.get("S") or "").upper(), bid=row.get("bp"), ask=row.get("ap")
+                                str(row.get("S") or "").upper(),
+                                bid=row.get("bp"),
+                                ask=row.get("ap"),
+                                timestamp=_epoch(row.get("t")),
                             )
                         elif kind == "t":
                             self.service.process_trade(
@@ -194,6 +200,29 @@ class AlpacaLargeBuyStream:
                                 price=row.get("p"),
                                 size=row.get("s"),
                                 timestamp=_epoch(row.get("t")),
+                                trade_id=row.get("i"),
+                                conditions=row.get("c"),
+                                exchange=row.get("x"),
+                                tape=row.get("z"),
+                            )
+                        elif kind == "c":
+                            self.service.correct_trade(
+                                str(row.get("S") or "").upper(),
+                                original_trade_id=row.get("oi"),
+                                corrected_trade_id=row.get("ci"),
+                                price=row.get("cp"),
+                                size=row.get("cs"),
+                                conditions=row.get("cc"),
+                                timestamp=_epoch(row.get("t")),
+                                exchange=row.get("x"),
+                                tape=row.get("z"),
+                                market="US",
+                            )
+                        elif kind == "x":
+                            self.service.cancel_trade(
+                                str(row.get("S") or "").upper(),
+                                row.get("i"),
+                                market="US",
                             )
                         elif kind == "error":
                             message_text = str(row.get("msg") or row)
@@ -247,4 +276,3 @@ class LargeBuyStreams:
     def stop(self) -> None:
         self.stop_event.set()
         self.alpaca.close()
-
