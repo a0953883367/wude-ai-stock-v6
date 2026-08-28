@@ -112,6 +112,8 @@ def _empty_medium_market(market: str) -> dict[str, Any]:
         "entry_session_date": None,
         "target_exit_date": None,
         "last_valuation_date": None,
+        "valuation_consistent": True,
+        "valuation_pending": None,
         "gross_profit_twd": 0.0,
         "gross_return_pct": 0.0,
         "net_profit_twd": 0.0,
@@ -134,6 +136,8 @@ def _empty_long() -> dict[str, Any]:
         "positions": [],
         "benchmark_positions": [],
         "last_valuation_date": {"TW": None, "US": None},
+        "valuation_consistent": {"TW": True, "US": True},
+        "valuation_pending": {"TW": None, "US": None},
         "gross_profit_twd": 0.0,
         "gross_return_pct": 0.0,
         "net_profit_twd": 0.0,
@@ -170,6 +174,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "entry": "2026-08-24起，使用前一完成交易日排名並按下一交易日官方開盤價",
             "entry_coverage": "中期5檔／長期各市場1檔與同期基準都取得同日官方開盤價後才建立持倉",
             "valuation_exit": "持有期間用官方收盤價估值；到期後第一個交易日官方收盤價賣出",
+            "valuation_coverage": "同一市場全部持股與同期基準都取得同一交易日官方收盤價後才整組更新；不足時保留前一完整估值",
             "round_trip_cost_pct": ROUND_TRIP_COST_PCT,
             "costs": "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入",
             "benchmark": {market: BENCHMARKS[market]["name"] for market in MARKETS},
@@ -485,6 +490,98 @@ def _value_benchmark_positions(
             position["realized"] = True
 
 
+def _valuation_assets(
+    positions: list[dict[str, Any]],
+    benchmark_positions: list[dict[str, Any]],
+    market: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    market_positions = [
+        position for position in positions
+        if str(position.get("market") or "").upper() == market
+    ]
+    market_benchmarks = [
+        position for position in benchmark_positions
+        if str(position.get("market") or "").upper() == market
+    ]
+    return market_positions, market_benchmarks
+
+
+def _valuation_dates_consistent(
+    positions: list[dict[str, Any]],
+    benchmark_positions: list[dict[str, Any]],
+    market: str,
+) -> bool:
+    market_positions, market_benchmarks = _valuation_assets(
+        positions, benchmark_positions, market
+    )
+    assets = market_positions + market_benchmarks
+    if not assets:
+        return True
+    if not market_positions or not market_benchmarks:
+        return False
+    dates = [str(asset.get("last_valuation_date") or "") for asset in assets]
+    return all(dates) and len(set(dates)) == 1
+
+
+def _value_market_atomically(
+    positions: list[dict[str, Any]],
+    benchmark_positions: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
+    market: str,
+    session_date: str,
+) -> dict[str, Any] | None:
+    """Advance a market only when every holding and benchmark close is ready."""
+    market_positions, market_benchmarks = _valuation_assets(
+        positions, benchmark_positions, market
+    )
+    if not market_positions:
+        return None
+
+    current_dates = [
+        str(asset.get("last_valuation_date") or "")
+        for asset in market_positions + market_benchmarks
+        if asset.get("last_valuation_date")
+    ]
+    if current_dates and session_date < max(current_dates):
+        return {"status": "stale_session_ignored", "target_session_date": session_date}
+
+    row_map = {str(row.get("symbol") or ""): row for row in rows}
+    required_symbols = [str(position.get("symbol") or "") for position in market_positions]
+    if market_benchmarks:
+        required_symbols.extend(
+            str(position.get("symbol") or "") for position in market_benchmarks
+        )
+    else:
+        required_symbols.append(BENCHMARKS[market]["symbol"])
+
+    missing_symbols = []
+    for symbol in required_symbols:
+        row = row_map.get(symbol)
+        valid_close = (
+            row is not None
+            and str(row.get("official_session_date") or "") == session_date
+            and _finite(row.get("official_close_price")) > 0
+        )
+        if not valid_close:
+            missing_symbols.append(symbol)
+
+    missing_symbols = list(dict.fromkeys(missing_symbols))
+    if missing_symbols:
+        return {
+            "status": "waiting_for_common_official_close",
+            "target_session_date": session_date,
+            "available_assets": len(required_symbols) - len(missing_symbols),
+            "required_assets": len(required_symbols),
+            "missing_symbols": missing_symbols,
+        }
+
+    # Coverage was checked before either function mutates state, so holdings
+    # and the benchmark advance together or do not advance at all.
+    _value_positions(positions, rows, market, session_date)
+    _value_benchmark_positions(benchmark_positions, rows, market, session_date)
+    return None
+
+
 def _summarize(portfolio: dict[str, Any], positions: list[dict[str, Any]]) -> None:
     profit = sum(_finite(position.get("gross_profit_twd")) for position in positions)
     net_profit = sum(_finite(position.get("net_profit_twd")) for position in positions)
@@ -541,17 +638,27 @@ def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: st
             portfolio["entry_session_date"] = session_date
             portfolio["target_exit_date"] = positions[0]["target_exit_date"]
             portfolio["status"] = "active"
-    _value_positions(portfolio.get("positions") or [], rows, market, session_date)
-    _value_benchmark_positions(
-        portfolio.get("benchmark_positions") or [], rows, market, session_date
+    valuation_pending = _value_market_atomically(
+        portfolio.get("positions") or [],
+        portfolio.get("benchmark_positions") or [],
+        rows,
+        market,
+        session_date,
+    )
+    if valuation_pending and valuation_pending.get("status") != "stale_session_ignored":
+        portfolio["valuation_pending"] = valuation_pending
+    elif not valuation_pending:
+        portfolio["valuation_pending"] = None
+    portfolio["valuation_consistent"] = _valuation_dates_consistent(
+        portfolio.get("positions") or [], portfolio.get("benchmark_positions") or [], market
     )
     valuation_dates = [
         str(position.get("last_valuation_date") or "")
         for position in portfolio.get("positions") or []
         if position.get("last_valuation_date")
     ]
-    if valuation_dates:
-        portfolio["last_valuation_date"] = max(valuation_dates)
+    if valuation_dates and portfolio["valuation_consistent"]:
+        portfolio["last_valuation_date"] = valuation_dates[0]
     _summarize(portfolio, portfolio.get("positions") or [])
     _summarize_benchmark(portfolio)
 
@@ -579,18 +686,33 @@ def _update_long(state: dict[str, Any], rows: list[dict[str, Any]], market: str,
             ))
             portfolio["pending"][market] = None
             portfolio["status"] = "active"
-    _value_positions(portfolio.get("positions") or [], rows, market, session_date)
-    _value_benchmark_positions(
-        portfolio.get("benchmark_positions") or [], rows, market, session_date
+    valuation_pending = _value_market_atomically(
+        portfolio.get("positions") or [],
+        portfolio.get("benchmark_positions") or [],
+        rows,
+        market,
+        session_date,
+    )
+    portfolio.setdefault("valuation_pending", {"TW": None, "US": None})
+    if valuation_pending and valuation_pending.get("status") != "stale_session_ignored":
+        portfolio["valuation_pending"][market] = valuation_pending
+    elif not valuation_pending:
+        portfolio["valuation_pending"][market] = None
+    portfolio.setdefault("valuation_consistent", {"TW": True, "US": True})[market] = (
+        _valuation_dates_consistent(
+            portfolio.get("positions") or [],
+            portfolio.get("benchmark_positions") or [],
+            market,
+        )
     )
     valuation_dates = [
         str(position.get("last_valuation_date") or "")
         for position in portfolio.get("positions") or []
         if position.get("market") == market and position.get("last_valuation_date")
     ]
-    if valuation_dates:
-        portfolio.setdefault("last_valuation_date", {"TW": None, "US": None})[market] = max(
-            valuation_dates
+    if valuation_dates and portfolio["valuation_consistent"][market]:
+        portfolio.setdefault("last_valuation_date", {"TW": None, "US": None})[market] = (
+            valuation_dates[0]
         )
     _summarize(portfolio, portfolio.get("positions") or [])
     _summarize_benchmark(portfolio)
@@ -623,6 +745,10 @@ def update_state(
         "中期5檔／長期各市場1檔與同期基準都取得同日官方開盤價後才建立持倉；"
         "不足即等待補抓或隔離"
     )
+    state["policy"]["valuation_coverage"] = (
+        "同一市場全部持股與同期基準都取得同一交易日官方收盤價後才整組更新；"
+        "不足時保留前一完整估值"
+    )
     for market in MARKETS:
         state["medium"].setdefault(market, _empty_medium_market(market))
         state["medium"][market].setdefault("net_profit_twd", 0.0)
@@ -632,6 +758,8 @@ def update_state(
         state["medium"][market].setdefault("benchmark_net_return_pct", 0.0)
         state["medium"][market].setdefault("benchmark_realized", False)
         state["medium"][market].setdefault("invalid_entries", [])
+        state["medium"][market].setdefault("valuation_consistent", True)
+        state["medium"][market].setdefault("valuation_pending", None)
         _quarantine_legacy_partial_medium(state["medium"][market])
         state.setdefault("long", _empty_long()).setdefault("net_profit_twd", 0.0)
         state["long"].setdefault("net_return_pct", 0.0)
@@ -640,6 +768,8 @@ def update_state(
         state["long"].setdefault("benchmark_net_return_pct", 0.0)
         state["long"].setdefault("benchmark_realized", False)
         state["long"].setdefault("invalid_entries", [])
+        state["long"].setdefault("valuation_consistent", {"TW": True, "US": True})
+        state["long"].setdefault("valuation_pending", {"TW": None, "US": None})
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         prepare_pending(state, rows, market, updated_at)

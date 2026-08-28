@@ -126,19 +126,34 @@ def _holding_valuation_check(holding: dict[str, Any]) -> dict[str, Any]:
     for market in ("TW", "US"):
         portfolio = medium.get(market) if isinstance(medium.get(market), dict) else {}
         positions = portfolio.get("positions") if isinstance(portfolio.get("positions"), list) else []
-        dates = sorted({
+        benchmark_positions = (
+            portfolio.get("benchmark_positions")
+            if isinstance(portfolio.get("benchmark_positions"), list)
+            else []
+        )
+        position_dates = sorted({
             str(position.get("last_valuation_date") or "")
             for position in positions
             if isinstance(position, dict) and position.get("last_valuation_date")
         })
+        benchmark_dates = sorted({
+            str(position.get("last_valuation_date") or "")
+            for position in benchmark_positions
+            if isinstance(position, dict) and position.get("last_valuation_date")
+        })
+        dates = sorted(set(position_dates + benchmark_dates))
         portfolio_date = str(portfolio.get("last_valuation_date") or "")
-        if positions and not dates:
+        if positions and not position_dates:
             issues.append(f"中期 {market} 持倉全部缺少估值日")
+        elif positions and not benchmark_positions:
+            issues.append(f"中期 {market} 缺少同期基準持倉")
+        elif benchmark_positions and not benchmark_dates:
+            issues.append(f"中期 {market} 同期基準缺少估值日")
         elif len(dates) > 1:
-            issues.append(f"中期 {market} 持倉估值日混雜：{','.join(dates)}")
-        if dates and portfolio_date != max(dates):
+            issues.append(f"中期 {market} 持倉與基準估值日混雜：{','.join(dates)}")
+        if len(dates) == 1 and portfolio_date != dates[0]:
             issues.append(
-                f"中期 {market} 組合估值日 {portfolio_date or '缺少'}，持倉最新為 {max(dates)}"
+                f"中期 {market} 組合估值日 {portfolio_date or '缺少'}，共同估值日為 {dates[0]}"
             )
 
     long_portfolio = holding.get("long") if isinstance(holding.get("long"), dict) else {}
@@ -153,19 +168,29 @@ def _holding_valuation_check(holding: dict[str, Any]) -> dict[str, Any]:
         else {}
     )
     for market in ("TW", "US"):
-        dates = sorted({
+        position_dates = sorted({
             str(position.get("last_valuation_date") or "")
             for position in long_positions
             if isinstance(position, dict)
             and str(position.get("market") or "").upper() == market
             and position.get("last_valuation_date")
         })
-        if len(dates) > 1:
-            issues.append(f"長期 {market} 持倉估值日混雜：{','.join(dates)}")
+        benchmark_dates = sorted({
+            str(position.get("last_valuation_date") or "")
+            for position in long_portfolio.get("benchmark_positions", [])
+            if isinstance(position, dict)
+            and str(position.get("market") or "").upper() == market
+            and position.get("last_valuation_date")
+        })
+        dates = sorted(set(position_dates + benchmark_dates))
+        if position_dates and not benchmark_dates:
+            issues.append(f"長期 {market} 缺少同期基準估值日")
+        elif len(dates) > 1:
+            issues.append(f"長期 {market} 持倉與基準估值日混雜：{','.join(dates)}")
         recorded = str(long_dates.get(market) or "")
-        if dates and recorded != max(dates):
+        if len(dates) == 1 and recorded != dates[0]:
             issues.append(
-                f"長期 {market} 組合估值日 {recorded or '缺少'}，持倉最新為 {max(dates)}"
+                f"長期 {market} 組合估值日 {recorded or '缺少'}，共同估值日為 {dates[0]}"
             )
     if issues:
         return _check(

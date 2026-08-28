@@ -34,11 +34,23 @@ def _healthy_reports(tmp_path: Path) -> None:
     _write(tmp_path / "holding_simulation.json", {
         "updated_at": timestamp,
         "medium": {
-            "TW": {"positions": [{"market": "TW", "last_valuation_date": "2026-08-24"}], "last_valuation_date": "2026-08-24"},
-            "US": {"positions": [{"market": "US", "last_valuation_date": "2026-08-23"}], "last_valuation_date": "2026-08-23"},
+            "TW": {
+                "positions": [{"market": "TW", "last_valuation_date": "2026-08-24"}],
+                "benchmark_positions": [{"market": "TW", "last_valuation_date": "2026-08-24"}],
+                "last_valuation_date": "2026-08-24",
+            },
+            "US": {
+                "positions": [{"market": "US", "last_valuation_date": "2026-08-23"}],
+                "benchmark_positions": [{"market": "US", "last_valuation_date": "2026-08-23"}],
+                "last_valuation_date": "2026-08-23",
+            },
         },
         "long": {
             "positions": [
+                {"market": "TW", "last_valuation_date": "2026-08-24"},
+                {"market": "US", "last_valuation_date": "2026-08-23"},
+            ],
+            "benchmark_positions": [
                 {"market": "TW", "last_valuation_date": "2026-08-24"},
                 {"market": "US", "last_valuation_date": "2026-08-23"},
             ],
@@ -138,3 +150,23 @@ def test_mixed_holding_valuation_dates_are_red(tmp_path: Path) -> None:
     assert guard["status"] == "critical"
     assert check["level"] == "critical"
     assert "估值日混雜" in check["detail"]
+
+
+def test_holding_benchmark_date_mismatch_is_red(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    holding = json.loads((tmp_path / "holding_simulation.json").read_text(encoding="utf-8"))
+    holding["medium"]["TW"]["benchmark_positions"] = [{
+        "market": "TW", "last_valuation_date": "2026-08-27"
+    }]
+    holding["long"]["benchmark_positions"] = [
+        {"market": "TW", "last_valuation_date": "2026-08-27"},
+        {"market": "US", "last_valuation_date": "2026-08-23"},
+    ]
+    _write(tmp_path / "holding_simulation.json", holding)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+    check = next(item for item in guard["checks"] if item["code"] == "holding_valuation_consistency")
+    assert guard["status"] == "critical"
+    assert check["level"] == "critical"
+    assert "持倉與基準估值日混雜" in check["detail"]
