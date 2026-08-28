@@ -71,12 +71,72 @@ def test_experiment_freezes_previous_rank_then_settles_open_to_close_net_of_cost
     assert model["completed_days"] == 1
     assert model["days"][0]["session_date"] == "2026-08-24"
     assert model["days"][0]["gross_profit_twd"] == 10_000
+    assert model["days"][0]["data_complete"] is True
+    assert model["days"][0]["available_positions"] == 10
     expected_net = CAPITAL_TWD * (1 - ROUND_TRIP_COST_PCT) / 100
     assert model["days"][0]["net_profit_twd"] == round(expected_net, 2)
     assert model["metrics"]["win_rate_pct"] == 100
     assert len(model["days"][0]["ranking_snapshot_id"]) == 12
     assert model["comparison_vs_base"]["interpretation"] == "法人權重相較原模型的額外效益"
     assert model["pending"]["signal_session_date"] == "2026-08-24"
+
+
+def test_partial_or_mixed_official_prices_wait_without_counting_a_day():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    mixed = universe("2026-08-24")
+    frozen_symbols = {
+        model["pending"]["picks"][0]["symbol"]
+        for model in state["models"].values()
+    }
+    for item in mixed:
+        if item["symbol"] in frozen_symbols:
+            item["official_session_date"] = "2026-08-21"
+            item["official_open_price"] = None
+
+    update_state(state, mixed, period="evening", updated_at="partial close")
+
+    for model in state["models"].values():
+        assert model["completed_days"] == 0
+        assert model["days"] == []
+        assert model["pending"]["settlement_status"] == "waiting_for_official_prices"
+        assert model["pending"]["available_positions"] < 10
+        assert model["pending"]["missing_symbols"]
+
+
+def test_legacy_partial_day_is_quarantined_and_no_longer_counts():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    update_state(state, universe("2026-08-24"), period="evening", updated_at="day one")
+    for model in state["models"].values():
+        model["days"][0]["positions"][0].update({
+            "data_available": False,
+            "open_price": None,
+            "sell_price": None,
+        })
+        model["days"][0]["invested_twd"] = CAPITAL_TWD - ALLOCATION_TWD
+
+    update_state(state, universe("2026-08-25"), period="evening", updated_at="migration")
+
+    for model in state["models"].values():
+        assert model["completed_days"] == 1
+        assert model["days"][0]["session_date"] == "2026-08-25"
+        assert len(model["invalid_days"]) == 1
+        assert model["invalid_days"][0]["status"] == "data_incomplete"
+        assert model["invalid_days"][0]["available_positions"] == 9
+
+
+def test_diagnostics_explain_equal_weight_overlap_and_rank_quality():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    update_state(state, universe("2026-08-24"), period="evening", updated_at="close")
+
+    diagnostics = state["diagnostics"]
+    assert diagnostics["valid_sessions_compared"] == 1
+    assert diagnostics["daily_membership_overlap"][0]["base_vs_moderate"]["count"] <= 10
+    for model in state["models"].values():
+        assert "avg_rank_return_spearman" in model["metrics"]
+        assert "avg_top20_capture_rate_pct" in model["metrics"]
 
 
 def test_intraday_does_nothing_and_evening_stops_all_models_after_five_days():
