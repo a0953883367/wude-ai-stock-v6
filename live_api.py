@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 from collections import deque
+import hashlib
 import hmac
 import json
 import logging
@@ -36,6 +37,7 @@ from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 LOG = logging.getLogger("live_api")
 SYMBOL_PATTERN = re.compile(r"^[A-Z0-9.^-]{1,20}(?:\.(?:TW|TWO))?$")
 NEW_YORK = ZoneInfo("America/New_York")
+DEFAULT_SITE_LIVE_TOKEN_SHA256 = "0cf3e46b11bb22461985200095067592e354335fa026c4c33c58c9555544f06f"
 
 
 def _trading_state_path() -> Path:
@@ -334,8 +336,16 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         proxy_header = os.getenv("LIVE_TRUSTED_AUTH_HEADER", "").strip()
         return bool(proxy_header and self.headers.get(proxy_header))
 
+    def _site_read_authorized(self) -> bool:
+        supplied = self.headers.get("X-Site-Live-Token", "").strip()
+        if not supplied:
+            return False
+        expected = os.getenv("LIVE_SITE_TOKEN_SHA256", DEFAULT_SITE_LIVE_TOKEN_SHA256).strip().lower()
+        digest = hashlib.sha256(supplied.encode("utf-8")).hexdigest()
+        return bool(expected and hmac.compare_digest(digest, expected))
+
     def _authorized(self) -> bool:
-        return self._owner_authorized() or _truthy(os.getenv("LIVE_PUBLIC_READ"))
+        return self._owner_authorized() or self._site_read_authorized() or _truthy(os.getenv("LIVE_PUBLIC_READ"))
 
     def _send(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
