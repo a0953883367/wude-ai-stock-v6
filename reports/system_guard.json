@@ -1,16 +1,16 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-28T00:42:01+08:00",
+  "status": "critical",
+  "status_label": "🔴 需要處理",
+  "checked_at": "2026-08-28T08:24:29+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-08-28 00:39:17",
-  "report_age_minutes": 2.7,
+  "report_updated_at": "2026-08-28 08:23:14",
+  "report_age_minutes": 1.3,
   "counts": {
-    "ok": 7,
+    "ok": 8,
     "info": 0,
     "warning": 2,
-    "critical": 0
+    "critical": 1
   },
   "checks": [
     {
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 3 分鐘",
+      "detail": "最近更新距今 1 分鐘",
       "action": ""
     },
     {
@@ -34,15 +34,31 @@
       "title": "分析輸出",
       "level": "ok",
       "label": "正常",
-      "detail": "完成 364/376 檔；排行 218 檔",
+      "detail": "完成 363/376 檔；排行 217 檔",
       "action": ""
+    },
+    {
+      "code": "market_session_consistency",
+      "title": "市場交易日一致性",
+      "level": "ok",
+      "label": "正常",
+      "detail": "TW_ETF 2026-08-27 31/31；TW_STOCK 2026-08-27 146/146；US_ETF 2026-08-27 34/35；US_STOCK 2026-08-27 151/151",
+      "action": ""
+    },
+    {
+      "code": "holding_valuation_consistency",
+      "title": "持有估值日期",
+      "level": "critical",
+      "label": "異常",
+      "detail": "中期 TW 持倉估值日混雜：2026-08-26,2026-08-27；中期 TW 組合估值日 2026-08-26，持倉最新為 2026-08-27",
+      "action": "不要依本次持有損益交易；修復資料日期後重新驗證"
     },
     {
       "code": "tw_core_data",
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 175、法人 180、信用 177",
+      "detail": "價格 175、法人 176、信用 175",
       "action": ""
     },
     {
@@ -87,6 +103,7 @@
     }
   ],
   "action_required": [
+    "不要依本次持有損益交易；修復資料日期後重新驗證",
     "保留黃燈；不要用其他資料冒充分點資料",
     "缺少財報的股票限制中長線資格"
   ],
