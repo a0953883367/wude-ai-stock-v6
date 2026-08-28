@@ -18,6 +18,8 @@ import threading
 import time
 from typing import Any, Callable
 
+from capital_flow_shadow import CapitalFlowShadow, is_directional_trade_conditions
+
 
 MARKETS = ("TW", "US")
 
@@ -53,6 +55,8 @@ class StockBaseline:
     market: str
     price: float
     avg_volume20: float
+    theme: str = "未分類"
+    asset_type: str = "個股"
 
     @property
     def average_daily_value(self) -> float:
@@ -129,10 +133,14 @@ class LargeBuyDetector:
         timestamp: float | None = None,
         bid: Any = None,
         ask: Any = None,
+        conditions: Any = None,
+        **_metadata: Any,
     ) -> dict[str, Any] | None:
         trade_price = _finite(price)
         trade_size = _finite(size)
         if trade_price is None or trade_size is None or trade_price <= 0 or trade_size <= 0:
+            return None
+        if not is_directional_trade_conditions(conditions):
             return None
         baseline = self.baselines.get(symbol)
         if baseline is None:
@@ -292,6 +300,8 @@ def load_stock_baselines(path: Path) -> dict[str, StockBaseline]:
             market=market,
             price=price,
             avg_volume20=avg_volume20,
+            theme=str(row.get("theme") or row.get("industry") or "未分類"),
+            asset_type=str(row.get("type") or "個股"),
         )
     return output
 
@@ -314,6 +324,7 @@ class LargeBuyAlertService:
         report_path: Path,
         state_path: Path,
         *,
+        flow_state_path: Path | None = None,
         config: LargeBuyConfig | None = None,
         notifier: Callable[[str], Any] | None = None,
         alert_notifier: Callable[[dict[str, Any]], Any] | None = None,
@@ -322,6 +333,10 @@ class LargeBuyAlertService:
         self.baselines = load_stock_baselines(report_path)
         self.detector = LargeBuyDetector(self.baselines, config=self.config)
         self.store = JsonAlertStore(state_path, limit=self.config.alert_history_limit)
+        self.flow = CapitalFlowShadow(
+            self.baselines,
+            state_path=flow_state_path or state_path.with_name("capital_flow_shadow.json"),
+        )
         self.notifier = notifier
         self.alert_notifier = alert_notifier
         self._status: dict[str, dict[str, Any]] = {
@@ -342,10 +357,19 @@ class LargeBuyAlertService:
                 "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             }
 
-    def update_quote(self, symbol: str, *, bid: Any = None, ask: Any = None) -> None:
+    def update_quote(
+        self,
+        symbol: str,
+        *,
+        bid: Any = None,
+        ask: Any = None,
+        timestamp: float | None = None,
+    ) -> None:
         self.detector.update_quote(symbol, bid=bid, ask=ask)
+        self.flow.update_quote(symbol, bid=bid, ask=ask, timestamp=timestamp)
 
     def process_trade(self, symbol: str, **trade: Any) -> dict[str, Any] | None:
+        self.flow.process_trade(symbol, **trade)
         alert = self.detector.process_trade(symbol, **trade)
         if alert is None:
             return None
@@ -363,6 +387,12 @@ class LargeBuyAlertService:
                 # A device notification failure must never stop market-data processing.
                 pass
         return stored
+
+    def cancel_trade(self, symbol: str, trade_id: Any, *, market: str = "US") -> bool:
+        return self.flow.cancel_trade(symbol, trade_id, market=market)
+
+    def correct_trade(self, symbol: str, **trade: Any) -> dict[str, Any] | None:
+        return self.flow.correct_trade(symbol, **trade)
 
     def snapshot(self, *, after: int = 0, limit: int = 50) -> dict[str, Any]:
         with self._lock:
@@ -383,4 +413,5 @@ class LargeBuyAlertService:
             "streams": status,
             "latest_sequence": self.store.latest_sequence,
             "alerts": self.store.list_after(after, limit=limit),
+            "capital_flow": self.flow.snapshot(),
         }
