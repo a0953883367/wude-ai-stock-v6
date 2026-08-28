@@ -1032,12 +1032,36 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
     market = str(row.get("market", "US")).upper()
     is_tw = market == "TW"
     price = max(_finite(row.get("price")), 0.01)
-    support1 = min(_finite(row.get("support1"), price), price)
-    support2 = min(_finite(row.get("support2"), support1), support1)
+    structural_support1 = min(_finite(row.get("support1"), price), price)
+    structural_support2 = min(
+        _finite(row.get("support2"), structural_support1), structural_support1
+    )
     resistance1 = max(_finite(row.get("resistance1"), price), price)
     resistance2 = max(_finite(row.get("resistance2"), resistance1), resistance1)
-    defense_low = support1
-    defense_high = max(defense_low, min(price, support1 * 1.015))
+
+    # The raw support fields are rolling 5/20-session lows.  After a large gap
+    # or breakout they can sit far below the current quote and are useful only
+    # as structural references, not as the next session's primary defense.
+    # Prefer the already validated ATR-aware entry zones for an executable
+    # short-term scenario.  This display-only choice never changes AI scores.
+    buy_low = _finite(row.get("buy_zone_low"))
+    buy_high = _finite(row.get("buy_zone_high"))
+    better_low = _finite(row.get("better_buy_low"))
+    dynamic_zone = 0 < buy_low <= buy_high < price
+    if dynamic_zone:
+        defense_low = buy_low
+        defense_high = buy_high
+        breakdown = (
+            better_low
+            if 0 < better_low < defense_low
+            else min(structural_support1, defense_low)
+        )
+        level_source = "ATR動態短線區"
+    else:
+        defense_low = structural_support1
+        defense_high = max(defense_low, min(price, structural_support1 * 1.015))
+        breakdown = structural_support2
+        level_source = "近期結構支撐"
     no_chase_low = resistance1
     no_chase_high = max(resistance1 * 1.03, min(resistance2, resistance1 * 1.05))
 
@@ -1050,7 +1074,7 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         else:
             flow_text = "台股法人資料未取得，不推定主力方向"
         opening_text = "台股09:00開盤後15～30分鐘"
-        complete = row.get("institution_available") and row.get("intraday_available")
+        market_data_complete = row.get("institution_available") and row.get("intraday_available")
     else:
         market_label = "🇺🇸 美股下個交易日劇本"
         # US stocks must not be judged with Taiwan foreign/trust/dealer fields.
@@ -1061,7 +1085,16 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         else:
             flow_text = "美股不套用台股三大法人；以量價與開盤攻擊量判讀"
         opening_text = "美股正式開盤後15～30分鐘"
-        complete = row.get("intraday_available")
+        market_data_complete = row.get("intraday_available") and row.get(
+            "extended_hours_available"
+        )
+
+    level_complete = (
+        row.get("price_plan_quality") == "完整"
+        if dynamic_zone
+        else all(value > 0 for value in (structural_support1, structural_support2))
+    )
+    complete = bool(market_data_complete and level_complete)
 
     volume_ratio = _finite(row.get("daily_volume_ratio"), 1.0)
     volume_text = f"日量為20日均量 {volume_ratio:.2f} 倍"
@@ -1076,11 +1109,14 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
         "scenario_title": market_label,
         "scenario_defense_low": round(defense_low, 2),
         "scenario_defense_high": round(defense_high, 2),
-        "scenario_breakdown": round(support2, 2),
+        "scenario_breakdown": round(breakdown, 2),
+        "scenario_structural_support1": round(structural_support1, 2),
+        "scenario_structural_support2": round(structural_support2, 2),
+        "scenario_level_source": level_source,
         "scenario_breakout": round(resistance1, 2),
         "scenario_no_chase_low": round(no_chase_low, 2),
         "scenario_no_chase_high": round(no_chase_high, 2),
-        "scenario_basis": f"{flow_text}；{volume_text}",
+        "scenario_basis": f"{flow_text}；{volume_text}；防守採{level_source}",
         "scenario_continuation": (
             f"守住 {defense_low:.2f}～{defense_high:.2f}，且{intraday_text}，續攻條件轉強"
         ),
@@ -1089,7 +1125,8 @@ def _next_day_scenario(row: dict[str, Any]) -> dict[str, Any]:
             f"{resistance1:.2f}，不追，提防高檔換手"
         ),
         "scenario_breakdown_text": (
-            f"跌破 {support1:.2f} 且30分鐘無法收回先減碼；跌破 {support2:.2f} 視為轉弱"
+            f"跌破 {defense_low:.2f} 且30分鐘無法收回先減碼；"
+            f"跌破 {breakdown:.2f} 視為轉弱"
         ),
         "scenario_data_quality": "完整" if complete else "部分資料",
     }
