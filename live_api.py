@@ -42,6 +42,7 @@ LOG = logging.getLogger("live_api")
 SYMBOL_PATTERN = re.compile(r"^[A-Z0-9.^-]{1,20}(?:\.(?:TW|TWO))?$")
 NEW_YORK = ZoneInfo("America/New_York")
 DEFAULT_SITE_LIVE_TOKEN_SHA256 = "0cf3e46b11bb22461985200095067592e354335fa026c4c33c58c9555544f06f"
+DEFAULT_VERCEL_APP_TOKEN_SHA256 = "80beb3c0100e5a4365a767019ac3e4dcb0f7d162915cf1efdf5570b4b577e638"
 
 
 def _trading_state_path() -> Path:
@@ -368,9 +369,13 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         supplied = self.headers.get("X-Site-Live-Token", "").strip()
         if not supplied:
             return False
-        expected = os.getenv("LIVE_SITE_TOKEN_SHA256", DEFAULT_SITE_LIVE_TOKEN_SHA256).strip().lower()
+        expected_hashes = {
+            os.getenv("LIVE_SITE_TOKEN_SHA256", DEFAULT_SITE_LIVE_TOKEN_SHA256).strip().lower(),
+            os.getenv("VERCEL_APP_TOKEN_SHA256", DEFAULT_VERCEL_APP_TOKEN_SHA256).strip().lower(),
+        }
+        expected_hashes.discard("")
         digest = hashlib.sha256(supplied.encode("utf-8")).hexdigest()
-        return bool(expected and hmac.compare_digest(digest, expected))
+        return any(hmac.compare_digest(digest, expected) for expected in expected_hashes)
 
     def _authorized(self) -> bool:
         return self._owner_authorized() or self._site_read_authorized() or _truthy(os.getenv("LIVE_PUBLIC_READ"))
