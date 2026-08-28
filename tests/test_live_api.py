@@ -1,4 +1,5 @@
 import base64
+import hashlib
 from datetime import datetime, timezone
 from email.message import Message
 from types import SimpleNamespace
@@ -202,6 +203,20 @@ def test_owner_auth_accepts_live_token_header(monkeypatch):
 def test_owner_auth_rejects_wrong_token(monkeypatch):
     monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-token")
     handler = _handler_with_headers(X_Live_Token="wrong-token")
+    assert handler._authorized() is False
+
+
+def test_site_read_token_allows_quotes_but_not_owner_actions(monkeypatch):
+    token = "site-read-only-token"
+    monkeypatch.setenv("LIVE_SITE_TOKEN_SHA256", hashlib.sha256(token.encode()).hexdigest())
+    handler = _handler_with_headers(X_Site_Live_Token=token)
+    assert handler._authorized() is True
+    assert handler._owner_authorized() is False
+
+
+def test_site_read_token_rejects_wrong_value(monkeypatch):
+    monkeypatch.setenv("LIVE_SITE_TOKEN_SHA256", hashlib.sha256(b"correct").hexdigest())
+    handler = _handler_with_headers(X_Site_Live_Token="wrong")
     assert handler._authorized() is False
 
 
