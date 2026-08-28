@@ -196,3 +196,81 @@ def test_older_market_candle_never_rolls_valuations_backwards():
     assert state["medium"]["TW"]["net_profit_twd"] == expected["tw_medium"]
     assert state["medium"]["US"]["net_profit_twd"] == expected["us_medium"]
     assert state["long"]["net_profit_twd"] == expected["long"]
+
+
+def test_medium_valuation_advances_only_when_all_holdings_and_benchmark_are_ready():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=2)
+    update_state(state, entry, period="evening", updated_at="entry TW")
+    portfolio = state["medium"]["TW"]
+    baseline_profit = portfolio["net_profit_twd"]
+    baseline_dates = {
+        position["last_valuation_date"]
+        for position in portfolio["positions"] + portfolio["benchmark_positions"]
+    }
+    assert baseline_dates == {"2026-08-24"}
+
+    next_day = universe("2026-08-25", close_offset=20)
+    missing = portfolio["positions"][0]["symbol"]
+    partial = [item for item in next_day if item["symbol"] != missing]
+    update_state(state, partial, period="evening", updated_at="partial valuation")
+
+    assert portfolio["net_profit_twd"] == baseline_profit
+    assert portfolio["last_valuation_date"] == "2026-08-24"
+    assert {
+        position["last_valuation_date"]
+        for position in portfolio["positions"] + portfolio["benchmark_positions"]
+    } == {"2026-08-24"}
+    assert portfolio["valuation_consistent"] is True
+    assert portfolio["valuation_pending"]["target_session_date"] == "2026-08-25"
+    assert portfolio["valuation_pending"]["missing_symbols"] == [missing]
+
+    update_state(state, next_day, period="evening", updated_at="complete valuation")
+    assert portfolio["last_valuation_date"] == "2026-08-25"
+    assert {
+        position["last_valuation_date"]
+        for position in portfolio["positions"] + portfolio["benchmark_positions"]
+    } == {"2026-08-25"}
+    assert portfolio["valuation_pending"] is None
+    assert portfolio["valuation_consistent"] is True
+
+
+def test_complete_market_snapshot_repairs_legacy_mixed_valuation_dates():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=2)
+    update_state(state, entry, period="evening", updated_at="entry TW")
+    portfolio = state["medium"]["TW"]
+    portfolio["positions"][0]["last_valuation_date"] = "2026-08-25"
+    portfolio["positions"][0]["last_price"] = 999
+
+    complete = universe("2026-08-26", close_offset=5)
+    update_state(state, complete, period="evening", updated_at="repair")
+
+    assert portfolio["valuation_consistent"] is True
+    assert portfolio["last_valuation_date"] == "2026-08-26"
+    assert {
+        position["last_valuation_date"]
+        for position in portfolio["positions"] + portfolio["benchmark_positions"]
+    } == {"2026-08-26"}
+
+
+def test_long_market_holding_and_benchmark_valuation_are_atomic():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=2)
+    update_state(state, entry, period="evening", updated_at="entry TW")
+    portfolio = state["long"]
+    baseline_profit = portfolio["net_profit_twd"]
+    next_day = universe("2026-08-25", close_offset=20)
+    partial = [item for item in next_day if item["symbol"] != "0050.TW"]
+
+    update_state(state, partial, period="evening", updated_at="partial TW")
+
+    tw_position = next(position for position in portfolio["positions"] if position["market"] == "TW")
+    tw_benchmark = next(
+        position for position in portfolio["benchmark_positions"] if position["market"] == "TW"
+    )
+    assert tw_position["last_valuation_date"] == "2026-08-24"
+    assert tw_benchmark["last_valuation_date"] == "2026-08-24"
+    assert portfolio["net_profit_twd"] == baseline_profit
+    assert portfolio["valuation_consistent"]["TW"] is True
+    assert portfolio["valuation_pending"]["TW"]["missing_symbols"] == ["0050.TW"]
