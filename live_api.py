@@ -36,6 +36,7 @@ from live_trade_engine import LiveTradingEngine
 from notifier import send_telegram
 from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
+from web_push import WebPushService
 
 LOG = logging.getLogger("live_api")
 SYMBOL_PATTERN = re.compile(r"^[A-Z0-9.^-]{1,20}(?:\.(?:TW|TWO))?$")
@@ -57,6 +58,11 @@ def _large_buy_state_path() -> Path:
     if configured:
         return Path(configured)
     return Path("/data/large_buy_alerts.json") if Path("/data").is_dir() else Path("/tmp/wude-large-buy-alerts.json")
+
+
+def _web_push_paths() -> tuple[Path, Path]:
+    root = Path(os.getenv("WEB_PUSH_STATE_DIR", "/data" if Path("/data").is_dir() else "/tmp"))
+    return root / "web_push_subscriptions.json", root / "web_push_vapid_private.pem"
 
 
 def _paper_engine(service: "LiveDataService") -> PaperTradingEngine:
@@ -321,10 +327,17 @@ class MinuteRateLimiter:
 class LiveRequestHandler(BaseHTTPRequestHandler):
     service = LiveDataService()
     trading_engine = _trading_engine(service)
+    _push_state_path, _push_key_path = _web_push_paths()
+    web_push = WebPushService(
+        _push_state_path,
+        _push_key_path,
+        subject=os.getenv("WEB_PUSH_SUBJECT", "mailto:a0953883367@gmail.com"),
+    )
     large_buy_service = LargeBuyAlertService(
         Path(__file__).resolve().parent / "reports" / "all_analysis.json",
         _large_buy_state_path(),
         notifier=send_telegram,
+        alert_notifier=web_push.send_alert,
     )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
 
@@ -399,11 +412,13 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 "telegram_configured": bool(
                     os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
                 ),
+                "web_push_subscriptions": self.web_push.subscription_count,
             }
             self._send(HTTPStatus.OK, health)
             return
         if parsed.path not in {
-            "/api/live", "/api/large-buy-alerts", "/api/trading/status", "/api/trading/preview"
+            "/api/live", "/api/large-buy-alerts", "/api/push/config",
+            "/api/trading/status", "/api/trading/preview"
         }:
             self._send(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
@@ -419,6 +434,13 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/trading/preview":
             self._send(HTTPStatus.OK, {"ok": True, **self.trading_engine.preview()})
+            return
+        if parsed.path == "/api/push/config":
+            self._send(HTTPStatus.OK, {
+                "ok": True,
+                "public_key": self.web_push.public_key,
+                "subscriptions": self.web_push.subscription_count,
+            })
             return
 
         query = parse_qs(parsed.query)
@@ -437,6 +459,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     "telegram_configured": bool(
                         os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
                     ),
+                    "web_push_subscriptions": self.web_push.subscription_count,
                 },
             })
             return
@@ -471,10 +494,11 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path not in {"/api/trading/config", "/api/trading/run"}:
+        if parsed.path not in {"/api/push/subscribe", "/api/trading/config", "/api/trading/run"}:
             self._send(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
-        if not self._owner_authorized():
+        requires_owner = parsed.path.startswith("/api/trading/")
+        if not (self._owner_authorized() if requires_owner else self._authorized()):
             self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "owner authentication required"})
             return
         if not self.rate_limiter.allow():
@@ -482,7 +506,10 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             return
         try:
             payload = self._read_json()
-            if parsed.path == "/api/trading/config":
+            if parsed.path == "/api/push/subscribe":
+                count = self.web_push.subscribe(payload.get("subscription"))
+                result = {"ok": True, "subscribed": True, "subscriptions": count}
+            elif parsed.path == "/api/trading/config":
                 config_args: dict[str, Any] = {
                     "selected": list(payload.get("selected") or []),
                     "cash_limit": int(payload.get("cash_limit", 20_000)),
@@ -515,8 +542,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         except (TypeError, ValueError) as exc:
             self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
         except Exception as exc:
-            LOG.exception("trading request failed: %s", exc)
-            self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "trading service temporarily unavailable"})
+            LOG.exception("live request failed: %s", exc)
+            self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "live service temporarily unavailable"})
         else:
             self._send(HTTPStatus.OK, result)
 
