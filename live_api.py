@@ -61,6 +61,10 @@ def _large_buy_state_path() -> Path:
     return Path("/data/large_buy_alerts.json") if Path("/data").is_dir() else Path("/tmp/wude-large-buy-alerts.json")
 
 
+def _capital_flow_state_path() -> Path:
+    return Path("/data/capital_flow_shadow.json") if Path("/data").is_dir() else Path("/tmp/wude-capital-flow-shadow.json")
+
+
 def _web_push_paths() -> tuple[Path, Path]:
     root = Path(os.getenv("WEB_PUSH_STATE_DIR", "/data" if Path("/data").is_dir() else "/tmp"))
     return root / "web_push_subscriptions.json", root / "web_push_vapid_private.pem"
@@ -343,6 +347,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
     large_buy_service = LargeBuyAlertService(
         Path(__file__).resolve().parent / "reports" / "all_analysis.json",
         _large_buy_state_path(),
+        flow_state_path=_capital_flow_state_path(),
         notifier=send_telegram,
         alert_notifier=web_push.send_alert,
     )
@@ -424,6 +429,14 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
                 ),
                 "web_push_subscriptions": self.web_push.subscription_count,
+                "capital_flow_shadow": {
+                    market: {
+                        "trades_processed": details["trades_processed"],
+                        "last_trade_at": details["last_trade_at"],
+                        "separate_market": True,
+                    }
+                    for market, details in monitor["capital_flow"]["markets"].items()
+                },
             }
             self._send(HTTPStatus.OK, health)
             return
