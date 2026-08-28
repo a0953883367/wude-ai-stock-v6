@@ -11,6 +11,7 @@ from live_api import (
     LiveRequestHandler,
     MinuteRateLimiter,
     configure_fubon_certificate,
+    _login_fubon_stream,
     normalize_symbol,
     _open_market_sessions,
 )
@@ -236,3 +237,11 @@ def test_public_read_never_counts_as_owner_auth(monkeypatch):
     handler = _handler_with_headers()
     assert handler._authorized() is True
     assert handler._owner_authorized() is False
+
+
+def test_fubon_stream_login_prepares_cloud_certificate_first(monkeypatch):
+    calls = []
+    monkeypatch.setattr("live_api.configure_fubon_certificate", lambda: calls.append("certificate"))
+    monkeypatch.setattr("live_api._login_fubon", lambda: calls.append("login") or "sdk")
+    assert _login_fubon_stream() == "sdk"
+    assert calls == ["certificate", "login"]
