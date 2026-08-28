@@ -427,12 +427,59 @@ def test_us_scenario_does_not_use_taiwan_institution_wording():
         "daily_volume_ratio": 1.4,
         "institution_available": False,
         "intraday_available": True,
+        "extended_hours_available": True,
+        "extended_session": "盤後",
+        "extended_change_pct": 0.2,
     }
     result = _next_day_scenario(row)
     assert result["scenario_title"] == "🇺🇸 美股下個交易日劇本"
     assert "美股不套用台股三大法人" in result["scenario_basis"]
     assert "美股正式開盤後15～30分鐘" in result["scenario_continuation"]
     assert result["scenario_data_quality"] == "完整"
+
+
+def test_gap_up_scenario_uses_dynamic_zone_instead_of_distant_rolling_low():
+    row = {
+        "market": "US",
+        "price": 464.98,
+        "support1": 388.11,
+        "support2": 375.51,
+        "resistance1": 478.67,
+        "resistance2": 492.36,
+        "buy_zone_low": 450.61,
+        "buy_zone_high": 458.01,
+        "better_buy_low": 437.08,
+        "price_plan_quality": "完整",
+        "daily_volume_ratio": 2.26,
+        "intraday_available": True,
+        "extended_hours_available": True,
+        "extended_session": "盤後",
+        "extended_change_pct": -0.75,
+    }
+
+    result = _next_day_scenario(row)
+
+    assert result["scenario_defense_low"] == 450.61
+    assert result["scenario_defense_high"] == 458.01
+    assert result["scenario_breakdown"] == 437.08
+    assert result["scenario_structural_support1"] == 388.11
+    assert result["scenario_level_source"] == "ATR動態短線區"
+    assert "守住 450.61～458.01" in result["scenario_continuation"]
+    assert "跌破 437.08 視為轉弱" in result["scenario_breakdown_text"]
+    assert "防守採ATR動態短線區" in result["scenario_basis"]
+    assert result["scenario_data_quality"] == "完整"
+
+
+def test_us_scenario_without_extended_hours_is_not_labeled_complete():
+    result = _next_day_scenario({
+        "market": "US", "price": 100,
+        "support1": 96, "support2": 92,
+        "resistance1": 104, "resistance2": 108,
+        "daily_volume_ratio": 1.1,
+        "intraday_available": True,
+    })
+
+    assert result["scenario_data_quality"] == "部分資料"
 
 
 
