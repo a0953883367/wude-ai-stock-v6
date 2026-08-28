@@ -17,6 +17,11 @@ def test_parse_direct_fubon_quote_sums_five_levels():
     assert result["askPrice"] == 1060
     assert result["bidTotal"] == 180
     assert result["askTotal"] == 100
+    assert result["bids"] == [
+        {"price": 1055.0, "size": 100.0},
+        {"price": 1050.0, "size": 80.0},
+    ]
+    assert result["asks"][0] == {"price": 1060.0, "size": 70.0}
     assert result["quoteDate"] is None
     assert result["fetchedAt"].endswith("+08:00")
 
@@ -50,6 +55,37 @@ def test_parse_quote_preserves_safe_session_metadata():
     assert result["isOpen"] is True
     assert result["isClose"] is False
     assert result["lastUpdated"] == 123456
+
+
+def test_parse_quote_preserves_intraday_screen_fields():
+    result = parse_fubon_quote({
+        "lastPrice": 101.5,
+        "openPrice": 99,
+        "highPrice": 103,
+        "lowPrice": 98.5,
+        "referencePrice": 100,
+        "avgPrice": 100.25,
+        "change": 1.5,
+        "changePercent": 1.5,
+        "lastSize": 8,
+        "totalVolume": 2345,
+        "totalValue": 234500000,
+        "tradeVolumeAtBid": 900,
+        "tradeVolumeAtAsk": 1100,
+        "bids": [{"price": 101, "size": 100}],
+        "asks": [{"price": 101.5, "size": 80}],
+        "lastTrade": {"price": 101.5, "size": 8, "time": 123, "serial": 456},
+    })
+
+    assert result["openPrice"] == 99
+    assert result["highPrice"] == 103
+    assert result["lowPrice"] == 98.5
+    assert result["referencePrice"] == 100
+    assert result["avgPrice"] == 100.25
+    assert result["totalVolume"] == 2345
+    assert result["tradeVolumeAtBid"] == 900
+    assert result["tradeVolumeAtAsk"] == 1100
+    assert result["lastTrade"] == {"price": 101.5, "size": 8.0, "time": 123, "serial": 456}
 
 
 def test_empty_levels_do_not_masquerade_as_zero_depth():
