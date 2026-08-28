@@ -1,9 +1,38 @@
 from briefing import (
     _attach_next_session_predictions,
     _qualified_tw_market_top,
+    _report_session_issues,
     _simulation_input_rows,
     _tw_intraday_enrichment,
 )
+
+
+def _session_rows(session_dates: list[str]) -> list[dict]:
+    return [
+        {
+            "symbol": f"TW{index:02d}.TW", "market": "TW", "type": "個股",
+            "official_session_date": session_date,
+        }
+        for index, session_date in enumerate(session_dates)
+    ]
+
+
+def test_report_session_guard_rejects_mixed_and_regressed_market_data():
+    previous = {"data": _session_rows(["2026-08-27"] * 10)}
+    current = _session_rows(["2026-08-26"] * 8 + ["2026-08-27"] * 2)
+
+    issues = _report_session_issues(current, previous)
+
+    assert any("交易日混雜" in issue for issue in issues)
+    assert any("主交易日倒退" in issue for issue in issues)
+    assert any("個股交易日倒退" in issue for issue in issues)
+
+
+def test_report_session_guard_accepts_coherent_forward_market_data():
+    previous = {"data": _session_rows(["2026-08-26"] * 10)}
+    current = _session_rows(["2026-08-27"] * 10)
+
+    assert _report_session_issues(current, previous) == []
 
 
 def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():

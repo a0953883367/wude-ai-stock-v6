@@ -167,3 +167,32 @@ def test_long_exits_at_six_month_target_and_intraday_never_changes_state():
     assert all(position["realized"] for position in state["long"]["positions"])
     assert state["long"]["gross_profit_twd"] > 0
     assert state["long"]["net_profit_twd"] < state["long"]["gross_profit_twd"]
+
+
+def test_older_market_candle_never_rolls_valuations_backwards():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=2)
+    update_state(state, entry, period="evening", updated_at="2026-08-24 20:00:00")
+    update_state(state, entry, period="morning", updated_at="2026-08-25 06:00:00")
+
+    forward = universe("2026-08-27", close_offset=12)
+    update_state(state, forward, period="evening", updated_at="2026-08-27 20:00:00")
+    update_state(state, forward, period="morning", updated_at="2026-08-28 06:00:00")
+    expected = {
+        "tw_medium": state["medium"]["TW"]["net_profit_twd"],
+        "us_medium": state["medium"]["US"]["net_profit_twd"],
+        "long": state["long"]["net_profit_twd"],
+    }
+
+    stale = universe("2026-08-26", close_offset=-40)
+    update_state(state, stale, period="evening", updated_at="stale TW")
+    update_state(state, stale, period="morning", updated_at="stale US")
+
+    assert state["medium"]["TW"]["last_valuation_date"] == "2026-08-27"
+    assert state["medium"]["US"]["last_valuation_date"] == "2026-08-27"
+    assert state["long"]["last_valuation_date"] == {
+        "TW": "2026-08-27", "US": "2026-08-27"
+    }
+    assert state["medium"]["TW"]["net_profit_twd"] == expected["tw_medium"]
+    assert state["medium"]["US"]["net_profit_twd"] == expected["us_medium"]
+    assert state["long"]["net_profit_twd"] == expected["long"]

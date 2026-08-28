@@ -102,11 +102,12 @@ jobs:
             period="morning"
             commit_message="更新 AI 股票morning報"
           elif [ "${{ github.event_name }}" = "push" ]; then
-            # A scoring/code deployment is a completed-report checkpoint, not
-            # an intraday refresh.  Treating it as intraday used to preserve a
-            # waiting placeholder and could overwrite the visible report.
+            # A code push may refresh the display, but it is not a scheduled
+            # market-close checkpoint.  Keep all model ledgers and frozen
+            # validation snapshots unchanged.
             period="evening"
-            commit_message="更新 AI 股票evening報"
+            intraday="true"
+            commit_message="程式更新後安全刷新"
           else
             case "${{ github.event.schedule }}" in
               "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;

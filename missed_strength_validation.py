@@ -346,18 +346,31 @@ def _settle_snapshot(
         prior = frozen_map.get(actual["symbol"])
         captured_top10 = actual_rank <= 10 and actual["symbol"] in frozen_top10
         captured_top20 = actual["symbol"] in frozen_top20
-        if prior is None or not prior.get("data_complete"):
-            error_type = "data_incomplete"
-        elif (actual_rank <= 10 and not captured_top10) or (actual_rank > 10 and not captured_top20):
-            error_type = "model_judgment_error"
-        else:
+        # ``actual_top20`` is the TOP20 audit, so a symbol already present in
+        # the frozen TOP20 is captured even when another optional data field
+        # was incomplete.  The old order counted captured symbols as misses.
+        if captured_top20:
             error_type = "captured"
+        elif prior is None or not prior.get("data_complete"):
+            error_type = "data_incomplete"
+        else:
+            error_type = "model_judgment_error"
+        top10_error_type = None
+        if actual_rank <= 10:
+            if captured_top10:
+                top10_error_type = "captured"
+            elif prior is None or not prior.get("data_complete"):
+                top10_error_type = "data_incomplete"
+            else:
+                top10_error_type = "model_judgment_error"
         enriched.append({
             **actual,
             "actual_rank": actual_rank,
             "captured_by_matching_top10": captured_top10 if actual_rank <= 10 else None,
             "captured_by_matching_top20": captured_top20,
             "error_type": error_type,
+            "top10_error_type": top10_error_type,
+            "top20_error_type": error_type,
             "prior": prior,
         })
     captured10 = sum(item.get("captured_by_matching_top10") is True for item in enriched[:10])
@@ -376,6 +389,12 @@ def _settle_snapshot(
         },
         "missed_model_judgment_count": sum(item["error_type"] == "model_judgment_error" for item in enriched),
         "missed_data_incomplete_count": sum(item["error_type"] == "data_incomplete" for item in enriched),
+        "top10_missed_model_judgment_count": sum(
+            item.get("top10_error_type") == "model_judgment_error" for item in enriched[:10]
+        ),
+        "top10_missed_data_incomplete_count": sum(
+            item.get("top10_error_type") == "data_incomplete" for item in enriched[:10]
+        ),
     }
 
 

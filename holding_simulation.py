@@ -430,6 +430,11 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
     for position in positions:
         if position.get("market") != market or position.get("realized"):
             continue
+        # A provider can temporarily return an older completed candle after a
+        # newer valuation was already stored.  Never let that stale candle
+        # roll a shadow portfolio backwards.
+        if session_date < str(position.get("last_valuation_date") or ""):
+            continue
         row = row_map.get(str(position.get("symbol") or ""))
         close_price = _finite(row.get("official_close_price")) if row else 0.0
         if not row or str(row.get("official_session_date") or "") != session_date or close_price <= 0:
@@ -461,6 +466,8 @@ def _value_benchmark_positions(
         return
     for position in positions:
         if position.get("market") != market or position.get("realized"):
+            continue
+        if session_date < str(position.get("last_valuation_date") or ""):
             continue
         entry_price = _finite(position.get("entry_price"))
         allocation = _finite(position.get("allocation_twd"))
@@ -538,8 +545,13 @@ def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: st
     _value_benchmark_positions(
         portfolio.get("benchmark_positions") or [], rows, market, session_date
     )
-    if portfolio.get("positions"):
-        portfolio["last_valuation_date"] = session_date
+    valuation_dates = [
+        str(position.get("last_valuation_date") or "")
+        for position in portfolio.get("positions") or []
+        if position.get("last_valuation_date")
+    ]
+    if valuation_dates:
+        portfolio["last_valuation_date"] = max(valuation_dates)
     _summarize(portfolio, portfolio.get("positions") or [])
     _summarize_benchmark(portfolio)
 
@@ -571,7 +583,15 @@ def _update_long(state: dict[str, Any], rows: list[dict[str, Any]], market: str,
     _value_benchmark_positions(
         portfolio.get("benchmark_positions") or [], rows, market, session_date
     )
-    portfolio.setdefault("last_valuation_date", {"TW": None, "US": None})[market] = session_date
+    valuation_dates = [
+        str(position.get("last_valuation_date") or "")
+        for position in portfolio.get("positions") or []
+        if position.get("market") == market and position.get("last_valuation_date")
+    ]
+    if valuation_dates:
+        portfolio.setdefault("last_valuation_date", {"TW": None, "US": None})[market] = max(
+            valuation_dates
+        )
     _summarize(portfolio, portfolio.get("positions") or [])
     _summarize_benchmark(portfolio)
     # The long portfolio is not complete until both intended market positions

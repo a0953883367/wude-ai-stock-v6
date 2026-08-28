@@ -30,14 +30,23 @@ def validate_taiwan_data(row: dict[str, Any]) -> dict[str, Any]:
         return row
 
     issues: list[str] = []
-    session = _date_value(row.get("tw_official_session_date"))
+    # The completed daily candle is the common market-session reference.  The
+    # TWSE snapshot can briefly lag while Yahoo/FinMind and T86 have already
+    # advanced; using the stale snapshot date used to disable valid T86 flow
+    # for nearly the whole listed universe.
+    official_session = _date_value(row.get("tw_official_session_date"))
+    session = _date_value(row.get("official_session_date")) or official_session
     price_unit = str(row.get("tw_price_unit") or "")
     official_price = bool(row.get("tw_official_price_available"))
     if official_price and price_unit != "TWD/shares":
         row["tw_official_price_available"] = False
         official_price = False
         issues.append("官方價量單位不符")
-    reference_session = session if official_price else None
+    if official_price and session and official_session != session:
+        row["tw_official_price_available"] = False
+        official_price = False
+        issues.append("官方價量交易日不一致")
+    reference_session = session
 
     institution_date = _date_value(row.get("institution_date"))
     if row.get("institution_available"):
