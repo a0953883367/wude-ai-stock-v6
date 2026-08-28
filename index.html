@@ -150,7 +150,7 @@ try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.local
 try{
   if(new URLSearchParams(window.location.search).get('transfer_live_token')==='1'){
     var existingLiveToken=WudeLiveClient.accessToken(window.localStorage);
-    var ownerLiveUrl='https://wude-ai-stock-owner.a0953883367.chatgpt.site/live';
+    var ownerLiveUrl='https://wude-ai-stock-app.vercel.app/live';
     window.location.replace(existingLiveToken
       ? ownerLiveUrl+'#live_token='+encodeURIComponent(existingLiveToken)
       : ownerLiveUrl+'?live_transfer=missing');
