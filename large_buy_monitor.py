@@ -1,9 +1,9 @@
-"""Ten-second aggressive-buy detector shared by Taiwan and US live streams.
+"""Ten-second aggressive buy/sell detector shared by Taiwan and US streams.
 
 The detector never places orders and never changes ranking data.  A trade is
-classified as buyer-initiated when it executes at the latest ask; the tick rule
-is used only when the book is unavailable.  Alerts are emitted for either one
-large print or a 3-5 print cluster inside a rolling ten-second window.
+classified by the latest bid/ask; the tick rule is used only when the book is
+unavailable. Alerts are emitted for a large print or a 3-5 print cluster in
+either direction inside a rolling ten-second window.
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ class LargeBuyDetector:
         self._quotes: dict[str, tuple[float | None, float | None]] = {}
         self._last_price: dict[str, float] = {}
         self._last_side: dict[str, bool] = {}
-        self._last_alert_at: dict[str, float] = {}
+        self._last_alert_at: dict[tuple[str, bool], float] = {}
         self._lock = threading.RLock()
 
     def update_quote(self, symbol: str, *, bid: Any = None, ask: Any = None) -> None:
@@ -172,9 +172,8 @@ class LargeBuyDetector:
             while window and window[0].timestamp < cutoff:
                 window.popleft()
 
-            if not is_buy:
-                return None
-            if at - self._last_alert_at.get(symbol, float("-inf")) < self.config.cooldown_seconds:
+            cooldown_key = (symbol, is_buy)
+            if at - self._last_alert_at.get(cooldown_key, float("-inf")) < self.config.cooldown_seconds:
                 return None
 
             single_threshold, cluster_threshold = self._thresholds(baseline)
@@ -184,39 +183,51 @@ class LargeBuyDetector:
                 trigger_type = "single"
                 selected = [trade]
             else:
-                buy_trades = [item for item in window if item.is_aggressive_buy]
-                selected = buy_trades[-self.config.cluster_max_trades:]
+                directional_trades = [
+                    item for item in window if item.is_aggressive_buy is is_buy
+                ]
+                selected = directional_trades[-self.config.cluster_max_trades:]
                 total_value = sum(item.value for item in window)
                 selected_value = sum(item.value for item in selected)
-                buy_ratio = selected_value / total_value if total_value > 0 else 0.0
+                directional_ratio = selected_value / total_value if total_value > 0 else 0.0
                 if (
                     self.config.cluster_min_trades <= len(selected) <= self.config.cluster_max_trades
                     and selected_value >= cluster_threshold
-                    and buy_ratio >= self.config.cluster_buy_ratio_min
+                    and directional_ratio >= self.config.cluster_buy_ratio_min
                 ):
                     trigger_type = "cluster"
             if not trigger_type:
                 return None
 
             total_window_value = sum(item.value for item in window)
-            aggressive_window_value = sum(item.value for item in window if item.is_aggressive_buy)
+            aggressive_buy_value = sum(item.value for item in window if item.is_aggressive_buy)
+            aggressive_sell_value = sum(item.value for item in window if not item.is_aggressive_buy)
             alert_value = sum(item.value for item in selected)
-            self._last_alert_at[symbol] = at
+            self._last_alert_at[cooldown_key] = at
+            side = "buy" if is_buy else "sell"
+            side_text = "大買" if is_buy else "大賣"
             return {
                 "symbol": baseline.symbol,
                 "name": baseline.name,
                 "market": baseline.market,
+                "alert_side": side,
                 "trigger_type": trigger_type,
-                "trigger_label": "單筆大買" if trigger_type == "single" else f"{len(selected)}筆連續大買",
+                "trigger_label": f"單筆{side_text}" if trigger_type == "single" else f"{len(selected)}筆連續{side_text}",
                 "trade_count": len(selected),
                 "window_seconds": self.config.window_seconds,
                 "price": trade_price,
                 "shares": sum(item.size for item in selected),
-                "buy_value": round(alert_value, 2),
+                "value": round(alert_value, 2),
+                "buy_value": round(alert_value, 2) if is_buy else 0.0,
+                "sell_value": round(alert_value, 2) if not is_buy else 0.0,
                 "window_total_value": round(total_window_value, 2),
-                "window_aggressive_buy_value": round(aggressive_window_value, 2),
+                "window_aggressive_buy_value": round(aggressive_buy_value, 2),
+                "window_aggressive_sell_value": round(aggressive_sell_value, 2),
                 "aggressive_buy_ratio_pct": round(
-                    aggressive_window_value / total_window_value * 100, 2
+                    aggressive_buy_value / total_window_value * 100, 2
+                ) if total_window_value else 0.0,
+                "aggressive_sell_ratio_pct": round(
+                    aggressive_sell_value / total_window_value * 100, 2
                 ) if total_window_value else 0.0,
                 "single_threshold": round(single_threshold, 2),
                 "cluster_threshold": round(cluster_threshold, 2),
@@ -308,13 +319,18 @@ def load_stock_baselines(path: Path) -> dict[str, StockBaseline]:
 
 def format_large_buy_telegram(alert: dict[str, Any]) -> str:
     currency = "TWD" if alert.get("market") == "TW" else "USD"
-    value = float(alert.get("buy_value") or 0)
+    side = "sell" if alert.get("alert_side") == "sell" else "buy"
+    side_text = "賣出" if side == "sell" else "買進"
+    value_key = "sell_value" if side == "sell" else "buy_value"
+    ratio_key = "aggressive_sell_ratio_pct" if side == "sell" else "aggressive_buy_ratio_pct"
+    value = float(alert.get(value_key) or 0)
+    ratio = float(alert.get(ratio_key) or 0)
     return "\n".join([
-        f"🚨 10秒大量主動買進｜{alert.get('trigger_label')}",
+        f"{'🔻' if side == 'sell' else '🚨'} 10秒大量主動{side_text}｜{alert.get('trigger_label')}",
         f"{alert.get('name')} {alert.get('symbol')}｜{alert.get('market')}",
         f"成交價 {float(alert.get('price') or 0):,.2f}｜{int(alert.get('trade_count') or 0)} 筆",
-        f"主動買進金額 {currency} {value:,.0f}｜買進占比 {float(alert.get('aggressive_buy_ratio_pct') or 0):.1f}%",
-        f"偵測時間 {alert.get('detected_at')}｜僅為即時量價警示，不代表主力身分或買進建議",
+        f"主動{side_text}金額 {currency} {value:,.0f}｜{side_text}占比 {ratio:.1f}%",
+        f"偵測時間 {alert.get('detected_at')}｜僅為即時量價警示，不代表主力身分或交易建議",
     ])
 
 
