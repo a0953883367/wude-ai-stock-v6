@@ -316,12 +316,14 @@ class LargeBuyAlertService:
         *,
         config: LargeBuyConfig | None = None,
         notifier: Callable[[str], Any] | None = None,
+        alert_notifier: Callable[[dict[str, Any]], Any] | None = None,
     ) -> None:
         self.config = config or LargeBuyConfig()
         self.baselines = load_stock_baselines(report_path)
         self.detector = LargeBuyDetector(self.baselines, config=self.config)
         self.store = JsonAlertStore(state_path, limit=self.config.alert_history_limit)
         self.notifier = notifier
+        self.alert_notifier = alert_notifier
         self._status: dict[str, dict[str, Any]] = {
             market: {"state": "waiting", "subscribed": 0, "error": None}
             for market in MARKETS
@@ -353,6 +355,12 @@ class LargeBuyAlertService:
                 self.notifier(format_large_buy_telegram(stored))
             except Exception:
                 # Stream processing must continue even when notification delivery fails.
+                pass
+        if getattr(self, "alert_notifier", None) is not None:
+            try:
+                self.alert_notifier(stored)
+            except Exception:
+                # A device notification failure must never stop market-data processing.
                 pass
         return stored
 
