@@ -114,3 +114,16 @@ def test_telegram_text_states_information_only():
     })
     assert "10秒大量主動買進" in text
     assert "不代表主力身分或買進建議" in text
+
+
+def test_railway_image_keeps_the_full_large_buy_universe(tmp_path: Path):
+    ignore_rules = Path(".dockerignore").read_text(encoding="utf-8").splitlines()
+    assert "reports" not in ignore_rules
+    assert "!reports/all_analysis.json" in ignore_rules
+    service = LargeBuyAlertService(
+        Path("reports/all_analysis.json"), tmp_path / "alerts.json", config=config()
+    )
+    snapshot = service.snapshot()
+    assert snapshot["universe"]["TW"] > 0
+    assert snapshot["universe"]["US"] > 0
+    assert snapshot["universe"]["TW"] + snapshot["universe"]["US"] >= 300
