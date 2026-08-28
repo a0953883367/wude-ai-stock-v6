@@ -36,23 +36,12 @@ on:
       - sitecustomize.py
       - .github/workflows/stock-briefing.yml
   schedule:
-    # Fixed Telegram reports (UTC): Taiwan 06:00 / 12:00 / 20:00.
-    - cron: "0 22 * * *"
-    - cron: "0 4 * * *"
-    - cron: "0 12 * * *"
-
-    # Silent hourly refreshes during Taiwan trading hours.
-    # 09:00 / 10:00 / 11:00 / 13:00 / 14:00 Asia/Taipei, weekdays.
-    # The fixed 12:00 report above is the hourly noon refresh.
-    - cron: "0 1 * * 1-5"
-    - cron: "0 2 * * 1-5"
-    - cron: "0 3 * * 1-5"
-    - cron: "0 5 * * 1-5"
-    - cron: "0 6 * * 1-5"
-
-    # Silent hourly refreshes covering US summer and winter trading hours.
-    # 13:30 through 21:30 UTC, weekdays (21:30 through 05:30 Asia/Taipei).
-    - cron: "30 13-21 * * 1-5"
+    # Fixed reports only. Run seven minutes after the target hour because
+    # GitHub warns that schedules at the start of an hour can be delayed or
+    # dropped during high load. Target windows remain Taiwan 06:00/12:00/20:00.
+    - cron: "7 22 * * *" # 06:07 Asia/Taipei
+    - cron: "7 4 * * *"  # 12:07 Asia/Taipei
+    - cron: "7 12 * * *" # 20:07 Asia/Taipei
   workflow_dispatch:
     inputs:
       period:
@@ -69,11 +58,10 @@ permissions:
   contents: write
 
 concurrency:
-  group: stock-briefing
-  # A newer scoring/data deployment supersedes a stale report generation.
-  # Report files are committed only after a complete run, so cancellation
-  # cannot publish a partial ranking snapshot.
-  cancel-in-progress: true
+  # Keep code-push refreshes isolated from scheduled reports. A code change
+  # must never cancel the 06:00, 12:00, or 20:00 formal report.
+  group: stock-briefing-${{ github.event_name }}-${{ github.event.schedule || github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   briefing:
@@ -110,38 +98,12 @@ jobs:
             commit_message="程式更新後安全刷新"
           else
             case "${{ github.event.schedule }}" in
-              "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;
-              "0 4 * * *") period="noon"; commit_message="更新 AI 股票noon報" ;;
-              "0 12 * * *") period="evening"; commit_message="更新 AI 股票evening報" ;;
-              "0 1 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 09:00"
-                ;;
-              "0 2 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 10:00"
-                ;;
-              "0 3 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 11:00"
-                ;;
-              "0 5 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 13:00"
-                ;;
-              "0 6 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 14:00"
-                ;;
+              "7 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;
+              "7 4 * * *") period="noon"; commit_message="更新 AI 股票noon報" ;;
+              "7 12 * * *") period="evening"; commit_message="更新 AI 股票evening報" ;;
               *)
-                period="evening"
-                intraday="true"
-                commit_message="靜默美股盤中更新"
+                echo "Unsupported schedule: ${{ github.event.schedule }}" >&2
+                exit 1
                 ;;
             esac
           fi
