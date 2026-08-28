@@ -42,3 +42,16 @@ def test_push_payload_names_stock_and_opens_matching_symbol(tmp_path: Path):
     assert payload["title"] == "🚨 NVIDIA・NVDA"
     assert "US$320,000" in payload["body"]
     assert payload["url"] == "/live?symbol=NVDA&market=US"
+
+
+def test_push_payload_supports_large_sell(tmp_path: Path):
+    service = WebPushService(tmp_path / "subscriptions.json", tmp_path / "private.pem")
+    payload = service.payload({
+        "name": "聯電", "symbol": "2303.TW", "market": "TW",
+        "alert_side": "sell", "trigger_label": "單筆大賣", "sell_value": 6_000_000,
+        "price": 50, "aggressive_sell_ratio_pct": 91,
+    })
+    assert payload["title"].startswith("🔻")
+    assert "NT$6,000,000" in payload["body"]
+    assert "賣出占比 91.0%" in payload["body"]
+    assert payload["tag"] == "large-sell-2303.TW"

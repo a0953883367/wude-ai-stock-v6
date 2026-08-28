@@ -70,9 +70,25 @@ def test_old_prints_expire_and_cooldown_prevents_duplicate_alerts():
 
 def test_trade_at_bid_is_not_mislabelled_as_buy():
     detector = LargeBuyDetector(baselines(), config=config())
-    assert detector.process_trade(
+    alert = detector.process_trade(
         "2330.TW", price=999, size=10_000, bid=999, ask=1000, timestamp=100
-    ) is None
+    )
+    assert alert["alert_side"] == "sell"
+    assert alert["trigger_label"] == "單筆大賣"
+    assert alert["sell_value"] == 9_990_000
+    assert alert["aggressive_sell_ratio_pct"] == 100
+
+
+def test_buy_and_sell_have_independent_cooldowns():
+    detector = LargeBuyDetector(baselines(), config=config())
+    buy = detector.process_trade(
+        "2330.TW", price=1000, size=3000, bid=999, ask=1000, timestamp=100
+    )
+    sell = detector.process_trade(
+        "2330.TW", price=999, size=4000, bid=999, ask=1000, timestamp=101
+    )
+    assert buy["alert_side"] == "buy"
+    assert sell["alert_side"] == "sell"
 
 
 def test_special_condition_trade_does_not_trigger_large_buy_alert():
@@ -125,7 +141,18 @@ def test_telegram_text_states_information_only():
         "aggressive_buy_ratio_pct": 80, "detected_at": "now",
     })
     assert "10秒大量主動買進" in text
-    assert "不代表主力身分或買進建議" in text
+    assert "不代表主力身分或交易建議" in text
+
+
+def test_telegram_formats_large_sell_alert():
+    text = format_large_buy_telegram({
+        "alert_side": "sell", "trigger_label": "單筆大賣", "name": "聯電",
+        "symbol": "2303.TW", "market": "TW", "price": 50, "trade_count": 1,
+        "sell_value": 6_000_000, "aggressive_sell_ratio_pct": 91, "detected_at": "now",
+    })
+    assert "大量主動賣出" in text
+    assert "賣出占比 91.0%" in text
+    assert "不代表主力身分或交易建議" in text
 
 
 def test_railway_image_keeps_the_full_large_buy_universe(tmp_path: Path):

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import json
 import math
 from pathlib import Path
+import re
 import threading
 import time
 from typing import Any, Callable, Iterable
@@ -23,6 +24,13 @@ WINDOWS = {"1m": 60, "5m": 300, "15m": 900, "60m": 3600}
 MARKETS = ("TW", "US")
 BUCKET_SECONDS = 30
 NON_DIRECTIONAL_CONDITIONS = frozenset({"4", "7", "B", "M", "P", "Q", "U", "W", "Z"})
+
+
+def normalize_theme(value: Any) -> str:
+    """Collapse cosmetic prefixes so one sector cannot occupy two ranks."""
+    text = re.sub(r"\s+", " ", str(value or "未分類")).strip()
+    text = re.sub(r"^[^0-9A-Za-z\u4e00-\u9fff]+\s*", "", text).strip()
+    return text or "未分類"
 
 
 def _finite(value: Any) -> float | None:
@@ -358,7 +366,7 @@ class CapitalFlowShadow:
             "symbol": symbol,
             "name": str(getattr(baseline, "name", symbol)),
             "market": str(getattr(baseline, "market", "")),
-            "theme": str(getattr(baseline, "theme", "未分類") or "未分類"),
+            "theme": normalize_theme(getattr(baseline, "theme", "未分類")),
             "asset_type": str(getattr(baseline, "asset_type", "個股") or "個股"),
             "buy_value": round(buy, 2),
             "sell_value": round(sell, 2),
@@ -417,15 +425,23 @@ class CapitalFlowShadow:
             theme_directional = theme_buy + theme_sell
             positive_members = sum(1 for row in members if row["net_flow"] > 0)
             negative_members = sum(1 for row in members if row["net_flow"] < 0)
+            theme_net = theme_buy - theme_sell
+            directional_members = positive_members if theme_net >= 0 else negative_members
             themes.append({
                 "theme": theme,
                 "member_count": len(members),
                 "positive_symbols": positive_members,
                 "negative_symbols": negative_members,
-                "net_flow": round(theme_buy - theme_sell, 2),
+                "net_flow": round(theme_net, 2),
                 "buy_ratio_pct": round(theme_buy / theme_directional * 100, 2) if theme_directional else 0.0,
-                "resonance": positive_members >= 3 and positive_members / len(members) >= 0.60,
-                "symbols": [row["symbol"] for row in sorted(members, key=lambda item: item["net_flow"], reverse=True)[:5]],
+                "resonance": directional_members >= 3 and directional_members / len(members) >= 0.60,
+                "symbols": [
+                    row["symbol"] for row in sorted(
+                        members,
+                        key=lambda item: item["net_flow"],
+                        reverse=theme_net >= 0,
+                    )[:5]
+                ],
             })
         inflows = sorted(
             (row for row in rows if row["net_flow"] > 0),

@@ -49,6 +49,18 @@ def test_three_symbol_theme_resonance_requires_real_breadth():
     assert semiconductor["resonance"] is True
 
 
+def test_cosmetic_theme_prefixes_are_merged_into_one_rank():
+    rows = baselines()
+    rows["2303.TW"] = StockBaseline("2303.TW", "聯電", "TW", 100, 100_000, "💾 半導體", "個股")
+    flow = CapitalFlowShadow(rows, clock=lambda: 2_000)
+    flow.process_trade("2330.TW", price=1000, size=100, ask=1000, timestamp=1_990)
+    flow.process_trade("2303.TW", price=100, size=100, ask=100, timestamp=1_991)
+    themes = flow.snapshot(now=2_000)["markets"]["TW"]["windows"]["15m"]["theme_inflows"]
+    semiconductor = [row for row in themes if row["theme"] == "半導體"]
+    assert len(semiconductor) == 1
+    assert semiconductor[0]["member_count"] == 2
+
+
 def test_special_sip_print_is_counted_but_not_used_as_directional_flow():
     flow = CapitalFlowShadow(baselines(), clock=lambda: 3_000)
     result = flow.process_trade(
@@ -114,4 +126,3 @@ def test_baseline_loader_keeps_theme_and_asset_type(tmp_path):
     result = load_stock_baselines(report)["0050.TW"]
     assert result.theme == "大盤ETF"
     assert result.asset_type == "ETF"
-

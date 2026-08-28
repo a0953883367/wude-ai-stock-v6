@@ -108,15 +108,20 @@ class WebPushService:
         market = str(alert.get("market") or "US")
         symbol = str(alert.get("symbol") or "")
         currency = "NT$" if market == "TW" else "US$"
-        value = float(alert.get("buy_value") or 0)
+        side = "sell" if alert.get("alert_side") == "sell" else "buy"
+        side_text = "賣出" if side == "sell" else "買進"
+        value_key = "sell_value" if side == "sell" else "buy_value"
+        ratio_key = "aggressive_sell_ratio_pct" if side == "sell" else "aggressive_buy_ratio_pct"
+        value = float(alert.get(value_key) or 0)
+        ratio = float(alert.get(ratio_key) or 0)
         price = float(alert.get("price") or 0)
         return {
-            "title": f"🚨 {alert.get('name') or symbol}・{symbol}",
+            "title": f"{'🔻' if side == 'sell' else '🚨'} {alert.get('name') or symbol}・{symbol}",
             "body": (
                 f"{alert.get('trigger_label')}｜{currency}{value:,.0f}｜"
-                f"成交 {price:,.2f}｜買進占比 {float(alert.get('aggressive_buy_ratio_pct') or 0):.1f}%"
+                f"成交 {price:,.2f}｜{side_text}占比 {ratio:.1f}%"
             ),
-            "tag": f"large-buy-{symbol}",
+            "tag": f"large-{side}-{symbol}",
             "url": f"/live?symbol={quote(symbol)}&market={market}",
         }
 
