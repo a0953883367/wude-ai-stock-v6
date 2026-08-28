@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import time
+from collections import Counter
 from datetime import datetime
 
 from config import SETTINGS, TAIPEI
@@ -319,6 +320,87 @@ def _previous_rows() -> dict[str, dict]:
     }
 
 
+def _cohort_name(row: dict) -> str:
+    market = str(row.get("market") or "").upper()
+    asset = "ETF" if "ETF" in str(row.get("type") or "").upper() else "STOCK"
+    return f"{market}_{asset}" if market in {"TW", "US"} else ""
+
+
+def _report_session_issues(
+    current_rows: list[dict],
+    previous_payload: dict,
+    *,
+    minimum_dominant_coverage: float = 0.9,
+) -> list[str]:
+    """Reject mixed or regressed market sessions before any formal state write."""
+    previous_rows = (
+        previous_payload.get("data", []) if isinstance(previous_payload, dict) else []
+    )
+    previous_by_symbol = {
+        str(row.get("symbol") or ""): row
+        for row in previous_rows
+        if isinstance(row, dict) and row.get("symbol")
+    }
+    issues: list[str] = []
+
+    current_cohorts: dict[str, list[dict]] = {}
+    previous_cohorts: dict[str, list[dict]] = {}
+    for row in current_rows:
+        cohort = _cohort_name(row)
+        if cohort:
+            current_cohorts.setdefault(cohort, []).append(row)
+    for row in previous_rows:
+        if not isinstance(row, dict):
+            continue
+        cohort = _cohort_name(row)
+        if cohort:
+            previous_cohorts.setdefault(cohort, []).append(row)
+
+    for cohort, rows in current_cohorts.items():
+        sessions = [
+            str(row.get("official_session_date") or "")
+            for row in rows
+            if row.get("official_session_date")
+        ]
+        if not sessions:
+            issues.append(f"{cohort} 全部缺少 official_session_date")
+            continue
+        dominant_session, dominant_count = Counter(sessions).most_common(1)[0]
+        coverage = dominant_count / len(rows)
+        if coverage < minimum_dominant_coverage:
+            issues.append(
+                f"{cohort} 交易日混雜：主交易日 {dominant_session} "
+                f"僅 {dominant_count}/{len(rows)}（{coverage:.1%}）"
+            )
+
+        previous_sessions = [
+            str(row.get("official_session_date") or "")
+            for row in previous_cohorts.get(cohort, [])
+            if row.get("official_session_date")
+        ]
+        if previous_sessions:
+            previous_dominant = Counter(previous_sessions).most_common(1)[0][0]
+            if dominant_session < previous_dominant:
+                issues.append(
+                    f"{cohort} 主交易日倒退：{previous_dominant} -> {dominant_session}"
+                )
+
+    regressions: list[str] = []
+    for row in current_rows:
+        symbol = str(row.get("symbol") or "")
+        current_session = str(row.get("official_session_date") or "")
+        previous_session = str(
+            previous_by_symbol.get(symbol, {}).get("official_session_date") or ""
+        )
+        if symbol and current_session and previous_session and current_session < previous_session:
+            regressions.append(f"{symbol} {previous_session}->{current_session}")
+    if regressions:
+        preview = "、".join(regressions[:8])
+        suffix = f" 等 {len(regressions)} 檔" if len(regressions) > 8 else ""
+        issues.append(f"個股交易日倒退：{preview}{suffix}")
+    return issues
+
+
 def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict, dict]:
     """Reuse non-intraday Taiwan fields; prices/technicals are still downloaded live."""
     institutions: dict[str, dict] = {}
@@ -551,6 +633,19 @@ def main() -> int:
                 row = validate_taiwan_data(row)
             features.append(enforce_market_contract(row))
 
+    try:
+        previous_analysis = json.loads(
+            (SETTINGS.reports_dir / "all_analysis.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        previous_analysis = {}
+    source_session_issues = _report_session_issues(features, previous_analysis)
+    if source_session_issues:
+        raise RuntimeError(
+            "行情交易日完整性檢查失敗；禁止更新任何正式狀態："
+            + "；".join(source_session_issues)
+        )
+
     market = _stage("核心市場", fetch_core_market)
     tw_market_context = build_tw_market_context(features, market)
     nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
@@ -681,6 +776,14 @@ def main() -> int:
         "US_STOCK": [row for row in ranked if row.get("market") == "US" and "ETF" not in str(row.get("type", ""))][:20],
         "US_ETF": [row for row in ranked if row.get("market") == "US" and "ETF" in str(row.get("type", ""))][:20],
     }
+    session_issues = _report_session_issues(
+        [row for rows in backtest_groups.values() for row in rows],
+        previous_analysis,
+    )
+    if session_issues:
+        raise RuntimeError(
+            "報表交易日完整性檢查失敗；禁止覆寫正式報表：" + "；".join(session_issues)
+        )
     # The ten candidate models must see the same fixed shadow universe.  Rows
     # that are not actual buy triggers remain useful for model comparison but
     # are never counted as executed trade signals.

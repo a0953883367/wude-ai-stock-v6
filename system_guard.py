@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -66,6 +67,118 @@ def _publish_check(name: str, outcome: str, previous: dict[str, Any]) -> dict[st
     return _check(code, title, "critical", f"最近一次發布結果：{value}", "檢查發布網站狀態與授權，修復後重新執行報告")
 
 
+def _cohort_name(row: dict[str, Any]) -> str:
+    market = str(row.get("market") or "").upper()
+    asset = "ETF" if "ETF" in str(row.get("type") or "").upper() else "STOCK"
+    return f"{market}_{asset}" if market in {"TW", "US"} else ""
+
+
+def _market_session_check(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    cohorts: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        cohort = _cohort_name(row)
+        if cohort:
+            cohorts.setdefault(cohort, []).append(row)
+    issues: list[str] = []
+    summaries: list[str] = []
+    for cohort, cohort_rows in sorted(cohorts.items()):
+        sessions = [
+            str(row.get("official_session_date") or "")
+            for row in cohort_rows
+            if row.get("official_session_date")
+        ]
+        if not sessions:
+            issues.append(f"{cohort} 全部缺少交易日")
+            continue
+        session, count = Counter(sessions).most_common(1)[0]
+        coverage = count / len(cohort_rows)
+        summaries.append(f"{cohort} {session} {count}/{len(cohort_rows)}")
+        if coverage < 0.9:
+            issues.append(
+                f"{cohort} 主交易日 {session} 僅 {count}/{len(cohort_rows)}（{coverage:.1%}）"
+            )
+    if not cohorts:
+        return _check(
+            "market_session_consistency", "市場交易日一致性", "critical",
+            "完整分析中沒有可辨識的台股、美股或 ETF 資料",
+            "停止使用本次排名並重新產生完整報表",
+        )
+    if issues:
+        return _check(
+            "market_session_consistency", "市場交易日一致性", "critical",
+            "；".join(issues),
+            "停止使用混日排名；檢查行情來源後重新執行完整報表",
+        )
+    return _check(
+        "market_session_consistency", "市場交易日一致性", "ok", "；".join(summaries)
+    )
+
+
+def _holding_valuation_check(holding: dict[str, Any]) -> dict[str, Any]:
+    if not holding:
+        return _check(
+            "holding_valuation_consistency", "持有估值日期", "critical",
+            "找不到 holding_simulation.json 或內容無法讀取",
+            "不要依持有損益調整部位；重新產生完整持有模擬",
+        )
+    issues: list[str] = []
+    medium = holding.get("medium") if isinstance(holding.get("medium"), dict) else {}
+    for market in ("TW", "US"):
+        portfolio = medium.get(market) if isinstance(medium.get(market), dict) else {}
+        positions = portfolio.get("positions") if isinstance(portfolio.get("positions"), list) else []
+        dates = sorted({
+            str(position.get("last_valuation_date") or "")
+            for position in positions
+            if isinstance(position, dict) and position.get("last_valuation_date")
+        })
+        portfolio_date = str(portfolio.get("last_valuation_date") or "")
+        if positions and not dates:
+            issues.append(f"中期 {market} 持倉全部缺少估值日")
+        elif len(dates) > 1:
+            issues.append(f"中期 {market} 持倉估值日混雜：{','.join(dates)}")
+        if dates and portfolio_date != max(dates):
+            issues.append(
+                f"中期 {market} 組合估值日 {portfolio_date or '缺少'}，持倉最新為 {max(dates)}"
+            )
+
+    long_portfolio = holding.get("long") if isinstance(holding.get("long"), dict) else {}
+    long_positions = (
+        long_portfolio.get("positions")
+        if isinstance(long_portfolio.get("positions"), list)
+        else []
+    )
+    long_dates = (
+        long_portfolio.get("last_valuation_date")
+        if isinstance(long_portfolio.get("last_valuation_date"), dict)
+        else {}
+    )
+    for market in ("TW", "US"):
+        dates = sorted({
+            str(position.get("last_valuation_date") or "")
+            for position in long_positions
+            if isinstance(position, dict)
+            and str(position.get("market") or "").upper() == market
+            and position.get("last_valuation_date")
+        })
+        if len(dates) > 1:
+            issues.append(f"長期 {market} 持倉估值日混雜：{','.join(dates)}")
+        recorded = str(long_dates.get(market) or "")
+        if dates and recorded != max(dates):
+            issues.append(
+                f"長期 {market} 組合估值日 {recorded or '缺少'}，持倉最新為 {max(dates)}"
+            )
+    if issues:
+        return _check(
+            "holding_valuation_consistency", "持有估值日期", "critical",
+            "；".join(issues),
+            "不要依本次持有損益交易；修復資料日期後重新驗證",
+        )
+    return _check(
+        "holding_valuation_consistency", "持有估值日期", "ok",
+        "中期與長期持倉估值日期一致且未發現內部倒退",
+    )
+
+
 def build_guard(
     reports_dir: Path,
     *,
@@ -78,6 +191,7 @@ def build_guard(
     latest = _load(reports_dir / "latest.json")
     rankings = _load(reports_dir / "rankings.json")
     all_analysis = _load(reports_dir / "all_analysis.json")
+    holding = _load(reports_dir / "holding_simulation.json")
     rotation_health = _load(reports_dir / "market_rotation_shadow_health.json")
     checks: list[dict[str, Any]] = []
 
@@ -124,6 +238,9 @@ def build_guard(
         checks.append(_check("analysis_output", "分析輸出", "warning", f"完成 {analyzed}/{universe} 檔分析，涵蓋率偏低", "檢查 unavailable 清單與行情來源"))
     else:
         checks.append(_check("analysis_output", "分析輸出", "ok", f"完成 {analyzed}/{universe or analyzed} 檔；排行 {len(ranking_rows)} 檔"))
+
+    checks.append(_market_session_check(analysis_rows))
+    checks.append(_holding_valuation_check(holding))
 
     data_status = latest.get("data_status") if isinstance(latest.get("data_status"), dict) else {}
     expected_tw = int(data_status.get("expected_tw_count") or 0)

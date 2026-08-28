@@ -2,14 +2,14 @@ name: AI 系統值班員
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "23 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: stock-briefing
+  group: system-guard
   cancel-in-progress: false
 
 jobs:

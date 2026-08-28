@@ -185,6 +185,30 @@ def test_data_incomplete_and_model_judgment_are_separated(tmp_path):
     assert summary["model_judgment_misses"] >= 1
 
 
+def test_incomplete_stock_captured_by_frozen_top20_is_not_counted_as_top20_miss(tmp_path):
+    state = empty_state()
+    signal = rows("TW", "2026-08-21")
+    # TW10 is in the frozen TOP20 and in the following session's actual TOP20.
+    signal[10]["market_data_quality_score"] = 40
+    signal[10]["entry_data_coverage"] = 4
+    history = regimes("TW", "2026-08-21", "2026-08-24")
+    update_state(
+        state, signal, history, tmp_path,
+        period="evening", updated_at="2026-08-21 20:00:00",
+    )
+    update_state(
+        state, rows("TW", "2026-08-24", outcome=True), history, tmp_path,
+        period="evening", updated_at="2026-08-24 20:00:00",
+    )
+
+    outcome = state["markets"]["TW"]["outcomes"][0]
+    captured = next(item for item in outcome["actual_top20"] if item["symbol"] == "TW10")
+    assert captured["captured_by_matching_top20"] is True
+    assert captured["error_type"] == "captured"
+    assert outcome["missed_data_incomplete_count"] == 0
+    assert outcome["top10_missed_data_incomplete_count"] >= 1
+
+
 def test_tampered_snapshot_is_quarantined_and_never_counted(tmp_path):
     state = empty_state()
     history = regimes("US", "2026-08-21", "2026-08-24", label="bear")
