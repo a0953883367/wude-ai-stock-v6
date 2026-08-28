@@ -172,6 +172,12 @@ def configure_fubon_certificate(environ: dict[str, str] | os._Environ[str] | Non
     return Path(filename)
 
 
+def _login_fubon_stream() -> Any:
+    """Prepare the cloud certificate before opening the persistent Fubon stream."""
+    configure_fubon_certificate()
+    return _login_fubon()
+
+
 class LiveDataService:
     def __init__(
         self,
@@ -581,7 +587,7 @@ def main() -> None:
     monitor.start()
     large_buy_streams: LargeBuyStreams | None = None
     if _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")):
-        large_buy_streams = LargeBuyStreams(LiveRequestHandler.large_buy_service, _login_fubon)
+        large_buy_streams = LargeBuyStreams(LiveRequestHandler.large_buy_service, _login_fubon_stream)
         large_buy_streams.start()
     else:
         for market in ("TW", "US"):
