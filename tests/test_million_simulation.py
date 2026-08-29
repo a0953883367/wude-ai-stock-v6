@@ -3,6 +3,7 @@ from million_simulation import (
     CAPITAL_PER_MARKET,
     empty_state,
     select_picks,
+    select_reserves,
     update_state,
 )
 
@@ -48,6 +49,9 @@ def test_selects_exact_top_ten_per_strategy_and_excludes_etfs():
     assert all(pick["allocation_twd"] == ALLOCATION_PER_PICK for pick in overall + short)
     assert overall[0]["symbol"] == "TW01"
     assert short[0]["symbol"] == "TW15"
+    reserves = select_reserves(rows, "TW", "overall")
+    assert [pick["rank"] for pick in reserves] == [11, 12, 13, 14, 15]
+    assert not ({pick["symbol"] for pick in overall} & {pick["symbol"] for pick in reserves})
 
 
 def test_tw_and_us_start_only_after_their_completed_report_period():
@@ -133,11 +137,45 @@ def test_intraday_refresh_never_starts_or_settles_the_experiment():
     assert state["markets"]["TW"]["days"] == []
 
 
-def test_missing_frozen_prices_waits_and_never_counts_partial_profit():
+def test_new_snapshot_uses_highest_frozen_reserve_and_preserves_original_result():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
     current = universe("2026-08-24")
-    missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
+    pending = state["markets"]["US"]["pending"]
+    missing_symbol = pending["strategies"]["overall"][0]["symbol"]
+    first_reserve = pending["reserves"]["overall"][0]
+    missing_slots = sum(
+        pick["symbol"] == missing_symbol
+        for strategy in ("overall", "short")
+        for pick in pending["strategies"][strategy]
+    )
+    current = [item for item in current if item["symbol"] != missing_symbol]
+
+    update_state(state, current, period="morning", updated_at="first close attempt")
+    market = state["markets"]["US"]
+    assert market["completed_days"] == 1
+    day = market["days"][0]
+    assert day["session_date"] == "2026-08-24"
+    assert day["original_data_complete"] is False
+    assert day["original_available_positions"] == 20 - missing_slots
+    assert day["original_net_profit_twd"] is None
+    assert len(day["reserve_replacements"]) == missing_slots
+    assert day["reserve_replacements"][0]["original_symbol"] == missing_symbol
+    assert day["reserve_replacements"][0]["reserve_symbol"] == first_reserve["symbol"]
+    replacement = day["strategies"]["overall"]["positions"][0]
+    assert replacement["is_reserve_replacement"] is True
+    assert replacement["source_rank"] == 11
+    assert replacement["replaces_symbol"] == missing_symbol
+    assert market["original_completed_days"] == 0
+
+
+def test_legacy_snapshot_without_reserves_waits_and_never_counts_partial_profit():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    pending = state["markets"]["US"]["pending"]
+    pending.pop("reserves", None)
+    current = universe("2026-08-24")
+    missing_symbol = pending["strategies"]["overall"][0]["symbol"]
     current = [item for item in current if item["symbol"] != missing_symbol]
 
     update_state(state, current, period="morning", updated_at="first close attempt")
@@ -149,15 +187,11 @@ def test_missing_frozen_prices_waits_and_never_counts_partial_profit():
     assert market["pending"]["available_positions"] < 20
     assert missing_symbol in market["pending"]["missing_symbols"]
 
-    update_state(state, universe("2026-08-24"), period="morning", updated_at="retry same close")
-    assert market["completed_days"] == 1
-    assert market["days"][0]["session_date"] == "2026-08-24"
-    assert market["days"][0]["net_profit_twd"] != 0
-
 
 def test_unresolved_prices_are_quarantined_when_next_session_arrives():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    state["markets"]["US"]["pending"].pop("reserves", None)
     current = universe("2026-08-24")
     missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
     current = [item for item in current if item["symbol"] != missing_symbol]
