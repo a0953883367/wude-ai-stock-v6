@@ -114,7 +114,24 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
     free_cash_flow = _finite(row.get("free_cash_flow"))
     operating_cash_flow = _finite(row.get("operating_cash_flow"))
     per = _finite(row.get("per"))
+    per_source = "reported"
+    if per is None and price is not None:
+        annualized_eps = _annualize_ytd(_finite(row.get("eps")), report_date)
+        if annualized_eps is not None and annualized_eps > 0:
+            per = price / annualized_eps
+            per_source = "price_divided_by_official_annualized_ytd_eps"
+    if per is None:
+        per_source = "unavailable"
     earnings_years = per if per is not None and per > 0 else None
+    pbr = _positive(row.get("pbr"))
+    pbr_source = "reported"
+    if pbr is None and price is not None:
+        book_value = _positive(row.get("book_value_per_share"))
+        if book_value is not None:
+            pbr = price / book_value
+            pbr_source = "price_divided_by_official_book_value_per_share"
+    if pbr is None:
+        pbr_source = "unavailable"
     sales_years = market_cap / revenue if market_cap is not None and revenue else None
     fcf_years = (
         market_cap / free_cash_flow
@@ -147,7 +164,9 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
         "earnings_years": earnings_years,
         "free_cash_flow_years": fcf_years,
         "ev_sales": ev_sales,
-        "pbr": _positive(row.get("pbr")),
+        "per_source": per_source,
+        "pbr": pbr,
+        "pbr_source": pbr_source,
         "revenue_yoy_pct": _finite(row.get("revenue_yoy_pct")),
         "operating_margin_pct": _finite(row.get("operating_margin_pct")),
         "roe_pct": _finite(row.get("roe_pct")),

@@ -220,6 +220,11 @@ def build_guard(
     rotation_health = _load(reports_dir / "market_rotation_shadow_health.json")
     valuation_health = _load(reports_dir / "valuation_risk_shadow_health.json")
     decision_health = _load(reports_dir / "decision_hub_health.json")
+    stockq = _load(reports_dir / "stockq_market_context.json")
+    validation_60d = _load(reports_dir / "validation_60d.json")
+    graduation = _load(reports_dir / "model_graduation.json")
+    unified_evidence = _load(reports_dir / "unified_evidence.json")
+    official_financial = _load(reports_dir / "tw_financial_official_cache.json")
     checks: list[dict[str, Any]] = []
 
     updated = _parse_taipei(latest.get("updated_at"))
@@ -299,6 +304,66 @@ def build_guard(
         ))
     else:
         checks.append(_check("financial_quality", "財務品質", "ok", f"已取得 {financial} 檔"))
+
+    official_requested = int(official_financial.get("requested_count") or 0)
+    official_available = int(official_financial.get("available_count") or 0)
+    official_coverage = float(official_financial.get("coverage_pct") or 0)
+    if not official_financial:
+        checks.append(_check(
+            "tw_official_financial", "台股官方財報", "warning",
+            "尚未建立交易所／櫃買中心官方財報快取",
+            "下一次完整報告自動重抓；缺值不以其他數字冒充",
+        ))
+    elif official_requested and official_coverage < 95:
+        checks.append(_check(
+            "tw_official_financial", "台股官方財報", "warning",
+            f"官方財報 {official_available}/{official_requested}（{official_coverage:.2f}%）",
+            "持續從 TWSE／TPEx 補抓；未申報股票只降低長期信心",
+        ))
+    else:
+        checks.append(_check(
+            "tw_official_financial", "台股官方財報", "ok",
+            f"官方財報 {official_available}/{official_requested}（{official_coverage:.2f}%）",
+        ))
+
+    if stockq.get("status") in {"ok", "stale_cache"} and int(stockq.get("indicator_count") or 0) > 0:
+        checks.append(_check(
+            "stockq_context", "StockQ 市場背景", "ok",
+            f"已取得 {int(stockq.get('indicator_count') or 0)} 項全球指標；只作市場背景",
+        ))
+    else:
+        checks.append(_check(
+            "stockq_context", "StockQ 市場背景", "warning",
+            "StockQ 指標暫時不可用；不影響個股資料與正式排名",
+            "下次排程自動重試並優先使用三日內快取",
+        ))
+
+    if not validation_60d:
+        checks.append(_check("validation_60d", "60日向前驗證", "warning", "尚未建立統一60日進度檔", "下一次報告自動重建"))
+    else:
+        checks.append(_check(
+            "validation_60d", "60日向前驗證", "ok",
+            f"真實交易日 {int(validation_60d.get('trading_days_collected') or 0)}/{int(validation_60d.get('target_trading_days') or 60)}；未補造缺日",
+        ))
+
+    if graduation.get("status") == "ready":
+        checks.append(_check("model_graduation", "模型畢業控制器", "ok", "已自動產生畢業結論；升級仍須人工決定"))
+    else:
+        checks.append(_check("model_graduation", "模型畢業控制器", "warning", "尚未產生完整畢業結論", "下一次報告自動重建"))
+
+    if unified_evidence.get("status") == "ready" and int(unified_evidence.get("invalid_count") or 0) == 0:
+        checks.append(_check(
+            "unified_evidence", "統一證據格式", "ok",
+            f"已驗證 {int(unified_evidence.get('evidence_count') or 0)} 筆證據，格式錯誤 0 筆",
+        ))
+    elif unified_evidence:
+        checks.append(_check(
+            "unified_evidence", "統一證據格式", "critical",
+            f"發現 {int(unified_evidence.get('invalid_count') or 0)} 筆格式錯誤",
+            "中央頁停止採用錯誤證據；正式排名維持不變",
+        ))
+    else:
+        checks.append(_check("unified_evidence", "統一證據格式", "warning", "尚未建立統一證據檔", "下一次中央中樞更新時自動重建"))
 
     rotation_status = str(rotation_health.get("status") or "missing").lower()
     if rotation_status == "ok":

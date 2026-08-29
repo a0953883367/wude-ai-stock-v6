@@ -2,12 +2,12 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-29T23:15:45+08:00",
+  "checked_at": "2026-08-30T00:15:03+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-08-29 21:22:40",
-  "report_age_minutes": 113.1,
+  "report_age_minutes": 172.4,
   "counts": {
-    "ok": 11,
+    "ok": 16,
     "info": 0,
     "warning": 2,
     "critical": 0
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 113 分鐘",
+      "detail": "最近更新距今 172 分鐘",
       "action": ""
     },
     {
@@ -76,6 +76,46 @@
       "label": "注意",
       "detail": "已取得 58/66 檔，仍在分批補齊",
       "action": "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
+    },
+    {
+      "code": "tw_official_financial",
+      "title": "台股官方財報",
+      "level": "ok",
+      "label": "正常",
+      "detail": "官方財報 153/155（98.71%）",
+      "action": ""
+    },
+    {
+      "code": "stockq_context",
+      "title": "StockQ 市場背景",
+      "level": "ok",
+      "label": "正常",
+      "detail": "已取得 16 項全球指標；只作市場背景",
+      "action": ""
+    },
+    {
+      "code": "validation_60d",
+      "title": "60日向前驗證",
+      "level": "ok",
+      "label": "正常",
+      "detail": "真實交易日 5/60；未補造缺日",
+      "action": ""
+    },
+    {
+      "code": "model_graduation",
+      "title": "模型畢業控制器",
+      "level": "ok",
+      "label": "正常",
+      "detail": "已自動產生畢業結論；升級仍須人工決定",
+      "action": ""
+    },
+    {
+      "code": "unified_evidence",
+      "title": "統一證據格式",
+      "level": "ok",
+      "label": "正常",
+      "detail": "已驗證 2618 筆證據，格式錯誤 0 筆",
+      "action": ""
     },
     {
       "code": "rotation_shadow",

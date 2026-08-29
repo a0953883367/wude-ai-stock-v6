@@ -90,6 +90,25 @@ def test_official_per_and_pbr_can_classify_without_inventing_market_cap(tmp_path
     assert "市值差額仍待" in item["reason"]
 
 
+def test_official_statement_eps_and_book_value_fill_missing_per_pbr(tmp_path):
+    rows = [{
+        "symbol": f"OFF{i}.TW", "name": f"OFF{i}", "market": "TW",
+        "type": "個股", "industry": "電子", "official_session_date": "2026-08-28",
+        "official_close_price": 100, "financial_report_date": "2026-06-30",
+        "eps": 2.5 + i * .1, "book_value_per_share": 40 + i,
+    } for i in range(6)]
+    report = update_valuation_risk_shadow(
+        tmp_path, rows, period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=True,
+    )
+    item = report["data"][0]
+    assert item["status"] == "ready"
+    assert item["earnings_years"] == 20
+    assert item["per_source"] == "price_divided_by_official_annualized_ytd_eps"
+    assert item["pbr"] == 2.5
+    assert item["pbr_source"] == "price_divided_by_official_book_value_per_share"
+
+
 def test_shadow_does_not_mutate_official_rows_or_weights(tmp_path):
     rows = _peer_rows()
     before = json.loads(json.dumps(rows))

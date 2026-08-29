@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-29 21:22:40",
+  "status": "ready",
+  "summary": {
+    "collecting": 5,
+    "review_required": 0,
+    "eligible_for_manual_graduation": 0
+  },
+  "models": [
+    {
+      "model_id": "next_session_v7",
+      "label": "隔日方向影子模型",
+      "status": "collecting",
+      "current": 5,
+      "target": 60,
+      "reason": "有效進度 5/60，尚未達畢業門檻",
+      "automatic_promotion": false,
+      "changes_formal_weights": false,
+      "places_orders": false
+    },
+    {
+      "model_id": "valuation_risk",
+      "label": "估值風險雷達",
+      "status": "collecting",
+      "current": 0,
+      "target": 100,
+      "reason": "有效進度 0/100，尚未達畢業門檻；有效交易日最少 0/10",
+      "automatic_promotion": false,
+      "changes_formal_weights": false,
+      "places_orders": false
+    },
+    {
+      "model_id": "market_rotation",
+      "label": "族群輪動影子模型",
+      "status": "collecting",
+      "current": 0,
+      "target": 60,
+      "reason": "有效進度 0/60，尚未達畢業門檻",
+      "automatic_promotion": false,
+      "changes_formal_weights": false,
+      "places_orders": false
+    },
+    {
+      "model_id": "tw_institution_weight",
+      "label": "台股法人權重模型",
+      "status": "collecting",
+      "current": 5,
+      "target": 20,
+      "reason": "有效進度 5/20，尚未達畢業門檻；5日只做初檢，20日才可提出正式權重候選",
+      "automatic_promotion": false,
+      "changes_formal_weights": false,
+      "places_orders": false
+    },
+    {
+      "model_id": "inverse_etf",
+      "label": "反向ETF影子模型",
+      "status": "collecting",
+      "current": 0,
+      "target": 20,
+      "reason": "有效進度 0/20，尚未達畢業門檻",
+      "automatic_promotion": false,
+      "changes_formal_weights": false,
+      "places_orders": false
+    }
+  ],
+  "policy": {
+    "conclusion_generated_automatically": true,
+    "promotion_requires_manual_decision": true,
+    "formal_ranking_locked": true,
+    "automatic_weight_changes": false,
+    "automatic_merge": false,
+    "automatic_orders": false
+  }
+}

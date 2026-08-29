@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-29 21:22:40",
+  "mode": "forward_validation_only",
+  "status": "collecting",
+  "trading_days_collected": 5,
+  "target_trading_days": 60,
+  "remaining_trading_days": 55,
+  "progress_pct": 8.3,
+  "eligible_samples": 126,
+  "minimum_consensus_samples": 200,
+  "ready_for_model_selection": false,
+  "tracks": {
+    "short_1_5d": {
+      "status": "collecting",
+      "days": 5
+    },
+    "five_day_portfolios": {
+      "TW": {
+        "completed_days": 2
+      },
+      "US": {
+        "completed_days": 5
+      }
+    },
+    "medium_45d": {
+      "TW": {
+        "status": "active"
+      },
+      "US": {
+        "status": "active"
+      }
+    },
+    "long_6m": {
+      "status": "active"
+    },
+    "valuation": {
+      "TW": {
+        "effective_sessions": 0
+      },
+      "US": {
+        "effective_sessions": 0
+      }
+    },
+    "rotation": {
+      "TW": {
+        "completed_sessions": 1
+      },
+      "US": {
+        "completed_sessions": 0
+      }
+    }
+  },
+  "rules": {
+    "future_data_forbidden": true,
+    "missing_sessions_not_counted": true,
+    "historical_proxy_separate": true,
+    "automatic_weight_changes": false,
+    "automatic_orders": false,
+    "note": "60日機制已完整啟用；實際結果只會隨完成交易日自然累積，不用歷史代理冒充。"
+  }
+}
