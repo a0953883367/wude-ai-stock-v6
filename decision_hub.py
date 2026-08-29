@@ -167,6 +167,7 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
     holding = reports.get("holding") or {}
     million = reports.get("million") or {}
     guard = reports.get("system_guard") or {}
+    stockq = reports.get("stockq") or {}
     valuation_coverage = valuation.get("coverage", {})
     inverse_samples = sum(
         len((inverse.get("markets", {}).get(market) or {}).get("cohorts", []))
@@ -228,6 +229,13 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
                 for item in guard.get("checks", [])
                 if isinstance(item, dict) and item.get("level") in ("warning", "critical")
             ],
+        },
+        "stockq_market_context": {
+            "status": stockq.get("status", "missing"),
+            "indicator_count": stockq.get("indicator_count", 0),
+            "cache_status": stockq.get("cache_status", "missing"),
+            "market_signal": stockq.get("market_signal", {}),
+            "affects_formal_ranking": False,
         },
     }
 
@@ -539,6 +547,7 @@ def update_decision_hub(
         "holding": _read_json(reports_dir / "holding_simulation.json"),
         "million": _read_json(reports_dir / "million_simulation.json"),
         "system_guard": _read_json(reports_dir / "system_guard.json"),
+        "stockq": _read_json(reports_dir / "stockq_market_context.json"),
     }
     news_cache = _read_json(reports_dir / "news_risk_cache.json") or {}
     news_by_symbol = (
@@ -611,6 +620,7 @@ def update_decision_hub(
             "1～5日、45日、6個月分開判斷，不以多數決互相覆蓋",
             "未完成向前驗證的影子模型只能提供證據，不能提高正式排名",
             "短線強但估值過高時，保留短線觀察並降低6個月判斷",
+            "StockQ只提供全球市場背景，不覆蓋個股資料、不直接改分",
             "最終按鈕只保存你的人工選擇，不連券商、不下單",
         ],
         "source_status": {

@@ -39,6 +39,12 @@ def _reports(tmp_path, *, valuation_score=78):
     })
     for name in ("holding_simulation", "million_simulation", "system_guard"):
         _write(tmp_path / f"{name}.json", {"updated_at": "2026-08-29 20:00:00"})
+    _write(tmp_path / "stockq_market_context.json", {
+        "updated_at": "2026-08-29 20:00:00", "status": "ok",
+        "cache_status": "refreshed", "indicator_count": 16,
+        "market_signal": {"score": 44.4, "regime": "中性"},
+        "affects_formal_ranking": False,
+    })
 
 
 def _row(**overrides):
@@ -83,6 +89,10 @@ def test_report_locks_formal_rank_and_explains_horizon_conflict(tmp_path):
     assert item["horizons"]["short"]["recommendation"] == "can_scale"
     assert item["horizons"]["long"]["recommendation"] != "can_scale"
     assert item["formal_ranking_unchanged"] is True
+    stockq = report["readiness"]["stockq_market_context"]
+    assert stockq["status"] == "ok"
+    assert stockq["indicator_count"] == 16
+    assert stockq["affects_formal_ranking"] is False
 
 
 def test_invalid_market_contract_is_hard_block(tmp_path):
