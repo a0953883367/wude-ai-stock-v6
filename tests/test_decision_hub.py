@@ -97,6 +97,57 @@ def test_invalid_market_contract_is_hard_block(tmp_path):
     assert any(conflict["code"] == "positive_signal_vs_data_block" for conflict in item["conflicts"])
 
 
+def test_trade_risk_block_is_avoid_not_missing_data(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    report = update_decision_hub(
+        tmp_path,
+        [_row(trade_guard_blocked=True, trade_guard_reason="價格已跌破20日低點")],
+        period="evening", updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    assert item["final"]["recommendation"] == "avoid"
+    assert item["final"]["reason"] == "價格已跌破20日低點"
+    assert item["core_data_missing"] == []
+    assert report["summary"]["data_insufficient_count"] == 0
+    assert report["summary"]["risk_blocked_count"] == 1
+    assert any(
+        conflict["code"] == "positive_signal_vs_risk_block"
+        for conflict in item["conflicts"]
+    )
+
+
+def test_conflicts_are_reported_as_resolved(tmp_path):
+    _reports(tmp_path, valuation_score=78)
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    assert report["summary"]["detected_conflict_count"] == 1
+    assert report["summary"]["resolved_conflict_count"] == 1
+    assert report["summary"]["unresolved_conflict_count"] == 0
+
+
+def test_full_universe_news_cache_repairs_optional_news_without_changing_rank(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "news_risk_cache.json", {
+        "updated_at": "2026-08-29T20:00:00+00:00",
+        "symbols": {"TEST.TW": {
+            "news_data_available": True, "news_verified": False,
+            "news_penalty": 0, "news_summary": "快取完整掃描",
+            "news_scanned_at": "2026-08-29T20:00:00+00:00",
+        }},
+    })
+    item_row = _row(news_data_available=False, news_summary=None)
+    report = update_decision_hub(
+        tmp_path, [item_row], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    assert report["summary"]["news_coverage_count"] == 1
+    assert "verified_news" not in item["data_missing"]
+    assert item["formal_rank"] == item_row["overall_rank"]
+
+
 def test_missing_shadow_sources_are_explicit_and_not_imputed(tmp_path):
     report = update_decision_hub(
         tmp_path, [_row()], period="evening", updated_at="2026-08-29 20:00:00", intraday=False
@@ -134,4 +185,3 @@ def test_safe_wrapper_quarantines_failure(tmp_path, monkeypatch):
     assert health["formal_pipeline_continues"] is True
     assert health["changes_rankings"] is False
     assert health["places_orders"] is False
-

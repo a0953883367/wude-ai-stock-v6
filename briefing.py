@@ -957,9 +957,9 @@ def main() -> int:
         ),
     )
     performance_context = load_performance_context(SETTINGS.reports_dir)
-    # First pass selects a bounded set for the news scan. This keeps network
-    # usage predictable while covering every displayed TOP20 plus a buffer and
-    # every fixed-watchlist item.
+    # First pass identifies the symbols that require every-run refresh.  The
+    # news layer now covers the full universe and uses an attributable cache;
+    # priority rows remain fresh without dropping lower-ranked stocks.
     preliminary = _stage(
         "第一次排名計算",
         lambda: score_candidates(
@@ -1005,7 +1005,14 @@ def main() -> int:
             for symbol, row in news_targets_by_symbol.items()
         }
     news_risks = _stage(
-        "候選股新聞", lambda: fetch_news_risks(list(news_targets_by_symbol.values()))
+        "全市場新聞",
+        lambda: fetch_news_risks(
+            preliminary,
+            workers=12,
+            cache_path=SETTINGS.reports_dir / "news_risk_cache.json",
+            priority_symbols=set(news_targets_by_symbol),
+            max_background_refresh=100,
+        ),
     )
     for row in features:
         risk = news_risks.get(row.get("symbol"))

@@ -2,10 +2,10 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-29T22:52:03+08:00",
+  "checked_at": "2026-08-29T23:15:45+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-08-29 21:22:40",
-  "report_age_minutes": 89.4,
+  "report_age_minutes": 113.1,
   "counts": {
     "ok": 11,
     "info": 0,
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 89 分鐘",
+      "detail": "最近更新距今 113 分鐘",
       "action": ""
     },
     {
@@ -67,7 +67,7 @@
       "level": "warning",
       "label": "注意",
       "detail": "目前沒有取得券商分點資料",
-      "action": "保留黃燈；不要用其他資料冒充分點資料"
+      "action": "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷"
     },
     {
       "code": "financial_quality",
@@ -75,7 +75,7 @@
       "level": "warning",
       "label": "注意",
       "detail": "已取得 58/66 檔，仍在分批補齊",
-      "action": "缺少財報的股票限制中長線資格"
+      "action": "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
     },
     {
       "code": "rotation_shadow",
@@ -119,8 +119,8 @@
     }
   ],
   "action_required": [
-    "保留黃燈；不要用其他資料冒充分點資料",
-    "缺少財報的股票限制中長線資格"
+    "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
+    "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
   ],
   "safety": {
     "changes_rankings": false,

@@ -283,13 +283,20 @@ def build_guard(
 
     broker = int(data_status.get("broker_count") or 0)
     if broker <= 0:
-        checks.append(_check("broker_data", "券商分點", "warning", "目前沒有取得券商分點資料", "保留黃燈；不要用其他資料冒充分點資料"))
+        checks.append(_check(
+            "broker_data", "券商分點", "warning", "目前沒有取得券商分點資料",
+            "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
+        ))
     else:
         checks.append(_check("broker_data", "券商分點", "ok", f"已取得 {broker} 檔分點資料"))
 
     financial = int(data_status.get("financial_quality_count") or 0)
     if expected_tw and financial < expected_tw:
-        checks.append(_check("financial_quality", "財務品質", "warning", f"已取得 {financial}/{expected_tw} 檔，仍在分批補齊", "缺少財報的股票限制中長線資格"))
+        checks.append(_check(
+            "financial_quality", "財務品質", "warning",
+            f"已取得 {financial}/{expected_tw} 檔，仍在分批補齊",
+            "每次排程續補；只降低6個月信心，不把整檔標成資料不足",
+        ))
     else:
         checks.append(_check("financial_quality", "財務品質", "ok", f"已取得 {financial} 檔"))
 

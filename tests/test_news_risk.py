@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from news_risk import classify_news
+import news_risk
+from news_risk import classify_news, fetch_news_risks
 
 
 NOW = datetime(2026, 8, 15, tzinfo=timezone.utc)
@@ -83,3 +84,71 @@ def test_relevant_negative_article_is_kept_by_stock_identity():
     )
     assert len(result["news_articles"]) == 1
     assert result["news_risk_level"].startswith("🟡")
+
+
+def test_full_universe_news_cache_skips_fresh_non_priority_rows(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_fetch(row):
+        calls.append(row["symbol"])
+        return row["symbol"], {
+            "news_risk_level": "🟢 測試",
+            "news_penalty": 0.0,
+            "news_verified": False,
+            "news_summary": "完整掃描",
+            "news_articles": [],
+            "news_data_available": True,
+            "news_scanned_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    monkeypatch.setattr(news_risk, "_fetch_symbol", fake_fetch)
+    path = tmp_path / "news.json"
+    rows = [{"symbol": "A"}, {"symbol": "B"}, {"symbol": "C"}]
+    first = fetch_news_risks(rows, cache_path=path)
+    second = fetch_news_risks(rows, cache_path=path, priority_symbols={"B"})
+    assert set(first) == {"A", "B", "C"}
+    assert set(second) == {"A", "B", "C"}
+    assert calls == ["A", "B", "C", "B"]
+
+
+def test_recent_verified_cache_is_used_on_provider_failure(tmp_path, monkeypatch):
+    path = tmp_path / "news.json"
+    good = {
+        "news_risk_level": "🟢 測試", "news_penalty": 0.0,
+        "news_verified": False, "news_summary": "完整掃描",
+        "news_articles": [], "news_data_available": True,
+        "news_scanned_at": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(
+        __import__("json").dumps({"symbols": {"A": good}}), encoding="utf-8"
+    )
+
+    def fail(_row):
+        return "A", {
+            "news_data_available": False, "news_penalty": 0.0,
+            "news_scanned_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    monkeypatch.setattr(news_risk, "_fetch_symbol", fail)
+    result = fetch_news_risks(
+        [{"symbol": "A"}], cache_path=path, priority_symbols={"A"}
+    )["A"]
+    assert result["news_data_available"] is True
+    assert result["news_cache_stale"] is True
+
+
+def test_existing_verified_rows_seed_cache_without_network(tmp_path, monkeypatch):
+    def unexpected(_row):
+        raise AssertionError("seed-only update must not call provider")
+
+    monkeypatch.setattr(news_risk, "_fetch_symbol", unexpected)
+    path = tmp_path / "news.json"
+    result = fetch_news_risks([{
+        "symbol": "A", "news_data_available": True,
+        "news_risk_level": "🟢 已掃描", "news_penalty": 0,
+        "news_verified": False, "news_summary": "既有驗證結果",
+        "news_articles": [],
+        "news_scanned_at": datetime.now(timezone.utc).isoformat(),
+    }], cache_path=path, max_background_refresh=0)
+    assert result["A"]["news_data_available"] is True
+    assert path.exists()
