@@ -406,6 +406,7 @@ def _carry_forward_symbol_session_regressions(
     previous_payload: dict,
     *,
     minimum_dominant_coverage: float = 0.9,
+    allow_closed_cohort_regression: bool = False,
 ) -> tuple[list[dict], list[str]]:
     """Reuse the last verified row when one source briefly moves backwards.
 
@@ -436,6 +437,7 @@ def _carry_forward_symbol_session_regressions(
             previous_cohorts.setdefault(cohort, []).append(row)
 
     safe_dominant_sessions: dict[str, str] = {}
+    closed_cohort_regressions: set[str] = set()
     for cohort, rows in current_cohorts.items():
         sessions = [
             str(row.get("official_session_date") or "")
@@ -450,12 +452,30 @@ def _carry_forward_symbol_session_regressions(
         if not sessions or not previous_sessions:
             continue
         dominant_session, dominant_count = Counter(sessions).most_common(1)[0]
-        previous_dominant = Counter(previous_sessions).most_common(1)[0][0]
+        previous_dominant, previous_count = Counter(previous_sessions).most_common(1)[0]
+        current_coherent = dominant_count / len(rows) >= minimum_dominant_coverage
+        previous_coherent = (
+            previous_count / len(previous_cohorts.get(cohort, []))
+            >= minimum_dominant_coverage
+        )
         if (
-            dominant_count / len(rows) >= minimum_dominant_coverage
+            current_coherent
             and dominant_session >= previous_dominant
         ):
             safe_dominant_sessions[cohort] = dominant_session
+        elif (
+            allow_closed_cohort_regression
+            and cohort.startswith("TW_")
+            and current_coherent
+            and previous_coherent
+            and dominant_session < previous_dominant
+        ):
+            # At a morning/weekend refresh there is no newer TW session to
+            # discover.  If an upstream source temporarily falls back several
+            # days, retain the already verified closed-session cohort instead
+            # of replacing it with older prices.
+            safe_dominant_sessions[cohort] = previous_dominant
+            closed_cohort_regressions.add(cohort)
 
     repaired: list[dict] = []
     carried_symbols: list[str] = []
@@ -475,9 +495,14 @@ def _carry_forward_symbol_session_regressions(
             and previous_session == dominant_session
         ):
             replacement = dict(previous_row)
+            cohort = _cohort_name(row)
             replacement.update({
                 "session_carry_forward": True,
-                "session_carry_forward_reason": "source_session_regression",
+                "session_carry_forward_reason": (
+                    "closed_period_cohort_source_regression"
+                    if cohort in closed_cohort_regressions
+                    else "source_session_regression"
+                ),
                 "session_carry_forward_observed_date": current_session,
             })
             repaired.append(replacement)
@@ -603,7 +628,21 @@ def main() -> int:
     inverse_symbols = [item["symbol"] for item in inverse_watchlist]
     data_symbols = list(dict.fromkeys([*symbols, *inverse_symbols]))
 
-    history = _stage("日線價格", lambda: download_history(data_symbols))
+    us_history_cohorts = {
+        str(item["symbol"]).upper(): (
+            "US_ETF"
+            if "ETF" in str(item.get("type", "")).upper()
+            else "US_STOCK"
+        )
+        for item in universe
+        if item.get("market") == "US"
+    }
+    history = _stage(
+        "日線價格",
+        lambda: download_history(
+            data_symbols, us_cohorts=us_history_cohorts
+        ),
+    )
     intraday = _stage("盤中量價", lambda: download_intraday(symbols))
     watchlist_stock_ids = {
         item["symbol"].split(".")[0]
@@ -726,11 +765,15 @@ def main() -> int:
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         previous_analysis = {}
     features, carried_symbols = _carry_forward_symbol_session_regressions(
-        features, previous_analysis
+        features,
+        previous_analysis,
+        allow_closed_cohort_regression=(
+            args.period == "morning" or now.weekday() >= 5
+        ),
     )
     if carried_symbols:
         print(
-            "[行情交易日] 單一來源交易日倒退，沿用上一版已驗證資料："
+            "[行情交易日] 來源交易日倒退，沿用上一版已驗證資料："
             + "、".join(carried_symbols)
         )
     source_session_issues = _report_session_issues(features, previous_analysis)
