@@ -17,6 +17,7 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 MODEL_VERSION = "CENTRAL-DECISION-HUB-V1"
+CHUNK_SIZE = 50
 POLICY = {
     "formal_ranking_locked": True,
     "shadow_models_evidence_only": True,
@@ -576,7 +577,25 @@ def update_decision_hub(
         "decisions": decisions,
         "disclaimer": "資料整理、衝突說明與風險輔助，不保證獲利，也不是代客下單建議。",
     }
-    _write_json(reports_dir / "decision_hub.json", payload)
+    decision_files = []
+    for offset in range(0, len(decisions), CHUNK_SIZE):
+        chunk = decisions[offset:offset + CHUNK_SIZE]
+        chunk_number = offset // CHUNK_SIZE + 1
+        filename = f"decision_hub_{chunk_number:02d}.json"
+        _write_json(reports_dir / filename, {
+            "schema_version": SCHEMA_VERSION,
+            "model_version": MODEL_VERSION,
+            "updated_at": updated_at,
+            "chunk": chunk_number,
+            "decisions": chunk,
+        })
+        decision_files.append(filename)
+    for stale_path in reports_dir.glob("decision_hub_[0-9][0-9].json"):
+        if stale_path.name not in decision_files:
+            stale_path.unlink()
+    index_payload = {key: value for key, value in payload.items() if key != "decisions"}
+    index_payload["decision_files"] = decision_files
+    _write_json(reports_dir / "decision_hub.json", index_payload)
     return payload
 
 
