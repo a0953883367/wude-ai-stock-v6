@@ -161,6 +161,8 @@ def test_railway_image_keeps_the_full_large_buy_universe(tmp_path: Path):
     ignore_rules = Path(".dockerignore").read_text(encoding="utf-8").splitlines()
     assert "reports" not in ignore_rules
     assert "!reports/all_analysis.json" in ignore_rules
+    assert "!reports/inverse_etf_database.json" in ignore_rules
+    assert "!reports/inverse_etf_shadow.json" in ignore_rules
     service = LargeBuyAlertService(
         Path("reports/all_analysis.json"), tmp_path / "alerts.json", config=config()
     )
