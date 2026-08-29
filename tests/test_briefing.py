@@ -65,6 +65,44 @@ def test_broad_market_session_regression_is_never_carried_forward():
     assert any("主交易日倒退" in issue for issue in _report_session_issues(repaired, previous))
 
 
+def test_closed_period_can_retain_verified_cohort_during_source_regression():
+    previous_rows = _session_rows(["2026-08-28"] * 10)
+    for index, row in enumerate(previous_rows):
+        row["price"] = 100 + index
+    current = _session_rows(["2026-08-26"] * 10)
+
+    repaired, carried = _carry_forward_symbol_session_regressions(
+        current,
+        {"data": previous_rows},
+        allow_closed_cohort_regression=True,
+    )
+
+    assert carried == [f"TW{index:02d}.TW" for index in range(10)]
+    assert {row["official_session_date"] for row in repaired} == {"2026-08-28"}
+    assert {row["session_carry_forward_reason"] for row in repaired} == {
+        "closed_period_cohort_source_regression"
+    }
+    assert _report_session_issues(repaired, {"data": previous_rows}) == []
+
+
+def test_closed_period_never_hides_whole_us_cohort_regression():
+    previous_rows = _session_rows(["2026-08-28"] * 10)
+    current = _session_rows(["2026-08-27"] * 10)
+    for index, row in enumerate(previous_rows):
+        row.update({"symbol": f"US{index:02d}", "market": "US"})
+    for index, row in enumerate(current):
+        row.update({"symbol": f"US{index:02d}", "market": "US"})
+
+    repaired, carried = _carry_forward_symbol_session_regressions(
+        current,
+        {"data": previous_rows},
+        allow_closed_cohort_regression=True,
+    )
+
+    assert carried == []
+    assert repaired == current
+
+
 def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
     previous = {
         "6116.TW": {

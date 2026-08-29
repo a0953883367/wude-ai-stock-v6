@@ -120,6 +120,7 @@ def _retry_stale_us_daily_history(
     result: dict[str, pd.DataFrame],
     symbols: list[str],
     *,
+    cohorts: dict[str, str] | None = None,
     now: datetime | None = None,
 ) -> list[str]:
     """Retry non-empty US frames whose last session lags their cohort.
@@ -148,16 +149,23 @@ def _retry_stale_us_daily_history(
         and not symbol.startswith("^")
         and _frame_session_date(result.get(symbol))
     ]
-    if len(us_symbols) < 10:
-        return []
-    dates = [_frame_session_date(result[symbol]) for symbol in us_symbols]
-    target_session, target_count = Counter(dates).most_common(1)[0]
-    if target_count / len(us_symbols) < 0.5:
-        return []
-    stale = [
-        symbol for symbol in us_symbols
-        if _frame_session_date(result[symbol]) < target_session
-    ]
+    grouped: dict[str, list[str]] = {}
+    for symbol in us_symbols:
+        cohort = (cohorts or {}).get(symbol, "US")
+        grouped.setdefault(cohort, []).append(symbol)
+
+    stale: list[str] = []
+    for cohort_symbols in grouped.values():
+        if len(cohort_symbols) < 10:
+            continue
+        dates = [_frame_session_date(result[symbol]) for symbol in cohort_symbols]
+        target_session, target_count = Counter(dates).most_common(1)[0]
+        if target_count / len(cohort_symbols) < 0.5:
+            continue
+        stale.extend(
+            symbol for symbol in cohort_symbols
+            if _frame_session_date(result[symbol]) < target_session
+        )
     if not stale or len(stale) > 60:
         return []
 
@@ -193,7 +201,12 @@ def _retry_stale_us_daily_history(
     return advanced
 
 
-def download_history(symbols: list[str], period: str = "3mo") -> dict[str, pd.DataFrame]:
+def download_history(
+    symbols: list[str],
+    period: str = "3mo",
+    *,
+    us_cohorts: dict[str, str] | None = None,
+) -> dict[str, pd.DataFrame]:
     """Download daily OHLCV and retry bounded batch omissions one by one.
 
     Yahoo occasionally returns a valid batch with a handful of ticker frames
@@ -256,7 +269,9 @@ def download_history(symbols: list[str], period: str = "3mo") -> dict[str, pd.Da
             "daily provider-wide gap (%s/%s); skip individual retry storm",
             len(missing), len(symbols),
         )
-    advanced = _retry_stale_us_daily_history(result, symbols)
+    advanced = _retry_stale_us_daily_history(
+        result, symbols, cohorts=us_cohorts
+    )
     if advanced:
         LOG.info(
             "advanced stale US daily frames after individual retry: %s",
