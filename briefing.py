@@ -46,6 +46,11 @@ from inverse_experiment import (
     load_inverse_experiment_watchlist,
     update_inverse_experiment,
 )
+from inverse_etf_shadow import (
+    build_product_rows as build_inverse_etf_product_rows,
+    load_catalog as load_inverse_etf_catalog,
+    update_inverse_etf_shadow,
+)
 from missed_strength_validation import update_missed_strength_validation
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 import strategy
@@ -626,7 +631,9 @@ def main() -> int:
     # They deliberately never enter `combined`, `universe`, ALL or ranking.
     inverse_watchlist = load_inverse_experiment_watchlist()
     inverse_symbols = [item["symbol"] for item in inverse_watchlist]
-    data_symbols = list(dict.fromkeys([*symbols, *inverse_symbols]))
+    inverse_etf_catalog = load_inverse_etf_catalog()
+    leveraged_inverse_symbols = [item["symbol"] for item in inverse_etf_catalog["products"]]
+    data_symbols = list(dict.fromkeys([*symbols, *inverse_symbols, *leveraged_inverse_symbols]))
 
     us_history_cohorts = {
         str(item["symbol"]).upper(): (
@@ -637,6 +644,11 @@ def main() -> int:
         for item in universe
         if item.get("market") == "US"
     }
+    us_history_cohorts.update({
+        symbol: "US_ETF"
+        for symbol in leveraged_inverse_symbols
+        if not symbol.endswith((".TW", ".TWO"))
+    })
     history = _stage(
         "日線價格",
         lambda: download_history(
@@ -1083,6 +1095,20 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         watchlist=inverse_watchlist,
+    )
+    inverse_etf_product_rows = build_inverse_etf_product_rows(
+        inverse_etf_catalog, history, inverse_session_dates
+    )
+    # A second, fully isolated research ledger for sector/index inverse ETFs.
+    # It writes only its own database/state files and cannot modify rankings.
+    update_inverse_etf_shadow(
+        SETTINGS.reports_dir,
+        simulation_rows,
+        inverse_etf_product_rows,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+        catalog=inverse_etf_catalog,
     )
     # Research-only forward audit.  It reads the already-final ranking but can
     # neither change that ranking nor use the same session as its outcome.
