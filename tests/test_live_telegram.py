@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from live_telegram import LiveTelegramBatcher, fanout_alert, format_live_telegram_batch
+import notifier
 from notifier import _live_telegram_credentials, live_telegram_configured
 
 
@@ -66,8 +67,32 @@ def test_live_destination_never_falls_back_to_report_chat():
     assert _live_telegram_credentials(settings) == ("", "")
     assert live_telegram_configured(settings) is False
     settings.telegram_live_bot_token = "separate-live-token"
+    assert live_telegram_configured(settings) is True
     settings.telegram_live_chat_id = "separate-live-chat"
     assert live_telegram_configured(settings) is True
+
+
+def test_live_chat_can_be_discovered_from_first_private_start(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"result": [
+                {"message": {"text": "hello", "chat": {"id": 1, "type": "private"}}},
+                {"message": {"text": "/start", "chat": {"id": 24680, "type": "private"}}},
+            ]}
+
+    settings = SimpleNamespace(
+        telegram_live_bot_token="separate-live-token",
+        telegram_live_chat_id="",
+    )
+    monkeypatch.setattr(notifier.requests, "get", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(notifier, "_LIVE_DISCOVERED_CHAT_ID", "")
+    assert _live_telegram_credentials(settings, discover_chat=True) == (
+        "separate-live-token",
+        "24680",
+    )
 
 
 def test_fanout_keeps_other_sink_when_one_fails():

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+import threading
 from typing import Any
 
 import requests
@@ -13,6 +14,8 @@ from config import SETTINGS
 
 
 LOG = logging.getLogger(__name__)
+_LIVE_CHAT_LOCK = threading.Lock()
+_LIVE_DISCOVERED_CHAT_ID = ""
 
 
 def _num(value: Any, digits: int = 2) -> str:
@@ -253,19 +256,59 @@ def send_telegram(markdown: str) -> bool:
     return True
 
 
-def _live_telegram_credentials(settings: Any = SETTINGS) -> tuple[str, str]:
-    """Return the dedicated live-alert bot and chat without any fallback."""
-    return settings.telegram_live_bot_token, settings.telegram_live_chat_id
+def _discover_live_chat_id(token: str) -> str:
+    """Resolve the first private /start conversation for this dedicated bot."""
+    response = requests.get(
+        f"https://api.telegram.org/bot{token}/getUpdates",
+        params={"limit": 100, "timeout": 0},
+        timeout=SETTINGS.request_timeout,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    updates = payload.get("result", []) if isinstance(payload, dict) else []
+    for update in updates:
+        message = update.get("message") if isinstance(update, dict) else None
+        if not isinstance(message, dict):
+            continue
+        chat = message.get("chat")
+        text = str(message.get("text") or "")
+        if (
+            isinstance(chat, dict)
+            and chat.get("type") == "private"
+            and text.startswith("/start")
+            and chat.get("id") is not None
+        ):
+            return str(chat["id"])
+    return ""
+
+
+def _live_telegram_credentials(
+    settings: Any = SETTINGS,
+    *,
+    discover_chat: bool = False,
+) -> tuple[str, str]:
+    """Return only the dedicated live-alert bot and its private conversation."""
+    global _LIVE_DISCOVERED_CHAT_ID
+    token = settings.telegram_live_bot_token
+    if not token:
+        return "", ""
+    chat_id = settings.telegram_live_chat_id or _LIVE_DISCOVERED_CHAT_ID
+    if token and not chat_id and discover_chat:
+        with _LIVE_CHAT_LOCK:
+            if not _LIVE_DISCOVERED_CHAT_ID:
+                _LIVE_DISCOVERED_CHAT_ID = _discover_live_chat_id(token)
+            chat_id = _LIVE_DISCOVERED_CHAT_ID
+    return token, chat_id
 
 
 def live_telegram_configured(settings: Any = SETTINGS) -> bool:
-    token, chat_id = _live_telegram_credentials(settings)
-    return bool(token and chat_id)
+    # A private /start message lets the sender resolve the chat automatically.
+    return bool(settings.telegram_live_bot_token)
 
 
 def send_live_telegram(markdown: str) -> bool:
     """Send only to the explicitly configured real-time alert conversation."""
-    token, chat_id = _live_telegram_credentials()
+    token, chat_id = _live_telegram_credentials(discover_chat=True)
     if not token or not chat_id:
         LOG.info("Live Telegram destination not set; alert kept in the website only")
         return False
