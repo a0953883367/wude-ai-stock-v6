@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>中央 AI 決策中樞</title>
+  <style>
+    :root{--bg:#07111f;--panel:#0d1b2d;--panel2:#101f34;--line:#28476a;--text:#f4f8ff;--muted:#92a6c3;--blue:#38bdf8;--green:#55e6a5;--yellow:#f8ca65;--red:#fb7185;--violet:#a78bfa}
+    *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:linear-gradient(180deg,#0b2440 0,#07111f 35%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;min-height:100vh}
+    button,input{font:inherit}.app{width:min(920px,100%);margin:auto;padding:18px 16px 108px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.back{color:#dbeafe;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:9px 13px;background:#0c192a;font-weight:800}.refresh{border:1px solid #176b75;color:#cffafe;background:#134e5e;border-radius:999px;padding:9px 14px;font-weight:900}.hero{margin-top:14px;padding:20px;border-radius:24px;border:1px solid #2a5c85;background:linear-gradient(145deg,#102a49,#0b182a);box-shadow:0 18px 42px #0005}.eyebrow{color:var(--blue);font-weight:900;font-size:13px}.hero h1{font-size:30px;margin:7px 0 8px}.hero p{color:#bdd0e8;line-height:1.7;margin:0;font-size:14px}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.chip{border:1px solid #2b4b70;border-radius:999px;padding:6px 9px;color:#bfd4ec;background:#0a1728;font-size:11px;font-weight:800}.chip.ok{color:#a7f3d0;border-color:#1e765c;background:#0b2d27}.chip.warn{color:#fde68a;border-color:#805f19;background:#33270d}
+    .status{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:14px 0}.metric{background:#0a1728;border:1px solid var(--line);border-radius:16px;padding:12px}.metric span{display:block;color:var(--muted);font-size:11px}.metric b{display:block;font-size:18px;margin-top:5px}.metric small{display:block;color:#a9bad1;font-size:10px;margin-top:4px;line-height:1.4}
+    .controls{position:sticky;top:0;z-index:5;margin:14px -4px;padding:10px 4px;background:#07111fee;backdrop-filter:blur(12px)}.tabs,.filters{display:flex;gap:7px;overflow:auto;scrollbar-width:none}.tabs button,.filters button{white-space:nowrap;color:#b8c9dd;background:#0b192a;border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-weight:800}.tabs button.active,.filters button.active{color:#05121e;background:var(--blue);border-color:#67d5ff}.search{display:flex;margin:9px 0;gap:7px}.search input{width:100%;color:white;background:#0b192a;border:1px solid var(--line);border-radius:14px;padding:13px}.filters button{font-size:12px;padding:7px 11px}.filters button.active{background:#dbeafe;border-color:#fff}
+    .section-title{display:flex;justify-content:space-between;align-items:end;margin:20px 2px 10px;gap:10px}.section-title h2{font-size:20px;margin:0}.section-title span{color:var(--muted);font-size:12px}.notice{border:1px solid #8a681f;background:#32260e;color:#fde7a7;padding:13px;border-radius:15px;font-size:13px;line-height:1.65;margin:12px 0}.empty{padding:28px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px}
+    .card{background:linear-gradient(145deg,#0d1d31,#0a1728);border:1px solid var(--line);border-radius:20px;padding:15px;margin:11px 0}.card.conflict{border-color:#946d23}.card.blocked{border-color:#9f3347}.card-head{display:flex;justify-content:space-between;gap:12px}.symbol{color:var(--blue);font-size:12px;font-weight:900}.name{font-size:23px;font-weight:950;margin-top:4px}.meta{color:var(--muted);font-size:11px;margin-top:5px}.decision{text-align:right;min-width:112px}.decision b{display:inline-block;border-radius:999px;padding:7px 10px;background:#19354f;color:#a9e5ff;font-size:13px}.decision b.can_scale{background:#0d4234;color:#7ff0c1}.decision b.wait_pullback{background:#45350e;color:#ffe28d}.decision b.avoid,.decision b.data_insufficient{background:#49202a;color:#ffb1bf}.decision small{display:block;color:var(--muted);margin-top:6px}
+    .horizons{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:14px}.horizon{border-radius:13px;background:#101f34;border:1px solid #203a58;padding:10px}.horizon span{display:block;color:#8fa9c8;font-size:10px}.horizon b{display:block;font-size:13px;margin:5px 0;line-height:1.35}.horizon small{color:#a9bad1;font-size:10px}.horizon .can_scale{color:var(--green)}.horizon .wait_pullback{color:var(--yellow)}.horizon .avoid,.horizon .data_insufficient{color:var(--red)}
+    .why{margin-top:12px;padding:11px;border-radius:13px;background:#0a1423;color:#c7d5e8;font-size:12px;line-height:1.65}.conflicts{margin-top:10px}.conflict-row{border-left:3px solid var(--yellow);padding:8px 10px;background:#2b210d;margin:7px 0;border-radius:0 11px 11px 0;font-size:12px;line-height:1.55}.conflict-row b{color:#ffdb7c}.missing{color:#fda4af;font-size:11px;margin-top:9px;line-height:1.5}
+    details{margin-top:10px;border-top:1px solid #203750;padding-top:9px}summary{cursor:pointer;color:#7dd3fc;font-weight:850;font-size:12px}.evidence{margin-top:8px}.evidence-row{display:grid;grid-template-columns:1fr auto;gap:8px;border-bottom:1px solid #172a41;padding:8px 0}.evidence-row:last-child{border:0}.evidence-title{font-size:12px;font-weight:850}.evidence-reason{color:var(--muted);font-size:10px;line-height:1.45;margin-top:3px}.evidence-score{text-align:right;color:#dbeafe;font-size:11px}.evidence-score .oppose{color:var(--red)}.evidence-score .support{color:var(--green)}.evidence-score .missing{color:#94a3b8}
+    .choices{display:flex;gap:6px;margin-top:12px}.choices button{flex:1;border-radius:11px;border:1px solid #365373;background:#102139;color:#cbdcf0;padding:9px 4px;font-size:11px;font-weight:850}.choices button.selected{color:#07111f;background:var(--green);border-color:#7ff0c1}.choice-note{color:#78e6b9;font-size:11px;margin-top:7px}.footer{color:#8295af;font-size:11px;line-height:1.7;margin:20px 4px}.bottom{position:fixed;z-index:7;bottom:12px;left:50%;transform:translateX(-50%);width:min(888px,calc(100% - 24px));display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px;background:#07121fee;border:1px solid #315170;border-radius:20px;backdrop-filter:blur(15px)}.bottom a{text-align:center;text-decoration:none;color:#c6d5e8;padding:8px 3px;font-size:10px;font-weight:850}.bottom a.current{color:var(--yellow)}
+    @media(min-width:720px){.status{grid-template-columns:repeat(4,1fr)}.horizons{gap:10px}.horizon{padding:12px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.card{margin:0}.bottom a{font-size:12px}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="top"><a class="back" href="index.html">← 完整原版</a><button class="refresh" id="refresh">更新資料</button></div>
+    <section class="hero">
+      <div class="eyebrow">所有模型的共同證據層</div>
+      <h1>中央 AI 決策中樞</h1>
+      <p>把正式排名、1～5 日、45 日、6 個月、估值與族群風險放在同一張決策卡。衝突先說明，再提供你最後選擇。</p>
+      <div class="chips"><span class="chip ok">正式排名鎖定</span><span class="chip ok">不自動改權重</span><span class="chip ok">不連券商下單</span><span class="chip warn" id="updatedChip">等待資料</span></div>
+    </section>
+    <section class="status" id="status"><div class="metric"><span>載入狀態</span><b>讀取中</b></div></section>
+    <div class="notice" id="notice" hidden></div>
+    <section class="controls">
+      <div class="tabs" id="markets"><button data-market="ALL" class="active">全部</button><button data-market="TW">台股</button><button data-market="US">美股</button><button data-market="ETF">ETF</button></div>
+      <div class="search"><input id="search" type="search" placeholder="輸入股票名稱或代號" autocomplete="off"></div>
+      <div class="filters" id="filters"><button data-filter="all" class="active">全部</button><button data-filter="conflict">有衝突</button><button data-filter="can_scale">可評估</button><button data-filter="wait_pullback">等待買點</button><button data-filter="watch">觀察</button><button data-filter="avoid">暫不考慮</button><button data-filter="data_insufficient">資料不足</button></div>
+    </section>
+    <div class="section-title"><h2>個股決策卡</h2><span id="count">0 檔</span></div>
+    <section class="cards" id="cards"><div class="empty">正在載入中央決策資料…</div></section>
+    <p class="footer">中央頁只整合既有資料與解釋衝突，不保證獲利。你的按鈕只保存在這支裝置，不會改排名、傳送券商或自動下單。</p>
+  </main>
+  <nav class="bottom"><a href="index.html">📊<br>完整原版</a><a class="current" href="decision-hub.html">🧠<br>決策中樞</a><a href="live-flow.html">🚨<br>大量買賣</a><a href="inverse-etf-shadow.html">↘️<br>反向影子</a></nav>
+  <script src="decision_hub.js"></script>
+</body>
+</html>

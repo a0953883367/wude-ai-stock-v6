@@ -204,6 +204,64 @@ def _update_valuation_risk_shadow_safely(
     return success
 
 
+def _update_decision_hub_safely(
+    reports_dir,
+    rows,
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> bool:
+    """Keep the downstream decision hub isolated from formal rankings."""
+    health_path = reports_dir / "decision_hub_health.json"
+    try:
+        previous = json.loads(health_path.read_text(encoding="utf-8"))
+        if not isinstance(previous, dict):
+            previous = {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        previous = {}
+    try:
+        from decision_hub import update_decision_hub
+
+        update_decision_hub(
+            reports_dir,
+            rows,
+            period=period,
+            updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate downstream isolation
+        logging.exception("中央決策中樞失敗；正式排名與報表繼續")
+        health = {
+            "status": "warning",
+            "checked_at": updated_at,
+            "last_success_at": previous.get("last_success_at"),
+            "error_type": type(exc).__name__,
+            "detail": str(exc)[:300] or "中央決策中樞發生未分類錯誤",
+            "formal_pipeline_continues": True,
+            "changes_rankings": False,
+            "changes_weights": False,
+            "places_orders": False,
+        }
+        success = False
+    else:
+        health = {
+            "status": "ok",
+            "checked_at": updated_at,
+            "last_success_at": updated_at,
+            "detail": "中央決策中樞正常；只讀取證據並等待人工決定",
+            "formal_pipeline_continues": True,
+            "changes_rankings": False,
+            "changes_weights": False,
+            "places_orders": False,
+        }
+        success = True
+    tmp = reports_dir / "decision_hub_health.tmp"
+    tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(health_path)
+    return success
+
+
 _NEXT_SESSION_FIELDS = (
     "next_session_model_version", "next_session_market_model",
     "next_session_direction", "next_session_confidence",
@@ -1217,6 +1275,15 @@ def main() -> int:
     _update_valuation_risk_shadow_safely(
         SETTINGS.reports_dir,
         valuation_rows,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+    )
+    # The owner-facing decision layer consumes only already-final outputs. It
+    # can explain conflicts, but cannot modify ranks, weights, or orders.
+    _update_decision_hub_safely(
+        SETTINGS.reports_dir,
+        ranked,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,

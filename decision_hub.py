@@ -1,0 +1,624 @@
+"""Build the read-only Central AI Decision Hub evidence report.
+
+This module is deliberately downstream of the formal V6 rankings.  It turns
+existing model outputs into comparable evidence, explains conflicts, and
+leaves the final choice to the owner.  It never changes a score/rank and never
+creates broker instructions.
+"""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+from pathlib import Path
+from typing import Any
+
+
+SCHEMA_VERSION = 1
+MODEL_VERSION = "CENTRAL-DECISION-HUB-V1"
+CHUNK_SIZE = 50
+POLICY = {
+    "formal_ranking_locked": True,
+    "shadow_models_evidence_only": True,
+    "missing_data_never_imputed": True,
+    "automatic_weight_changes": False,
+    "automatic_orders": False,
+    "horizons_separate": True,
+    "user_final_decision_required": True,
+}
+
+
+def _number(value: Any, default: float | None = None) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if number != number or number in (float("inf"), float("-inf")):
+        return default
+    return number
+
+
+def _bounded(value: Any, default: float = 0.0) -> float:
+    number = _number(value, default)
+    return round(max(0.0, min(100.0, float(number))), 1)
+
+
+def _read_json(path: Path) -> dict[str, Any] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+
+
+def _evidence(
+    source_id: str,
+    source_label: str,
+    horizon: str,
+    direction: str,
+    strength: Any,
+    confidence: Any,
+    as_of: str,
+    status: str,
+    reason: str,
+    *,
+    affects_decision: bool = True,
+) -> dict[str, Any]:
+    return {
+        "source_id": source_id,
+        "source_label": source_label,
+        "horizon": horizon,
+        "direction": direction,
+        "strength": _bounded(strength),
+        "confidence": _bounded(confidence),
+        "as_of": as_of or None,
+        "status": status,
+        "reason": reason,
+        "affects_decision": bool(affects_decision),
+    }
+
+
+def _direction(score: Any, *, high: float = 65.0, low: float = 45.0) -> str:
+    value = _number(score)
+    if value is None:
+        return "missing"
+    if value >= high:
+        return "support"
+    if value < low:
+        return "oppose"
+    return "neutral"
+
+
+def _recommendation(score: float, eligible: bool, blocked: bool) -> str:
+    if blocked:
+        return "data_insufficient"
+    if score < 48:
+        return "avoid"
+    if not eligible:
+        return "wait_pullback" if score >= 60 else "watch"
+    if score >= 72:
+        return "can_scale"
+    if score >= 60:
+        return "wait_pullback"
+    return "watch"
+
+
+def _action_label(code: str) -> str:
+    return {
+        "can_scale": "可分批評估",
+        "wait_pullback": "等待買點",
+        "watch": "列入觀察",
+        "avoid": "暫不考慮",
+        "data_insufficient": "資料不足，不判斷",
+    }[code]
+
+
+def _quality_confidence(row: dict[str, Any], base: Any) -> float:
+    confidence = _number(base, 0.0) or 0.0
+    quality = _number(row.get("market_data_quality_score"))
+    if quality is not None:
+        confidence = min(confidence, quality)
+    coverage = _number(row.get("entry_data_coverage"))
+    total = _number(row.get("entry_data_total"))
+    if coverage is not None and total and total > 0:
+        confidence = min(confidence, coverage / total * 100)
+    return _bounded(confidence)
+
+
+def _valuation_index(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    if not report:
+        return {}
+    return {
+        str(row.get("symbol") or "").upper(): row
+        for row in report.get("data", [])
+        if isinstance(row, dict) and row.get("symbol")
+    }
+
+
+def _rotation_index(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for market, market_row in (report or {}).get("markets", {}).items():
+        snapshots = market_row.get("snapshots", []) if isinstance(market_row, dict) else []
+        if not snapshots:
+            continue
+        for sector in snapshots[-1].get("sectors", []):
+            if isinstance(sector, dict) and sector.get("industry"):
+                result[f"{market}:{sector['industry']}"] = sector
+    return result
+
+
+def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any]:
+    accuracy = reports.get("accuracy") or {}
+    calibration = accuracy.get("calibration", {})
+    valuation = reports.get("valuation") or {}
+    inverse = reports.get("inverse") or {}
+    rotation = reports.get("rotation") or {}
+    holding = reports.get("holding") or {}
+    million = reports.get("million") or {}
+    guard = reports.get("system_guard") or {}
+    valuation_coverage = valuation.get("coverage", {})
+    inverse_samples = sum(
+        len((inverse.get("markets", {}).get(market) or {}).get("cohorts", []))
+        for market in ("TW", "US")
+    )
+    return {
+        "forward_validation": {
+            "collected_trading_days": calibration.get("trading_days_collected", 0),
+            "target_trading_days": calibration.get("minimum_trading_days", 60),
+            "remaining_trading_days": calibration.get("remaining_trading_days", 60),
+            "ready": bool(calibration.get("ready_for_model_selection")),
+            "status": calibration.get("status") or "missing",
+        },
+        "valuation": {
+            "TW": valuation_coverage.get("TW", {}),
+            "US": valuation_coverage.get("US", {}),
+            "weight_review_ready": bool(
+                (valuation.get("validation") or {}).get("weight_review_ready")
+            ),
+        },
+        "rotation": {
+            market: (rotation.get("markets", {}).get(market) or {}).get("status", "missing")
+            for market in ("TW", "US")
+        },
+        "inverse": {
+            "forward_cohorts": inverse_samples,
+            "ready": inverse_samples > 0 and all(
+                any((entry or {}).get("samples", 0) >= 20 for entry in (
+                    (inverse.get("markets", {}).get(market) or {}).get("summary", {}).values()
+                ))
+                for market in ("TW", "US")
+            ),
+        },
+        "holding_validation": {
+            "medium_45d": {
+                market: (holding.get("medium", {}).get(market) or {}).get("status", "missing")
+                for market in ("TW", "US")
+            },
+            "long_6m": (holding.get("long") or {}).get("status", "missing"),
+            "updated_at": holding.get("updated_at"),
+        },
+        "five_day_simulation": {
+            market: {
+                "status": (million.get("markets", {}).get(market) or {}).get("status", "missing"),
+                "completed_days": (million.get("markets", {}).get(market) or {}).get("completed_days", 0),
+                "net_return_pct": (million.get("markets", {}).get(market) or {}).get("cumulative_net_return_pct"),
+            }
+            for market in ("TW", "US")
+        },
+        "system_guard": {
+            "status": guard.get("status", "missing"),
+            "warnings": [
+                {
+                    "code": item.get("code"),
+                    "title": item.get("title"),
+                    "detail": item.get("detail"),
+                    "action": item.get("action"),
+                }
+                for item in guard.get("checks", [])
+                if isinstance(item, dict) and item.get("level") in ("warning", "critical")
+            ],
+        },
+    }
+
+
+def _build_decision(
+    row: dict[str, Any],
+    *,
+    valuation: dict[str, Any] | None,
+    rotation: dict[str, Any] | None,
+    updated_at: str,
+) -> dict[str, Any]:
+    symbol = str(row.get("symbol") or "")
+    is_etf = "ETF" in str(row.get("type") or "").upper()
+    session_date = str(row.get("official_session_date") or row.get("cached_at") or updated_at)
+    market_valid = row.get("market_contract_valid") is not False
+    price = _number(row.get("price"))
+    hard_block = bool(row.get("trade_guard_blocked")) or not market_valid or not price or price <= 0
+    data_missing = list(row.get("market_data_missing") or [])
+    if not price or price <= 0:
+        data_missing.append("current_price")
+    if not market_valid:
+        data_missing.append("market_contract")
+
+    short_score = _bounded(row.get("short_term_score"))
+    short_confidence = _quality_confidence(row, row.get("short_term_confidence"))
+    short_code = _recommendation(
+        short_score,
+        bool(row.get("short_term_eligible")),
+        hard_block,
+    )
+
+    # The existing 3-12 month plan is split into two read-only decision views.
+    # Medium emphasizes trend/positioning; long emphasizes fundamentals/risk.
+    technical = _bounded(row.get("technical_score"))
+    position = _number(row.get("positioning_score"))
+    mid_long = _bounded(row.get("mid_long_score"))
+    medium_parts = [mid_long, technical]
+    if position is not None:
+        medium_parts.append(_bounded(position))
+    medium_score = round(sum(medium_parts) / len(medium_parts), 1)
+    medium_conf = _quality_confidence(row, row.get("mid_long_confidence"))
+    medium_code = _recommendation(
+        medium_score,
+        bool(row.get("mid_long_eligible")),
+        hard_block,
+    )
+
+    financial = _number(row.get("financial_quality_score"))
+    growth = _number(row.get("growth_score"))
+    fundamental = _number(row.get("fundamental_score"))
+    long_parts = [mid_long]
+    if is_etf:
+        long_parts.append(technical)
+    else:
+        long_parts.extend(_bounded(item) for item in (financial, growth, fundamental) if item is not None)
+    long_score = round(sum(long_parts) / len(long_parts), 1)
+    long_conf = medium_conf
+    valuation_ready = bool(valuation and valuation.get("status") == "ready")
+    valuation_pressure = _number((valuation or {}).get("valuation_pressure_score"))
+    if valuation_ready and valuation_pressure is not None:
+        # Risk-only deduction in this downstream decision; formal rank is untouched.
+        long_score = round(max(0.0, long_score - max(0.0, valuation_pressure - 55) * 0.20), 1)
+    long_code = _recommendation(
+        long_score,
+        bool(row.get("mid_long_eligible")) and (
+            is_etf or financial is not None or fundamental is not None
+        ),
+        hard_block,
+    )
+
+    evidence: list[dict[str, Any]] = []
+    evidence.append(_evidence(
+        "formal_v6", "正式 V6 排名", "all", _direction(row.get("overall_ranking_score")),
+        row.get("overall_ranking_score"), row.get("overall_confidence", 70), session_date,
+        "locked", f"正式第 {row.get('overall_rank') or row.get('rank') or '-'} 名；只讀取，不重排",
+    ))
+    evidence.append(_evidence(
+        "short_plan", "1～5 日短線模型", "short", _direction(short_score), short_score,
+        short_confidence, session_date, "ready" if not hard_block else "blocked",
+        str(row.get("short_term_reason") or row.get("short_term_status") or "短線資料未提供"),
+    ))
+    evidence.append(_evidence(
+        "medium_45d", "45 日中期拆分", "medium", _direction(medium_score), medium_score,
+        medium_conf, session_date, "derived_from_existing_fields",
+        "沿用中長線計畫，另以技術趨勢與籌碼定位形成45日觀察，不回寫正式分數",
+    ))
+    evidence.append(_evidence(
+        "long_6m", "6 個月長期拆分", "long", _direction(long_score), long_score,
+        long_conf, session_date, "derived_from_existing_fields",
+        "沿用中長線計畫，另以財務品質、成長與估值風險形成6個月觀察，不回寫正式分數",
+    ))
+    if valuation_ready:
+        evidence.append(_evidence(
+            "valuation_shadow", "估值風險雷達", "risk",
+            "oppose" if (valuation_pressure or 0) >= 65 else "neutral",
+            valuation_pressure or 0, 70, str(valuation.get("session_date") or updated_at),
+            "shadow_only", str(valuation.get("valuation_pressure_label") or valuation.get("reason") or "估值資料可用"),
+        ))
+    elif not is_etf:
+        evidence.append(_evidence(
+            "valuation_shadow", "估值風險雷達", "risk", "missing", 0, 0, updated_at,
+            "insufficient", str((valuation or {}).get("reason") or "估值核心資料不足"),
+            affects_decision=False,
+        ))
+        data_missing.append("valuation_risk")
+    else:
+        evidence.append(_evidence(
+            "valuation_shadow", "估值風險雷達", "risk", "neutral", 0, 100,
+            updated_at, "not_applicable", "ETF 不套用營運公司估值模型",
+            affects_decision=False,
+        ))
+    if rotation:
+        rotation_score = _number(rotation.get("rotation_score"))
+        evidence.append(_evidence(
+            "rotation_shadow", "族群輪動影子", "market", _direction(rotation_score),
+            rotation_score or 0, 45, session_date, "collecting_only",
+            f"{row.get('industry') or '未分類'}：{rotation.get('stage_reason') or '仍在累積向前資料'}",
+            affects_decision=False,
+        ))
+    else:
+        evidence.append(_evidence(
+            "rotation_shadow", "族群輪動影子", "market", "missing", 0, 0, updated_at,
+            "insufficient", "目前沒有可對齊的族群輪動樣本", affects_decision=False,
+        ))
+    news_available = bool(row.get("news_data_available"))
+    news_penalty = _number(row.get("news_penalty"), 0) or 0
+    evidence.append(_evidence(
+        "verified_news", "已驗證新聞風險", "risk",
+        "oppose" if news_penalty > 0 else "neutral" if news_available else "missing",
+        min(100, abs(news_penalty) * 10), 100 if row.get("news_verified") else 30,
+        str(row.get("news_scanned_at") or updated_at),
+        "verified" if row.get("news_verified") else "available" if news_available else "missing",
+        str(row.get("news_summary") or row.get("news_risk_level") or "未取得新聞風險資料"),
+        affects_decision=news_available,
+    ))
+    if not news_available:
+        data_missing.append("verified_news")
+
+    conflicts: list[dict[str, Any]] = []
+    if hard_block and short_score >= 60:
+        conflicts.append({
+            "code": "positive_signal_vs_data_block",
+            "severity": "hard",
+            "sources": ["short_plan", "market_contract"],
+            "reason": "模型訊號偏多，但交易資料契約或風控條件不完整",
+            "resolution_rule": "資料完整性優先，不提供進場判斷",
+            "resolution": "data_insufficient",
+        })
+    if valuation_ready and (valuation_pressure or 0) >= 65 and short_score >= 65:
+        conflicts.append({
+            "code": "trend_vs_valuation",
+            "severity": "medium",
+            "sources": ["short_plan", "valuation_shadow"],
+            "reason": "短線動能偏強，但估值風險偏高",
+            "resolution_rule": "保留短線觀察；6個月判斷降級，兩個時段不互相覆蓋",
+            "resolution": "short_watch_long_wait",
+        })
+        if long_code == "can_scale":
+            long_code = "wait_pullback"
+    if short_code in ("can_scale", "wait_pullback") and long_code in ("avoid", "data_insufficient"):
+        conflicts.append({
+            "code": "horizon_disagreement",
+            "severity": "medium",
+            "sources": ["short_plan", "long_6m"],
+            "reason": "短線與6個月方向不一致",
+            "resolution_rule": "不合併投票；分時段顯示並以較保守方案作中央摘要",
+            "resolution": "separate_horizons",
+        })
+    if news_penalty > 0 and row.get("news_verified"):
+        conflicts.append({
+            "code": "verified_material_risk",
+            "severity": "hard",
+            "sources": ["verified_news", "formal_v6"],
+            "reason": "存在已驗證重大負面事件",
+            "resolution_rule": "已驗證重大風險優先於正向訊號",
+            "resolution": "avoid",
+        })
+        short_code = medium_code = long_code = "avoid"
+
+    codes = [short_code, medium_code, long_code]
+    if hard_block:
+        final_code = "data_insufficient"
+        final_reason = str(row.get("trade_guard_reason") or "行情資料契約不完整，中央層拒絕判斷")
+    elif "avoid" in codes:
+        final_code = "avoid"
+        final_reason = "至少一個獨立時段或重大風險不合格，採保守結論"
+    elif "wait_pullback" in codes:
+        final_code = "wait_pullback"
+        final_reason = "模型有支持證據，但買點或跨時段條件尚未同時成熟"
+    elif all(code == "can_scale" for code in codes):
+        final_code = "can_scale"
+        final_reason = "三個獨立時段均達條件；仍需由你確認價格與風險"
+    else:
+        final_code = "watch"
+        final_reason = "證據未形成一致進場條件，先列入觀察"
+    confidence = round(min(short_confidence, medium_conf, long_conf), 1)
+    if data_missing:
+        confidence = max(0.0, round(confidence - min(25, len(set(data_missing)) * 5), 1))
+
+    horizons = {
+        "short": {
+            "label": "1～5 日",
+            "recommendation": short_code,
+            "action": _action_label(short_code),
+            "score": short_score,
+            "confidence": short_confidence,
+            "entry_low": _number(row.get("short_term_entry_low")),
+            "entry_high": _number(row.get("short_term_entry_high")),
+            "stop": _number(row.get("short_term_stop")),
+            "target1": _number(row.get("short_term_target1")),
+            "reason": row.get("short_term_reason") or row.get("short_term_status"),
+        },
+        "medium": {
+            "label": "45 日",
+            "recommendation": medium_code,
+            "action": _action_label(medium_code),
+            "score": medium_score,
+            "confidence": medium_conf,
+            "entry_low": _number(row.get("mid_long_batch1_low")),
+            "entry_high": _number(row.get("mid_long_batch1_high")),
+            "stop": _number(row.get("mid_long_stop")),
+            "target1": _number(row.get("mid_long_target1")),
+            "reason": "中長線原始計畫＋45日技術與籌碼拆分",
+        },
+        "long": {
+            "label": "6 個月",
+            "recommendation": long_code,
+            "action": _action_label(long_code),
+            "score": long_score,
+            "confidence": long_conf,
+            "entry_low": _number(row.get("mid_long_batch2_low") or row.get("mid_long_batch1_low")),
+            "entry_high": _number(row.get("mid_long_batch2_high") or row.get("mid_long_batch1_high")),
+            "stop": _number(row.get("mid_long_stop")),
+            "target1": _number(row.get("mid_long_target2") or row.get("mid_long_target1")),
+            "reason": "中長線原始計畫＋6個月財務、成長與估值拆分",
+        },
+    }
+    return {
+        "symbol": symbol,
+        "name": row.get("name") or symbol,
+        "market": row.get("market"),
+        "asset_type": row.get("type"),
+        "industry": row.get("industry"),
+        "price": price,
+        "session_date": row.get("official_session_date"),
+        "formal_rank": row.get("overall_rank") or row.get("rank"),
+        "formal_score": _number(row.get("overall_ranking_score") or row.get("score")),
+        "formal_ranking_unchanged": True,
+        "horizons": horizons,
+        "evidence": evidence,
+        "conflicts": conflicts,
+        "conflict_count": len(conflicts),
+        "unresolved_conflict_count": 0,
+        "data_missing": sorted(set(str(item) for item in data_missing if item)),
+        "data_quality": row.get("overall_data_quality") or row.get("market_data_quality") or "未標示",
+        "risk_blocks": [row.get("trade_guard_reason")] if row.get("trade_guard_blocked") else [],
+        "final": {
+            "recommendation": final_code,
+            "action": _action_label(final_code),
+            "confidence": confidence,
+            "reason": final_reason,
+            "position_guidance": "只供研究與人工決定；不會自動下單",
+        },
+        "user_choices": ["watch", "wait_entry", "skip"],
+    }
+
+
+def update_decision_hub(
+    reports_dir: Path,
+    rows: list[dict[str, Any]],
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> dict[str, Any]:
+    """Generate the hub without mutating ``rows`` or formal report files."""
+    reports_dir = Path(reports_dir)
+    frozen_rows = copy.deepcopy(rows)
+    source_reports = {
+        "valuation": _read_json(reports_dir / "valuation_risk_shadow.json"),
+        "rotation": _read_json(reports_dir / "market_rotation_shadow.json"),
+        "inverse": _read_json(reports_dir / "inverse_etf_shadow.json"),
+        "accuracy": _read_json(reports_dir / "accuracy.json"),
+        "holding": _read_json(reports_dir / "holding_simulation.json"),
+        "million": _read_json(reports_dir / "million_simulation.json"),
+        "system_guard": _read_json(reports_dir / "system_guard.json"),
+    }
+    valuation_by_symbol = _valuation_index(source_reports["valuation"])
+    rotation_by_sector = _rotation_index(source_reports["rotation"])
+    decisions = [
+        _build_decision(
+            row,
+            valuation=valuation_by_symbol.get(str(row.get("symbol") or "").upper()),
+            rotation=rotation_by_sector.get(f"{row.get('market')}:{row.get('industry')}"),
+            updated_at=updated_at,
+        )
+        for row in frozen_rows
+        if isinstance(row, dict) and row.get("symbol")
+    ]
+    decisions.sort(key=lambda item: (
+        str(item.get("market") or ""),
+        item.get("formal_rank") if isinstance(item.get("formal_rank"), (int, float)) else 999999,
+        str(item.get("symbol") or ""),
+    ))
+    missing_sources = [name for name, report in source_reports.items() if report is None]
+    summary = {
+        "decision_count": len(decisions),
+        "conflict_count": sum(1 for item in decisions if item["conflict_count"]),
+        "data_insufficient_count": sum(
+            1 for item in decisions if item["final"]["recommendation"] == "data_insufficient"
+        ),
+        "by_recommendation": {
+            code: sum(1 for item in decisions if item["final"]["recommendation"] == code)
+            for code in ("can_scale", "wait_pullback", "watch", "avoid", "data_insufficient")
+        },
+        "by_market": {
+            market: sum(1 for item in decisions if item.get("market") == market)
+            for market in ("TW", "US")
+        },
+    }
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "model_version": MODEL_VERSION,
+        "mode": "central_ai_decision_hub",
+        "updated_at": updated_at,
+        "period": period,
+        "run_mode": "intraday_refresh" if intraday else "scheduled_report",
+        "status": "warning" if missing_sources else "ready",
+        "policy": dict(POLICY),
+        "decision_rules": [
+            "資料契約與重大風險優先，缺資料不推測",
+            "1～5日、45日、6個月分開判斷，不以多數決互相覆蓋",
+            "未完成向前驗證的影子模型只能提供證據，不能提高正式排名",
+            "短線強但估值過高時，保留短線觀察並降低6個月判斷",
+            "最終按鈕只保存你的人工選擇，不連券商、不下單",
+        ],
+        "source_status": {
+            name: {
+                "available": report is not None,
+                "updated_at": (report or {}).get("updated_at"),
+            }
+            for name, report in source_reports.items()
+        },
+        "missing_sources": missing_sources,
+        "readiness": _model_readiness(source_reports),
+        "summary": summary,
+        "decisions": decisions,
+        "disclaimer": "資料整理、衝突說明與風險輔助，不保證獲利，也不是代客下單建議。",
+    }
+    decision_files = []
+    for offset in range(0, len(decisions), CHUNK_SIZE):
+        chunk = decisions[offset:offset + CHUNK_SIZE]
+        chunk_number = offset // CHUNK_SIZE + 1
+        filename = f"decision_hub_{chunk_number:02d}.json"
+        _write_json(reports_dir / filename, {
+            "schema_version": SCHEMA_VERSION,
+            "model_version": MODEL_VERSION,
+            "updated_at": updated_at,
+            "chunk": chunk_number,
+            "decisions": chunk,
+        })
+        decision_files.append(filename)
+    for stale_path in reports_dir.glob("decision_hub_[0-9][0-9].json"):
+        if stale_path.name not in decision_files:
+            stale_path.unlink()
+    index_payload = {key: value for key, value in payload.items() if key != "decisions"}
+    index_payload["decision_files"] = decision_files
+    _write_json(reports_dir / "decision_hub.json", index_payload)
+    return payload
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate the Central AI Decision Hub report")
+    parser.add_argument("--reports-dir", default="reports")
+    args = parser.parse_args()
+    reports_dir = Path(args.reports_dir)
+    analysis = _read_json(reports_dir / "all_analysis.json") or {}
+    rows = analysis.get("data") if isinstance(analysis.get("data"), list) else []
+    payload = update_decision_hub(
+        reports_dir,
+        rows,
+        period=str(analysis.get("period") or "evening"),
+        updated_at=str(analysis.get("updated_at") or ""),
+        intraday=analysis.get("run_mode") == "intraday_refresh",
+    )
+    print(
+        f"Decision hub: {payload['summary']['decision_count']} rows, "
+        f"{payload['summary']['conflict_count']} conflicts"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
