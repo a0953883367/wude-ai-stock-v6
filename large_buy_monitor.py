@@ -19,6 +19,7 @@ import time
 from typing import Any, Callable
 
 from capital_flow_shadow import CapitalFlowShadow, is_directional_trade_conditions
+from flow_weight_shadow import FlowWeightShadow
 
 
 MARKETS = ("TW", "US")
@@ -341,6 +342,7 @@ class LargeBuyAlertService:
         state_path: Path,
         *,
         flow_state_path: Path | None = None,
+        weight_shadow_state_path: Path | None = None,
         config: LargeBuyConfig | None = None,
         notifier: Callable[[str], Any] | None = None,
         alert_notifier: Callable[[dict[str, Any]], Any] | None = None,
@@ -352,6 +354,10 @@ class LargeBuyAlertService:
         self.flow = CapitalFlowShadow(
             self.baselines,
             state_path=flow_state_path or state_path.with_name("capital_flow_shadow.json"),
+        )
+        self.weight_shadow = FlowWeightShadow(
+            report_path,
+            weight_shadow_state_path or state_path.with_name("flow_weight_shadow.json"),
         )
         self.notifier = notifier
         self.alert_notifier = alert_notifier
@@ -390,6 +396,8 @@ class LargeBuyAlertService:
         if alert is None:
             return None
         stored = self.store.append(alert)
+        if getattr(self, "weight_shadow", None) is not None:
+            self.weight_shadow.record_alert(stored)
         if self.notifier is not None:
             try:
                 self.notifier(format_large_buy_telegram(stored))
@@ -413,6 +421,11 @@ class LargeBuyAlertService:
     def snapshot(self, *, after: int = 0, limit: int = 50) -> dict[str, Any]:
         with self._lock:
             status = json.loads(json.dumps(self._status))
+        capital_flow = self.flow.snapshot()
+        weight_shadow = (
+            self.weight_shadow.snapshot(capital_flow)
+            if getattr(self, "weight_shadow", None) is not None else None
+        )
         return {
             "version": 1,
             "policy": {
@@ -429,5 +442,6 @@ class LargeBuyAlertService:
             "streams": status,
             "latest_sequence": self.store.latest_sequence,
             "alerts": self.store.list_after(after, limit=limit),
-            "capital_flow": self.flow.snapshot(),
+            "capital_flow": capital_flow,
+            "flow_weight_shadow": weight_shadow,
         }

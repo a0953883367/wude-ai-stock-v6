@@ -42,3 +42,13 @@ test('capital flow keeps buy and sell analysis', () => {
   assert.match(script, /top_inflows/);
   assert.match(script, /top_outflows/);
 });
+
+test('five-day flow weight experiment is isolated and visible', () => {
+  assert.match(html, /資金流影子權重 V1/);
+  assert.match(html, /總調整上限 ±3 點/);
+  assert.match(html, /45日與6個月模型完全不變/);
+  assert.match(html, /滿60日及200筆訊號/);
+  assert.match(script, /flow_weight_shadow/);
+  assert.match(script, /正式排名鎖定/);
+  assert.match(script, /flow-alert-sound/);
+});

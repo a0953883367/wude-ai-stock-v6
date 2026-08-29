@@ -66,6 +66,10 @@ def _capital_flow_state_path() -> Path:
     return Path("/data/capital_flow_shadow.json") if Path("/data").is_dir() else Path("/tmp/wude-capital-flow-shadow.json")
 
 
+def _flow_weight_shadow_state_path() -> Path:
+    return Path("/data/flow_weight_shadow.json") if Path("/data").is_dir() else Path("/tmp/wude-flow-weight-shadow.json")
+
+
 def _live_telegram_ready_path() -> Path:
     configured = os.getenv("TELEGRAM_LIVE_READY_PATH", "").strip()
     if configured:
@@ -389,6 +393,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         Path(__file__).resolve().parent / "reports" / "all_analysis.json",
         _large_buy_state_path(),
         flow_state_path=_capital_flow_state_path(),
+        weight_shadow_state_path=_flow_weight_shadow_state_path(),
         alert_notifier=fanout_alert(web_push.send_alert, live_telegram.enqueue),
     )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
