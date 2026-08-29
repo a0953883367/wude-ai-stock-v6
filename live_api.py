@@ -466,6 +466,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/health":
             health = self.service.health()
             monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
+            weight_shadow = monitor.get("flow_weight_shadow") or {}
             health["large_buy_monitor"] = {
                 "enabled": _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")),
                 "universe": monitor["universe"],
@@ -479,6 +480,21 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         "separate_market": True,
                     }
                     for market, details in monitor["capital_flow"]["markets"].items()
+                },
+                "flow_weight_shadow": {
+                    "mode": weight_shadow.get("mode"),
+                    "formal_ranking_locked": (weight_shadow.get("policy") or {}).get("formal_ranking_locked"),
+                    "medium_45_day_unchanged": (weight_shadow.get("policy") or {}).get("medium_45_day_unchanged"),
+                    "long_6_month_unchanged": (weight_shadow.get("policy") or {}).get("long_6_month_unchanged"),
+                    "markets_separate": (weight_shadow.get("policy") or {}).get("markets_separate"),
+                    "markets": {
+                        market: {
+                            "status": details.get("status"),
+                            "valid_trading_days": (details.get("summary") or {}).get("valid_trading_days"),
+                            "valid_signals": (details.get("summary") or {}).get("valid_signals"),
+                        }
+                        for market, details in (weight_shadow.get("markets") or {}).items()
+                    },
                 },
             }
             self._send(HTTPStatus.OK, health)
