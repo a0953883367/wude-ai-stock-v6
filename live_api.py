@@ -33,7 +33,8 @@ from fubon_broker import FubonTradingSession
 from large_buy_monitor import LargeBuyAlertService
 from large_buy_streams import LargeBuyStreams
 from live_trade_engine import LiveTradingEngine
-from notifier import send_telegram
+from live_telegram import LiveTelegramBatcher, fanout_alert
+from notifier import live_telegram_configured, send_live_telegram
 from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 from web_push import WebPushService
@@ -344,12 +345,15 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         _push_key_path,
         subject=os.getenv("WEB_PUSH_SUBJECT", "mailto:a0953883367@gmail.com"),
     )
+    live_telegram = LiveTelegramBatcher(
+        send_live_telegram,
+        window_seconds=float(os.getenv("TELEGRAM_LIVE_BATCH_SECONDS", "10")),
+    )
     large_buy_service = LargeBuyAlertService(
         Path(__file__).resolve().parent / "reports" / "all_analysis.json",
         _large_buy_state_path(),
         flow_state_path=_capital_flow_state_path(),
-        notifier=send_telegram,
-        alert_notifier=web_push.send_alert,
+        alert_notifier=fanout_alert(web_push.send_alert, live_telegram.enqueue),
     )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
 
@@ -425,9 +429,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 "enabled": _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")),
                 "universe": monitor["universe"],
                 "streams": monitor["streams"],
-                "telegram_configured": bool(
-                    os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
-                ),
+                "telegram_configured": live_telegram_configured(),
                 "web_push_subscriptions": self.web_push.subscription_count,
                 "capital_flow_shadow": {
                     market: {
@@ -480,9 +482,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 **self.large_buy_service.snapshot(after=after, limit=limit),
                 "notifications": {
                     "website": True,
-                    "telegram_configured": bool(
-                        os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")
-                    ),
+                    "telegram_configured": live_telegram_configured(),
                     "web_push_subscriptions": self.web_push.subscription_count,
                 },
             })

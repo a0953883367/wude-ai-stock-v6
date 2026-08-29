@@ -251,3 +251,30 @@ def send_telegram(markdown: str) -> bool:
         )
         response.raise_for_status()
     return True
+
+
+def _live_telegram_credentials(settings: Any = SETTINGS) -> tuple[str, str]:
+    """Return the dedicated live-alert bot and chat without any fallback."""
+    return settings.telegram_live_bot_token, settings.telegram_live_chat_id
+
+
+def live_telegram_configured(settings: Any = SETTINGS) -> bool:
+    token, chat_id = _live_telegram_credentials(settings)
+    return bool(token and chat_id)
+
+
+def send_live_telegram(markdown: str) -> bool:
+    """Send only to the explicitly configured real-time alert conversation."""
+    token, chat_id = _live_telegram_credentials()
+    if not token or not chat_id:
+        LOG.info("Live Telegram destination not set; alert kept in the website only")
+        return False
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    for chunk in _telegram_chunks(markdown):
+        response = requests.post(
+            url,
+            json={"chat_id": chat_id, "text": chunk, "disable_web_page_preview": True},
+            timeout=SETTINGS.request_timeout,
+        )
+        response.raise_for_status()
+    return True
