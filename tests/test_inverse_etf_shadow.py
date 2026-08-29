@@ -1,10 +1,12 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
 from inverse_etf_shadow import (
     build_mapping_database,
+    build_live_overlay,
     build_product_rows,
     empty_state,
     load_catalog,
@@ -58,3 +60,41 @@ def test_empty_state_is_a_separate_book():
     assert state["mode"] == "isolated_inverse_etf_shadow"
     assert state["policy"]["broker_orders"] is False
     assert "flow_weight_shadow" not in state
+
+
+def test_mapping_quality_uses_aligned_real_returns():
+    dates = pd.date_range("2026-06-01", periods=30, freq="B")
+    daily = [0.01 if index % 2 else -0.008 for index in range(1, 30)]
+    stock_prices, inverse_prices = [100.0], [100.0]
+    for value in daily:
+        stock_prices.append(stock_prices[-1] * (1 + value))
+        inverse_prices.append(inverse_prices[-1] * (1 - value))
+    stock = pd.DataFrame({"close": stock_prices}, index=dates)
+    inverse = pd.DataFrame({"close": inverse_prices}, index=dates)
+    rows = [{"symbol": "QQQX", "name": "NASDAQ測試", "market": "US", "type": "ETF", "theme": "NASDAQ"}]
+    catalog = {"products": [{"symbol": "SQQQ", "name": "SQQQ", "market": "US", "daily_target": -3, "group": "us_nasdaq", "benchmark": "NDX", "official_source": "official"}]}
+    database = build_mapping_database(rows, catalog=catalog, histories={"QQQX": stock, "SQQQ": inverse})
+    mapping = database["mappings"][0]
+    assert mapping["mapping_quality_score"] is not None
+    assert mapping["negative_correlation_20d"] > 90
+    assert mapping["correlation_samples"] == 29
+    assert database["policy"]["mapping_quality_uses_real_aligned_returns"] is True
+
+
+def test_live_overlay_reads_sell_flow_but_does_not_mutate_other_ledgers():
+    database = {
+        "products": [{"symbol": "SOXS", "name": "SOXS", "group": "us_semiconductor", "daily_target": -3}],
+        "mappings": [{"symbol": "NVDA", "market": "US", "group": "us_semiconductor", "mapping_quality_score": 90}],
+    }
+    shadow = {"markets": {"TW": {"current_candidates": []}, "US": {"current_candidates": [{"group": "us_semiconductor", "bear_score": 80, "no_chase": False}]}}}
+    flow = {"markets": {"TW": {"windows": {"15m": {}}}, "US": {"windows": {"15m": {"buy_ratio_pct": 30, "positive_breadth_pct": 25, "top_outflows": [{"symbol": "NVDA", "buy_ratio_pct": 10}]}}}}}
+    alerts = [{"symbol": "NVDA", "market": "US", "alert_side": "sell", "detected_at": "2026-08-29T12:00:00+00:00"}]
+    original_shadow = json.dumps(shadow, sort_keys=True)
+    overlay = build_live_overlay(database, shadow, flow, alerts, now=datetime(2026, 8, 29, 12, 5, tzinfo=timezone.utc))
+    card = overlay["markets"]["US"]["cards"][0]
+    assert card["components"]["large_sell_alerts_15m"] == 1
+    assert card["components"]["sell_flow"] == 90
+    assert card["components"]["derivatives"] is None
+    assert "期貨／選擇權尚未接入" in card["data_missing"]
+    assert json.dumps(shadow, sort_keys=True) == original_shadow
+    assert overlay["policy"]["flow_weight_shadow_unchanged"] is True

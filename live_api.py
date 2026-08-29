@@ -467,6 +467,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             health = self.service.health()
             monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
             weight_shadow = monitor.get("flow_weight_shadow") or {}
+            inverse_live = monitor.get("inverse_etf_live_shadow") or {}
             health["large_buy_monitor"] = {
                 "enabled": _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")),
                 "universe": monitor["universe"],
@@ -502,6 +503,17 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                             },
                         }
                         for market, details in (weight_shadow.get("markets") or {}).items()
+                    },
+                },
+                "inverse_etf_live_shadow": {
+                    "mode": inverse_live.get("mode"),
+                    "status": inverse_live.get("status", "ok"),
+                    "formal_ranking_locked": (inverse_live.get("policy") or {}).get("formal_ranking_locked"),
+                    "flow_weight_shadow_unchanged": (inverse_live.get("policy") or {}).get("flow_weight_shadow_unchanged"),
+                    "broker_orders": (inverse_live.get("policy") or {}).get("broker_orders"),
+                    "markets": {
+                        market: {"candidate_groups": len((details or {}).get("cards") or [])}
+                        for market, details in (inverse_live.get("markets") or {}).items()
                     },
                 },
             }

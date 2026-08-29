@@ -132,6 +132,8 @@ def test_service_stores_and_notifies_without_broker_actions(tmp_path: Path):
     assert snapshot["capital_flow"]["policy"]["markets_separate"] is True
     assert snapshot["capital_flow"]["markets"]["TW"]["windows"]["1m"]["trade_count"] == 1
     assert snapshot["capital_flow"]["markets"]["US"]["windows"]["1m"]["trade_count"] == 0
+    assert snapshot["inverse_etf_live_shadow"]["policy"]["formal_ranking_locked"] is True
+    assert snapshot["inverse_etf_live_shadow"]["policy"]["broker_orders"] is False
 
 
 def test_telegram_text_states_information_only():
@@ -166,3 +168,5 @@ def test_railway_image_keeps_the_full_large_buy_universe(tmp_path: Path):
     assert snapshot["universe"]["TW"] > 0
     assert snapshot["universe"]["US"] > 0
     assert snapshot["universe"]["TW"] + snapshot["universe"]["US"] >= 300
+    assert snapshot["inverse_etf_live_shadow"]["mode"] == "isolated_inverse_etf_live_overlay"
+    assert snapshot["inverse_etf_live_shadow"]["policy"]["flow_weight_shadow_unchanged"] is True

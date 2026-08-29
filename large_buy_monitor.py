@@ -20,6 +20,7 @@ from typing import Any, Callable
 
 from capital_flow_shadow import CapitalFlowShadow, is_directional_trade_conditions
 from flow_weight_shadow import FlowWeightShadow
+from inverse_etf_shadow import build_live_overlay
 
 
 MARKETS = ("TW", "US")
@@ -347,6 +348,7 @@ class LargeBuyAlertService:
         notifier: Callable[[str], Any] | None = None,
         alert_notifier: Callable[[dict[str, Any]], Any] | None = None,
     ) -> None:
+        self.report_path = report_path
         self.config = config or LargeBuyConfig()
         self.baselines = load_stock_baselines(report_path)
         self.detector = LargeBuyDetector(self.baselines, config=self.config)
@@ -434,6 +436,35 @@ class LargeBuyAlertService:
             self.weight_shadow.snapshot(capital_flow)
             if getattr(self, "weight_shadow", None) is not None else None
         )
+        inverse_live_shadow = None
+        try:
+            report_path = getattr(self, "report_path", None)
+            if not isinstance(report_path, Path):
+                raise OSError("inverse ETF report path unavailable")
+            database = json.loads(
+                report_path.with_name("inverse_etf_database.json").read_text(encoding="utf-8")
+            )
+            inverse_state = json.loads(
+                report_path.with_name("inverse_etf_shadow.json").read_text(encoding="utf-8")
+            )
+            inverse_live_shadow = build_live_overlay(
+                database,
+                inverse_state,
+                capital_flow,
+                self.store.list_after(0, limit=100),
+            )
+        except (OSError, ValueError, TypeError):
+            inverse_live_shadow = {
+                "version": 1,
+                "mode": "isolated_inverse_etf_live_overlay",
+                "status": "data_unavailable",
+                "policy": {
+                    "formal_ranking_locked": True,
+                    "flow_weight_shadow_unchanged": True,
+                    "broker_orders": False,
+                },
+                "markets": {},
+            }
         return {
             "version": 1,
             "policy": {
@@ -452,4 +483,5 @@ class LargeBuyAlertService:
             "alerts": self.store.list_after(after, limit=limit),
             "capital_flow": capital_flow,
             "flow_weight_shadow": weight_shadow,
+            "inverse_etf_live_shadow": inverse_live_shadow,
         }

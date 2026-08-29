@@ -1109,6 +1109,7 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         catalog=inverse_etf_catalog,
+        histories=history,
     )
     # Research-only forward audit.  It reads the already-final ranking but can
     # neither change that ranking nor use the same session as its outcome.
