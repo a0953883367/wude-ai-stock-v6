@@ -60,6 +60,7 @@ from tw_official_data import (
     overlay_official_daily,
 )
 from tw_market_context import build_tw_market_context
+from stockq_market_context import update_stockq_market_context
 from watchlist import load_watchlist
 
 build_features = strategy.build_features
@@ -925,6 +926,17 @@ def main() -> int:
         )
 
     market = _stage("核心市場", fetch_core_market)
+    # StockQ is a low-frequency secondary context source. It is written to its
+    # own dated cache and never overwrites the broker/official symbol rows used
+    # by rankings or simulations.
+    stockq_market_context = _stage(
+        "StockQ市場環境輔助層",
+        lambda: update_stockq_market_context(
+            SETTINGS.reports_dir,
+            updated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
+            timeout=SETTINGS.request_timeout,
+        ),
+    )
     tw_market_context = build_tw_market_context(features, market)
     nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
     nasdaq_change = float(nasdaq_raw) if nasdaq_raw is not None else None
@@ -1104,6 +1116,7 @@ def main() -> int:
         "watchlist_count": len(watchlist),
         "watchlist_analyzed_count": len(watchlist_rows),
         "market": market,
+        "stockq_market_context": stockq_market_context,
         "macro_regime": macro_regime,
         "tw_market_context": tw_market_context,
         "data_status": {
@@ -1129,6 +1142,8 @@ def main() -> int:
             "news_verified_risk_count": sum(
                 1 for item in news_risks.values() if item.get("news_penalty", 0) > 0
             ),
+            "stockq_status": stockq_market_context.get("status"),
+            "stockq_indicator_count": stockq_market_context.get("indicator_count", 0),
             "expected_tw_count": len(watchlist_stock_ids),
         },
         "watchlist": watchlist_rows,
@@ -1156,6 +1171,7 @@ def main() -> int:
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
+            "stockq_context": "StockQ只作全球指數、期貨、匯率、利率與商品交叉驗證；獨立快取且不覆蓋個股行情、財報、正式排名或下單",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
             "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
             "institutional_accumulation": "台股法人蓄力分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；資料完整時占台股個股短線排名20%，另設獨立法人蓄力榜並持續累積扣成本驗證",
