@@ -1,3 +1,5 @@
+import pandas as pd
+
 from weight_experiment import (
     ALLOCATION_TWD,
     CAPITAL_TWD,
@@ -154,3 +156,62 @@ def test_intraday_does_nothing_and_evening_stops_all_models_after_five_days():
     assert state["winner_model"] in state["models"]
     assert all(model["completed_days"] == 5 for model in state["models"].values())
     assert all(model["pending"] is None for model in state["models"].values())
+
+
+def test_morning_settles_existing_pending_but_never_creates_new_snapshot():
+    state = empty_state()
+    update_state(state, universe(), period="morning", updated_at="morning without signal")
+    assert all(model["pending"] is None for model in state["models"].values())
+
+    update_state(state, universe(), period="evening", updated_at="evening signal")
+    update_state(
+        state, universe("2026-08-24"), period="morning",
+        updated_at="morning backfill",
+    )
+
+    for model in state["models"].values():
+        assert model["completed_days"] == 1
+        assert model["days"][0]["session_date"] == "2026-08-24"
+        assert model["pending"] is None
+
+
+def test_exact_historical_price_repairs_legacy_missing_position_before_settlement():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="signal")
+    update_state(state, universe("2026-08-24"), period="evening", updated_at="day one")
+    for model in state["models"].values():
+        missing = model["days"][0]["positions"][0]
+        missing.update({
+            "data_available": False,
+            "open_price": None,
+            "sell_price": None,
+            "gross_return_pct": None,
+            "net_return_pct": None,
+            "gross_profit_twd": 0.0,
+            "net_profit_twd": 0.0,
+        })
+        model["days"][0]["invested_twd"] = CAPITAL_TWD - ALLOCATION_TWD
+    missing_symbols = {
+        model["days"][0]["positions"][0]["symbol"]
+        for model in state["models"].values()
+    }
+    history = {
+        symbol: pd.DataFrame(
+            {"open": [100.0], "close": [103.0]},
+            index=pd.to_datetime(["2026-08-24"]),
+        )
+        for symbol in missing_symbols
+    }
+
+    update_state(
+        state, universe("2026-08-25"), period="morning",
+        updated_at="repair", price_history=history,
+    )
+
+    for model in state["models"].values():
+        assert model["completed_days"] == 2
+        repaired = model["days"][0]["positions"][0]
+        assert repaired["data_available"] is True
+        assert repaired["historical_price_repair"] is True
+        assert model["days"][0]["historical_price_repairs"] == [repaired["symbol"]]
+        assert model["invalid_days"] == []

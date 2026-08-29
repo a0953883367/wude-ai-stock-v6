@@ -14,6 +14,8 @@ import math
 from pathlib import Path
 from typing import Any, Iterable
 
+import pandas as pd
+
 
 VERSION = 1
 START_DATE = "2026-08-24"
@@ -171,6 +173,99 @@ def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
     model["completed_days"] = len(valid_days)
     if model.get("status") == "complete" and len(valid_days) < TARGET_DAYS:
         model["status"] = "running"
+
+
+def _historical_ohlc(
+    price_history: dict[str, Any] | None,
+    symbol: str,
+    session_date: str,
+) -> tuple[float, float] | None:
+    """Return exact-session open/close without substituting another date."""
+    if not price_history or not symbol or not session_date:
+        return None
+    frame = price_history.get(symbol)
+    if frame is None or getattr(frame, "empty", True):
+        return None
+    source = frame.copy()
+    source.columns = [str(column).lower() for column in source.columns]
+    if "open" not in source or "close" not in source:
+        return None
+    matches = []
+    for index, value in enumerate(source.index):
+        try:
+            timestamp = pd.Timestamp(value)
+            if timestamp.tzinfo is not None:
+                timestamp = timestamp.tz_convert("Asia/Taipei")
+            if timestamp.date().isoformat() == session_date:
+                matches.append(index)
+        except (TypeError, ValueError):
+            continue
+    if not matches:
+        return None
+    row = source.iloc[matches[-1]]
+    open_price = _finite(row.get("open"))
+    close_price = _finite(row.get("close"))
+    return (open_price, close_price) if open_price > 0 and close_price > 0 else None
+
+
+def _repair_incomplete_days(
+    model: dict[str, Any], price_history: dict[str, Any] | None
+) -> None:
+    """Repair a legacy missing position only from the same official session."""
+    if not price_history:
+        return
+    for day in model.get("days") or []:
+        session_date = str(day.get("session_date") or "")
+        repaired_symbols: list[str] = []
+        for position in day.get("positions") or []:
+            if (
+                position.get("data_available")
+                and _finite(position.get("open_price")) > 0
+                and _finite(position.get("sell_price")) > 0
+            ):
+                continue
+            symbol = str(position.get("symbol") or "")
+            prices = _historical_ohlc(price_history, symbol, session_date)
+            if not prices:
+                continue
+            open_price, close_price = prices
+            allocation = _finite(position.get("allocation_twd"), ALLOCATION_TWD)
+            gross_return = (close_price / open_price - 1) * 100
+            net_return = gross_return - ROUND_TRIP_COST_PCT
+            position.update({
+                "open_price": round(open_price, 4),
+                "sell_price": round(close_price, 4),
+                "gross_return_pct": round(gross_return, 4),
+                "net_return_pct": round(net_return, 4),
+                "gross_profit_twd": round(allocation * gross_return / 100, 2),
+                "net_profit_twd": round(allocation * net_return / 100, 2),
+                "data_available": True,
+                "historical_price_repair": True,
+                "historical_price_repair_source": "daily_history_exact_session",
+            })
+            repaired_symbols.append(symbol)
+        if not repaired_symbols:
+            continue
+        positions = day.get("positions") or []
+        available = [
+            position for position in positions if position.get("data_available")
+        ]
+        day.update({
+            "invested_twd": round(sum(
+                _finite(position.get("allocation_twd"), ALLOCATION_TWD)
+                for position in available
+            ), 2),
+            "gross_profit_twd": round(sum(
+                _finite(position.get("gross_profit_twd")) for position in available
+            ), 2),
+            "net_profit_twd": round(sum(
+                _finite(position.get("net_profit_twd")) for position in available
+            ), 2),
+            "historical_price_repairs": sorted(set(repaired_symbols)),
+        })
+        day["net_return_pct"] = round(
+            _finite(day.get("net_profit_twd")) / CAPITAL_TWD * 100, 4
+        )
 
 
 def _rank_desc(values: list[float]) -> list[float]:
@@ -613,11 +708,17 @@ def _refresh_diagnostics(state: dict[str, Any]) -> None:
 def update_state(
     state: dict[str, Any], rows: list[dict[str, Any]], *,
     period: str, updated_at: str, intraday: bool = False,
+    price_history: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    state["updated_at"] = updated_at
-    if intraday or period != "evening":
+    # The morning report may safely settle an already-frozen Taiwan signal
+    # when the prior evening workflow was delayed or missed. It must never
+    # create a new ranking snapshot; only the formal evening report can do so.
+    if intraday or period not in {"morning", "evening"}:
         return state
+    state["updated_at"] = updated_at
+    settle_only = period == "morning"
     for key, model in state["models"].items():
+        _repair_incomplete_days(model, price_history)
         _sanitize_existing_days(model, updated_at)
         if model.get("status") == "complete":
             continue
@@ -626,7 +727,7 @@ def update_state(
         if model.get("completed_days", 0) >= TARGET_DAYS:
             model["status"] = "complete"
             model["pending"] = None
-        elif model.get("pending") is None:
+        elif not settle_only and model.get("pending") is None:
             model["pending"] = _new_pending(rows, model, updated_at)
             if model["pending"]:
                 model["status"] = "running"
@@ -655,11 +756,12 @@ def update_state(
 def update_weight_experiment(
     reports_dir: Path, rows: list[dict[str, Any]], *,
     period: str, updated_at: str, intraday: bool = False,
+    price_history: dict[str, Any] | None = None,
 ) -> Path:
     path = reports_dir / "tw_weight_experiment.json"
     state = update_state(
         _load(path, updated_at), rows, period=period,
-        updated_at=updated_at, intraday=intraday,
+        updated_at=updated_at, intraday=intraday, price_history=price_history,
     )
     tmp = reports_dir / "tw_weight_experiment.tmp"
     tmp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

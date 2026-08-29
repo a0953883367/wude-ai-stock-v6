@@ -17,6 +17,101 @@ from tw_market_context import attach_tw_context
 NEW_YORK = ZoneInfo("America/New_York")
 
 
+def _promote_completed_us_intraday_session(
+    daily: pd.DataFrame,
+    intraday: pd.DataFrame | None,
+    *,
+    now: datetime | None = None,
+) -> tuple[pd.DataFrame, bool]:
+    """Append a completed US regular session when Yahoo daily bars lag.
+
+    Yahoo's daily endpoint can remain one session behind even though its
+    regular-session five-minute bars are already complete. A frozen forward
+    test must not use a live or extended-hours quote as an official close, so
+    promotion is allowed only with a nearly complete 09:30--16:00 ET bar set
+    after the close. The original daily frame is returned unchanged whenever
+    those conditions are not met.
+    """
+    if daily.empty or intraday is None or intraday.empty:
+        return daily, False
+    if not isinstance(intraday.index, pd.DatetimeIndex):
+        return daily, False
+    required = {"open", "high", "low", "close"}
+    if not required.issubset(intraday.columns):
+        return daily, False
+
+    local_index = intraday.index
+    if local_index.tz is None:
+        local_index = local_index.tz_localize(NEW_YORK)
+    else:
+        local_index = local_index.tz_convert(NEW_YORK)
+    minutes = local_index.hour * 60 + local_index.minute
+    regular_mask = (minutes >= 9 * 60 + 30) & (minutes < 16 * 60)
+    if not regular_mask.any():
+        return daily, False
+
+    regular = intraday.loc[regular_mask].copy()
+    regular_local_index = local_index[regular_mask]
+    session_date = max(regular_local_index.date)
+    same_session = regular_local_index.date == session_date
+    regular = regular.loc[same_session]
+    regular_minutes = (
+        regular_local_index[same_session].hour * 60
+        + regular_local_index[same_session].minute
+    )
+    # A normal US session has 78 five-minute bars. Require both boundary bars
+    # and at least 72 observations so an interrupted feed cannot become an
+    # official settlement source.
+    if (
+        len(regular) < 72
+        or int(regular_minutes.min()) > 9 * 60 + 30
+        or int(regular_minutes.max()) < 15 * 60 + 55
+    ):
+        return daily, False
+
+    observed_at = now or datetime.now(NEW_YORK)
+    if observed_at.tzinfo is None:
+        observed_at = observed_at.replace(tzinfo=NEW_YORK)
+    else:
+        observed_at = observed_at.astimezone(NEW_YORK)
+    observed_minute = observed_at.hour * 60 + observed_at.minute
+    if observed_at.date() < session_date or (
+        observed_at.date() == session_date and observed_minute < 16 * 60 + 5
+    ):
+        return daily, False
+
+    last_daily_timestamp = pd.Timestamp(daily.index[-1])
+    if last_daily_timestamp.tzinfo is not None:
+        last_daily_timestamp = last_daily_timestamp.tz_convert(NEW_YORK)
+    if session_date <= last_daily_timestamp.date():
+        return daily, False
+
+    valid = regular.dropna(subset=list(required))
+    if len(valid) < 72:
+        return daily, False
+    close_price = _finite(valid["close"].iloc[-1])
+    values: dict[str, Any] = {column: np.nan for column in daily.columns}
+    values.update({
+        "open": _finite(valid["open"].iloc[0]),
+        "high": _finite(valid["high"].max()),
+        "low": _finite(valid["low"].min()),
+        "close": close_price,
+    })
+    if "volume" in daily.columns:
+        values["volume"] = _finite(
+            regular.get("volume", pd.Series(dtype=float)).fillna(0).sum()
+        )
+    if "adj close" in daily.columns:
+        values["adj close"] = close_price
+
+    promoted_index = pd.Timestamp(session_date)
+    if isinstance(daily.index, pd.DatetimeIndex) and daily.index.tz is not None:
+        promoted_index = promoted_index.tz_localize(daily.index.tz)
+    promoted = pd.concat([daily, pd.DataFrame([values], index=[promoted_index])])
+    promoted = promoted.loc[~promoted.index.duplicated(keep="last")].sort_index()
+    return promoted, True
+
+
 def market_session_fraction(
     market: str = "TW", now: datetime | None = None
 ) -> float:
@@ -539,6 +634,13 @@ def build_features(
     if daily.empty or "close" not in daily or len(daily["close"].dropna()) < 20:
         return None
     daily = daily.dropna(subset=["close"]).copy()
+    symbol = str(item.get("symbol", "")).upper()
+    market = str(
+        item.get("market") or ("TW" if symbol.endswith(".TW") else "US")
+    ).upper()
+    promoted_us_session = False
+    if market == "US":
+        daily, promoted_us_session = _promote_completed_us_intraday_session(daily, intraday)
     close = daily["close"].astype(float)
     open_ = daily.get("open", close).astype(float)
     high = daily.get("high", close).astype(float)
@@ -548,7 +650,12 @@ def build_features(
     # Exclude the still-forming daily bar only when intraday data belongs to
     # the same session. On weekends/holidays, keep the latest completed day.
     completed_volume = volume
-    if intraday is not None and not intraday.empty and len(volume) > 1:
+    if (
+        intraday is not None
+        and not intraday.empty
+        and len(volume) > 1
+        and not promoted_us_session
+    ):
         try:
             if pd.Timestamp(daily.index[-1]).date() == pd.Timestamp(intraday.index[-1]).date():
                 completed_volume = volume.iloc[:-1]
@@ -558,7 +665,6 @@ def build_features(
     avg10 = _finite(completed_volume.tail(10).mean(), avg5)
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
-    market = str(item.get("market") or ("TW" if str(item.get("symbol", "")).upper().endswith(".TW") else "US")).upper()
     if market == "TW":
         candle.update(_tw_head_shoulders_features(high, low, close, volume))
         candle.update(_tw_daily_momentum_features(high, low, close, volume))
