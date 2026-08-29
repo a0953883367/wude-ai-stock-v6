@@ -21,6 +21,7 @@ from portfolio_control import build_portfolio_control
 SCHEMA_VERSION = 2
 MODEL_VERSION = "CENTRAL-DECISION-HUB-V2"
 CHUNK_SIZE = 50
+EVIDENCE_CHUNK_SIZE = 400
 POLICY = {
     "formal_ranking_locked": True,
     "shadow_models_evidence_only": True,
@@ -631,7 +632,26 @@ def update_decision_hub(
     for item in decisions:
         item["portfolio"] = portfolio["by_symbol"].get(item["symbol"], {})
     unified_evidence = build_unified_evidence_report(decisions, updated_at=updated_at)
-    _write_json(reports_dir / "unified_evidence.json", unified_evidence)
+    evidence_files = []
+    evidence_rows = unified_evidence.get("evidence", [])
+    for offset in range(0, len(evidence_rows), EVIDENCE_CHUNK_SIZE):
+        chunk_number = offset // EVIDENCE_CHUNK_SIZE + 1
+        filename = f"unified_evidence_{chunk_number:02d}.json"
+        _write_json(reports_dir / filename, {
+            "schema_version": unified_evidence["schema_version"],
+            "updated_at": updated_at,
+            "chunk": chunk_number,
+            "evidence": evidence_rows[offset:offset + EVIDENCE_CHUNK_SIZE],
+        })
+        evidence_files.append(filename)
+    for stale_path in reports_dir.glob("unified_evidence_[0-9][0-9].json"):
+        if stale_path.name not in evidence_files:
+            stale_path.unlink()
+    unified_evidence_index = {
+        key: value for key, value in unified_evidence.items() if key != "evidence"
+    }
+    unified_evidence_index["evidence_files"] = evidence_files
+    _write_json(reports_dir / "unified_evidence.json", unified_evidence_index)
     missing_sources = [name for name, report in source_reports.items() if report is None]
     summary = {
         "decision_count": len(decisions),
