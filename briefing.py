@@ -401,6 +401,92 @@ def _report_session_issues(
     return issues
 
 
+def _carry_forward_symbol_session_regressions(
+    current_rows: list[dict],
+    previous_payload: dict,
+    *,
+    minimum_dominant_coverage: float = 0.9,
+) -> tuple[list[dict], list[str]]:
+    """Reuse the last verified row when one source briefly moves backwards.
+
+    A broad cohort regression or a mixed-session batch must still fail the
+    normal report guard.  Carry-forward is allowed only when the current
+    cohort has a coherent, non-regressed dominant session and the previous
+    symbol row already belongs to that same dominant session.
+    """
+    previous_rows = (
+        previous_payload.get("data", []) if isinstance(previous_payload, dict) else []
+    )
+    previous_by_symbol = {
+        str(row.get("symbol") or ""): row
+        for row in previous_rows
+        if isinstance(row, dict) and row.get("symbol")
+    }
+    current_cohorts: dict[str, list[dict]] = {}
+    previous_cohorts: dict[str, list[dict]] = {}
+    for row in current_rows:
+        cohort = _cohort_name(row)
+        if cohort:
+            current_cohorts.setdefault(cohort, []).append(row)
+    for row in previous_rows:
+        if not isinstance(row, dict):
+            continue
+        cohort = _cohort_name(row)
+        if cohort:
+            previous_cohorts.setdefault(cohort, []).append(row)
+
+    safe_dominant_sessions: dict[str, str] = {}
+    for cohort, rows in current_cohorts.items():
+        sessions = [
+            str(row.get("official_session_date") or "")
+            for row in rows
+            if row.get("official_session_date")
+        ]
+        previous_sessions = [
+            str(row.get("official_session_date") or "")
+            for row in previous_cohorts.get(cohort, [])
+            if row.get("official_session_date")
+        ]
+        if not sessions or not previous_sessions:
+            continue
+        dominant_session, dominant_count = Counter(sessions).most_common(1)[0]
+        previous_dominant = Counter(previous_sessions).most_common(1)[0][0]
+        if (
+            dominant_count / len(rows) >= minimum_dominant_coverage
+            and dominant_session >= previous_dominant
+        ):
+            safe_dominant_sessions[cohort] = dominant_session
+
+    repaired: list[dict] = []
+    carried_symbols: list[str] = []
+    for row in current_rows:
+        symbol = str(row.get("symbol") or "")
+        current_session = str(row.get("official_session_date") or "")
+        previous_row = previous_by_symbol.get(symbol)
+        previous_session = str(
+            (previous_row or {}).get("official_session_date") or ""
+        )
+        dominant_session = safe_dominant_sessions.get(_cohort_name(row), "")
+        if (
+            previous_row
+            and current_session
+            and previous_session
+            and current_session < previous_session
+            and previous_session == dominant_session
+        ):
+            replacement = dict(previous_row)
+            replacement.update({
+                "session_carry_forward": True,
+                "session_carry_forward_reason": "source_session_regression",
+                "session_carry_forward_observed_date": current_session,
+            })
+            repaired.append(replacement)
+            carried_symbols.append(symbol)
+        else:
+            repaired.append(row)
+    return repaired, carried_symbols
+
+
 def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict, dict]:
     """Reuse non-intraday Taiwan fields; prices/technicals are still downloaded live."""
     institutions: dict[str, dict] = {}
@@ -639,6 +725,14 @@ def main() -> int:
         )
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         previous_analysis = {}
+    features, carried_symbols = _carry_forward_symbol_session_regressions(
+        features, previous_analysis
+    )
+    if carried_symbols:
+        print(
+            "[行情交易日] 單一來源交易日倒退，沿用上一版已驗證資料："
+            + "、".join(carried_symbols)
+        )
     source_session_issues = _report_session_issues(features, previous_analysis)
     if source_session_issues:
         raise RuntimeError(

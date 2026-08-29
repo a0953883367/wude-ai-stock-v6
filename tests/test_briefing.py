@@ -1,5 +1,6 @@
 from briefing import (
     _attach_next_session_predictions,
+    _carry_forward_symbol_session_regressions,
     _qualified_tw_market_top,
     _report_session_issues,
     _simulation_input_rows,
@@ -33,6 +34,35 @@ def test_report_session_guard_accepts_coherent_forward_market_data():
     current = _session_rows(["2026-08-27"] * 10)
 
     assert _report_session_issues(current, previous) == []
+
+
+def test_single_symbol_session_regression_carries_forward_verified_row():
+    previous_rows = _session_rows(["2026-08-28"] * 10)
+    previous_rows[0]["price"] = 100
+    current = _session_rows(["2026-08-27"] + ["2026-08-28"] * 9)
+    current[0]["price"] = 90
+
+    repaired, carried = _carry_forward_symbol_session_regressions(
+        current, {"data": previous_rows}
+    )
+
+    assert carried == ["TW00.TW"]
+    assert repaired[0]["official_session_date"] == "2026-08-28"
+    assert repaired[0]["price"] == 100
+    assert repaired[0]["session_carry_forward"] is True
+    assert repaired[0]["session_carry_forward_observed_date"] == "2026-08-27"
+    assert _report_session_issues(repaired, {"data": previous_rows}) == []
+
+
+def test_broad_market_session_regression_is_never_carried_forward():
+    previous = {"data": _session_rows(["2026-08-28"] * 10)}
+    current = _session_rows(["2026-08-27"] * 10)
+
+    repaired, carried = _carry_forward_symbol_session_regressions(current, previous)
+
+    assert carried == []
+    assert repaired == current
+    assert any("主交易日倒退" in issue for issue in _report_session_issues(repaired, previous))
 
 
 def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
