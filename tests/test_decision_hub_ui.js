@@ -5,6 +5,8 @@ const js=fs.readFileSync('decision_hub.js','utf8');
 const ui=html+js;
 const report=JSON.parse(fs.readFileSync('reports/decision_hub.json','utf8'));
 const decisions=report.decision_files.flatMap(path=>JSON.parse(fs.readFileSync('reports/'+path,'utf8')).decisions);
+const unified=JSON.parse(fs.readFileSync('reports/unified_evidence.json','utf8'));
+const evidence=unified.evidence_files.flatMap(path=>JSON.parse(fs.readFileSync('reports/'+path,'utf8')).evidence);
 
 [
   '中央 AI 決策中樞','正式排名鎖定','不自動改權重','不連券商下單',
@@ -24,6 +26,8 @@ assert.strictEqual(report.policy.formal_ranking_locked,true);
 assert.strictEqual(report.policy.automatic_orders,false);
 assert.strictEqual(report.policy.horizons_separate,true);
 assert.strictEqual(report.unified_evidence.invalid_count,0);
+assert.strictEqual(unified.invalid_count,0);
+assert.strictEqual(evidence.length,unified.evidence_count);
 assert.strictEqual(report.readiness.validation_60d.collected_trading_days,5);
 assert.strictEqual(report.portfolio_control.risk_controls.orders,'不連券商、不自動下單');
 assert(report.single_answer.headline);
