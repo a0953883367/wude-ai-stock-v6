@@ -1001,6 +1001,7 @@ def main() -> int:
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
+        price_history=history,
     )
     update_holding_simulation(
         SETTINGS.reports_dir,

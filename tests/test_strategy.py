@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _apply_tw_accumulation_short_ranking, _assign_group_ranks, _assign_tw_accumulation_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+from strategy import _apply_tw_accumulation_short_ranking, _assign_group_ranks, _assign_tw_accumulation_ranks, _available_weighted_score, _candlestick_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _promote_completed_us_intraday_session, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
 
 
 def test_tw_institutional_accumulation_requires_complete_history_and_is_shadow_only():
@@ -159,6 +159,56 @@ def test_us_intraday_volume_is_not_scaled_by_taiwan_session():
     )
     assert result is not None
     assert 0.9 <= result["volume_pace"] <= 1.1
+
+
+def test_completed_us_intraday_session_repairs_lagging_daily_bar():
+    daily = pd.DataFrame({
+        "open": [100.0], "high": [102.0], "low": [99.0],
+        "close": [101.0], "adj close": [101.0], "volume": [1_000_000],
+    }, index=pd.to_datetime(["2026-08-27"]))
+    intraday_index = pd.date_range(
+        "2026-08-28 09:30", periods=78, freq="5min", tz="America/New_York"
+    )
+    intraday = pd.DataFrame({
+        "open": [110.0] * 78,
+        "high": [112.0] * 78,
+        "low": [109.0] * 78,
+        "close": [111.0] * 77 + [111.5],
+        "volume": [10_000] * 78,
+    }, index=intraday_index)
+
+    promoted, changed = _promote_completed_us_intraday_session(
+        daily, intraday,
+        now=datetime(2026, 8, 28, 16, 10, tzinfo=ZoneInfo("America/New_York")),
+    )
+
+    assert changed is True
+    assert promoted.index[-1].date().isoformat() == "2026-08-28"
+    assert promoted.iloc[-1]["open"] == 110.0
+    assert promoted.iloc[-1]["close"] == 111.5
+    assert promoted.iloc[-1]["volume"] == 780_000
+
+
+def test_incomplete_us_intraday_session_never_becomes_official_close():
+    daily = pd.DataFrame({
+        "open": [100.0], "high": [102.0], "low": [99.0],
+        "close": [101.0], "volume": [1_000_000],
+    }, index=pd.to_datetime(["2026-08-27"]))
+    intraday_index = pd.date_range(
+        "2026-08-28 09:30", periods=60, freq="5min", tz="America/New_York"
+    )
+    intraday = pd.DataFrame({
+        "open": [110.0] * 60, "high": [112.0] * 60,
+        "low": [109.0] * 60, "close": [111.0] * 60,
+    }, index=intraday_index)
+
+    unchanged, changed = _promote_completed_us_intraday_session(
+        daily, intraday,
+        now=datetime(2026, 8, 28, 16, 30, tzinfo=ZoneInfo("America/New_York")),
+    )
+
+    assert changed is False
+    assert unchanged.equals(daily)
 
 
 def test_build_features_exposes_split_adjusted_official_open_and_close():
