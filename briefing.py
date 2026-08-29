@@ -61,6 +61,7 @@ from tw_official_data import (
 )
 from tw_market_context import build_tw_market_context
 from stockq_market_context import update_stockq_market_context
+from tw_financial_official import fetch_tw_official_financials
 from watchlist import load_watchlist
 
 build_features = strategy.build_features
@@ -261,6 +262,20 @@ def _update_decision_hub_safely(
     tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(health_path)
     return success
+
+
+def _update_central_controls_safely(reports_dir, *, updated_at: str) -> bool:
+    """Refresh validation/graduation controls without touching formal outputs."""
+    try:
+        from model_graduation import update_model_graduation
+        from validation_60d import update_validation_60d
+
+        update_validation_60d(reports_dir, updated_at=updated_at)
+        update_model_graduation(reports_dir, updated_at=updated_at)
+    except Exception:  # noqa: BLE001 - downstream research layer is isolated
+        logging.exception("中央驗證／畢業控制器失敗；正式排名與報表繼續")
+        return False
+    return True
 
 
 _NEXT_SESSION_FIELDS = (
@@ -846,6 +861,25 @@ def main() -> int:
         "估值影子財報快取",
         lambda: fetch_financial_quality(all_tw_stock_ids, batch_size=30),
     )
+    official_tw_financial = _stage(
+        "台股官方季報",
+        lambda: fetch_tw_official_financials(
+            all_tw_stock_ids,
+            cache_path=SETTINGS.reports_dir / "tw_financial_official_cache.json",
+            timeout=SETTINGS.request_timeout,
+        ),
+    )
+    # Official income/balance statements fill the full listed/OTC universe.
+    # FinMind cash-flow fields remain useful where licensed and are preserved;
+    # official overlapping fields take precedence and keep their provenance.
+    for stock_id, official_row in official_tw_financial.items():
+        valuation_tw_financial[stock_id] = {
+            **valuation_tw_financial.get(stock_id, {}), **official_row,
+        }
+        if stock_id in watchlist_stock_ids:
+            financial_quality[stock_id] = {
+                **financial_quality.get(stock_id, {}), **official_row,
+            }
     us_short_volume = _stage("美股放空量", lambda: fetch_us_short_volume(us_symbols))
     us_company_metadata = _stage(
         "美股公司資料快取", lambda: fetch_us_company_metadata(universe)
@@ -1130,6 +1164,7 @@ def main() -> int:
             "tw_official_fundamental_count": len(tw_official.get("fundamentals", {})),
             "tw_official_announcement_count": len(tw_official.get("announcements", {})),
             "financial_quality_count": len(financial_quality),
+            "tw_official_financial_count": len(official_tw_financial),
             "broker_count": sum(
                 1 for item in broker_branches.values()
                 if item.get("broker_available") and item.get("broker_date")
@@ -1301,6 +1336,10 @@ def main() -> int:
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
+    )
+    _update_central_controls_safely(
+        SETTINGS.reports_dir,
+        updated_at=report["updated_at"],
     )
     # The owner-facing decision layer consumes only already-final outputs. It
     # can explain conflicts, but cannot modify ranks, weights, or orders.

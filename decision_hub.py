@@ -14,9 +14,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from evidence_contract import build_unified_evidence_report, make_evidence
+from portfolio_control import build_portfolio_control
 
-SCHEMA_VERSION = 1
-MODEL_VERSION = "CENTRAL-DECISION-HUB-V1"
+
+SCHEMA_VERSION = 2
+MODEL_VERSION = "CENTRAL-DECISION-HUB-V2"
 CHUNK_SIZE = 50
 POLICY = {
     "formal_ranking_locked": True,
@@ -168,6 +171,9 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
     million = reports.get("million") or {}
     guard = reports.get("system_guard") or {}
     stockq = reports.get("stockq") or {}
+    validation = reports.get("validation_60d") or {}
+    graduation = reports.get("graduation") or {}
+    tw_financial = reports.get("tw_financial") or {}
     valuation_coverage = valuation.get("coverage", {})
     inverse_samples = sum(
         len((inverse.get("markets", {}).get(market) or {}).get("cohorts", []))
@@ -236,6 +242,26 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
             "cache_status": stockq.get("cache_status", "missing"),
             "market_signal": stockq.get("market_signal", {}),
             "affects_formal_ranking": False,
+        },
+        "validation_60d": {
+            "status": validation.get("status", "missing"),
+            "collected_trading_days": validation.get("trading_days_collected", 0),
+            "target_trading_days": validation.get("target_trading_days", 60),
+            "remaining_trading_days": validation.get("remaining_trading_days", 60),
+            "ready": bool(validation.get("ready_for_model_selection")),
+        },
+        "model_graduation": {
+            "status": graduation.get("status", "missing"),
+            "summary": graduation.get("summary", {}),
+            "models": graduation.get("models", []),
+            "automatic_promotion": False,
+        },
+        "tw_official_financial": {
+            "status": "ready" if tw_financial else "missing",
+            "available": int(tw_financial.get("available_count") or 0),
+            "requested": int(tw_financial.get("requested_count") or 0),
+            "coverage_pct": tw_financial.get("coverage_pct"),
+            "missing": tw_financial.get("missing_symbols", []),
         },
     }
 
@@ -377,6 +403,28 @@ def _build_decision(
     ))
     if not news_available:
         data_missing.append("verified_news")
+
+    # Convert every model adapter to one canonical evidence contract.  The
+    # source-specific values remain intact, while provenance and symbol keys
+    # become machine-verifiable and comparable across all models.
+    evidence = [
+        make_evidence(
+            source_id=item["source_id"],
+            source_label=item["source_label"],
+            horizon=item["horizon"],
+            direction=item["direction"],
+            strength=item["strength"],
+            confidence=item["confidence"],
+            as_of=item.get("as_of"),
+            status=item["status"],
+            reason=item["reason"],
+            affects_decision=item["affects_decision"],
+            symbol=symbol,
+            market=str(row.get("market") or ""),
+            provenance=item["source_id"],
+        )
+        for item in evidence
+    ]
 
     conflicts: list[dict[str, Any]] = []
     if data_block and short_score >= 60:
@@ -548,6 +596,9 @@ def update_decision_hub(
         "million": _read_json(reports_dir / "million_simulation.json"),
         "system_guard": _read_json(reports_dir / "system_guard.json"),
         "stockq": _read_json(reports_dir / "stockq_market_context.json"),
+        "validation_60d": _read_json(reports_dir / "validation_60d.json"),
+        "graduation": _read_json(reports_dir / "model_graduation.json"),
+        "tw_financial": _read_json(reports_dir / "tw_financial_official_cache.json"),
     }
     news_cache = _read_json(reports_dir / "news_risk_cache.json") or {}
     news_by_symbol = (
@@ -576,6 +627,11 @@ def update_decision_hub(
         item.get("formal_rank") if isinstance(item.get("formal_rank"), (int, float)) else 999999,
         str(item.get("symbol") or ""),
     ))
+    portfolio = build_portfolio_control(decisions)
+    for item in decisions:
+        item["portfolio"] = portfolio["by_symbol"].get(item["symbol"], {})
+    unified_evidence = build_unified_evidence_report(decisions, updated_at=updated_at)
+    _write_json(reports_dir / "unified_evidence.json", unified_evidence)
     missing_sources = [name for name, report in source_reports.items() if report is None]
     summary = {
         "decision_count": len(decisions),
@@ -606,6 +662,32 @@ def update_decision_hub(
             for market in ("TW", "US")
         },
     }
+    allocatable_count = sum(
+        1 for item in decisions
+        if any((entry or {}).get("status") == "allocatable" for entry in item["portfolio"].values())
+    )
+    waiting_count = sum(
+        1 for item in decisions
+        if any((entry or {}).get("status") == "reserved_waiting_entry" for entry in item["portfolio"].values())
+    )
+    if allocatable_count:
+        single_answer = {
+            "code": "review_allocations",
+            "headline": f"有 {allocatable_count} 檔進入部位評估",
+            "detail": "依短、中、長期分開配置；下單前仍需人工確認價格、停損與總曝險。",
+        }
+    elif waiting_count:
+        single_answer = {
+            "code": "wait_for_entry",
+            "headline": "目前不直接進場，等待買點",
+            "detail": f"有 {waiting_count} 檔保留觀察，其餘維持現金；等待條件不視為已投資。",
+        }
+    else:
+        single_answer = {
+            "code": "hold_cash",
+            "headline": "目前沒有符合部位條件的標的",
+            "detail": "維持現金，不因模型資料不足或衝突而勉強建立部位。",
+        }
     payload = {
         "schema_version": SCHEMA_VERSION,
         "model_version": MODEL_VERSION,
@@ -621,6 +703,8 @@ def update_decision_hub(
             "未完成向前驗證的影子模型只能提供證據，不能提高正式排名",
             "短線強但估值過高時，保留短線觀察並降低6個月判斷",
             "StockQ只提供全球市場背景，不覆蓋個股資料、不直接改分",
+            "部位控制在中央結論後執行；風險擋下與資料不足一律配置為零",
+            "模型畢業結論自動產生，但升級、改權重與合併仍需人工決定",
             "最終按鈕只保存你的人工選擇，不連券商、不下單",
         ],
         "source_status": {
@@ -639,6 +723,17 @@ def update_decision_hub(
         },
         "missing_sources": missing_sources,
         "readiness": _model_readiness(source_reports),
+        "single_answer": single_answer,
+        "portfolio_control": {
+            key: value for key, value in portfolio.items() if key != "by_symbol"
+        },
+        "unified_evidence": {
+            "status": unified_evidence["status"],
+            "evidence_count": unified_evidence["evidence_count"],
+            "invalid_count": unified_evidence["invalid_count"],
+            "integrity_sha256": unified_evidence["integrity_sha256"],
+            "report": "unified_evidence.json",
+        },
         "summary": summary,
         "decisions": decisions,
         "disclaimer": "資料整理、衝突說明與風險輔助，不保證獲利，也不是代客下單建議。",

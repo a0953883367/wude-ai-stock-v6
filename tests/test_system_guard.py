@@ -71,6 +71,17 @@ def _healthy_reports(tmp_path: Path) -> None:
         "formal_pipeline_continues": True, "changes_rankings": False,
         "changes_weights": False, "places_orders": False,
     })
+    _write(tmp_path / "stockq_market_context.json", {
+        "status": "ok", "indicator_count": 16, "updated_at": timestamp,
+    })
+    _write(tmp_path / "validation_60d.json", {
+        "status": "collecting", "trading_days_collected": 5, "target_trading_days": 60,
+    })
+    _write(tmp_path / "model_graduation.json", {"status": "ready", "summary": {"collecting": 5}})
+    _write(tmp_path / "unified_evidence.json", {"status": "ready", "evidence_count": 20, "invalid_count": 0})
+    _write(tmp_path / "tw_financial_official_cache.json", {
+        "requested_count": 67, "available_count": 66, "coverage_pct": 98.51,
+    })
 
 
 def test_healthy_guard_is_green(tmp_path: Path) -> None:
