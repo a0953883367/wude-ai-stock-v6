@@ -4,57 +4,14 @@ name: AI 股票早中晚報
 # Owner-only private publish verification.
 
 on:
-  # Rebuild the website once after scoring/data code is merged. Report-only
-  # commits touch reports/** and therefore do not retrigger this workflow.
-  push:
-    branches:
-      - main
-    paths:
-      - strategy.py
-      - briefing.py
-      - valuation_risk_shadow.py
-      - holding_simulation.py
-      - exit_horizon_experiment.py
-      - inverse_experiment.py
-      - inverse_experiment_watchlist.json
-      - missed_strength_validation.py
-      - system_guard.py
-      - million_simulation.py
-      - weight_experiment.py
-      - model_lab.py
-      - performance.py
-      - index.html
-      - valuation-risk-shadow.html
-      - data_fetcher.py
-      - macro_regime.py
-      - market_models.py
-      - news_risk.py
-      - tw_official_data.py
-      - us_market_data.py
-      - notifier.py
-      - tools/publish_friend_data.py
-      - tools/publish_owner_data.py
-      - watchlist.py
-      - sitecustomize.py
-      - .github/workflows/stock-briefing.yml
   schedule:
-    # Fixed Telegram reports (UTC): Taiwan 06:00 / 12:00 / 20:00.
+    # Fixed official reports only (UTC): Taiwan 06:00 / 12:00 / 20:00.
+    # Code pushes must not start a competing refresh or replace a close
+    # checkpoint. A newly merged change takes effect at the next fixed report,
+    # or can be verified with an explicit workflow_dispatch run.
     - cron: "0 22 * * *"
     - cron: "0 4 * * *"
     - cron: "0 12 * * *"
-
-    # Silent hourly refreshes during Taiwan trading hours.
-    # 09:00 / 10:00 / 11:00 / 13:00 / 14:00 Asia/Taipei, weekdays.
-    # The fixed 12:00 report above is the hourly noon refresh.
-    - cron: "0 1 * * 1-5"
-    - cron: "0 2 * * 1-5"
-    - cron: "0 3 * * 1-5"
-    - cron: "0 5 * * 1-5"
-    - cron: "0 6 * * 1-5"
-
-    # Silent hourly refreshes covering US summer and winter trading hours.
-    # 13:30 through 21:30 UTC, weekdays (21:30 through 05:30 Asia/Taipei).
-    - cron: "30 13-21 * * 1-5"
   workflow_dispatch:
     inputs:
       period:
@@ -72,10 +29,9 @@ permissions:
 
 concurrency:
   group: stock-briefing
-  # A newer scoring/data deployment supersedes a stale report generation.
-  # Report files are committed only after a complete run, so cancellation
-  # cannot publish a partial ranking snapshot.
-  cancel-in-progress: true
+  # Never let a later manual request cancel a running official settlement.
+  # Keeping one shared group also prevents two report writers from racing.
+  cancel-in-progress: false
 
 jobs:
   briefing:
@@ -95,60 +51,22 @@ jobs:
         id: period
         shell: bash
         run: |
-          intraday="false"
           commit_message=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             period="${{ inputs.period }}"
             commit_message="更新 AI 股票${period}報"
-          elif [[ "${{ github.event.head_commit.message }}" == *"[run-morning]"* ]]; then
-            period="morning"
-            commit_message="更新 AI 股票morning報"
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            # A code push may refresh the display, but it is not a scheduled
-            # market-close checkpoint.  Keep all model ledgers and frozen
-            # validation snapshots unchanged.
-            period="evening"
-            intraday="true"
-            commit_message="程式更新後安全刷新"
           else
             case "${{ github.event.schedule }}" in
               "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;
               "0 4 * * *") period="noon"; commit_message="更新 AI 股票noon報" ;;
               "0 12 * * *") period="evening"; commit_message="更新 AI 股票evening報" ;;
-              "0 1 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 09:00"
-                ;;
-              "0 2 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 10:00"
-                ;;
-              "0 3 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 11:00"
-                ;;
-              "0 5 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 13:00"
-                ;;
-              "0 6 * * 1-5")
-                period="noon"
-                intraday="true"
-                commit_message="靜默盤中更新 14:00"
-                ;;
               *)
-                period="evening"
-                intraday="true"
-                commit_message="靜默美股盤中更新"
+                echo "Unsupported schedule: ${{ github.event.schedule }}" >&2
+                exit 1
                 ;;
             esac
           fi
           echo "value=$period" >> "$GITHUB_OUTPUT"
-          echo "intraday=$intraday" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
       - name: Generate report
         id: generate
@@ -163,9 +81,6 @@ jobs:
         shell: bash
         run: |
           args=(--period "${{ steps.period.outputs.value }}")
-          if [ "${{ steps.period.outputs.intraday }}" = "true" ]; then
-            args+=(--no-telegram --intraday)
-          fi
           python briefing.py "${args[@]}"
       - name: Publish sanitized friend-site data
         id: friend_publish
