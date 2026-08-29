@@ -1,26 +1,26 @@
 {
   "audit_schema_version": 4,
   "methodology_version": 6,
-  "updated_at": "2026-08-29T04:13:34",
+  "updated_at": "2026-08-29T04:58:29",
   "immutable_rule": "同一市場與交易日只建立一次預測；結果只追加，不覆寫預測內容。",
   "integrity": {
-    "verified": 10,
+    "verified": 11,
     "legacy_unverified": 0,
     "mismatch": 0
   },
   "version_isolation": {
     "current_audit_schema_version": 4,
-    "current_snapshot_count": 8,
+    "current_snapshot_count": 9,
     "legacy_reference_snapshot_count": 2,
     "legacy_reference_row_count": 80,
     "legacy_affects_headline_metrics": false,
     "rule": "舊版快照保留供查核，但不列入目前V6命中率、報酬、回撤或60日A/B候選判定。"
   },
   "calibration": {
-    "trading_days_collected": 4,
+    "trading_days_collected": 5,
     "minimum_trading_days": 60,
     "minimum_consensus_samples": 200,
-    "remaining_trading_days": 56,
+    "remaining_trading_days": 55,
     "status": "collecting_clean_outcomes",
     "ready_for_model_selection": false,
     "affects_ai_score": false,
@@ -28,7 +28,7 @@
     "automatic_ranking_changes": false,
     "automatic_merge": false,
     "broker_orders": false,
-    "eligible_one_day_samples": 105,
+    "eligible_one_day_samples": 126,
     "legacy_history_reset": false
   },
   "tw_threshold_calibration": {
@@ -984,38 +984,38 @@
     "US_STOCK": {
       "tracks": {
         "overnight": {
-          "samples": 20,
-          "eligible_samples": 60,
-          "abstain_samples": 40,
-          "coverage_pct": 33.3,
-          "win_rate_pct": 50.0,
-          "avg_return_pct": 1.18,
+          "samples": 26,
+          "eligible_samples": 80,
+          "abstain_samples": 54,
+          "coverage_pct": 32.5,
+          "win_rate_pct": 53.8,
+          "avg_return_pct": 0.93,
           "worst_return_pct": -1.5,
           "lowest_actual_return_pct": -1.5,
           "highest_actual_return_pct": 7.26,
           "sample_status": "初步參考"
         },
         "session": {
-          "samples": 34,
-          "eligible_samples": 60,
-          "abstain_samples": 26,
-          "coverage_pct": 56.7,
-          "win_rate_pct": 52.9,
-          "avg_return_pct": 1.06,
+          "samples": 43,
+          "eligible_samples": 80,
+          "abstain_samples": 37,
+          "coverage_pct": 53.8,
+          "win_rate_pct": 44.2,
+          "avg_return_pct": 0.47,
           "worst_return_pct": -4.73,
           "lowest_actual_return_pct": -4.73,
           "highest_actual_return_pct": 10.78,
           "sample_status": "初步參考"
         },
         "full_day": {
-          "samples": 33,
-          "eligible_samples": 60,
-          "abstain_samples": 27,
-          "coverage_pct": 55.0,
-          "win_rate_pct": 72.7,
-          "avg_return_pct": 3.07,
-          "worst_return_pct": -1.94,
-          "lowest_actual_return_pct": -1.94,
+          "samples": 42,
+          "eligible_samples": 80,
+          "abstain_samples": 38,
+          "coverage_pct": 52.5,
+          "win_rate_pct": 59.5,
+          "avg_return_pct": 1.87,
+          "worst_return_pct": -7.44,
+          "lowest_actual_return_pct": -7.44,
           "highest_actual_return_pct": 23.68,
           "sample_status": "初步參考"
         }
@@ -1025,9 +1025,9 @@
           "tracks": {
             "overnight": {
               "samples": 6,
-              "eligible_samples": 15,
-              "abstain_samples": 9,
-              "coverage_pct": 40.0,
+              "eligible_samples": 20,
+              "abstain_samples": 14,
+              "coverage_pct": 30.0,
               "win_rate_pct": 33.3,
               "avg_return_pct": -0.16,
               "worst_return_pct": -0.74,
@@ -1036,24 +1036,24 @@
               "sample_status": "樣本不足"
             },
             "session": {
-              "samples": 12,
-              "eligible_samples": 15,
-              "abstain_samples": 3,
-              "coverage_pct": 80.0,
-              "win_rate_pct": 58.3,
-              "avg_return_pct": 1.5,
+              "samples": 13,
+              "eligible_samples": 20,
+              "abstain_samples": 7,
+              "coverage_pct": 65.0,
+              "win_rate_pct": 61.5,
+              "avg_return_pct": 1.47,
               "worst_return_pct": -0.69,
               "lowest_actual_return_pct": -0.69,
               "highest_actual_return_pct": 9.56,
               "sample_status": "樣本不足"
             },
             "full_day": {
-              "samples": 11,
-              "eligible_samples": 15,
-              "abstain_samples": 4,
-              "coverage_pct": 73.3,
-              "win_rate_pct": 72.7,
-              "avg_return_pct": 3.39,
+              "samples": 12,
+              "eligible_samples": 20,
+              "abstain_samples": 8,
+              "coverage_pct": 60.0,
+              "win_rate_pct": 75.0,
+              "avg_return_pct": 3.17,
               "worst_return_pct": -1.03,
               "lowest_actual_return_pct": -1.03,
               "highest_actual_return_pct": 23.68,
@@ -1062,39 +1062,39 @@
           },
           "horizons": {
             "1": {
-              "samples": 11,
-              "eligible_samples": 15,
-              "abstain_samples": 4,
-              "coverage_pct": 73.3,
-              "win_rate_pct": 72.7,
-              "avg_return_pct": 3.39,
+              "samples": 12,
+              "eligible_samples": 20,
+              "abstain_samples": 8,
+              "coverage_pct": 60.0,
+              "win_rate_pct": 75.0,
+              "avg_return_pct": 3.17,
               "worst_return_pct": -1.03,
               "lowest_actual_return_pct": -1.03,
               "highest_actual_return_pct": 23.68,
               "sample_status": "樣本不足"
             },
             "2": {
+              "samples": 11,
+              "eligible_samples": 15,
+              "abstain_samples": 4,
+              "coverage_pct": 73.3,
+              "win_rate_pct": 90.9,
+              "avg_return_pct": 5.85,
+              "worst_return_pct": -0.66,
+              "lowest_actual_return_pct": -0.66,
+              "highest_actual_return_pct": 25.74,
+              "sample_status": "樣本不足"
+            },
+            "3": {
               "samples": 8,
               "eligible_samples": 10,
               "abstain_samples": 2,
               "coverage_pct": 80.0,
-              "win_rate_pct": 87.5,
-              "avg_return_pct": 3.63,
-              "worst_return_pct": -0.66,
-              "lowest_actual_return_pct": -0.66,
-              "highest_actual_return_pct": 13.72,
-              "sample_status": "樣本不足"
-            },
-            "3": {
-              "samples": 3,
-              "eligible_samples": 5,
-              "abstain_samples": 2,
-              "coverage_pct": 60.0,
-              "win_rate_pct": 33.3,
-              "avg_return_pct": 0.18,
+              "win_rate_pct": 62.5,
+              "avg_return_pct": 1.68,
               "worst_return_pct": -2.22,
               "lowest_actual_return_pct": -2.22,
-              "highest_actual_return_pct": 3.64,
+              "highest_actual_return_pct": 8.33,
               "sample_status": "樣本不足"
             },
             "5": {
@@ -1138,77 +1138,77 @@
         "10": {
           "tracks": {
             "overnight": {
-              "samples": 13,
-              "eligible_samples": 30,
-              "abstain_samples": 17,
-              "coverage_pct": 43.3,
-              "win_rate_pct": 46.2,
-              "avg_return_pct": 0.92,
+              "samples": 16,
+              "eligible_samples": 40,
+              "abstain_samples": 24,
+              "coverage_pct": 40.0,
+              "win_rate_pct": 43.8,
+              "avg_return_pct": 0.69,
               "worst_return_pct": -0.79,
               "lowest_actual_return_pct": -0.79,
               "highest_actual_return_pct": 7.26,
               "sample_status": "樣本不足"
             },
             "session": {
-              "samples": 20,
-              "eligible_samples": 30,
-              "abstain_samples": 10,
-              "coverage_pct": 66.7,
-              "win_rate_pct": 50.0,
-              "avg_return_pct": 1.43,
-              "worst_return_pct": -2.57,
-              "lowest_actual_return_pct": -2.57,
+              "samples": 25,
+              "eligible_samples": 40,
+              "abstain_samples": 15,
+              "coverage_pct": 62.5,
+              "win_rate_pct": 44.0,
+              "avg_return_pct": 0.9,
+              "worst_return_pct": -2.85,
+              "lowest_actual_return_pct": -2.85,
               "highest_actual_return_pct": 10.78,
               "sample_status": "初步參考"
             },
             "full_day": {
-              "samples": 20,
-              "eligible_samples": 30,
-              "abstain_samples": 10,
-              "coverage_pct": 66.7,
-              "win_rate_pct": 70.0,
-              "avg_return_pct": 2.96,
-              "worst_return_pct": -1.5,
-              "lowest_actual_return_pct": -1.5,
+              "samples": 24,
+              "eligible_samples": 40,
+              "abstain_samples": 16,
+              "coverage_pct": 60.0,
+              "win_rate_pct": 62.5,
+              "avg_return_pct": 2.22,
+              "worst_return_pct": -3.08,
+              "lowest_actual_return_pct": -3.08,
               "highest_actual_return_pct": 23.68,
               "sample_status": "初步參考"
             }
           },
           "horizons": {
             "1": {
-              "samples": 20,
-              "eligible_samples": 30,
-              "abstain_samples": 10,
-              "coverage_pct": 66.7,
-              "win_rate_pct": 70.0,
-              "avg_return_pct": 2.96,
-              "worst_return_pct": -1.5,
-              "lowest_actual_return_pct": -1.5,
+              "samples": 24,
+              "eligible_samples": 40,
+              "abstain_samples": 16,
+              "coverage_pct": 60.0,
+              "win_rate_pct": 62.5,
+              "avg_return_pct": 2.22,
+              "worst_return_pct": -3.08,
+              "lowest_actual_return_pct": -3.08,
               "highest_actual_return_pct": 23.68,
               "sample_status": "初步參考"
             },
             "2": {
+              "samples": 20,
+              "eligible_samples": 30,
+              "abstain_samples": 10,
+              "coverage_pct": 66.7,
+              "win_rate_pct": 85.0,
+              "avg_return_pct": 3.95,
+              "worst_return_pct": -3.41,
+              "lowest_actual_return_pct": -3.41,
+              "highest_actual_return_pct": 25.74,
+              "sample_status": "初步參考"
+            },
+            "3": {
               "samples": 12,
               "eligible_samples": 20,
               "abstain_samples": 8,
               "coverage_pct": 60.0,
-              "win_rate_pct": 91.7,
-              "avg_return_pct": 3.09,
-              "worst_return_pct": -0.66,
-              "lowest_actual_return_pct": -0.66,
-              "highest_actual_return_pct": 13.72,
-              "sample_status": "樣本不足"
-            },
-            "3": {
-              "samples": 4,
-              "eligible_samples": 10,
-              "abstain_samples": 6,
-              "coverage_pct": 40.0,
-              "win_rate_pct": 25.0,
-              "avg_return_pct": -0.16,
-              "worst_return_pct": -2.22,
-              "lowest_actual_return_pct": -2.22,
-              "highest_actual_return_pct": 3.64,
+              "win_rate_pct": 50.0,
+              "avg_return_pct": 1.02,
+              "worst_return_pct": -3.15,
+              "lowest_actual_return_pct": -3.15,
+              "highest_actual_return_pct": 8.33,
               "sample_status": "樣本不足"
             },
             "5": {
@@ -1252,76 +1252,76 @@
         "20": {
           "tracks": {
             "overnight": {
-              "samples": 20,
-              "eligible_samples": 60,
-              "abstain_samples": 40,
-              "coverage_pct": 33.3,
-              "win_rate_pct": 50.0,
-              "avg_return_pct": 1.18,
+              "samples": 26,
+              "eligible_samples": 80,
+              "abstain_samples": 54,
+              "coverage_pct": 32.5,
+              "win_rate_pct": 53.8,
+              "avg_return_pct": 0.93,
               "worst_return_pct": -1.5,
               "lowest_actual_return_pct": -1.5,
               "highest_actual_return_pct": 7.26,
               "sample_status": "初步參考"
             },
             "session": {
-              "samples": 34,
-              "eligible_samples": 60,
-              "abstain_samples": 26,
-              "coverage_pct": 56.7,
-              "win_rate_pct": 52.9,
-              "avg_return_pct": 1.06,
+              "samples": 43,
+              "eligible_samples": 80,
+              "abstain_samples": 37,
+              "coverage_pct": 53.8,
+              "win_rate_pct": 44.2,
+              "avg_return_pct": 0.47,
               "worst_return_pct": -4.73,
               "lowest_actual_return_pct": -4.73,
               "highest_actual_return_pct": 10.78,
               "sample_status": "初步參考"
             },
             "full_day": {
-              "samples": 33,
-              "eligible_samples": 60,
-              "abstain_samples": 27,
-              "coverage_pct": 55.0,
-              "win_rate_pct": 72.7,
-              "avg_return_pct": 3.07,
-              "worst_return_pct": -1.94,
-              "lowest_actual_return_pct": -1.94,
+              "samples": 42,
+              "eligible_samples": 80,
+              "abstain_samples": 38,
+              "coverage_pct": 52.5,
+              "win_rate_pct": 59.5,
+              "avg_return_pct": 1.87,
+              "worst_return_pct": -7.44,
+              "lowest_actual_return_pct": -7.44,
               "highest_actual_return_pct": 23.68,
               "sample_status": "初步參考"
             }
           },
           "horizons": {
             "1": {
+              "samples": 42,
+              "eligible_samples": 80,
+              "abstain_samples": 38,
+              "coverage_pct": 52.5,
+              "win_rate_pct": 59.5,
+              "avg_return_pct": 1.87,
+              "worst_return_pct": -7.44,
+              "lowest_actual_return_pct": -7.44,
+              "highest_actual_return_pct": 23.68,
+              "sample_status": "初步參考"
+            },
+            "2": {
               "samples": 33,
               "eligible_samples": 60,
               "abstain_samples": 27,
               "coverage_pct": 55.0,
               "win_rate_pct": 72.7,
-              "avg_return_pct": 3.07,
-              "worst_return_pct": -1.94,
-              "lowest_actual_return_pct": -1.94,
-              "highest_actual_return_pct": 23.68,
+              "avg_return_pct": 2.59,
+              "worst_return_pct": -10.22,
+              "lowest_actual_return_pct": -10.22,
+              "highest_actual_return_pct": 25.74,
               "sample_status": "初步參考"
             },
-            "2": {
+            "3": {
               "samples": 17,
               "eligible_samples": 40,
               "abstain_samples": 23,
               "coverage_pct": 42.5,
-              "win_rate_pct": 94.1,
-              "avg_return_pct": 3.32,
-              "worst_return_pct": -0.66,
-              "lowest_actual_return_pct": -0.66,
-              "highest_actual_return_pct": 13.72,
-              "sample_status": "樣本不足"
-            },
-            "3": {
-              "samples": 6,
-              "eligible_samples": 20,
-              "abstain_samples": 14,
-              "coverage_pct": 30.0,
-              "win_rate_pct": 50.0,
-              "avg_return_pct": 2.79,
-              "worst_return_pct": -2.22,
-              "lowest_actual_return_pct": -2.22,
+              "win_rate_pct": 58.8,
+              "avg_return_pct": 1.76,
+              "worst_return_pct": -3.99,
+              "lowest_actual_return_pct": -3.99,
               "highest_actual_return_pct": 10.62,
               "sample_status": "樣本不足"
             },
@@ -1368,38 +1368,38 @@
     "US_ETF": {
       "tracks": {
         "overnight": {
-          "samples": 14,
-          "eligible_samples": 55,
-          "abstain_samples": 41,
-          "coverage_pct": 25.5,
-          "win_rate_pct": 35.7,
-          "avg_return_pct": 0.1,
+          "samples": 26,
+          "eligible_samples": 74,
+          "abstain_samples": 48,
+          "coverage_pct": 35.1,
+          "win_rate_pct": 26.9,
+          "avg_return_pct": 0.02,
           "worst_return_pct": -1.12,
           "lowest_actual_return_pct": -1.12,
           "highest_actual_return_pct": 4.02,
-          "sample_status": "樣本不足"
+          "sample_status": "初步參考"
         },
         "session": {
-          "samples": 16,
-          "eligible_samples": 55,
-          "abstain_samples": 39,
-          "coverage_pct": 29.1,
-          "win_rate_pct": 75.0,
-          "avg_return_pct": 1.0,
-          "worst_return_pct": -0.91,
-          "lowest_actual_return_pct": -0.91,
+          "samples": 29,
+          "eligible_samples": 74,
+          "abstain_samples": 45,
+          "coverage_pct": 39.2,
+          "win_rate_pct": 41.4,
+          "avg_return_pct": -0.26,
+          "worst_return_pct": -5.71,
+          "lowest_actual_return_pct": -5.71,
           "highest_actual_return_pct": 4.13,
-          "sample_status": "樣本不足"
+          "sample_status": "初步參考"
         },
         "full_day": {
-          "samples": 22,
-          "eligible_samples": 55,
-          "abstain_samples": 33,
-          "coverage_pct": 40.0,
-          "win_rate_pct": 59.1,
-          "avg_return_pct": 1.57,
-          "worst_return_pct": -1.17,
-          "lowest_actual_return_pct": -1.17,
+          "samples": 34,
+          "eligible_samples": 74,
+          "abstain_samples": 40,
+          "coverage_pct": 45.9,
+          "win_rate_pct": 38.2,
+          "avg_return_pct": 0.33,
+          "worst_return_pct": -5.75,
+          "lowest_actual_return_pct": -5.75,
           "highest_actual_return_pct": 8.82,
           "sample_status": "初步參考"
         }
@@ -1408,77 +1408,77 @@
         "5": {
           "tracks": {
             "overnight": {
-              "samples": 9,
-              "eligible_samples": 15,
-              "abstain_samples": 6,
-              "coverage_pct": 60.0,
-              "win_rate_pct": 44.4,
-              "avg_return_pct": 0.4,
+              "samples": 13,
+              "eligible_samples": 20,
+              "abstain_samples": 7,
+              "coverage_pct": 65.0,
+              "win_rate_pct": 30.8,
+              "avg_return_pct": 0.24,
               "worst_return_pct": -1.01,
               "lowest_actual_return_pct": -1.01,
               "highest_actual_return_pct": 4.02,
               "sample_status": "樣本不足"
             },
             "session": {
-              "samples": 10,
-              "eligible_samples": 15,
-              "abstain_samples": 5,
-              "coverage_pct": 66.7,
-              "win_rate_pct": 80.0,
-              "avg_return_pct": 0.94,
-              "worst_return_pct": -0.91,
-              "lowest_actual_return_pct": -0.91,
+              "samples": 14,
+              "eligible_samples": 20,
+              "abstain_samples": 6,
+              "coverage_pct": 70.0,
+              "win_rate_pct": 57.1,
+              "avg_return_pct": -0.31,
+              "worst_return_pct": -5.71,
+              "lowest_actual_return_pct": -5.71,
               "highest_actual_return_pct": 4.13,
               "sample_status": "樣本不足"
             },
             "full_day": {
-              "samples": 11,
-              "eligible_samples": 15,
-              "abstain_samples": 4,
-              "coverage_pct": 73.3,
-              "win_rate_pct": 54.5,
-              "avg_return_pct": 1.6,
-              "worst_return_pct": -1.17,
-              "lowest_actual_return_pct": -1.17,
+              "samples": 14,
+              "eligible_samples": 20,
+              "abstain_samples": 6,
+              "coverage_pct": 70.0,
+              "win_rate_pct": 42.9,
+              "avg_return_pct": 0.35,
+              "worst_return_pct": -5.75,
+              "lowest_actual_return_pct": -5.75,
               "highest_actual_return_pct": 8.32,
               "sample_status": "樣本不足"
             }
           },
           "horizons": {
             "1": {
-              "samples": 11,
-              "eligible_samples": 15,
-              "abstain_samples": 4,
-              "coverage_pct": 73.3,
-              "win_rate_pct": 54.5,
-              "avg_return_pct": 1.6,
-              "worst_return_pct": -1.17,
-              "lowest_actual_return_pct": -1.17,
+              "samples": 14,
+              "eligible_samples": 20,
+              "abstain_samples": 6,
+              "coverage_pct": 70.0,
+              "win_rate_pct": 42.9,
+              "avg_return_pct": 0.35,
+              "worst_return_pct": -5.75,
+              "lowest_actual_return_pct": -5.75,
               "highest_actual_return_pct": 8.32,
               "sample_status": "樣本不足"
             },
             "2": {
+              "samples": 11,
+              "eligible_samples": 15,
+              "abstain_samples": 4,
+              "coverage_pct": 73.3,
+              "win_rate_pct": 72.7,
+              "avg_return_pct": 1.41,
+              "worst_return_pct": -1.81,
+              "lowest_actual_return_pct": -1.81,
+              "highest_actual_return_pct": 7.92,
+              "sample_status": "樣本不足"
+            },
+            "3": {
               "samples": 6,
               "eligible_samples": 10,
               "abstain_samples": 4,
               "coverage_pct": 60.0,
-              "win_rate_pct": 83.3,
-              "avg_return_pct": 0.81,
-              "worst_return_pct": -0.9,
-              "lowest_actual_return_pct": -0.9,
-              "highest_actual_return_pct": 2.31,
-              "sample_status": "樣本不足"
-            },
-            "3": {
-              "samples": 1,
-              "eligible_samples": 5,
-              "abstain_samples": 4,
-              "coverage_pct": 20.0,
-              "win_rate_pct": 100.0,
-              "avg_return_pct": 0.13,
-              "worst_return_pct": 0.13,
-              "lowest_actual_return_pct": 0.13,
-              "highest_actual_return_pct": 0.13,
+              "win_rate_pct": 66.7,
+              "avg_return_pct": -1.12,
+              "worst_return_pct": -5.3,
+              "lowest_actual_return_pct": -5.3,
+              "highest_actual_return_pct": 1.82,
               "sample_status": "樣本不足"
             },
             "5": {
@@ -1522,77 +1522,77 @@
         "10": {
           "tracks": {
             "overnight": {
-              "samples": 12,
-              "eligible_samples": 30,
-              "abstain_samples": 18,
-              "coverage_pct": 40.0,
-              "win_rate_pct": 41.7,
-              "avg_return_pct": 0.23,
+              "samples": 19,
+              "eligible_samples": 40,
+              "abstain_samples": 21,
+              "coverage_pct": 47.5,
+              "win_rate_pct": 26.3,
+              "avg_return_pct": 0.09,
               "worst_return_pct": -1.01,
               "lowest_actual_return_pct": -1.01,
               "highest_actual_return_pct": 4.02,
               "sample_status": "樣本不足"
             },
             "session": {
-              "samples": 14,
-              "eligible_samples": 30,
-              "abstain_samples": 16,
-              "coverage_pct": 46.7,
-              "win_rate_pct": 78.6,
-              "avg_return_pct": 1.12,
-              "worst_return_pct": -0.91,
-              "lowest_actual_return_pct": -0.91,
+              "samples": 22,
+              "eligible_samples": 40,
+              "abstain_samples": 18,
+              "coverage_pct": 55.0,
+              "win_rate_pct": 50.0,
+              "avg_return_pct": -0.05,
+              "worst_return_pct": -5.71,
+              "lowest_actual_return_pct": -5.71,
               "highest_actual_return_pct": 4.13,
-              "sample_status": "樣本不足"
+              "sample_status": "初步參考"
             },
             "full_day": {
-              "samples": 18,
-              "eligible_samples": 30,
-              "abstain_samples": 12,
-              "coverage_pct": 60.0,
-              "win_rate_pct": 66.7,
-              "avg_return_pct": 1.9,
-              "worst_return_pct": -1.17,
-              "lowest_actual_return_pct": -1.17,
+              "samples": 25,
+              "eligible_samples": 40,
+              "abstain_samples": 15,
+              "coverage_pct": 62.5,
+              "win_rate_pct": 48.0,
+              "avg_return_pct": 0.72,
+              "worst_return_pct": -5.75,
+              "lowest_actual_return_pct": -5.75,
               "highest_actual_return_pct": 8.82,
-              "sample_status": "樣本不足"
+              "sample_status": "初步參考"
             }
           },
           "horizons": {
             "1": {
+              "samples": 25,
+              "eligible_samples": 40,
+              "abstain_samples": 15,
+              "coverage_pct": 62.5,
+              "win_rate_pct": 48.0,
+              "avg_return_pct": 0.72,
+              "worst_return_pct": -5.75,
+              "lowest_actual_return_pct": -5.75,
+              "highest_actual_return_pct": 8.82,
+              "sample_status": "初步參考"
+            },
+            "2": {
               "samples": 18,
               "eligible_samples": 30,
               "abstain_samples": 12,
               "coverage_pct": 60.0,
-              "win_rate_pct": 66.7,
-              "avg_return_pct": 1.9,
-              "worst_return_pct": -1.17,
-              "lowest_actual_return_pct": -1.17,
-              "highest_actual_return_pct": 8.82,
+              "win_rate_pct": 83.3,
+              "avg_return_pct": 2.05,
+              "worst_return_pct": -1.81,
+              "lowest_actual_return_pct": -1.81,
+              "highest_actual_return_pct": 7.92,
               "sample_status": "樣本不足"
             },
-            "2": {
+            "3": {
               "samples": 10,
               "eligible_samples": 20,
               "abstain_samples": 10,
               "coverage_pct": 50.0,
-              "win_rate_pct": 90.0,
-              "avg_return_pct": 1.42,
-              "worst_return_pct": -0.9,
-              "lowest_actual_return_pct": -0.9,
-              "highest_actual_return_pct": 3.74,
-              "sample_status": "樣本不足"
-            },
-            "3": {
-              "samples": 1,
-              "eligible_samples": 10,
-              "abstain_samples": 9,
-              "coverage_pct": 10.0,
-              "win_rate_pct": 100.0,
-              "avg_return_pct": 0.13,
-              "worst_return_pct": 0.13,
-              "lowest_actual_return_pct": 0.13,
-              "highest_actual_return_pct": 0.13,
+              "win_rate_pct": 50.0,
+              "avg_return_pct": -0.59,
+              "worst_return_pct": -5.3,
+              "lowest_actual_return_pct": -5.3,
+              "highest_actual_return_pct": 2.18,
               "sample_status": "樣本不足"
             },
             "5": {
@@ -1636,77 +1636,77 @@
         "20": {
           "tracks": {
             "overnight": {
-              "samples": 14,
-              "eligible_samples": 55,
-              "abstain_samples": 41,
-              "coverage_pct": 25.5,
-              "win_rate_pct": 35.7,
-              "avg_return_pct": 0.1,
+              "samples": 26,
+              "eligible_samples": 74,
+              "abstain_samples": 48,
+              "coverage_pct": 35.1,
+              "win_rate_pct": 26.9,
+              "avg_return_pct": 0.02,
               "worst_return_pct": -1.12,
               "lowest_actual_return_pct": -1.12,
               "highest_actual_return_pct": 4.02,
-              "sample_status": "樣本不足"
+              "sample_status": "初步參考"
             },
             "session": {
-              "samples": 16,
-              "eligible_samples": 55,
-              "abstain_samples": 39,
-              "coverage_pct": 29.1,
-              "win_rate_pct": 75.0,
-              "avg_return_pct": 1.0,
-              "worst_return_pct": -0.91,
-              "lowest_actual_return_pct": -0.91,
+              "samples": 29,
+              "eligible_samples": 74,
+              "abstain_samples": 45,
+              "coverage_pct": 39.2,
+              "win_rate_pct": 41.4,
+              "avg_return_pct": -0.26,
+              "worst_return_pct": -5.71,
+              "lowest_actual_return_pct": -5.71,
               "highest_actual_return_pct": 4.13,
-              "sample_status": "樣本不足"
+              "sample_status": "初步參考"
             },
             "full_day": {
-              "samples": 22,
-              "eligible_samples": 55,
-              "abstain_samples": 33,
-              "coverage_pct": 40.0,
-              "win_rate_pct": 59.1,
-              "avg_return_pct": 1.57,
-              "worst_return_pct": -1.17,
-              "lowest_actual_return_pct": -1.17,
+              "samples": 34,
+              "eligible_samples": 74,
+              "abstain_samples": 40,
+              "coverage_pct": 45.9,
+              "win_rate_pct": 38.2,
+              "avg_return_pct": 0.33,
+              "worst_return_pct": -5.75,
+              "lowest_actual_return_pct": -5.75,
               "highest_actual_return_pct": 8.82,
               "sample_status": "初步參考"
             }
           },
           "horizons": {
             "1": {
-              "samples": 22,
-              "eligible_samples": 55,
-              "abstain_samples": 33,
-              "coverage_pct": 40.0,
-              "win_rate_pct": 59.1,
-              "avg_return_pct": 1.57,
-              "worst_return_pct": -1.17,
-              "lowest_actual_return_pct": -1.17,
+              "samples": 34,
+              "eligible_samples": 74,
+              "abstain_samples": 40,
+              "coverage_pct": 45.9,
+              "win_rate_pct": 38.2,
+              "avg_return_pct": 0.33,
+              "worst_return_pct": -5.75,
+              "lowest_actual_return_pct": -5.75,
               "highest_actual_return_pct": 8.82,
               "sample_status": "初步參考"
             },
             "2": {
+              "samples": 22,
+              "eligible_samples": 55,
+              "abstain_samples": 33,
+              "coverage_pct": 40.0,
+              "win_rate_pct": 72.7,
+              "avg_return_pct": 1.66,
+              "worst_return_pct": -1.93,
+              "lowest_actual_return_pct": -1.93,
+              "highest_actual_return_pct": 7.92,
+              "sample_status": "初步參考"
+            },
+            "3": {
               "samples": 12,
               "eligible_samples": 37,
               "abstain_samples": 25,
               "coverage_pct": 32.4,
-              "win_rate_pct": 83.3,
-              "avg_return_pct": 1.39,
-              "worst_return_pct": -0.9,
-              "lowest_actual_return_pct": -0.9,
-              "highest_actual_return_pct": 3.74,
-              "sample_status": "樣本不足"
-            },
-            "3": {
-              "samples": 1,
-              "eligible_samples": 17,
-              "abstain_samples": 16,
-              "coverage_pct": 5.9,
-              "win_rate_pct": 100.0,
-              "avg_return_pct": 0.13,
-              "worst_return_pct": 0.13,
-              "lowest_actual_return_pct": 0.13,
-              "highest_actual_return_pct": 0.13,
+              "win_rate_pct": 41.7,
+              "avg_return_pct": -0.74,
+              "worst_return_pct": -5.3,
+              "lowest_actual_return_pct": -5.3,
+              "highest_actual_return_pct": 2.18,
               "sample_status": "樣本不足"
             },
             "5": {
@@ -1752,38 +1752,38 @@
   },
   "tracks": {
     "overnight": {
-      "samples": 92,
-      "eligible_samples": 370,
-      "abstain_samples": 278,
-      "coverage_pct": 24.9,
-      "win_rate_pct": 51.1,
-      "avg_return_pct": 0.5,
+      "samples": 110,
+      "eligible_samples": 409,
+      "abstain_samples": 299,
+      "coverage_pct": 26.9,
+      "win_rate_pct": 48.2,
+      "avg_return_pct": 0.42,
       "worst_return_pct": -3.21,
       "lowest_actual_return_pct": -3.21,
       "highest_actual_return_pct": 7.26,
       "sample_status": "較具參考性"
     },
     "session": {
-      "samples": 98,
-      "eligible_samples": 370,
-      "abstain_samples": 272,
-      "coverage_pct": 26.5,
-      "win_rate_pct": 59.2,
-      "avg_return_pct": 0.98,
+      "samples": 120,
+      "eligible_samples": 409,
+      "abstain_samples": 289,
+      "coverage_pct": 29.3,
+      "win_rate_pct": 49.2,
+      "avg_return_pct": 0.47,
       "worst_return_pct": -11.46,
-      "lowest_actual_return_pct": -4.73,
+      "lowest_actual_return_pct": -5.71,
       "highest_actual_return_pct": 11.75,
       "sample_status": "較具參考性"
     },
     "full_day": {
-      "samples": 105,
-      "eligible_samples": 370,
-      "abstain_samples": 265,
-      "coverage_pct": 28.4,
-      "win_rate_pct": 61.9,
-      "avg_return_pct": 1.85,
+      "samples": 126,
+      "eligible_samples": 409,
+      "abstain_samples": 283,
+      "coverage_pct": 30.8,
+      "win_rate_pct": 52.4,
+      "avg_return_pct": 1.18,
       "worst_return_pct": -9.73,
-      "lowest_actual_return_pct": -4.05,
+      "lowest_actual_return_pct": -7.44,
       "highest_actual_return_pct": 23.68,
       "sample_status": "較具參考性"
     }
@@ -1793,7 +1793,7 @@
     "asset_scope": "STOCK_ONLY",
     "affects_ai_score": false,
     "classified_snapshot_count": 8,
-    "unclassified_snapshot_count": 0,
+    "unclassified_snapshot_count": 1,
     "regime_rule": "多頭：收盤高於MA60 1%、MA20高於MA60 0.5%、20日報酬至少2%且MA20上彎；空頭條件反向；其餘為盤整。全部只使用預測當日及以前資料。",
     "strategies": {
       "consensus": "10模型共識",
@@ -3149,56 +3149,56 @@
           "strategies": {
             "consensus": {
               "1": {
+                "samples": 42,
+                "eligible_samples": 80,
+                "abstain_samples": 38,
+                "coverage_pct": 52.5,
+                "win_rate_pct": 59.5,
+                "avg_return_pct": 1.87,
+                "worst_return_pct": -7.44,
+                "lowest_actual_return_pct": -7.44,
+                "highest_actual_return_pct": 23.68,
+                "sample_status": "初步參考",
+                "sessions": 4,
+                "max_drawdown_pct": 2.54,
+                "drawdown_basis": "不重疊隔日訊號序列",
+                "profit_factor": 3.39,
+                "benchmark_avg_return_pct": 0.4,
+                "avg_excess_return_pct": 2.67
+              },
+              "2": {
                 "samples": 33,
                 "eligible_samples": 60,
                 "abstain_samples": 27,
                 "coverage_pct": 55.0,
                 "win_rate_pct": 72.7,
-                "avg_return_pct": 3.07,
-                "worst_return_pct": -1.94,
-                "lowest_actual_return_pct": -1.94,
-                "highest_actual_return_pct": 23.68,
+                "avg_return_pct": 2.59,
+                "worst_return_pct": -10.22,
+                "lowest_actual_return_pct": -10.22,
+                "highest_actual_return_pct": 25.74,
                 "sample_status": "初步參考",
                 "sessions": 3,
-                "max_drawdown_pct": 0.0,
-                "drawdown_basis": "不重疊隔日訊號序列",
-                "profit_factor": 12.08,
-                "benchmark_avg_return_pct": 0.4,
-                "avg_excess_return_pct": 2.67
-              },
-              "2": {
-                "samples": 17,
-                "eligible_samples": 40,
-                "abstain_samples": 23,
-                "coverage_pct": 42.5,
-                "win_rate_pct": 94.1,
-                "avg_return_pct": 3.32,
-                "worst_return_pct": -0.66,
-                "lowest_actual_return_pct": -0.66,
-                "highest_actual_return_pct": 13.72,
-                "sample_status": "樣本不足",
-                "sessions": 2,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 86.39,
+                "profit_factor": 3.31,
                 "benchmark_avg_return_pct": 0.57,
                 "avg_excess_return_pct": 2.75
               },
               "3": {
-                "samples": 6,
-                "eligible_samples": 20,
-                "abstain_samples": 14,
-                "coverage_pct": 30.0,
-                "win_rate_pct": 50.0,
-                "avg_return_pct": 2.79,
-                "worst_return_pct": -2.22,
-                "lowest_actual_return_pct": -2.22,
+                "samples": 17,
+                "eligible_samples": 40,
+                "abstain_samples": 23,
+                "coverage_pct": 42.5,
+                "win_rate_pct": 58.8,
+                "avg_return_pct": 1.76,
+                "worst_return_pct": -3.99,
+                "lowest_actual_return_pct": -3.99,
                 "highest_actual_return_pct": 10.62,
                 "sample_status": "樣本不足",
-                "sessions": 1,
+                "sessions": 2,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 4.93,
+                "profit_factor": 3.33,
                 "benchmark_avg_return_pct": 1.02,
                 "avg_excess_return_pct": 1.77
               },
@@ -3369,56 +3369,56 @@
             },
             "top5": {
               "1": {
-                "samples": 11,
-                "eligible_samples": 15,
-                "abstain_samples": 4,
-                "coverage_pct": 73.3,
-                "win_rate_pct": 72.7,
-                "avg_return_pct": 3.39,
+                "samples": 12,
+                "eligible_samples": 20,
+                "abstain_samples": 8,
+                "coverage_pct": 60.0,
+                "win_rate_pct": 75.0,
+                "avg_return_pct": 3.17,
                 "worst_return_pct": -1.03,
                 "lowest_actual_return_pct": -1.03,
                 "highest_actual_return_pct": 23.68,
                 "sample_status": "樣本不足",
-                "sessions": 3,
+                "sessions": 4,
                 "max_drawdown_pct": 0.05,
                 "drawdown_basis": "不重疊隔日訊號序列",
-                "profit_factor": 18.47,
+                "profit_factor": 18.86,
                 "benchmark_avg_return_pct": 0.28,
                 "avg_excess_return_pct": 3.11
               },
               "2": {
-                "samples": 8,
-                "eligible_samples": 10,
-                "abstain_samples": 2,
-                "coverage_pct": 80.0,
-                "win_rate_pct": 87.5,
-                "avg_return_pct": 3.63,
+                "samples": 11,
+                "eligible_samples": 15,
+                "abstain_samples": 4,
+                "coverage_pct": 73.3,
+                "win_rate_pct": 90.9,
+                "avg_return_pct": 5.85,
                 "worst_return_pct": -0.66,
                 "lowest_actual_return_pct": -0.66,
-                "highest_actual_return_pct": 13.72,
+                "highest_actual_return_pct": 25.74,
                 "sample_status": "樣本不足",
-                "sessions": 2,
+                "sessions": 3,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 45.01,
+                "profit_factor": 98.41,
                 "benchmark_avg_return_pct": 0.56,
                 "avg_excess_return_pct": 3.07
               },
               "3": {
-                "samples": 3,
-                "eligible_samples": 5,
+                "samples": 8,
+                "eligible_samples": 10,
                 "abstain_samples": 2,
-                "coverage_pct": 60.0,
-                "win_rate_pct": 33.3,
-                "avg_return_pct": 0.18,
+                "coverage_pct": 80.0,
+                "win_rate_pct": 62.5,
+                "avg_return_pct": 1.68,
                 "worst_return_pct": -2.22,
                 "lowest_actual_return_pct": -2.22,
-                "highest_actual_return_pct": 3.64,
+                "highest_actual_return_pct": 8.33,
                 "sample_status": "樣本不足",
-                "sessions": 1,
+                "sessions": 2,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 1.17,
+                "profit_factor": 5.15,
                 "benchmark_avg_return_pct": 1.02,
                 "avg_excess_return_pct": -0.84
               },
@@ -3479,56 +3479,56 @@
             },
             "top10": {
               "1": {
-                "samples": 20,
-                "eligible_samples": 30,
-                "abstain_samples": 10,
-                "coverage_pct": 66.7,
-                "win_rate_pct": 70.0,
-                "avg_return_pct": 2.96,
-                "worst_return_pct": -1.5,
-                "lowest_actual_return_pct": -1.5,
+                "samples": 24,
+                "eligible_samples": 40,
+                "abstain_samples": 16,
+                "coverage_pct": 60.0,
+                "win_rate_pct": 62.5,
+                "avg_return_pct": 2.22,
+                "worst_return_pct": -3.08,
+                "lowest_actual_return_pct": -3.08,
                 "highest_actual_return_pct": 23.68,
                 "sample_status": "初步參考",
-                "sessions": 3,
-                "max_drawdown_pct": 0.22,
+                "sessions": 4,
+                "max_drawdown_pct": 1.49,
                 "drawdown_basis": "不重疊隔日訊號序列",
-                "profit_factor": 14.14,
+                "profit_factor": 5.7,
                 "benchmark_avg_return_pct": 0.34,
                 "avg_excess_return_pct": 2.62
               },
               "2": {
-                "samples": 12,
-                "eligible_samples": 20,
-                "abstain_samples": 8,
-                "coverage_pct": 60.0,
-                "win_rate_pct": 91.7,
-                "avg_return_pct": 3.09,
-                "worst_return_pct": -0.66,
-                "lowest_actual_return_pct": -0.66,
-                "highest_actual_return_pct": 13.72,
-                "sample_status": "樣本不足",
-                "sessions": 2,
+                "samples": 20,
+                "eligible_samples": 30,
+                "abstain_samples": 10,
+                "coverage_pct": 66.7,
+                "win_rate_pct": 85.0,
+                "avg_return_pct": 3.95,
+                "worst_return_pct": -3.41,
+                "lowest_actual_return_pct": -3.41,
+                "highest_actual_return_pct": 25.74,
+                "sample_status": "初步參考",
+                "sessions": 3,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 57.14,
+                "profit_factor": 14.98,
                 "benchmark_avg_return_pct": 0.58,
                 "avg_excess_return_pct": 2.51
               },
               "3": {
-                "samples": 4,
-                "eligible_samples": 10,
-                "abstain_samples": 6,
-                "coverage_pct": 40.0,
-                "win_rate_pct": 25.0,
-                "avg_return_pct": -0.16,
-                "worst_return_pct": -2.22,
-                "lowest_actual_return_pct": -2.22,
-                "highest_actual_return_pct": 3.64,
+                "samples": 12,
+                "eligible_samples": 20,
+                "abstain_samples": 8,
+                "coverage_pct": 60.0,
+                "win_rate_pct": 50.0,
+                "avg_return_pct": 1.02,
+                "worst_return_pct": -3.15,
+                "lowest_actual_return_pct": -3.15,
+                "highest_actual_return_pct": 8.33,
                 "sample_status": "樣本不足",
-                "sessions": 1,
+                "sessions": 2,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 0.85,
+                "profit_factor": 2.37,
                 "benchmark_avg_return_pct": 1.02,
                 "avg_excess_return_pct": -1.18
               },
@@ -5937,43 +5937,43 @@
     "US": {
       "current_consensus": {
         "1": {
+          "samples": 76,
+          "eligible_samples": 154,
+          "sessions": 4,
+          "coverage_pct": 49.4,
+          "win_rate_pct": 50.0,
+          "avg_return_pct": 1.18,
+          "cumulative_return_pct": 3.89,
+          "max_drawdown_pct": 2.2,
+          "drawdown_basis": "每日不重疊等權方向報酬序列",
+          "profit_factor": 2.5,
+          "sample_status": "較具參考性"
+        },
+        "2": {
           "samples": 55,
           "eligible_samples": 115,
           "sessions": 3,
           "coverage_pct": 47.8,
-          "win_rate_pct": 67.3,
-          "avg_return_pct": 2.47,
-          "cumulative_return_pct": 6.22,
+          "win_rate_pct": 72.7,
+          "avg_return_pct": 2.22,
+          "cumulative_return_pct": 6.42,
           "max_drawdown_pct": 0.0,
-          "drawdown_basis": "每日不重疊等權方向報酬序列",
-          "profit_factor": 11.62,
+          "drawdown_basis": "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線",
+          "profit_factor": 3.74,
           "sample_status": "初步參考"
         },
-        "2": {
+        "3": {
           "samples": 29,
           "eligible_samples": 77,
           "sessions": 2,
           "coverage_pct": 37.7,
-          "win_rate_pct": 89.7,
-          "avg_return_pct": 2.52,
-          "cumulative_return_pct": 4.46,
+          "win_rate_pct": 51.7,
+          "avg_return_pct": 0.73,
+          "cumulative_return_pct": 2.61,
           "max_drawdown_pct": 0.0,
           "drawdown_basis": "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線",
-          "profit_factor": 42.33,
+          "profit_factor": 1.78,
           "sample_status": "初步參考"
-        },
-        "3": {
-          "samples": 7,
-          "eligible_samples": 37,
-          "sessions": 1,
-          "coverage_pct": 18.9,
-          "win_rate_pct": 57.1,
-          "avg_return_pct": 2.41,
-          "cumulative_return_pct": 2.41,
-          "max_drawdown_pct": 0.0,
-          "drawdown_basis": "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線",
-          "profit_factor": 4.96,
-          "sample_status": "樣本不足"
         },
         "5": {
           "samples": 0,
@@ -5991,43 +5991,43 @@
       },
       "top10_consensus": {
         "1": {
+          "samples": 49,
+          "eligible_samples": 80,
+          "sessions": 4,
+          "coverage_pct": 61.3,
+          "win_rate_pct": 55.1,
+          "avg_return_pct": 1.45,
+          "cumulative_return_pct": 3.88,
+          "max_drawdown_pct": 2.02,
+          "drawdown_basis": "每日不重疊等權方向報酬序列",
+          "profit_factor": 3.33,
+          "sample_status": "初步參考"
+        },
+        "2": {
           "samples": 38,
           "eligible_samples": 60,
           "sessions": 3,
           "coverage_pct": 63.3,
-          "win_rate_pct": 68.4,
-          "avg_return_pct": 2.46,
-          "cumulative_return_pct": 6.02,
+          "win_rate_pct": 84.2,
+          "avg_return_pct": 3.05,
+          "cumulative_return_pct": 7.43,
           "max_drawdown_pct": 0.0,
-          "drawdown_basis": "每日不重疊等權方向報酬序列",
-          "profit_factor": 13.38,
+          "drawdown_basis": "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線",
+          "profit_factor": 12.62,
           "sample_status": "初步參考"
         },
-        "2": {
+        "3": {
           "samples": 22,
           "eligible_samples": 40,
           "sessions": 2,
           "coverage_pct": 55.0,
-          "win_rate_pct": 90.9,
-          "avg_return_pct": 2.33,
-          "cumulative_return_pct": 3.26,
-          "max_drawdown_pct": 0.0,
-          "drawdown_basis": "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線",
-          "profit_factor": 33.97,
-          "sample_status": "初步參考"
-        },
-        "3": {
-          "samples": 5,
-          "eligible_samples": 20,
-          "sessions": 1,
-          "coverage_pct": 25.0,
-          "win_rate_pct": 40.0,
-          "avg_return_pct": -0.1,
-          "cumulative_return_pct": -0.1,
+          "win_rate_pct": 50.0,
+          "avg_return_pct": 0.29,
+          "cumulative_return_pct": 0.3,
           "max_drawdown_pct": 0.1,
           "drawdown_basis": "多日訊號可能重疊，只供影子比較，不視為單一實盤資金曲線",
-          "profit_factor": 0.88,
-          "sample_status": "樣本不足"
+          "profit_factor": 1.31,
+          "sample_status": "初步參考"
         },
         "5": {
           "samples": 0,
@@ -6102,7 +6102,7 @@
   "ab_testing": {
     "mode": "automatic_shadow_ab",
     "horizon": 1,
-    "overall_trading_days_collected": 4,
+    "overall_trading_days_collected": 5,
     "minimum_trading_days": 60,
     "minimum_samples": 200,
     "markets": {
@@ -6140,32 +6140,32 @@
       },
       "US": {
         "A_current_consensus": {
-          "samples": 55,
-          "eligible_samples": 115,
-          "sessions": 3,
-          "coverage_pct": 47.8,
-          "win_rate_pct": 67.3,
-          "avg_return_pct": 2.47,
-          "cumulative_return_pct": 6.22,
-          "max_drawdown_pct": 0.0,
+          "samples": 76,
+          "eligible_samples": 154,
+          "sessions": 4,
+          "coverage_pct": 49.4,
+          "win_rate_pct": 50.0,
+          "avg_return_pct": 1.18,
+          "cumulative_return_pct": 3.89,
+          "max_drawdown_pct": 2.2,
           "drawdown_basis": "每日不重疊等權方向報酬序列",
-          "profit_factor": 11.62,
-          "sample_status": "初步參考"
+          "profit_factor": 2.5,
+          "sample_status": "較具參考性"
         },
         "B_top10_consensus": {
-          "samples": 38,
-          "eligible_samples": 60,
-          "sessions": 3,
-          "coverage_pct": 63.3,
-          "win_rate_pct": 68.4,
-          "avg_return_pct": 2.46,
-          "cumulative_return_pct": 6.02,
-          "max_drawdown_pct": 0.0,
+          "samples": 49,
+          "eligible_samples": 80,
+          "sessions": 4,
+          "coverage_pct": 61.3,
+          "win_rate_pct": 55.1,
+          "avg_return_pct": 1.45,
+          "cumulative_return_pct": 3.88,
+          "max_drawdown_pct": 2.02,
           "drawdown_basis": "每日不重疊等權方向報酬序列",
-          "profit_factor": 13.38,
+          "profit_factor": 3.33,
           "sample_status": "初步參考"
         },
-        "trading_days_collected": 4,
+        "trading_days_collected": 5,
         "minimum_trading_days": 60,
         "candidate_upgrade": false,
         "decision": "keep_collecting"
@@ -6180,7 +6180,7 @@
   "error_cases": {
     "automatic_collection": true,
     "valid_samples_only": true,
-    "count": 64,
+    "count": 107,
     "recent_worst": [
       {
         "market": "TW",
@@ -6267,6 +6267,20 @@
         "reason": "預測方向與完成交易日結果相反"
       },
       {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "MRVL",
+        "name": "Marvell",
+        "rank": 20,
+        "predicted_direction": "UP",
+        "actual_return_pct": -10.2197,
+        "directional_return_pct": -10.2197,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
         "market": "TW",
         "market_regime": "sideways",
         "source_session_date": "2026-08-24",
@@ -6278,6 +6292,20 @@
         "predicted_direction": "DOWN",
         "actual_return_pct": 9.7308,
         "directional_return_pct": -9.7308,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "PCG",
+        "name": "PG&E",
+        "rank": 13,
+        "predicted_direction": "UP",
+        "actual_return_pct": -9.2325,
+        "directional_return_pct": -9.2325,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6323,6 +6351,20 @@
         "reason": "預測方向與完成交易日結果相反"
       },
       {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "PCG",
+        "name": "PG&E",
+        "rank": 14,
+        "predicted_direction": "UP",
+        "actual_return_pct": -7.4373,
+        "directional_return_pct": -7.4373,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
         "market": "TW",
         "market_regime": "sideways",
         "source_session_date": "2026-08-24",
@@ -6348,6 +6390,62 @@
         "predicted_direction": "DOWN",
         "actual_return_pct": 6.5338,
         "directional_return_pct": -6.5338,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "ARM",
+        "name": "Arm",
+        "rank": 17,
+        "predicted_direction": "UP",
+        "actual_return_pct": -6.3203,
+        "directional_return_pct": -6.3203,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "URA",
+        "name": "Global X Uranium ETF",
+        "rank": 1,
+        "predicted_direction": "UP",
+        "actual_return_pct": -5.7474,
+        "directional_return_pct": -5.7474,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "NLR",
+        "name": "VanEck Uranium and Nuclear ETF",
+        "rank": 4,
+        "predicted_direction": "UP",
+        "actual_return_pct": -5.4151,
+        "directional_return_pct": -5.4151,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "URA",
+        "name": "Global X Uranium ETF",
+        "rank": 2,
+        "predicted_direction": "UP",
+        "actual_return_pct": -5.2971,
+        "directional_return_pct": -5.2971,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6379,6 +6477,34 @@
         "reason": "預測方向與完成交易日結果相反"
       },
       {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "NLR",
+        "name": "VanEck Uranium and Nuclear ETF",
+        "rank": 1,
+        "predicted_direction": "UP",
+        "actual_return_pct": -4.6525,
+        "directional_return_pct": -4.6525,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "BE",
+        "name": "Bloom Energy",
+        "rank": 18,
+        "predicted_direction": "UP",
+        "actual_return_pct": -4.568,
+        "directional_return_pct": -4.568,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
         "market": "TW",
         "market_regime": "sideways",
         "source_session_date": "2026-08-26",
@@ -6390,6 +6516,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -4.0486,
         "directional_return_pct": -4.0486,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "FN",
+        "name": "Fabrinet",
+        "rank": 15,
+        "predicted_direction": "UP",
+        "actual_return_pct": -3.988,
+        "directional_return_pct": -3.988,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6407,6 +6547,34 @@
         "reason": "預測方向與完成交易日結果相反"
       },
       {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "AMD",
+        "name": "AMD",
+        "rank": 14,
+        "predicted_direction": "UP",
+        "actual_return_pct": -3.6484,
+        "directional_return_pct": -3.6484,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "GEV",
+        "name": "GE Vernova",
+        "rank": 9,
+        "predicted_direction": "UP",
+        "actual_return_pct": -3.4107,
+        "directional_return_pct": -3.4107,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
         "market": "TW",
         "market_regime": "sideways",
         "source_session_date": "2026-08-26",
@@ -6418,6 +6586,34 @@
         "predicted_direction": "UP",
         "actual_return_pct": -3.3898,
         "directional_return_pct": -3.3898,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "COHR",
+        "name": "Coherent",
+        "rank": 8,
+        "predicted_direction": "UP",
+        "actual_return_pct": -3.1512,
+        "directional_return_pct": -3.1512,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "CRDO",
+        "name": "Credo Technology",
+        "rank": 8,
+        "predicted_direction": "UP",
+        "actual_return_pct": -3.0844,
+        "directional_return_pct": -3.0844,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6465,6 +6661,20 @@
       {
         "market": "US",
         "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "TSM",
+        "name": "TSMC ADR",
+        "rank": 7,
+        "predicted_direction": "UP",
+        "actual_return_pct": -2.2794,
+        "directional_return_pct": -2.2794,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
         "source_session_date": "2026-08-24",
         "evaluated_session_date": "2026-08-27",
         "horizon": 3,
@@ -6474,6 +6684,34 @@
         "predicted_direction": "UP",
         "actual_return_pct": -2.217,
         "directional_return_pct": -2.217,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "CIBR",
+        "name": "First Trust NASDAQ Cybersecurity ETF",
+        "rank": 8,
+        "predicted_direction": "UP",
+        "actual_return_pct": -2.2125,
+        "directional_return_pct": -2.2125,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "VRT",
+        "name": "Vertiv",
+        "rank": 19,
+        "predicted_direction": "UP",
+        "actual_return_pct": -2.0443,
+        "directional_return_pct": -2.0443,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6493,6 +6731,34 @@
       {
         "market": "US",
         "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "DTCR",
+        "name": "Global X Data Center & Digital Infrastructure ETF",
+        "rank": 14,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.9958,
+        "directional_return_pct": -1.9958,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "ROBO",
+        "name": "ROBO Global Robotics & Automation ETF",
+        "rank": 14,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.9467,
+        "directional_return_pct": -1.9467,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
         "source_session_date": "2026-08-26",
         "evaluated_session_date": "2026-08-27",
         "horizon": 1,
@@ -6502,6 +6768,34 @@
         "predicted_direction": "UP",
         "actual_return_pct": -1.9394,
         "directional_return_pct": -1.9394,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "DTCR",
+        "name": "Global X Data Center & Digital Infrastructure ETF",
+        "rank": 17,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.9271,
+        "directional_return_pct": -1.9271,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "BWXT",
+        "name": "BWX Technologies",
+        "rank": 18,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.9217,
+        "directional_return_pct": -1.9217,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6521,6 +6815,104 @@
       {
         "market": "US",
         "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "QTUM",
+        "name": "Defiance Quantum ETF",
+        "rank": 17,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.8217,
+        "directional_return_pct": -1.8217,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "ITA",
+        "name": "iShares U.S. Aerospace & Defense ETF",
+        "rank": 1,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.8119,
+        "directional_return_pct": -1.8119,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "DTCR",
+        "name": "Global X Data Center & Digital Infrastructure ETF",
+        "rank": 20,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.7895,
+        "directional_return_pct": -1.7895,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "PPA",
+        "name": "Invesco Aerospace & Defense ETF",
+        "rank": 4,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.6202,
+        "directional_return_pct": -1.6202,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "PWR",
+        "name": "Quanta Services",
+        "rank": 15,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.5986,
+        "directional_return_pct": -1.5986,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "BWXT",
+        "name": "BWX Technologies",
+        "rank": 8,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.5807,
+        "directional_return_pct": -1.5807,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "ARKQ",
+        "name": "ARK Autonomous Technology & Robotics ETF",
+        "rank": 2,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.5383,
+        "directional_return_pct": -1.5383,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
         "source_session_date": "2026-08-25",
         "evaluated_session_date": "2026-08-26",
         "horizon": 1,
@@ -6530,6 +6922,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -1.4976,
         "directional_return_pct": -1.4976,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "SOUN",
+        "name": "SoundHound AI",
+        "rank": 6,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.4543,
+        "directional_return_pct": -1.4543,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6572,6 +6978,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -1.3575,
         "directional_return_pct": -1.3575,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "NOK",
+        "name": "Nokia",
+        "rank": 10,
+        "predicted_direction": "UP",
+        "actual_return_pct": -1.3527,
+        "directional_return_pct": -1.3527,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6673,6 +7093,34 @@
         "reason": "預測方向與完成交易日結果相反"
       },
       {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-26",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 2,
+        "symbol": "ROBO",
+        "name": "ROBO Global Robotics & Automation ETF",
+        "rank": 14,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.9951,
+        "directional_return_pct": -0.9951,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "SOXQ",
+        "name": "Invesco PHLX Semiconductor ETF",
+        "rank": 18,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.9924,
+        "directional_return_pct": -0.9924,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
         "market": "TW",
         "market_regime": "sideways",
         "source_session_date": "2026-08-26",
@@ -6712,6 +7160,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -0.8835,
         "directional_return_pct": -0.8835,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "SKYY",
+        "name": "First Trust Cloud Computing ETF",
+        "rank": 13,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.8764,
+        "directional_return_pct": -0.8764,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6768,6 +7230,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -0.8375,
         "directional_return_pct": -0.8375,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "ORCL",
+        "name": "Oracle",
+        "rank": 19,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.8095,
+        "directional_return_pct": -0.8095,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6843,6 +7319,34 @@
       {
         "market": "US",
         "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "QQQM",
+        "name": "Invesco NASDAQ 100 ETF",
+        "rank": 10,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.6534,
+        "directional_return_pct": -0.6534,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "ROBT",
+        "name": "First Trust Nasdaq Artificial Intelligence ETF",
+        "rank": 15,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.6274,
+        "directional_return_pct": -0.6274,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
         "source_session_date": "2026-08-24",
         "evaluated_session_date": "2026-08-25",
         "horizon": 1,
@@ -6869,6 +7373,34 @@
         "reason": "預測方向與完成交易日結果相反"
       },
       {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "SMH",
+        "name": "VanEck Semiconductor ETF",
+        "rank": 10,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.4964,
+        "directional_return_pct": -0.4964,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "AIQ",
+        "name": "Global X Artificial Intelligence ETF",
+        "rank": 9,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.4803,
+        "directional_return_pct": -0.4803,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
         "market": "TW",
         "market_regime": "sideways",
         "source_session_date": "2026-08-25",
@@ -6886,6 +7418,20 @@
         "market": "US",
         "market_regime": "bull",
         "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "ROBO",
+        "name": "ROBO Global Robotics & Automation ETF",
+        "rank": 6,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.4201,
+        "directional_return_pct": -0.4201,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
         "evaluated_session_date": "2026-08-26",
         "horizon": 1,
         "symbol": "SOXQ",
@@ -6894,6 +7440,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -0.4057,
         "directional_return_pct": -0.4057,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "ARKX",
+        "name": "ARK Space Exploration & Innovation ETF",
+        "rank": 9,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.4001,
+        "directional_return_pct": -0.4001,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6922,6 +7482,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -0.3742,
         "directional_return_pct": -0.3742,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "HSAI",
+        "name": "Hesai",
+        "rank": 11,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.3716,
+        "directional_return_pct": -0.3716,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -6964,6 +7538,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -0.2101,
         "directional_return_pct": -0.2101,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-27",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 1,
+        "symbol": "CLOU",
+        "name": "Global X Cloud Computing ETF",
+        "rank": 6,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.2075,
+        "directional_return_pct": -0.2075,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -7020,6 +7608,20 @@
         "predicted_direction": "UP",
         "actual_return_pct": -0.1402,
         "directional_return_pct": -0.1402,
+        "reason": "預測方向與完成交易日結果相反"
+      },
+      {
+        "market": "US",
+        "market_regime": "bull",
+        "source_session_date": "2026-08-25",
+        "evaluated_session_date": "2026-08-28",
+        "horizon": 3,
+        "symbol": "KEYS",
+        "name": "Keysight",
+        "rank": 4,
+        "predicted_direction": "UP",
+        "actual_return_pct": -0.1312,
+        "directional_return_pct": -0.1312,
         "reason": "預測方向與完成交易日結果相反"
       },
       {
@@ -7081,10 +7683,10 @@
     ]
   },
   "data_quality": {
-    "valid_frozen_rows": 470,
-    "invalid_frozen_rows": 397,
+    "valid_frozen_rows": 500,
+    "invalid_frozen_rows": 406,
     "invalid_reason_counts": {
-      "model_evidence": 397,
+      "model_evidence": 406,
       "market_data_quality": 91
     },
     "rule": "缺少資料契約、行情品質或模型證據涵蓋的資料只記錄，不列入勝率、報酬、回撤或A/B有效樣本。"
@@ -7106,7 +7708,7 @@
     "automatic_ab_testing": true,
     "market_regime_segmentation": true,
     "promotion_gate": {
-      "trading_days_collected": 4,
+      "trading_days_collected": 5,
       "minimum_trading_days": 60,
       "status": "formal_ranking_locked",
       "candidate_upgrade_only": true,
@@ -7116,6 +7718,1846 @@
     }
   },
   "recent": [
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "cohort": "US_STOCK",
+      "rank": 1,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 227.98,
+      "actual_open_price": 227.33,
+      "actual_high_price": 229.26,
+      "actual_low_price": 216.81,
+      "actual_close_price": 217.54,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.2851,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -4.3065,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -4.5793,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "SNPS",
+      "name": "Synopsys",
+      "cohort": "US_STOCK",
+      "rank": 2,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 464.89,
+      "actual_open_price": 462.0,
+      "actual_high_price": 462.45,
+      "actual_low_price": 440.6,
+      "actual_close_price": 442.83,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.6217,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -4.1494,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -4.7452,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ADBE",
+      "name": "Adobe",
+      "cohort": "US_STOCK",
+      "rank": 3,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 289.15,
+      "actual_open_price": 288.375,
+      "actual_high_price": 294.0865,
+      "actual_low_price": 286.77,
+      "actual_close_price": 291.58,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.268,
+          "hit": null
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 69.5,
+          "actual_return_pct": 1.1114,
+          "hit": true
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 66.7,
+          "actual_return_pct": 0.8404,
+          "hit": true
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "CRWD",
+      "name": "CrowdStrike",
+      "cohort": "US_STOCK",
+      "rank": 4,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 227.96,
+      "actual_open_price": 228.495,
+      "actual_high_price": 228.495,
+      "actual_low_price": 210.53,
+      "actual_close_price": 218.43,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.2347,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -4.4049,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -4.1806,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "NOW",
+      "name": "ServiceNow",
+      "cohort": "US_STOCK",
+      "rank": 5,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 138.43,
+      "actual_open_price": 138.48,
+      "actual_high_price": 145.72,
+      "actual_low_price": 137.8,
+      "actual_close_price": 144.68,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.0361,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 4.4772,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 4.5149,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "SOUN",
+      "name": "SoundHound AI",
+      "cohort": "US_STOCK",
+      "rank": 6,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 7.22,
+      "actual_open_price": 7.17,
+      "actual_high_price": 7.28,
+      "actual_low_price": 7.02,
+      "actual_close_price": 7.115,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 65.1,
+          "actual_return_pct": -0.6925,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 68.0,
+          "actual_return_pct": -0.7671,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 66.0,
+          "actual_return_pct": -1.4543,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "TSM",
+      "name": "TSMC ADR",
+      "cohort": "US_STOCK",
+      "rank": 7,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 427.3,
+      "actual_open_price": 427.49,
+      "actual_high_price": 429.12,
+      "actual_low_price": 417.32,
+      "actual_close_price": 417.56,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 64.8,
+          "actual_return_pct": 0.0445,
+          "hit": true
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 67.2,
+          "actual_return_pct": -2.3229,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 66.1,
+          "actual_return_pct": -2.2794,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "CRDO",
+      "name": "Credo Technology",
+      "cohort": "US_STOCK",
+      "rank": 8,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 240.24,
+      "actual_open_price": 239.66,
+      "actual_high_price": 240.49,
+      "actual_low_price": 228.6001,
+      "actual_close_price": 232.83,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 63.8,
+          "actual_return_pct": -0.2414,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 68.3,
+          "actual_return_pct": -2.8499,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 66.7,
+          "actual_return_pct": -3.0844,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "AVGO",
+      "name": "Broadcom",
+      "cohort": "US_STOCK",
+      "rank": 9,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 371.54,
+      "actual_open_price": 373.52,
+      "actual_high_price": 376.59,
+      "actual_low_price": 365.3513,
+      "actual_close_price": 368.68,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.5329,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.2958,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.7698,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "DDOG",
+      "name": "Datadog",
+      "cohort": "US_STOCK",
+      "rank": 10,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 242.93,
+      "actual_open_price": 240.22,
+      "actual_high_price": 247.875,
+      "actual_low_price": 235.725,
+      "actual_close_price": 236.98,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.1155,
+          "hit": null
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 62.1,
+          "actual_return_pct": -1.3488,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -2.4493,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "HSAI",
+      "name": "Hesai",
+      "cohort": "US_STOCK",
+      "rank": 11,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 17.49,
+      "actual_open_price": 17.5,
+      "actual_high_price": 17.91,
+      "actual_low_price": 17.3,
+      "actual_close_price": 17.425,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 64.0,
+          "actual_return_pct": 0.0572,
+          "hit": true
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 65.2,
+          "actual_return_pct": -0.4286,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 64.7,
+          "actual_return_pct": -0.3716,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "NET",
+      "name": "Cloudflare",
+      "cohort": "US_STOCK",
+      "rank": 12,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 308.23,
+      "actual_open_price": 306.21,
+      "actual_high_price": 307.5,
+      "actual_low_price": 298.02,
+      "actual_close_price": 299.69,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.6554,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -2.1293,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -2.7707,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "INVZ",
+      "name": "Innoviz",
+      "cohort": "US_STOCK",
+      "rank": 13,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 0.355,
+      "actual_open_price": 0.36,
+      "actual_high_price": 0.3727,
+      "actual_low_price": 0.3345,
+      "actual_close_price": 0.35,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 1.4085,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -2.7778,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.4085,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "PCG",
+      "name": "PG&E",
+      "cohort": "US_STOCK",
+      "rank": 14,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 17.95,
+      "actual_open_price": 18.22,
+      "actual_high_price": 18.35,
+      "actual_low_price": 15.84,
+      "actual_close_price": 16.615,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 1.5042,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -8.809,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 62.2,
+          "actual_return_pct": -7.4373,
+          "hit": false
+        }
+      },
+      "stop_touched": true,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "AMKR",
+      "name": "Amkor",
+      "cohort": "US_STOCK",
+      "rank": 15,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 51.74,
+      "actual_open_price": 51.29,
+      "actual_high_price": 51.49,
+      "actual_low_price": 47.66,
+      "actual_close_price": 47.88,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.8697,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -6.6485,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -7.4604,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "BBAI",
+      "name": "BigBear.ai",
+      "cohort": "US_STOCK",
+      "rank": 16,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 3.19,
+      "actual_open_price": 3.15,
+      "actual_high_price": 3.22,
+      "actual_low_price": 3.04,
+      "actual_close_price": 3.065,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.2539,
+          "hit": null
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 62.1,
+          "actual_return_pct": -2.6984,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -3.9185,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ARM",
+      "name": "Arm",
+      "cohort": "US_STOCK",
+      "rank": 17,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 255.21,
+      "actual_open_price": 250.81,
+      "actual_high_price": 251.69,
+      "actual_low_price": 238.66,
+      "actual_close_price": 239.08,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.7241,
+          "hit": null
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 63.1,
+          "actual_return_pct": -4.6768,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 62.9,
+          "actual_return_pct": -6.3203,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "BWXT",
+      "name": "BWX Technologies",
+      "cohort": "US_STOCK",
+      "rank": 18,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 155.85,
+      "actual_open_price": 156.26,
+      "actual_high_price": 156.26,
+      "actual_low_price": 152.5,
+      "actual_close_price": 152.855,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 65.2,
+          "actual_return_pct": 0.2631,
+          "hit": true
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -2.1791,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 63.9,
+          "actual_return_pct": -1.9217,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ORCL",
+      "name": "Oracle",
+      "cohort": "US_STOCK",
+      "rank": 19,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 151.94,
+      "actual_open_price": 153.6,
+      "actual_high_price": 153.99,
+      "actual_low_price": 149.71,
+      "actual_close_price": 150.71,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 63.1,
+          "actual_return_pct": 1.0925,
+          "hit": true
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 63.2,
+          "actual_return_pct": -1.8815,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 63.7,
+          "actual_return_pct": -0.8095,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "PATH",
+      "name": "UiPath",
+      "cohort": "US_STOCK",
+      "rank": 20,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 18.33,
+      "actual_open_price": 18.125,
+      "actual_high_price": 18.52,
+      "actual_low_price": 18.01,
+      "actual_close_price": 18.155,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.1184,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.1655,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.9547,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "URA",
+      "name": "Global X Uranium ETF",
+      "cohort": "US_ETF",
+      "rank": 1,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 48.37,
+      "actual_open_price": 48.35,
+      "actual_high_price": 48.55,
+      "actual_low_price": 45.4805,
+      "actual_close_price": 45.59,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 65.2,
+          "actual_return_pct": -0.0413,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 68.3,
+          "actual_return_pct": -5.7084,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 66.9,
+          "actual_return_pct": -5.7474,
+          "hit": false
+        }
+      },
+      "stop_touched": true,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ARKQ",
+      "name": "ARK Autonomous Technology & Robotics ETF",
+      "cohort": "US_ETF",
+      "rank": 2,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 124.16,
+      "actual_open_price": 124.03,
+      "actual_high_price": 124.335,
+      "actual_low_price": 121.83,
+      "actual_close_price": 122.25,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 64.4,
+          "actual_return_pct": -0.1047,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 65.7,
+          "actual_return_pct": -1.4351,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 65.1,
+          "actual_return_pct": -1.5383,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ARKX",
+      "name": "ARK Space Exploration & Innovation ETF",
+      "cohort": "US_ETF",
+      "rank": 3,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 32.82,
+      "actual_open_price": 32.68,
+      "actual_high_price": 32.7915,
+      "actual_low_price": 32.18,
+      "actual_close_price": 32.36,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.4266,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.9792,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.4016,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "NLR",
+      "name": "VanEck Uranium and Nuclear ETF",
+      "cohort": "US_ETF",
+      "rank": 4,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 125.02,
+      "actual_open_price": 125.0,
+      "actual_high_price": 125.46,
+      "actual_low_price": 117.76,
+      "actual_close_price": 118.25,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 64.5,
+          "actual_return_pct": -0.016,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 72.6,
+          "actual_return_pct": -5.4,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 68.3,
+          "actual_return_pct": -5.4151,
+          "hit": false
+        }
+      },
+      "stop_touched": true,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "VGT",
+      "name": "Vanguard Information Technology ETF",
+      "cohort": "US_ETF",
+      "rank": 5,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 121.91,
+      "actual_open_price": 121.61,
+      "actual_high_price": 122.06,
+      "actual_low_price": 119.98,
+      "actual_close_price": 120.07,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 63.1,
+          "actual_return_pct": -0.2461,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 65.4,
+          "actual_return_pct": -1.2663,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.5093,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "CLOU",
+      "name": "Global X Cloud Computing ETF",
+      "cohort": "US_ETF",
+      "rank": 6,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 28.92,
+      "actual_open_price": 28.88,
+      "actual_high_price": 29.29,
+      "actual_low_price": 28.78,
+      "actual_close_price": 28.86,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 66.0,
+          "actual_return_pct": -0.1383,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 72.0,
+          "actual_return_pct": -0.0693,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 69.2,
+          "actual_return_pct": -0.2075,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "HACK",
+      "name": "ETFMG Prime Cyber Security ETF",
+      "cohort": "US_ETF",
+      "rank": 7,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 118.58,
+      "actual_open_price": 117.62,
+      "actual_high_price": 118.2,
+      "actual_low_price": 114.42,
+      "actual_close_price": 115.61,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.8096,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.7089,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -2.5046,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "CIBR",
+      "name": "First Trust NASDAQ Cybersecurity ETF",
+      "cohort": "US_ETF",
+      "rank": 8,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 100.79,
+      "actual_open_price": 100.665,
+      "actual_high_price": 101.0394,
+      "actual_low_price": 97.8701,
+      "actual_close_price": 98.56,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.124,
+          "hit": null
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 66.3,
+          "actual_return_pct": -2.0911,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 63.7,
+          "actual_return_pct": -2.2125,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "AIQ",
+      "name": "Global X Artificial Intelligence ETF",
+      "cohort": "US_ETF",
+      "rank": 9,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 64.54,
+      "actual_open_price": 64.4,
+      "actual_high_price": 65.0401,
+      "actual_low_price": 64.095,
+      "actual_close_price": 64.23,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 63.6,
+          "actual_return_pct": -0.2169,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 65.9,
+          "actual_return_pct": -0.264,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 65.8,
+          "actual_return_pct": -0.4803,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "QQQM",
+      "name": "Invesco NASDAQ 100 ETF",
+      "cohort": "US_ETF",
+      "rank": 10,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 296.92,
+      "actual_open_price": 296.33,
+      "actual_high_price": 298.16,
+      "actual_low_price": 294.45,
+      "actual_close_price": 294.98,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 63.4,
+          "actual_return_pct": -0.1987,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 64.5,
+          "actual_return_pct": -0.4556,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 63.2,
+          "actual_return_pct": -0.6534,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "cohort": "US_ETF",
+      "rank": 11,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 188.61,
+      "actual_open_price": 188.07,
+      "actual_high_price": 188.67,
+      "actual_low_price": 185.51,
+      "actual_close_price": 185.68,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.2863,
+          "hit": null
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 62.5,
+          "actual_return_pct": -1.2708,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.5535,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "QQQ",
+      "name": "Invesco QQQ",
+      "cohort": "US_ETF",
+      "rank": 12,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 721.11,
+      "actual_open_price": 719.75,
+      "actual_high_price": 724.125,
+      "actual_low_price": 715.085,
+      "actual_close_price": 716.45,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.1886,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.4585,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.6462,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "SKYY",
+      "name": "First Trust Cloud Computing ETF",
+      "cohort": "US_ETF",
+      "rank": 13,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 166.6,
+      "actual_open_price": 166.43,
+      "actual_high_price": 167.64,
+      "actual_low_price": 165.075,
+      "actual_close_price": 165.14,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 66.6,
+          "actual_return_pct": -0.102,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 72.8,
+          "actual_return_pct": -0.7751,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 69.1,
+          "actual_return_pct": -0.8764,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ROBO",
+      "name": "ROBO Global Robotics & Automation ETF",
+      "cohort": "US_ETF",
+      "rank": 14,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 82.19,
+      "actual_open_price": 82.07,
+      "actual_high_price": 82.25,
+      "actual_low_price": 80.33,
+      "actual_close_price": 80.59,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 65.3,
+          "actual_return_pct": -0.146,
+          "hit": false
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 64.7,
+          "actual_return_pct": -1.8033,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 64.8,
+          "actual_return_pct": -1.9467,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ROBT",
+      "name": "First Trust Nasdaq Artificial Intelligence ETF",
+      "cohort": "US_ETF",
+      "rank": 15,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 60.57,
+      "actual_open_price": 60.6,
+      "actual_high_price": 60.79,
+      "actual_low_price": 59.98,
+      "actual_close_price": 60.19,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 65.5,
+          "actual_return_pct": 0.0495,
+          "hit": true
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 69.4,
+          "actual_return_pct": -0.6766,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 67.6,
+          "actual_return_pct": -0.6274,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "ITA",
+      "name": "iShares U.S. Aerospace & Defense ETF",
+      "cohort": "US_ETF",
+      "rank": 16,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 234.26,
+      "actual_open_price": 235.24,
+      "actual_high_price": 235.26,
+      "actual_low_price": 231.69,
+      "actual_close_price": 232.75,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.4183,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.0585,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.6446,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "QTUM",
+      "name": "Defiance Quantum ETF",
+      "cohort": "US_ETF",
+      "rank": 17,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 150.96,
+      "actual_open_price": 151.67,
+      "actual_high_price": 151.67,
+      "actual_low_price": 147.91,
+      "actual_close_price": 148.21,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 63.7,
+          "actual_return_pct": 0.4703,
+          "hit": true
+        },
+        "session": {
+          "direction": "UP",
+          "confidence": 63.3,
+          "actual_return_pct": -2.2813,
+          "hit": false
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 62.7,
+          "actual_return_pct": -1.8217,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "PPA",
+      "name": "Invesco Aerospace & Defense ETF",
+      "cohort": "US_ETF",
+      "rank": 18,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 171.69,
+      "actual_open_price": 172.0,
+      "actual_high_price": 172.0,
+      "actual_low_price": 169.46,
+      "actual_close_price": 170.02,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.1806,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.1512,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.9727,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "WCLD",
+      "name": "WisdomTree Cloud Computing Fund",
+      "cohort": "US_ETF",
+      "rank": 19,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 43.1,
+      "actual_open_price": 43.03,
+      "actual_high_price": 43.5395,
+      "actual_low_price": 42.81,
+      "actual_close_price": 42.94,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.1624,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.2092,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -0.3712,
+          "hit": null
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "US:2026-08-27",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-08-28 12:32:07",
+      "source_session_date": "2026-08-27",
+      "evaluated_session_date": "2026-08-28",
+      "symbol": "DTCR",
+      "name": "Global X Data Center & Digital Infrastructure ETF",
+      "cohort": "US_ETF",
+      "rank": 20,
+      "model_version": "V6-shadow",
+      "market_model": "US-NEXT-V6",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 28.5,
+      "actual_open_price": 28.4,
+      "actual_high_price": 28.54,
+      "actual_low_price": 27.8805,
+      "actual_close_price": 27.99,
+      "benchmark_return_pct": null,
+      "tracks": {
+        "overnight": {
+          "direction": "UP",
+          "confidence": 65.9,
+          "actual_return_pct": -0.3509,
+          "hit": false
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.4437,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "UP",
+          "confidence": 65.5,
+          "actual_return_pct": -1.7895,
+          "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
     {
       "snapshot_id": "TW:2026-08-26",
       "audit_schema_version": 4,
@@ -14470,1846 +16912,6 @@
           "confidence": 0.0,
           "actual_return_pct": 0.1416,
           "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "0052.TW",
-      "name": "富邦科技",
-      "cohort": "TW_ETF",
-      "rank": 16,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 61.95,
-      "actual_open_price": 62.3,
-      "actual_high_price": 62.5,
-      "actual_low_price": 61.9,
-      "actual_close_price": 61.9,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.565,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.6421,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0807,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00892.TW",
-      "name": "富邦台灣半導體",
-      "cohort": "TW_ETF",
-      "rank": 17,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 39.73,
-      "actual_open_price": 40.2,
-      "actual_high_price": 40.3,
-      "actual_low_price": 39.74,
-      "actual_close_price": 40.02,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.183,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.4478,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.7299,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00901.TW",
-      "name": "永豐智能車供應鏈",
-      "cohort": "TW_ETF",
-      "rank": 18,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 45.45,
-      "actual_open_price": 45.9,
-      "actual_high_price": 46.08,
-      "actual_low_price": 45.73,
-      "actual_close_price": 45.73,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.9901,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.3704,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.6161,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "009800.TW",
-      "name": "中信NASDAQ",
-      "cohort": "TW_ETF",
-      "rank": 19,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 12.93,
-      "actual_open_price": 12.98,
-      "actual_high_price": 13.02,
-      "actual_low_price": 12.98,
-      "actual_close_price": 12.98,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.3867,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.0,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.3867,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00893.TW",
-      "name": "國泰智能電動車",
-      "cohort": "TW_ETF",
-      "rank": 20,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 42.66,
-      "actual_open_price": 42.76,
-      "actual_high_price": 42.88,
-      "actual_low_price": 42.73,
-      "actual_close_price": 42.73,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.2344,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0702,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.1641,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00952.TW",
-      "name": "凱基台灣AI50",
-      "cohort": "TW_ETF",
-      "rank": 21,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 18.09,
-      "actual_open_price": 18.18,
-      "actual_high_price": 18.24,
-      "actual_low_price": 18.07,
-      "actual_close_price": 18.12,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.4975,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.33,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.1658,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00891.TW",
-      "name": "中信關鍵半導體",
-      "cohort": "TW_ETF",
-      "rank": 22,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 34.36,
-      "actual_open_price": 34.59,
-      "actual_high_price": 34.63,
-      "actual_low_price": 34.25,
-      "actual_close_price": 34.27,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.6694,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.9251,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.2619,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00881.TW",
-      "name": "國泰臺灣5G+",
-      "cohort": "TW_ETF",
-      "rank": 23,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 49.53,
-      "actual_open_price": 49.85,
-      "actual_high_price": 50.15,
-      "actual_low_price": 49.59,
-      "actual_close_price": 49.61,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.6461,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.4814,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.1615,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00757.TW",
-      "name": "統一FANG+",
-      "cohort": "TW_ETF",
-      "rank": 24,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 137.2,
-      "actual_open_price": 138.05,
-      "actual_high_price": 138.3,
-      "actual_low_price": 137.8,
-      "actual_close_price": 137.95,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.6195,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0724,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.5466,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00895.TW",
-      "name": "富邦未來車",
-      "cohort": "TW_ETF",
-      "rank": 25,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 49.87,
-      "actual_open_price": 50.05,
-      "actual_high_price": 50.2,
-      "actual_low_price": 49.95,
-      "actual_close_price": 49.95,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.3609,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.1998,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.1604,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00770.TW",
-      "name": "國泰北美科技",
-      "cohort": "TW_ETF",
-      "rank": 26,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 66.75,
-      "actual_open_price": 67.4,
-      "actual_high_price": 67.7,
-      "actual_low_price": 67.35,
-      "actual_close_price": 67.55,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.9738,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.2226,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.1985,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00662.TW",
-      "name": "富邦NASDAQ",
-      "cohort": "TW_ETF",
-      "rank": 27,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 119.4,
-      "actual_open_price": 119.9,
-      "actual_high_price": 120.2,
-      "actual_low_price": 119.75,
-      "actual_close_price": 119.85,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.4188,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0417,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.3769,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00903.TW",
-      "name": "富邦元宇宙",
-      "cohort": "TW_ETF",
-      "rank": 28,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 21.14,
-      "actual_open_price": 21.14,
-      "actual_high_price": 21.18,
-      "actual_low_price": 21.12,
-      "actual_close_price": 21.13,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.0,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0473,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0473,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00830.TW",
-      "name": "國泰費城半導體",
-      "cohort": "TW_ETF",
-      "rank": 29,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 82.2,
-      "actual_open_price": 82.85,
-      "actual_high_price": 83.8,
-      "actual_low_price": 82.85,
-      "actual_close_price": 83.65,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.7908,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.9656,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.764,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00989A.TW",
-      "name": "主動摩根美國科技",
-      "cohort": "TW_ETF",
-      "rank": 30,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 16.65,
-      "actual_open_price": 16.75,
-      "actual_high_price": 16.94,
-      "actual_low_price": 16.75,
-      "actual_close_price": 16.91,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.6006,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.9552,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.5616,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:26:15",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "00911.TW",
-      "name": "兆豐洲際半導體",
-      "cohort": "TW_ETF",
-      "rank": 31,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "sideways",
-      "source_market_regime_label": "盤整",
-      "source_close_price": 52.15,
-      "actual_open_price": 52.7,
-      "actual_high_price": 52.95,
-      "actual_low_price": 52.45,
-      "actual_close_price": 52.8,
-      "benchmark_return_pct": 0.3111,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.0547,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.1898,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.2464,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "LEU",
-      "name": "Centrus Energy",
-      "cohort": "US_STOCK",
-      "rank": 1,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 196.079,
-      "actual_open_price": 191.0,
-      "actual_high_price": 196.88,
-      "actual_low_price": 185.51,
-      "actual_close_price": 194.78,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -2.5903,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.9791,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.6625,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "PLTR",
-      "name": "Palantir",
-      "cohort": "US_STOCK",
-      "rank": 2,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 174.92,
-      "actual_open_price": 178.75,
-      "actual_high_price": 186.86,
-      "actual_low_price": 178.01,
-      "actual_close_price": 185.93,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 2.1896,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 68.6,
-          "actual_return_pct": 4.0168,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 64.6,
-          "actual_return_pct": 6.2943,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "ORCL",
-      "name": "Oracle",
-      "cohort": "US_STOCK",
-      "rank": 3,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 148.325,
-      "actual_open_price": 152.11,
-      "actual_high_price": 153.83,
-      "actual_low_price": 147.52,
-      "actual_close_price": 151.94,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 2.5518,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.1118,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 2.4372,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "CRM",
-      "name": "Salesforce",
-      "cohort": "US_STOCK",
-      "rank": 4,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 203.79,
-      "actual_open_price": 230.05,
-      "actual_high_price": 254.48,
-      "actual_low_price": 230.05,
-      "actual_close_price": 252.05,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 12.8858,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 67.5,
-          "actual_return_pct": 9.5631,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 64.6,
-          "actual_return_pct": 23.6812,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": true
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "DDOG",
-      "name": "Datadog",
-      "cohort": "US_STOCK",
-      "rank": 5,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 229.995,
-      "actual_open_price": 237.0,
-      "actual_high_price": 251.99,
-      "actual_low_price": 236.0,
-      "actual_close_price": 242.93,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 3.0457,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 70.6,
-          "actual_return_pct": 2.5021,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 66.8,
-          "actual_return_pct": 5.624,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "SNPS",
-      "name": "Synopsys",
-      "cohort": "US_STOCK",
-      "rank": 6,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 410.49,
-      "actual_open_price": 419.66,
-      "actual_high_price": 464.98,
-      "actual_low_price": 415.31,
-      "actual_close_price": 464.89,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 63.9,
-          "actual_return_pct": 2.2339,
-          "hit": true
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 68.3,
-          "actual_return_pct": 10.7778,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 66.0,
-          "actual_return_pct": 13.2525,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": true
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "LITE",
-      "name": "Lumentum",
-      "cohort": "US_STOCK",
-      "rank": 7,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 893.86,
-      "actual_open_price": 958.73,
-      "actual_high_price": 970.32,
-      "actual_low_price": 918.01,
-      "actual_close_price": 956.14,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 63.3,
-          "actual_return_pct": 7.2573,
-          "hit": true
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 69.3,
-          "actual_return_pct": -0.2701,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 66.6,
-          "actual_return_pct": 6.9675,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "BWXT",
-      "name": "BWX Technologies",
-      "cohort": "US_STOCK",
-      "rank": 8,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 155.31,
-      "actual_open_price": 156.5,
-      "actual_high_price": 158.9,
-      "actual_low_price": 154.54,
-      "actual_close_price": 155.85,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.7662,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 68.6,
-          "actual_return_pct": -0.4153,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 65.8,
-          "actual_return_pct": 0.3477,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "GEV",
-      "name": "GE Vernova",
-      "cohort": "US_STOCK",
-      "rank": 9,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 943.51,
-      "actual_open_price": 979.0,
-      "actual_high_price": 979.0,
-      "actual_low_price": 941.27,
-      "actual_close_price": 953.83,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 63.8,
-          "actual_return_pct": 3.7615,
-          "hit": true
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 69.9,
-          "actual_return_pct": -2.571,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 65.7,
-          "actual_return_pct": 1.0938,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "MSFT",
-      "name": "Microsoft",
-      "cohort": "US_STOCK",
-      "rank": 10,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 495.27,
-      "actual_open_price": 494.88,
-      "actual_high_price": 506.48,
-      "actual_low_price": 490.08,
-      "actual_close_price": 505.06,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.0787,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 66.8,
-          "actual_return_pct": 2.0571,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 64.6,
-          "actual_return_pct": 1.9767,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "NVDA",
-      "name": "NVIDIA",
-      "cohort": "US_STOCK",
-      "rank": 11,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 211.52,
-      "actual_open_price": 222.86,
-      "actual_high_price": 230.47,
-      "actual_low_price": 220.9,
-      "actual_close_price": 227.98,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 62.9,
-          "actual_return_pct": 5.3612,
-          "hit": true
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 2.2974,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 62.1,
-          "actual_return_pct": 7.7818,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": true
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "CRWD",
-      "name": "CrowdStrike",
-      "cohort": "US_STOCK",
-      "rank": 12,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 188.9995,
-      "actual_open_price": 208.25,
-      "actual_high_price": 229.08,
-      "actual_low_price": 206.1,
-      "actual_close_price": 227.96,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 10.1855,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 69.1,
-          "actual_return_pct": 9.4646,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 65.9,
-          "actual_return_pct": 20.6141,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": true
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "PCG",
-      "name": "PG&E",
-      "cohort": "US_STOCK",
-      "rank": 13,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 18.305,
-      "actual_open_price": 18.03,
-      "actual_high_price": 18.1,
-      "actual_low_price": 17.51,
-      "actual_close_price": 17.95,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 63.8,
-          "actual_return_pct": -1.5023,
-          "hit": false
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 69.8,
-          "actual_return_pct": -0.4437,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 66.0,
-          "actual_return_pct": -1.9394,
-          "hit": false
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "AMD",
-      "name": "AMD",
-      "cohort": "US_STOCK",
-      "rank": 14,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 483.23,
-      "actual_open_price": 481.5,
-      "actual_high_price": 483.0,
-      "actual_low_price": 469.63,
-      "actual_close_price": 476.67,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.358,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 66.7,
-          "actual_return_pct": -1.0031,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 63.5,
-          "actual_return_pct": -1.3575,
-          "hit": false
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "PWR",
-      "name": "Quanta Services",
-      "cohort": "US_STOCK",
-      "rank": 15,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 612.4913,
-      "actual_open_price": 631.0,
-      "actual_high_price": 633.5,
-      "actual_low_price": 617.34,
-      "actual_close_price": 621.83,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 3.0219,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 64.8,
-          "actual_return_pct": -1.4532,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 63.9,
-          "actual_return_pct": 1.5247,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "NVT",
-      "name": "nVent Electric",
-      "cohort": "US_STOCK",
-      "rank": 16,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 156.5,
-      "actual_open_price": 158.87,
-      "actual_high_price": 162.37,
-      "actual_low_price": 154.42,
-      "actual_close_price": 155.55,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.5144,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -2.0898,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.607,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "TSM",
-      "name": "TSMC ADR",
-      "cohort": "US_STOCK",
-      "rank": 17,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 417.54,
-      "actual_open_price": 423.02,
-      "actual_high_price": 429.64,
-      "actual_low_price": 420.53,
-      "actual_close_price": 427.3,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.3124,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 1.0118,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 2.3375,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "BE",
-      "name": "Bloom Energy",
-      "cohort": "US_STOCK",
-      "rank": 18,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 220.775,
-      "actual_open_price": 227.1,
-      "actual_high_price": 227.99,
-      "actual_low_price": 214.75,
-      "actual_close_price": 217.83,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 63.0,
-          "actual_return_pct": 2.8649,
-          "hit": true
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 67.0,
-          "actual_return_pct": -4.0819,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 64.3,
-          "actual_return_pct": -1.3339,
-          "hit": false
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "VRT",
-      "name": "Vertiv",
-      "cohort": "US_STOCK",
-      "rank": 19,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 262.19,
-      "actual_open_price": 273.0,
-      "actual_high_price": 274.76,
-      "actual_low_price": 262.23,
-      "actual_close_price": 269.28,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 4.123,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 64.4,
-          "actual_return_pct": -1.3626,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 61.7,
-          "actual_return_pct": 2.7041,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "MRVL",
-      "name": "Marvell",
-      "cohort": "US_STOCK",
-      "rank": 20,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 241.25,
-      "actual_open_price": 253.44,
-      "actual_high_price": 254.6,
-      "actual_low_price": 240.38,
-      "actual_close_price": 241.45,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 5.0528,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 64.6,
-          "actual_return_pct": -4.7309,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 63.1,
-          "actual_return_pct": 0.0829,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "ITA",
-      "name": "iShares U.S. Aerospace & Defense ETF",
-      "cohort": "US_ETF",
-      "rank": 1,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 237.045,
-      "actual_open_price": 236.4,
-      "actual_high_price": 236.69,
-      "actual_low_price": 233.18,
-      "actual_close_price": 234.26,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 64.1,
-          "actual_return_pct": -0.2721,
-          "hit": false
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 67.8,
-          "actual_return_pct": -0.9052,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 65.5,
-          "actual_return_pct": -1.1749,
-          "hit": false
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "VOO",
-      "name": "Vanguard S&P 500 ETF",
-      "cohort": "US_ETF",
-      "rank": 2,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 704.29,
-      "actual_open_price": 706.39,
-      "actual_high_price": 709.96,
-      "actual_low_price": 705.21,
-      "actual_close_price": 708.75,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 64.0,
-          "actual_return_pct": 0.2982,
-          "hit": true
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 67.9,
-          "actual_return_pct": 0.3341,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 65.6,
-          "actual_return_pct": 0.6333,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "WCLD",
-      "name": "WisdomTree Cloud Computing Fund",
-      "cohort": "US_ETF",
-      "rank": 3,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 39.79,
-      "actual_open_price": 41.39,
-      "actual_high_price": 43.21,
-      "actual_low_price": 41.33,
-      "actual_close_price": 43.1,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "UP",
-          "confidence": 64.0,
-          "actual_return_pct": 4.0211,
-          "hit": true
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 69.3,
-          "actual_return_pct": 4.1314,
-          "hit": true
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 67.2,
-          "actual_return_pct": 8.3187,
-          "hit": true
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": true,
-      "target2_touched": true
-    },
-    {
-      "snapshot_id": "US:2026-08-26",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-08-26 22:14:36",
-      "source_session_date": "2026-08-26",
-      "evaluated_session_date": "2026-08-27",
-      "symbol": "PPA",
-      "name": "Invesco Aerospace & Defense ETF",
-      "cohort": "US_ETF",
-      "rank": 4,
-      "model_version": "V6-shadow",
-      "market_model": "US-NEXT-V6",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 172.82,
-      "actual_open_price": 172.52,
-      "actual_high_price": 172.55,
-      "actual_low_price": 170.82,
-      "actual_close_price": 171.69,
-      "benchmark_return_pct": 0.6864,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -0.1736,
-          "hit": null
-        },
-        "session": {
-          "direction": "UP",
-          "confidence": 66.2,
-          "actual_return_pct": -0.4811,
-          "hit": false
-        },
-        "full_day": {
-          "direction": "UP",
-          "confidence": 63.8,
-          "actual_return_pct": -0.6539,
-          "hit": false
         }
       },
       "stop_touched": false,
