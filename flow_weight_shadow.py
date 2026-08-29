@@ -17,8 +17,10 @@ import time
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from market_calendar import OfficialMarketCalendar
 
-VERSION = 1
+
+VERSION = 2
 MARKETS = ("TW", "US")
 MARKET_ZONE = {"TW": ZoneInfo("Asia/Taipei"), "US": ZoneInfo("America/New_York")}
 CLOSED_PERIOD = {"TW": "evening", "US": "morning"}
@@ -80,10 +82,15 @@ class FlowWeightShadow:
         state_path: Path,
         *,
         clock: Callable[[], float] = time.time,
+        calendar: OfficialMarketCalendar | None = None,
     ) -> None:
         self.report_path = report_path
         self.state_path = state_path
         self.clock = clock
+        self.calendar = calendar or OfficialMarketCalendar(
+            state_path.with_name("official_market_calendar.json"),
+            clock=clock,
+        )
         self._lock = threading.RLock()
         self._report_mtime: float | None = None
         self._report: dict[str, Any] = {}
@@ -378,9 +385,33 @@ class FlowWeightShadow:
             if _is_stock(row, market) and str(row.get("official_session_date") or "") == official_date
         }
         changed = False
+        if official_date and hasattr(self.calendar, "session_complete") and not self.calendar.session_complete(
+            market, official_date, at_epoch=self.clock()
+        ):
+            return False
         for session in market_state["sessions"]:
             signal_date = str(session.get("signal_session_date") or "")
             if session.get("status") != "waiting_next_completed_session" or not official_date or official_date <= signal_date:
+                continue
+            calendar = self.calendar.lookup(market, signal_date, official_date)
+            if not calendar.get("available"):
+                continue
+            expected_sessions = calendar.get("sessions") or []
+            if not expected_sessions or official_date not in expected_sessions:
+                continue
+            expected_date = expected_sessions[0]
+            if official_date != expected_date:
+                outcome = {
+                    "signal_session_date": signal_date,
+                    "outcome_session_date": expected_date,
+                    "observed_report_date": official_date,
+                    "status": "quarantined_missing_completed_session",
+                    "models": {},
+                }
+                session["status"] = outcome["status"]
+                market_state["outcomes"].append(outcome)
+                market_state["outcomes"] = market_state["outcomes"][-MAX_SESSIONS:]
+                changed = True
                 continue
             outcome = {
                 "signal_session_date": signal_date,
@@ -424,6 +455,10 @@ class FlowWeightShadow:
         """Attach only completed-session official closes to alert-level signals."""
         if not official_date or str(self._report.get("period") or "") != CLOSED_PERIOD[market]:
             return False
+        if hasattr(self.calendar, "session_complete") and not self.calendar.session_complete(
+            market, official_date, at_epoch=self.clock()
+        ):
+            return False
         current = {
             str(row.get("symbol") or "").upper(): row
             for row in self._rows
@@ -434,6 +469,12 @@ class FlowWeightShadow:
         for signal in self._state["markets"][market]["intraday_signals"]:
             signal_date = str(signal.get("signal_session_date") or "")
             if not signal_date or official_date < signal_date:
+                continue
+            calendar = self.calendar.lookup(market, signal_date, official_date)
+            if not calendar.get("available"):
+                continue
+            official_sessions = calendar.get("sessions") or []
+            if official_date > signal_date and official_date not in official_sessions:
                 continue
             row = current.get(str(signal.get("symbol") or "").upper())
             close = _finite((row or {}).get("official_close_price"))
@@ -453,20 +494,44 @@ class FlowWeightShadow:
             if official_date <= signal_date:
                 continue
             daily = signal.setdefault("daily_results", [])
-            if len(daily) >= max(DAILY_HORIZONS.values()):
-                continue
-            if any(item.get("session_date") == official_date for item in daily):
-                continue
-            result = self._signal_result(
-                signal,
-                close,
-                observed_at=f"{official_date} official_close",
+            by_date = {
+                str(item.get("session_date") or ""): item
+                for item in daily if isinstance(item, dict) and item.get("session_date")
+            }
+            # Repair any indices written by the earlier observed-report counter.
+            for session_date, item in list(by_date.items()):
+                lookup = self.calendar.lookup(market, signal_date, session_date)
+                sessions = lookup.get("sessions") or [] if lookup.get("available") else []
+                correct_index = sessions.index(session_date) + 1 if session_date in sessions else None
+                if correct_index is not None and item.get("trading_day_index") != correct_index:
+                    item["trading_day_index"] = correct_index
+                    item["calendar_repaired"] = True
+                    changed = True
+            # Materialize every expected session up to day 5. Missing reports are
+            # explicit quarantines; a later report can never slide into their index.
+            for index, session_date in enumerate(official_sessions[:max(DAILY_HORIZONS.values())], 1):
+                if session_date in by_date:
+                    continue
+                if session_date == official_date:
+                    result = self._signal_result(
+                        signal,
+                        close,
+                        observed_at=f"{official_date} official_close",
+                    )
+                else:
+                    result = {
+                        "status": "quarantined_missing_completed_session",
+                        "observed_at": f"advanced_to_{official_date}",
+                    }
+                result["session_date"] = session_date
+                result["trading_day_index"] = index
+                daily.append(result)
+                by_date[session_date] = result
+                changed = True
+            signal["daily_results"] = sorted(
+                daily,
+                key=lambda item: (int(item.get("trading_day_index") or 999), str(item.get("session_date") or "")),
             )
-            result["session_date"] = official_date
-            result["trading_day_index"] = len(daily) + 1
-            daily.append(result)
-            signal["daily_results"] = daily
-            changed = True
         return changed
 
     @staticmethod
@@ -566,6 +631,7 @@ class FlowWeightShadow:
                     "summary": self._summary(market),
                     "signal_performance": self._signal_performance(market),
                     "latest_outcomes": market_state["outcomes"][-5:],
+                    "calendar": self.calendar.status(market),
                 }
             if changed:
                 self._save()
@@ -591,5 +657,8 @@ class FlowWeightShadow:
                     "signal_validation_horizons": ["5m", "15m", "60m", "eod", "day1", "day3", "day5"],
                     "intraday_settlement": "first_eligible_trade_at_or_after_horizon",
                     "daily_settlement": "official_completed_session_close_only",
+                    "trading_calendar": "official_exchange_calendar_only",
+                    "missing_trading_session": "quarantine_never_shift_day_index",
+                    "google_calendar_connected": False,
                 },
             }

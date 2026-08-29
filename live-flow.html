@@ -49,13 +49,13 @@
     <h3 style="margin-top:16px">訊號後實際方向驗證</h3>
     <div id="shadowPerformance" class="summary"><div class="empty">等待有效訊號後開始分段統計。</div></div>
     <div id="shadowRanks" class="shadow-ranks"><div class="empty">收到有效大量買賣後，這裡會顯示正式 TOP10 與影子 TOP10 的差異。</div></div>
-    <p class="note">每個完成交易日凍結一次，下一完成交易日用開盤進、收盤出並扣成本。缺價資料隔離，不列入有效成績；滿60日及200筆訊號後也只標記人工審查候選。</p>
+    <p class="note">交易日只依官方 TWSE／TPEx 與 Alpaca 市場日曆判定；提早收盤依官方時間等待完成。若中間報表漏抓，缺少的第1／3／5交易日會隔離，不會拿下一日遞補。缺價資料也不列入有效成績；滿60日及200筆訊號後仍只標記人工審查候選。</p>
   </section>
 
   <section class="panel"><p class="eyebrow">最近50筆</p><h2>↕️ 大量主動買賣</h2><div class="alerts" id="alerts"><div class="empty">符合門檻的大買或大賣訊號會顯示在這裡。</div></div></section>
 </main>
 <nav class="dock" aria-label="主選單"><a href="./">📊 報表網頁</a><a class="active" href="live-flow.html">🚨 大量買賣</a><a href="https://wude-ai-stock-owner.a0953883367.chatgpt.site">🔒 私人決策</a></nav>
 <script src="live_config.js?v=636"></script>
-<script src="live_flow.js?v=638"></script>
+<script src="live_flow.js?v=639"></script>
 </body>
 </html>

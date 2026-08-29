@@ -490,6 +490,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     "markets": {
                         market: {
                             "status": details.get("status"),
+                            "calendar": details.get("calendar"),
                             "valid_trading_days": (details.get("summary") or {}).get("valid_trading_days"),
                             "valid_signals": (details.get("summary") or {}).get("valid_signals"),
                             "tracked_alert_signals": (details.get("signal_performance") or {}).get("tracked_signals"),
