@@ -66,6 +66,42 @@ def _capital_flow_state_path() -> Path:
     return Path("/data/capital_flow_shadow.json") if Path("/data").is_dir() else Path("/tmp/wude-capital-flow-shadow.json")
 
 
+def _live_telegram_ready_path() -> Path:
+    configured = os.getenv("TELEGRAM_LIVE_READY_PATH", "").strip()
+    if configured:
+        return Path(configured)
+    return Path("/data/live_telegram_ready.json") if Path("/data").is_dir() else Path("/tmp/wude-live-telegram-ready.json")
+
+
+def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
+    """Confirm a newly configured live bot once without storing its token."""
+    token = os.getenv("TELEGRAM_LIVE_BOT_TOKEN", "").strip()
+    if not token:
+        return False
+    fingerprint = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    marker = _live_telegram_ready_path()
+    try:
+        stored = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        stored = {}
+    if stored.get("token_sha256") == fingerprint:
+        return False
+    universe = handler.large_buy_service.snapshot().get("universe", {})
+    message = (
+        "✅ AI 大量買賣即時警報已連線\n\n"
+        f"台股 {int(universe.get('TW') or 0)} 檔｜美股 {int(universe.get('US') or 0)} 檔\n"
+        "開盤後依10秒大量成交條件通知；與原本報告對話完全分開。"
+    )
+    if not send_live_telegram(message):
+        return False
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        json.dumps({"token_sha256": fingerprint}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return True
+
+
 def _web_push_paths() -> tuple[Path, Path]:
     root = Path(os.getenv("WEB_PUSH_STATE_DIR", "/data" if Path("/data").is_dir() else "/tmp"))
     return root / "web_push_subscriptions.json", root / "web_push_vapid_private.pem"
@@ -605,6 +641,10 @@ def main() -> None:
     else:
         for market in ("TW", "US"):
             LiveRequestHandler.large_buy_service.set_stream_status(market, "disabled")
+    try:
+        _send_live_telegram_ready_once(LiveRequestHandler)
+    except Exception:
+        LOG.exception("Live Telegram connection confirmation failed")
     LOG.info("Wude live API listening on %s:%s", host, port)
     try:
         server.serve_forever()
