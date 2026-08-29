@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -103,6 +104,95 @@ def _extract_frame(raw: pd.DataFrame, symbol: str, multi: bool) -> pd.DataFrame:
     return frame.dropna(how="all")
 
 
+def _frame_session_date(frame: pd.DataFrame | None) -> str:
+    if frame is None or frame.empty:
+        return ""
+    try:
+        timestamp = pd.Timestamp(frame.index[-1])
+        if timestamp.tzinfo is not None:
+            timestamp = timestamp.tz_convert("America/New_York")
+        return timestamp.date().isoformat()
+    except (TypeError, ValueError):
+        return ""
+
+
+def _retry_stale_us_daily_history(
+    result: dict[str, pd.DataFrame],
+    symbols: list[str],
+    *,
+    now: datetime | None = None,
+) -> list[str]:
+    """Retry non-empty US frames whose last session lags their cohort.
+
+    Yahoo can return a successful batch where some frames end one trading day
+    early. Those symbols are not covered by the ordinary missing-frame retry,
+    yet mixing the two dates must block a formal report. After the US close,
+    retry only the bounded stale subset individually and accept replacement
+    solely when its session date advances.
+    """
+    new_york = ZoneInfo("America/New_York")
+    observed_at = now or datetime.now(new_york)
+    if observed_at.tzinfo is None:
+        observed_at = observed_at.replace(tzinfo=new_york)
+    else:
+        observed_at = observed_at.astimezone(new_york)
+    if observed_at.weekday() < 5 and (
+        observed_at.hour * 60 + observed_at.minute < 16 * 60 + 5
+    ):
+        return []
+
+    us_symbols = [
+        symbol for symbol in symbols
+        if symbol in result
+        and not symbol.endswith((".TW", ".TWO"))
+        and not symbol.startswith("^")
+        and _frame_session_date(result.get(symbol))
+    ]
+    if len(us_symbols) < 10:
+        return []
+    dates = [_frame_session_date(result[symbol]) for symbol in us_symbols]
+    target_session, target_count = Counter(dates).most_common(1)[0]
+    if target_count / len(us_symbols) < 0.5:
+        return []
+    stale = [
+        symbol for symbol in us_symbols
+        if _frame_session_date(result[symbol]) < target_session
+    ]
+    if not stale or len(stale) > 60:
+        return []
+
+    advanced: list[str] = []
+    for symbol in stale:
+        previous_session = _frame_session_date(result[symbol])
+        for attempt in range(2):
+            try:
+                raw = yf.download(
+                    tickers=symbol,
+                    period="10d",
+                    interval="1d",
+                    auto_adjust=False,
+                    actions=False,
+                    threads=False,
+                    progress=False,
+                    timeout=SETTINGS.request_timeout,
+                )
+                frame = _extract_frame(
+                    raw, symbol, isinstance(raw.columns, pd.MultiIndex)
+                )
+                if _frame_session_date(frame) > previous_session:
+                    result[symbol] = frame
+                    advanced.append(symbol)
+                    break
+            except Exception as exc:
+                LOG.warning(
+                    "stale US daily retry failed (%s, %s/2): %s",
+                    symbol, attempt + 1, exc,
+                )
+            if attempt == 0:
+                time.sleep(0.4)
+    return advanced
+
+
 def download_history(symbols: list[str], period: str = "3mo") -> dict[str, pd.DataFrame]:
     """Download daily OHLCV and retry bounded batch omissions one by one.
 
@@ -165,6 +255,12 @@ def download_history(symbols: list[str], period: str = "3mo") -> dict[str, pd.Da
         LOG.warning(
             "daily provider-wide gap (%s/%s); skip individual retry storm",
             len(missing), len(symbols),
+        )
+    advanced = _retry_stale_us_daily_history(result, symbols)
+    if advanced:
+        LOG.info(
+            "advanced stale US daily frames after individual retry: %s",
+            ",".join(advanced),
         )
     return result
 

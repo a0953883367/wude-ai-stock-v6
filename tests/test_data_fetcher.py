@@ -6,9 +6,11 @@ from data_fetcher import (
     _dataset_for_ids,
     _parse_finra_short_volume,
     _classify_market_regime_frame,
+    _retry_stale_us_daily_history,
 )
-from datetime import date
+from datetime import date, datetime
 import pandas as pd
+from zoneinfo import ZoneInfo
 
 
 def test_download_history_retries_partial_batch_omissions_individually(monkeypatch):
@@ -38,6 +40,45 @@ def test_download_history_retries_partial_batch_omissions_individually(monkeypat
 
     assert set(result) == {"ANET", "QUBT"}
     assert calls == [["ANET", "QUBT"], "QUBT"]
+
+
+def test_stale_nonempty_us_daily_frames_retry_after_close(monkeypatch):
+    target = pd.to_datetime(["2026-08-27", "2026-08-28"])
+    stale = pd.to_datetime(["2026-08-26", "2026-08-27"])
+
+    def frame(index):
+        return pd.DataFrame({
+            "open": [100.0, 101.0], "high": [102.0, 103.0],
+            "low": [99.0, 100.0], "close": [101.0, 102.0],
+            "volume": [1000, 1200],
+        }, index=index)
+
+    symbols = [f"US{i:02d}" for i in range(12)]
+    result = {
+        symbol: frame(target if index < 9 else stale)
+        for index, symbol in enumerate(symbols)
+    }
+    calls = []
+
+    def fake_download(*, tickers, **kwargs):
+        calls.append(tickers)
+        return frame(target)
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    advanced = _retry_stale_us_daily_history(
+        result, symbols,
+        now=datetime(
+            2026, 8, 29, 0, 30,
+            tzinfo=ZoneInfo("America/New_York"),
+        ),
+    )
+
+    assert advanced == symbols[9:]
+    assert calls == symbols[9:]
+    assert {_frame.index[-1].date().isoformat() for _frame in result.values()} == {
+        "2026-08-28"
+    }
 
 
 def test_credit_rows_have_latest_and_five_day_changes():
