@@ -15,6 +15,8 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+import pandas as pd
+
 
 VERSION = 1
 CAPITAL_PER_MARKET = 1_000_000
@@ -138,7 +140,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "benchmark": {market: BENCHMARKS[market]["label"] for market in MARKETS},
             "strict_portfolio": "只有排名資格層2且可驗證成交者才買；其他配置保留現金",
             "execution": "官方開盤／收盤；台股開高低同價且漲幅達9.5%視為鎖漲停買不到；缺資料不成交；部分成交無逐筆委託簿資料時不捏造",
-            "settlement_coverage": "20筆凍結標的與大盤基準都取得同一交易日官方開收盤價後才結算；不足即等待補抓或隔離",
+            "settlement_coverage": "20筆凍結標的與大盤基準都取得同一交易日正式收盤資料後才結算；缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳",
             "manual_trades": "使用者暫時人工交易不列入正式模型成績",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
@@ -338,6 +340,103 @@ def _settlement_coverage(
     }
 
 
+def _historical_price_row(
+    price_history: dict[str, Any] | None,
+    symbol: str,
+    market: str,
+    session_date: str,
+    *,
+    benchmark: bool = False,
+) -> dict[str, Any] | None:
+    """Build one settlement row only from the requested official session.
+
+    A provider's latest available row must never stand in for ``session_date``.
+    The exact-date match is deliberate: it keeps a delayed repair from silently
+    using the previous or following trading day's prices.
+    """
+    if not price_history or not symbol or not session_date:
+        return None
+    frame = price_history.get(symbol)
+    if frame is None or getattr(frame, "empty", True):
+        return None
+    source = frame.copy()
+    source.columns = [str(column).lower() for column in source.columns]
+    if "open" not in source or "close" not in source:
+        return None
+    matched_index = None
+    for index in source.index:
+        try:
+            timestamp = pd.Timestamp(index)
+            if timestamp.tzinfo is not None:
+                timezone = "Asia/Taipei" if market == "TW" else "America/New_York"
+                timestamp = timestamp.tz_convert(timezone)
+            if timestamp.date().isoformat() == session_date:
+                matched_index = index
+        except (TypeError, ValueError):
+            continue
+    if matched_index is None:
+        return None
+    matched = source.loc[matched_index]
+    if isinstance(matched, pd.DataFrame):
+        matched = matched.iloc[-1]
+    open_price = _finite(matched.get("open"))
+    close_price = _finite(matched.get("close"))
+    if open_price <= 0 or close_price <= 0:
+        return None
+    high_price = _finite(matched.get("high"))
+    low_price = _finite(matched.get("low"))
+    return {
+        "symbol": symbol,
+        "market": market,
+        "type": "ETF" if benchmark else "個股",
+        "official_session_date": session_date,
+        "official_open_price": open_price,
+        "official_high_price": high_price if high_price > 0 else None,
+        "official_low_price": low_price if low_price > 0 else None,
+        "official_close_price": close_price,
+        "official_price_source": "daily_history_exact_session",
+    }
+
+
+def _settlement_rows(
+    pending: dict[str, Any],
+    rows: list[dict[str, Any]],
+    market: str,
+    session_date: str,
+    price_history: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Fill only missing frozen symbols from exact-session daily history."""
+    result = [
+        row for row in rows
+        if str(row.get("official_session_date") or "") == session_date
+    ]
+    required_symbols = {
+        str(pick.get("symbol") or "")
+        for strategy in STRATEGIES
+        for pick in pending.get("strategies", {}).get(strategy, [])
+        if pick.get("symbol")
+    }
+    benchmark_symbol = BENCHMARKS[market]["symbol"]
+    required_symbols.add(benchmark_symbol)
+    for symbol in required_symbols:
+        current = next((
+            row for row in result
+            if str(row.get("symbol") or "") == symbol
+            and str(row.get("official_session_date") or "") == session_date
+            and _finite(row.get("official_open_price")) > 0
+            and _finite(row.get("official_close_price")) > 0
+        ), None)
+        if current:
+            continue
+        repaired = _historical_price_row(
+            price_history, symbol, market, session_date,
+            benchmark=symbol == benchmark_symbol,
+        )
+        if repaired:
+            result.append(repaired)
+    return result
+
+
 def _recalculate_market_totals(market_state: dict[str, Any]) -> None:
     days = market_state.get("days") or []
     market_state["completed_days"] = len(days)
@@ -393,7 +492,12 @@ def _quarantine_incomplete_legacy_days(market_state: dict[str, Any]) -> None:
     _recalculate_market_totals(market_state)
 
 
-def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], market: str) -> bool:
+def _settle_pending(
+    market_state: dict[str, Any],
+    rows: list[dict[str, Any]],
+    market: str,
+    price_history: dict[str, Any] | None = None,
+) -> bool:
     pending = market_state.get("pending")
     if not pending:
         return False
@@ -412,7 +516,14 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
     if not session_date or session_date < START_DATE or session_date <= signal_date:
         return False
     execution_date = str(pending.get("execution_session_date") or "")
-    if execution_date and session_date > execution_date:
+    if not execution_date:
+        execution_date = session_date
+        pending["execution_session_date"] = execution_date
+    settlement_rows = _settlement_rows(
+        pending, rows, market, execution_date, price_history
+    )
+    coverage = _settlement_coverage(pending, settlement_rows, market, execution_date)
+    if not coverage["complete"] and session_date > execution_date:
         market_state.setdefault("invalid_days", []).append({
             "status": "data_insufficient",
             "reason": "指定交易日官方成交資料未能在下一交易日前補齊，隔離且不列成績",
@@ -427,9 +538,6 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
         market_state["pending"] = None
         market_state["status"] = "running"
         return False
-    if not execution_date:
-        pending["execution_session_date"] = session_date
-    coverage = _settlement_coverage(pending, rows, market, session_date)
     if not coverage["complete"]:
         pending.update({
             "settlement_status": "waiting_for_official_prices",
@@ -447,12 +555,13 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
         pending.pop(key, None)
     row_map = {
         str(row.get("symbol") or ""): row
-        for row in rows
+        for row in settlement_rows
         if _is_stock(row, market)
+        and str(row.get("official_session_date") or "") == execution_date
     }
     strategies = {
         strategy: _settle_strategy(
-            pending.get("strategies", {}).get(strategy, []), row_map, session_date, market
+            pending.get("strategies", {}).get(strategy, []), row_map, execution_date, market
         )
         for strategy in STRATEGIES
     }
@@ -467,11 +576,11 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
     strict_positions = sum(
         int(_finite(result.get("strict", {}).get("executed_positions"))) for result in strategies.values()
     )
-    benchmark = _settle_benchmark(rows, market, session_date)
+    benchmark = _settle_benchmark(settlement_rows, market, execution_date)
     day = {
         "day": len(market_state.get("days") or []) + 1,
         "signal_session_date": signal_date,
-        "session_date": session_date,
+        "session_date": execution_date,
         "buy_price": "official_open_price",
         "sell_price": "official_close_price",
         "gross_profit_twd": round(total_profit, 2),
@@ -507,6 +616,7 @@ def update_state(
     period: str,
     updated_at: str,
     intraday: bool = False,
+    price_history: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     state["updated_at"] = updated_at
     state.setdefault("policy", {})["round_trip_cost_pct"] = ROUND_TRIP_COST_PCT
@@ -520,8 +630,9 @@ def update_state(
         "20筆凍結標的與基準未完整時不結算；部分成交無逐筆委託簿資料時不捏造"
     )
     state["policy"]["settlement_coverage"] = (
-        "20筆凍結標的與大盤基準都取得同一交易日官方開收盤價後才結算；"
-        "不足即等待補抓，跨至下一交易日仍不足則隔離且不列成績"
+        "20筆凍結標的與大盤基準都取得同一交易日正式收盤資料後才結算；"
+        "缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳；"
+        "跨至下一交易日仍不足則隔離且不列成績"
     )
     state["policy"]["manual_trades"] = "使用者暫時人工交易不列入正式模型成績"
     for market in MARKETS:
@@ -540,7 +651,7 @@ def update_state(
             continue
         if market_state.get("status") == "complete":
             continue
-        _settle_pending(market_state, rows, market)
+        _settle_pending(market_state, rows, market, price_history)
         if market_state.get("completed_days", 0) >= TARGET_TRADING_DAYS:
             market_state["status"] = "complete"
             market_state["pending"] = None
@@ -560,9 +671,13 @@ def update_million_simulation(
     period: str,
     updated_at: str,
     intraday: bool = False,
+    price_history: dict[str, Any] | None = None,
 ) -> Path:
     path = reports_dir / "million_simulation.json"
-    state = update_state(_load(path, updated_at), rows, period=period, updated_at=updated_at, intraday=intraday)
+    state = update_state(
+        _load(path, updated_at), rows, period=period, updated_at=updated_at,
+        intraday=intraday, price_history=price_history,
+    )
     tmp = reports_dir / "million_simulation.tmp"
     tmp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tmp.replace(path)

@@ -1,3 +1,5 @@
+import pandas as pd
+
 from million_simulation import (
     ALLOCATION_PER_PICK,
     CAPITAL_PER_MARKET,
@@ -35,6 +37,21 @@ def universe(session_date: str = "2026-08-21") -> list[dict]:
         {**row(31, "US", session_date), "symbol": "VOO", "type": "ETF"},
     ]
     return rows
+
+
+def history_for(rows: list[dict], session_date: str) -> dict[str, pd.DataFrame]:
+    return {
+        item["symbol"]: pd.DataFrame(
+            {
+                "Open": [item["official_open_price"]],
+                "High": [item.get("official_high_price", item["official_open_price"])],
+                "Low": [item.get("official_low_price", item["official_open_price"])],
+                "Close": [item["official_close_price"]],
+            },
+            index=pd.to_datetime([session_date]),
+        )
+        for item in rows
+    }
 
 
 def test_selects_exact_top_ten_per_strategy_and_excludes_etfs():
@@ -132,6 +149,15 @@ def test_intraday_refresh_never_starts_or_settles_the_experiment():
     assert state["markets"]["TW"]["pending"] is None
     assert state["markets"]["TW"]["days"] == []
 
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(
+        state, universe("2026-08-24"), period="morning", updated_at="intraday",
+        intraday=True,
+        price_history=history_for(universe("2026-08-24"), "2026-08-24"),
+    )
+    assert state["markets"]["US"]["completed_days"] == 0
+    assert state["markets"]["US"]["pending"]["signal_session_date"] == "2026-08-21"
+
 
 def test_missing_frozen_prices_waits_and_never_counts_partial_profit():
     state = empty_state()
@@ -171,6 +197,62 @@ def test_unresolved_prices_are_quarantined_when_next_session_arrives():
     assert market["invalid_days"][-1]["session_date"] == "2026-08-24"
     assert missing_symbol in market["invalid_days"][-1]["missing_symbols"]
     assert market["pending"]["signal_session_date"] == "2026-08-25"
+
+
+def test_exact_historical_prices_settle_frozen_day_after_report_advances():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    current = universe("2026-08-24")
+    missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
+    current = [item for item in current if item["symbol"] != missing_symbol]
+    update_state(state, current, period="morning", updated_at="incomplete")
+
+    history = history_for(universe("2026-08-24"), "2026-08-24")
+    history[missing_symbol] = pd.DataFrame(
+        {"Open": [100.0], "High": [103.0], "Low": [99.0], "Close": [102.0]},
+        index=pd.to_datetime(["2026-08-24"]),
+    )
+    update_state(
+        state, universe("2026-08-25"), period="morning", updated_at="next report",
+        price_history=history,
+    )
+
+    market = state["markets"]["US"]
+    assert market["completed_days"] == 1
+    assert market["days"][0]["session_date"] == "2026-08-24"
+    assert market["invalid_days"] == []
+    repaired = next(
+        position
+        for position in market["days"][0]["strategies"]["overall"]["positions"]
+        if position["symbol"] == missing_symbol
+    )
+    assert repaired["open_price"] == 100.0
+    assert repaired["sell_price"] == 102.0
+
+
+def test_historical_fallback_never_uses_a_different_session():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    current = universe("2026-08-24")
+    missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
+    current = [item for item in current if item["symbol"] != missing_symbol]
+    update_state(state, current, period="morning", updated_at="incomplete")
+
+    wrong_date_history = history_for(universe("2026-08-24"), "2026-08-24")
+    wrong_date_history[missing_symbol] = pd.DataFrame(
+        {"Open": [88.0], "Close": [89.0]},
+        index=pd.to_datetime(["2026-08-23"]),
+    )
+    update_state(
+        state, universe("2026-08-25"), period="morning", updated_at="next report",
+        price_history=wrong_date_history,
+    )
+
+    market = state["markets"]["US"]
+    assert market["completed_days"] == 0
+    assert market["days"] == []
+    assert market["invalid_days"][-1]["session_date"] == "2026-08-24"
+    assert missing_symbol in market["invalid_days"][-1]["missing_symbols"]
 
 
 def test_legacy_partial_day_is_removed_from_totals_and_quarantined():

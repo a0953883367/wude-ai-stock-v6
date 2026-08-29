@@ -1037,6 +1037,7 @@ def main() -> int:
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
+        price_history=history,
     )
     update_weight_experiment(
         SETTINGS.reports_dir,
