@@ -211,6 +211,38 @@ def test_incomplete_us_intraday_session_never_becomes_official_close():
     assert unchanged.equals(daily)
 
 
+def test_sparse_etf_full_session_can_become_official_close():
+    daily = pd.DataFrame({
+        "open": [40.0], "high": [41.0], "low": [39.5],
+        "close": [40.5], "volume": [20_000],
+    }, index=pd.to_datetime(["2026-08-27"]))
+    # A thin ETF may trade only every 30 minutes, but these observations cover
+    # both ends of the completed regular session.
+    intraday_index = pd.date_range(
+        "2026-08-28 09:30", periods=13, freq="30min",
+        tz="America/New_York",
+    )
+    intraday = pd.DataFrame({
+        "open": [42.0] * 13, "high": [43.0] * 13,
+        "low": [41.5] * 13, "close": [42.5] * 12 + [42.75],
+        "volume": [1_000] * 13,
+    }, index=intraday_index)
+
+    promoted, changed = _promote_completed_us_intraday_session(
+        daily,
+        intraday,
+        now=datetime(
+            2026, 8, 28, 16, 10,
+            tzinfo=ZoneInfo("America/New_York"),
+        ),
+    )
+
+    assert changed is True
+    assert promoted.index[-1].date().isoformat() == "2026-08-28"
+    assert promoted.iloc[-1]["close"] == 42.75
+    assert promoted.iloc[-1]["volume"] == 13_000
+
+
 def test_build_features_exposes_split_adjusted_official_open_and_close():
     dates = pd.date_range("2026-05-01", periods=30, freq="B")
     daily = pd.DataFrame({

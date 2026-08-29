@@ -59,14 +59,25 @@ def _promote_completed_us_intraday_session(
         regular_local_index[same_session].hour * 60
         + regular_local_index[same_session].minute
     )
-    # A normal US session has 78 five-minute bars. Require both boundary bars
-    # and at least 72 observations so an interrupted feed cannot become an
-    # official settlement source.
-    if (
-        len(regular) < 72
-        or int(regular_minutes.min()) > 9 * 60 + 30
-        or int(regular_minutes.max()) < 15 * 60 + 55
-    ):
+    # A liquid US session normally has 78 five-minute bars. Thin ETFs can have
+    # no trade in many five-minute buckets even when the feed covers the whole
+    # day, so also accept a sparse session only when observed trades span at
+    # least five hours and reach both the opening and closing portions. The
+    # after-16:05 check below still prevents an in-progress day from settling.
+    first_minute = int(regular_minutes.min())
+    last_minute = int(regular_minutes.max())
+    dense_complete = (
+        len(regular) >= 72
+        and first_minute <= 9 * 60 + 30
+        and last_minute >= 15 * 60 + 55
+    )
+    sparse_complete = (
+        len(regular) >= 12
+        and first_minute <= 10 * 60
+        and last_minute >= 15 * 60
+        and last_minute - first_minute >= 5 * 60
+    )
+    if not (dense_complete or sparse_complete):
         return daily, False
 
     observed_at = now or datetime.now(NEW_YORK)
@@ -87,7 +98,8 @@ def _promote_completed_us_intraday_session(
         return daily, False
 
     valid = regular.dropna(subset=list(required))
-    if len(valid) < 72:
+    required_valid_bars = 72 if dense_complete else 12
+    if len(valid) < required_valid_bars:
         return daily, False
     close_price = _finite(valid["close"].iloc[-1])
     values: dict[str, Any] = {column: np.nan for column in daily.columns}
