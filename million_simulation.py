@@ -20,6 +20,7 @@ VERSION = 1
 CAPITAL_PER_MARKET = 1_000_000
 ALLOCATION_PER_PICK = 50_000
 PICKS_PER_STRATEGY = 10
+RESERVE_PICKS_PER_STRATEGY = 5
 TARGET_TRADING_DAYS = 5
 START_DATE = "2026-08-24"
 STRATEGIES = ("overall", "short")
@@ -69,8 +70,10 @@ def _sort_key(row: dict[str, Any], strategy: str) -> tuple[Any, ...]:
     return (-tier, -score, -secondary, str(row.get("symbol") or ""))
 
 
-def select_picks(rows: Iterable[dict[str, Any]], market: str, strategy: str) -> list[dict[str, Any]]:
-    """Return the displayed top ten for one market and ranking strategy.
+def _ranked_picks(
+    rows: Iterable[dict[str, Any]], market: str, strategy: str, limit: int,
+) -> list[dict[str, Any]]:
+    """Return ranked picks up to ``limit`` for one market and strategy.
 
     This is a ranking experiment, so it deliberately keeps the displayed top
     ten even when a row is observation-only.  Its tier is persisted so the UI
@@ -82,7 +85,7 @@ def select_picks(rows: Iterable[dict[str, Any]], market: str, strategy: str) -> 
     ranked = sorted((dict(row) for row in rows if _is_stock(row, market)), key=lambda row: _sort_key(row, strategy))
     prefix = "short_term" if strategy == "short" else "overall"
     picks = []
-    for index, row in enumerate(ranked[:PICKS_PER_STRATEGY], 1):
+    for index, row in enumerate(ranked[:limit], 1):
         picks.append({
             "symbol": str(row.get("symbol") or ""),
             "name": str(row.get("name") or row.get("symbol") or ""),
@@ -95,6 +98,19 @@ def select_picks(rows: Iterable[dict[str, Any]], market: str, strategy: str) -> 
             "allocation_twd": ALLOCATION_PER_PICK,
         })
     return picks
+
+
+def select_picks(rows: Iterable[dict[str, Any]], market: str, strategy: str) -> list[dict[str, Any]]:
+    """Return the frozen displayed top ten for one strategy."""
+    return _ranked_picks(rows, market, strategy, PICKS_PER_STRATEGY)
+
+
+def select_reserves(rows: Iterable[dict[str, Any]], market: str, strategy: str) -> list[dict[str, Any]]:
+    """Freeze ranks 11-15 before the execution session as deterministic reserves."""
+    ranked = _ranked_picks(
+        rows, market, strategy, PICKS_PER_STRATEGY + RESERVE_PICKS_PER_STRATEGY,
+    )
+    return ranked[PICKS_PER_STRATEGY:]
 
 
 def _empty_market(market: str) -> dict[str, Any]:
@@ -113,6 +129,11 @@ def _empty_market(market: str) -> dict[str, Any]:
         "cumulative_strict_net_return_pct": 0.0,
         "cumulative_benchmark_net_profit_twd": 0.0,
         "cumulative_benchmark_net_return_pct": 0.0,
+        "original_completed_days": 0,
+        "cumulative_original_gross_profit_twd": 0.0,
+        "cumulative_original_gross_return_pct": 0.0,
+        "cumulative_original_net_profit_twd": 0.0,
+        "cumulative_original_net_return_pct": 0.0,
         "days": [],
         "invalid_days": [],
         "pending": None,
@@ -128,6 +149,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "capital_per_market_twd": CAPITAL_PER_MARKET,
             "allocation_per_pick_twd": ALLOCATION_PER_PICK,
             "picks_per_strategy": PICKS_PER_STRATEGY,
+            "reserve_picks_per_strategy": RESERVE_PICKS_PER_STRATEGY,
             "strategies": ["綜合排名前10名", "短線排名前10名"],
             "target_trading_days": TARGET_TRADING_DAYS,
             "start_date": START_DATE,
@@ -139,6 +161,10 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "strict_portfolio": "只有排名資格層2且可驗證成交者才買；其他配置保留現金",
             "execution": "官方開盤／收盤；台股開高低同價且漲幅達9.5%視為鎖漲停買不到；缺資料不成交；部分成交無逐筆委託簿資料時不捏造",
             "settlement_coverage": "20筆凍結標的與大盤基準都取得同一交易日官方開收盤價後才結算；不足即等待補抓或隔離",
+            "reserve_policy": (
+                "新樣本於訊號日同步凍結各策略第11至15名；原前10名缺官方成交資料時，"
+                "實用組只按候補排名順序遞補，另保留原始組覆蓋與成績，不事後挑選漲跌"
+            ),
             "manual_trades": "使用者暫時人工交易不列入正式模型成績",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
@@ -170,11 +196,14 @@ def _session_date(rows: Iterable[dict[str, Any]], market: str) -> str:
 def _new_pending(rows: list[dict[str, Any]], market: str, updated_at: str) -> dict[str, Any] | None:
     signal_date = _session_date(rows, market)
     strategies = {strategy: select_picks(rows, market, strategy) for strategy in STRATEGIES}
+    reserves = {strategy: select_reserves(rows, market, strategy) for strategy in STRATEGIES}
     if not signal_date or any(len(strategies[strategy]) < PICKS_PER_STRATEGY for strategy in STRATEGIES):
         return None
     snapshot_payload = "|".join(
-        f"{strategy}:{pick['rank']}:{pick['symbol']}:{pick['ranking_score']}:{pick['rank_tier']}"
-        for strategy in STRATEGIES for pick in strategies[strategy]
+        f"{strategy}:{bucket}:{pick['rank']}:{pick['symbol']}:{pick['ranking_score']}:{pick['rank_tier']}"
+        for strategy in STRATEGIES
+        for bucket, picks in (("pick", strategies[strategy]), ("reserve", reserves[strategy]))
+        for pick in picks
     )
     snapshot_id = hashlib.sha256(f"{market}|{signal_date}|{snapshot_payload}".encode()).hexdigest()[:12]
     model_versions = sorted({
@@ -188,7 +217,86 @@ def _new_pending(rows: list[dict[str, Any]], market: str, updated_at: str) -> di
         "model_versions": model_versions,
         "execution_session_date": None,
         "strategies": strategies,
+        "reserves": reserves,
     }
+
+
+def _has_official_prices(
+    row: dict[str, Any] | None, session_date: str,
+) -> bool:
+    return bool(
+        row
+        and str(row.get("official_session_date") or "") == session_date
+        and _finite(row.get("official_open_price")) > 0
+        and _finite(row.get("official_close_price")) > 0
+    )
+
+
+def _execution_plan(
+    pending: dict[str, Any], rows: list[dict[str, Any]], market: str, session_date: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]]]:
+    """Build deterministic practical picks without rewriting the frozen top ten.
+
+    Legacy snapshots have no reserve list and therefore retain the original
+    all-or-nothing coverage rule.  New snapshots consume ranks 11-15 in frozen
+    order only when an original symbol lacks the required official prices.
+    """
+    row_map = {
+        str(row.get("symbol") or ""): row
+        for row in rows if _is_stock(row, market)
+    }
+    plans: dict[str, list[dict[str, Any]]] = {}
+    replacements: list[dict[str, Any]] = []
+    frozen_reserves = pending.get("reserves") if isinstance(pending.get("reserves"), dict) else {}
+    for strategy in STRATEGIES:
+        originals = [dict(pick) for pick in pending.get("strategies", {}).get(strategy, [])]
+        reserves = [dict(pick) for pick in frozen_reserves.get(strategy, [])]
+        used = {str(pick.get("symbol") or "") for pick in originals}
+        reserve_index = 0
+        practical: list[dict[str, Any]] = []
+        for original in originals:
+            symbol = str(original.get("symbol") or "")
+            if _has_official_prices(row_map.get(symbol), session_date):
+                practical.append(original)
+                continue
+            replacement = None
+            while reserve_index < len(reserves):
+                candidate = reserves[reserve_index]
+                reserve_index += 1
+                candidate_symbol = str(candidate.get("symbol") or "")
+                if candidate_symbol in used:
+                    continue
+                if _has_official_prices(row_map.get(candidate_symbol), session_date):
+                    replacement = candidate
+                    used.add(candidate_symbol)
+                    break
+            if replacement is None:
+                practical.append(original)
+                continue
+            slot_rank = original.get("rank")
+            practical_pick = {
+                **replacement,
+                "rank": slot_rank,
+                "source_rank": replacement.get("rank"),
+                "is_reserve_replacement": True,
+                "replaces_symbol": symbol,
+                "replaces_name": original.get("name"),
+                "replaces_rank": slot_rank,
+                "replacement_reason": "原凍結標的缺少同日官方開收盤價",
+            }
+            practical.append(practical_pick)
+            replacements.append({
+                "strategy": strategy,
+                "slot_rank": slot_rank,
+                "original_symbol": symbol,
+                "original_name": original.get("name"),
+                "reserve_symbol": replacement.get("symbol"),
+                "reserve_name": replacement.get("name"),
+                "reserve_rank": replacement.get("rank"),
+                "reason": practical_pick["replacement_reason"],
+            })
+        plans[strategy] = practical
+    return plans, replacements
 
 
 def _settle_strategy(
@@ -309,19 +417,18 @@ def _settlement_coverage(
         str(row.get("symbol") or ""): row
         for row in rows if _is_stock(row, market)
     }
+    execution_strategies, replacements = _execution_plan(pending, rows, market, session_date)
     missing: list[str] = []
     available_positions = 0
+    original_available_positions = 0
     for strategy in STRATEGIES:
         for pick in pending.get("strategies", {}).get(strategy, []):
             symbol = str(pick.get("symbol") or "")
-            row = row_map.get(symbol)
-            available = bool(
-                row
-                and str(row.get("official_session_date") or "") == session_date
-                and _finite(row.get("official_open_price")) > 0
-                and _finite(row.get("official_close_price")) > 0
-            )
-            if available:
+            if _has_official_prices(row_map.get(symbol), session_date):
+                original_available_positions += 1
+        for pick in execution_strategies.get(strategy, []):
+            symbol = str(pick.get("symbol") or "")
+            if _has_official_prices(row_map.get(symbol), session_date):
                 available_positions += 1
             else:
                 missing.append(symbol)
@@ -333,6 +440,10 @@ def _settlement_coverage(
         "available_positions": available_positions,
         "benchmark_available": benchmark.get("data_available") is True,
         "missing_symbols": list(dict.fromkeys(missing)),
+        "original_available_positions": original_available_positions,
+        "original_complete": original_available_positions == PICKS_PER_STRATEGY * len(STRATEGIES),
+        "execution_strategies": execution_strategies,
+        "replacements": replacements,
         "complete": available_positions == PICKS_PER_STRATEGY * len(STRATEGIES)
         and benchmark.get("data_available") is True,
     }
@@ -357,6 +468,18 @@ def _recalculate_market_totals(market_state: dict[str, Any]) -> None:
             total += _finite(value)
         market_state[profit_key] = round(total, 2)
         market_state[return_key] = round(total / CAPITAL_PER_MARKET * 100, 4)
+    original_days = [day for day in days if day.get("original_data_complete") is True]
+    market_state["original_completed_days"] = len(original_days)
+    original_gross = sum(_finite(day.get("original_gross_profit_twd")) for day in original_days)
+    original_net = sum(_finite(day.get("original_net_profit_twd")) for day in original_days)
+    market_state["cumulative_original_gross_profit_twd"] = round(original_gross, 2)
+    market_state["cumulative_original_gross_return_pct"] = round(
+        original_gross / CAPITAL_PER_MARKET * 100, 4
+    )
+    market_state["cumulative_original_net_profit_twd"] = round(original_net, 2)
+    market_state["cumulative_original_net_return_pct"] = round(
+        original_net / CAPITAL_PER_MARKET * 100, 4
+    )
 
 
 def _quarantine_incomplete_legacy_days(market_state: dict[str, Any]) -> None:
@@ -373,6 +496,13 @@ def _quarantine_incomplete_legacy_days(market_state: dict[str, Any]) -> None:
             and day.get("benchmark", {}).get("data_available") is True
         )
         if complete:
+            if "original_data_complete" not in day:
+                day["original_data_complete"] = True
+                day["original_available_positions"] = PICKS_PER_STRATEGY * len(STRATEGIES)
+                day["original_strategies"] = day.get("strategies", {})
+                day["original_gross_profit_twd"] = day.get("gross_profit_twd", 0.0)
+                day["original_net_profit_twd"] = day.get("net_profit_twd", 0.0)
+                day["reserve_replacements"] = []
             valid.append(day)
             continue
         invalid.append({
@@ -437,12 +567,15 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
             "required_positions": coverage["required_positions"],
             "benchmark_available": coverage["benchmark_available"],
             "missing_symbols": coverage["missing_symbols"],
+            "original_available_positions": coverage["original_available_positions"],
+            "reserve_replacements": coverage["replacements"],
         })
         market_state["status"] = "waiting_data"
         return False
     for key in (
         "settlement_status", "available_positions", "required_positions",
         "benchmark_available", "missing_symbols",
+        "original_available_positions", "reserve_replacements",
     ):
         pending.pop(key, None)
     row_map = {
@@ -450,7 +583,14 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
         for row in rows
         if _is_stock(row, market)
     }
+    execution_picks = coverage["execution_strategies"]
     strategies = {
+        strategy: _settle_strategy(
+            execution_picks.get(strategy, []), row_map, session_date, market
+        )
+        for strategy in STRATEGIES
+    }
+    original_strategies = {
         strategy: _settle_strategy(
             pending.get("strategies", {}).get(strategy, []), row_map, session_date, market
         )
@@ -458,6 +598,12 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
     }
     total_profit = sum(_finite(result.get("gross_profit_twd")) for result in strategies.values())
     total_net_profit = sum(_finite(result.get("net_profit_twd")) for result in strategies.values())
+    original_profit = sum(
+        _finite(result.get("gross_profit_twd")) for result in original_strategies.values()
+    )
+    original_net_profit = sum(
+        _finite(result.get("net_profit_twd")) for result in original_strategies.values()
+    )
     strict_net_profit = sum(
         _finite(result.get("strict", {}).get("net_profit_twd")) for result in strategies.values()
     )
@@ -492,6 +638,13 @@ def _settle_pending(market_state: dict[str, Any], rows: list[dict[str, Any]], ma
         "ranking_snapshot_id": pending.get("snapshot_id"),
         "ranking_model_versions": pending.get("model_versions"),
         "strategies": strategies,
+        "reserve_replacements": coverage["replacements"],
+        "original_data_complete": coverage["original_complete"],
+        "original_available_positions": coverage["original_available_positions"],
+        "original_required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+        "original_gross_profit_twd": round(original_profit, 2) if coverage["original_complete"] else None,
+        "original_net_profit_twd": round(original_net_profit, 2) if coverage["original_complete"] else None,
+        "original_strategies": original_strategies,
     }
     market_state.setdefault("days", []).append(day)
     market_state["pending"] = None
@@ -520,8 +673,12 @@ def update_state(
         "20筆凍結標的與基準未完整時不結算；部分成交無逐筆委託簿資料時不捏造"
     )
     state["policy"]["settlement_coverage"] = (
-        "20筆凍結標的與大盤基準都取得同一交易日官方開收盤價後才結算；"
-        "不足即等待補抓，跨至下一交易日仍不足則隔離且不列成績"
+        "原始前10名、候補第11至15名與大盤基準使用同一交易日官方開收盤價；"
+        "新樣本缺原始價格時只按事前凍結候補順位遞補，候補仍不足才等待或隔離"
+    )
+    state["policy"]["reserve_policy"] = (
+        "只對建立時已凍結第11至15名的新樣本啟用；不回寫舊樣本、不依收盤漲跌挑候補；"
+        "實用組與原始前10名覆蓋／成績分開保存"
     )
     state["policy"]["manual_trades"] = "使用者暫時人工交易不列入正式模型成績"
     for market in MARKETS:
