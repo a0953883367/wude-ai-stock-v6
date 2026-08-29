@@ -223,7 +223,9 @@ class OfficialMarketCalendar:
 
     def _target_years(self) -> list[int]:
         current = datetime.fromtimestamp(self.clock(), timezone.utc).year
-        return [current - 1, current, current + 1]
+        # The next year's Taiwan schedule is often not published yet. Fetch it
+        # on demand only when a lookup actually crosses the year boundary.
+        return [current - 1, current]
 
     def _fresh(self, row: dict[str, Any]) -> bool:
         fetched = row.get("fetched_at_epoch")
@@ -394,7 +396,7 @@ class OfficialMarketCalendar:
                 "conflict_dates": (current or {}).get("conflict_dates") or [],
                 "early_close_sessions_cached": early_closes,
                 "refreshing": self._refreshing,
-                "last_error": self._last_error.get(market),
+                "last_error": self._last_error.get(market) if current is None else None,
                 "fallback_policy": "verified_cache_or_quarantine_never_guess",
             }
 
