@@ -218,6 +218,7 @@ def build_guard(
     all_analysis = _load(reports_dir / "all_analysis.json")
     holding = _load(reports_dir / "holding_simulation.json")
     rotation_health = _load(reports_dir / "market_rotation_shadow_health.json")
+    valuation_health = _load(reports_dir / "valuation_risk_shadow_health.json")
     checks: list[dict[str, Any]] = []
 
     updated = _parse_taipei(latest.get("updated_at"))
@@ -309,6 +310,26 @@ def build_guard(
             "rotation_shadow", "市場規則／族群輪動", "warning",
             "尚未取得影子模組健康紀錄；不影響正式排名與報表",
             "等待下一次完整股票報告建立獨立健康紀錄",
+        ))
+
+    valuation_status = str(valuation_health.get("status") or "missing").lower()
+    if valuation_status == "ok":
+        checks.append(_check(
+            "valuation_risk_shadow", "估值風險雷達", "ok",
+            "影子估值正常；尚未加入正式排名或權重",
+        ))
+    elif valuation_status == "warning":
+        error_type = str(valuation_health.get("error_type") or "未分類錯誤")
+        checks.append(_check(
+            "valuation_risk_shadow", "估值風險雷達", "warning",
+            f"估值影子異常（{error_type}）；正式排名仍繼續",
+            "檢查估值影子健康紀錄；不得用不完整估值修改正式分數",
+        ))
+    else:
+        checks.append(_check(
+            "valuation_risk_shadow", "估值風險雷達", "warning",
+            "尚未取得估值影子健康紀錄；不影響正式排名",
+            "等待下一次完整股票報告建立估值影子紀錄",
         ))
 
     checks.append(_publish_check("friend", friend_publish, previous))
