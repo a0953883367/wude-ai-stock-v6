@@ -85,6 +85,10 @@ def test_report_locks_formal_rank_and_explains_horizon_conflict(tmp_path):
     assert item["formal_rank"] == 2
     assert item["formal_score"] == 70
     assert {key for key in item["horizons"]} == {"short", "medium", "long"}
+    assert item["horizons"]["short"]["entry_low"] == 98
+    assert item["horizons"]["short"]["stop"] == 94
+    assert item["horizons"]["short"]["target1"] == 110
+    assert item["horizons"]["short"]["execution"]["code"] == "entry_confirm"
     assert any(conflict["code"] == "trend_vs_valuation" for conflict in item["conflicts"])
     assert item["horizons"]["short"]["recommendation"] == "can_scale"
     assert item["horizons"]["long"]["recommendation"] != "can_scale"
@@ -105,6 +109,7 @@ def test_invalid_market_contract_is_hard_block(tmp_path):
     assert item["final"]["recommendation"] == "data_insufficient"
     assert "market_contract" in item["data_missing"]
     assert any(conflict["code"] == "positive_signal_vs_data_block" for conflict in item["conflicts"])
+    assert item["horizons"]["short"]["execution"]["code"] == "no_data"
 
 
 def test_trade_risk_block_is_avoid_not_missing_data(tmp_path):

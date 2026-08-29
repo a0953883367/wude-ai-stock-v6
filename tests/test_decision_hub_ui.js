@@ -11,6 +11,7 @@ const evidence=unified.evidence_files.flatMap(path=>JSON.parse(fs.readFileSync('
 [
   '中央 AI 決策中樞','正式排名鎖定','不自動改權重','不連券商下單',
   '中央唯一答案','台股官方財報','統一證據','模型畢業','部位控制',
+  '價格到買進區','高於買進區','停損／獲利出場','可進場','等進場價','不進場／退出','買進區','停損','目標一','目標二','進出場規則',
   '1～5 日','45 日','6 個月','有衝突','資料不足','查看全部證據與日期'
 ].forEach(text=>assert(ui.includes(text),`missing UI copy: ${text}`));
 assert(html.includes('decision_hub.js'));
@@ -34,4 +35,5 @@ assert(report.single_answer.headline);
 assert.strictEqual(decisions.length,374);
 assert(decisions.every(row=>row.formal_ranking_unchanged===true));
 assert(decisions.every(row=>['short','medium','long'].every(key=>row.horizons[key])));
+assert(decisions.every(row=>['short','medium','long'].every(key=>row.horizons[key].execution)));
 console.log('decision hub UI checks passed');

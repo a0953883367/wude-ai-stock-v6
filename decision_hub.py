@@ -128,6 +128,35 @@ def _action_label(code: str) -> str:
     }[code]
 
 
+def _execution_state(plan: dict[str, Any], price: float | None) -> dict[str, str]:
+    """Translate an existing plan into a clear read-only entry/exit state."""
+    recommendation = str(plan.get("recommendation") or "data_insufficient")
+    entry_low = _number(plan.get("entry_low"))
+    entry_high = _number(plan.get("entry_high"))
+    stop = _number(plan.get("stop"))
+    target1 = _number(plan.get("target1"))
+    target2 = _number(plan.get("target2"))
+    if recommendation == "data_insufficient" or price is None:
+        return {"code": "no_data", "label": "資料不足，不操作", "reason": "缺少可驗證價格或進出場資料"}
+    if recommendation == "avoid":
+        return {"code": "exit_or_avoid", "label": "不進場；若持有則評估退出", "reason": "中央風險或至少一個時段不合格"}
+    if stop is not None and price <= stop:
+        return {"code": "stop_exit", "label": "跌破停損，若持有應退出", "reason": f"現價 {price:g} 已低於停損 {stop:g}"}
+    if target2 is not None and price >= target2:
+        return {"code": "take_profit_2", "label": "到達第二目標，分批出場", "reason": f"現價 {price:g} 已達第二目標 {target2:g}"}
+    if target1 is not None and price >= target1:
+        return {"code": "take_profit_1", "label": "到達第一目標，先分批獲利", "reason": f"現價 {price:g} 已達第一目標 {target1:g}"}
+    if entry_low is not None and entry_high is not None:
+        if entry_low <= price <= entry_high:
+            if recommendation == "can_scale":
+                return {"code": "entry_confirm", "label": "進入買進區，等確認後分批", "reason": "需再確認15～30分鐘量價轉強且支撐未破"}
+            return {"code": "entry_wait_confirmation", "label": "價格到買進區，但條件尚未成熟", "reason": "中央結論仍是等待買點，不視為已可買"}
+        if price > entry_high:
+            return {"code": "no_chase", "label": "高於買進區，不追價", "reason": f"等回到 {entry_low:g}～{entry_high:g} 再判斷"}
+        return {"code": "wait_stabilize", "label": "低於買進區，等待止穩", "reason": f"未止穩前不因價格較低而直接買進"}
+    return {"code": "watch", "label": "只有觀察，尚無進場價", "reason": "進場區資料尚未完整，不推測價格"}
+
+
 def _quality_confidence(row: dict[str, Any], base: Any) -> float:
     confidence = _number(base, 0.0) or 0.0
     quality = _number(row.get("market_data_quality_score"))
@@ -514,6 +543,9 @@ def _build_decision(
             "entry_high": _number(row.get("short_term_entry_high")),
             "stop": _number(row.get("short_term_stop")),
             "target1": _number(row.get("short_term_target1")),
+            "target2": _number(row.get("short_term_target2")),
+            "entry_rule": "進入買進區後，等待15～30分鐘量價轉強且支撐未破",
+            "exit_rule": "跌破停損價退出；第一目標先分批，第二目標再分批",
             "reason": row.get("short_term_reason") or row.get("short_term_status"),
         },
         "medium": {
@@ -526,6 +558,9 @@ def _build_decision(
             "entry_high": _number(row.get("mid_long_batch1_high")),
             "stop": _number(row.get("mid_long_stop")),
             "target1": _number(row.get("mid_long_target1")),
+            "target2": _number(row.get("mid_long_target2")),
+            "entry_rule": "進入買進區且中央結論仍合格，才分批評估",
+            "exit_rule": "跌破停損價退出；目標價分批獲利，不一次押滿",
             "reason": "中長線原始計畫＋45日技術與籌碼拆分",
         },
         "long": {
@@ -538,9 +573,14 @@ def _build_decision(
             "entry_high": _number(row.get("mid_long_batch2_high") or row.get("mid_long_batch1_high")),
             "stop": _number(row.get("mid_long_stop")),
             "target1": _number(row.get("mid_long_target2") or row.get("mid_long_target1")),
+            "target2": None,
+            "entry_rule": "只在長期條件與估值風險都合格時分批評估",
+            "exit_rule": "基本面失效或跌破停損退出；達長期目標分批獲利",
             "reason": "中長線原始計畫＋6個月財務、成長與估值拆分",
         },
     }
+    for plan in horizons.values():
+        plan["execution"] = _execution_state(plan, price)
     return {
         "symbol": symbol,
         "name": row.get("name") or symbol,
