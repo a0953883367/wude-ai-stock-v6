@@ -18,7 +18,10 @@ const required = [
   '待補資料',
   '不列損益',
   '資料不足不是0元',
-  '20筆凍結標的與大盤基準必須全部取得',
+  '實用候補組',
+  '原始前10組',
+  '第11至15名',
+  '舊樣本不回頭改寫',
   '資料不足隔離',
   '2026-08-24',
   '全程不送券商訂單'
@@ -42,6 +45,12 @@ for (const market of ['TW', 'US']) {
     assert.strictEqual(pending.strategies.short.length, 10);
     assert.ok(pending.strategies.overall.every((pick) => pick.allocation_twd === 50000));
     assert.ok(pending.strategies.short.every((pick) => pick.allocation_twd === 50000));
+    if (pending.reserves) {
+      assert.ok(pending.reserves.overall.length <= 5);
+      assert.ok(pending.reserves.short.length <= 5);
+      assert.ok(pending.reserves.overall.every((pick) => pick.rank >= 11));
+      assert.ok(pending.reserves.short.every((pick) => pick.rank >= 11));
+    }
   } else {
     assert.strictEqual(state.markets[market].status, 'complete');
     assert.strictEqual(state.markets[market].days.length, 5);
