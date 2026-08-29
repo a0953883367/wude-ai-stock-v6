@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -191,15 +193,121 @@ def _fetch_symbol(row: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     return symbol, result
 
 
-def fetch_news_risks(rows: list[dict[str, Any]], workers: int = 8) -> dict[str, dict[str, Any]]:
-    """Scan a bounded candidate set concurrently."""
+def _read_news_cache(path: Path | None) -> dict[str, dict[str, Any]]:
+    if path is None:
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    rows = payload.get("symbols", {}) if isinstance(payload, dict) else {}
+    return rows if isinstance(rows, dict) else {}
+
+
+def _cache_age_hours(result: dict[str, Any], now: datetime) -> float:
+    try:
+        scanned = datetime.fromisoformat(str(result.get("news_scanned_at")))
+        if scanned.tzinfo is None:
+            scanned = scanned.replace(tzinfo=timezone.utc)
+        return max(0.0, (now - scanned.astimezone(timezone.utc)).total_seconds() / 3600)
+    except (TypeError, ValueError):
+        return float("inf")
+
+
+def _write_news_cache(path: Path | None, rows: dict[str, dict[str, Any]]) -> None:
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": 1,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "symbols": rows,
+    }
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+
+
+def fetch_news_risks(
+    rows: list[dict[str, Any]],
+    workers: int = 8,
+    *,
+    cache_path: Path | None = None,
+    max_age_hours: float = 18.0,
+    stale_fallback_hours: float = 48.0,
+    priority_symbols: set[str] | None = None,
+    max_background_refresh: int | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Scan the full universe while reusing recent, attributable results.
+
+    Priority symbols are refreshed every run.  The remainder are refreshed
+    when their cache expires.  A short-lived stale result may be shown when a
+    provider has a transient failure, and is explicitly marked as stale.
+    """
     unique = {str(row.get("symbol")): row for row in rows if row.get("symbol")}
+    priority = {str(symbol) for symbol in (priority_symbols or set())}
+    now = datetime.now(timezone.utc)
+    cache = _read_news_cache(cache_path)
+    cache_fields = (
+        "news_risk_level", "news_penalty", "news_verified", "news_summary",
+        "news_articles", "news_data_available", "news_scanned_at",
+        "official_announcement_count", "official_announcement_source",
+    )
+    for symbol, row in unique.items():
+        if symbol in cache or not row.get("news_data_available"):
+            continue
+        seeded = {key: row.get(key) for key in cache_fields if key in row}
+        if seeded.get("news_scanned_at"):
+            seeded["news_cache_stale"] = False
+            cache[symbol] = seeded
     results: dict[str, dict[str, Any]] = {}
-    with ThreadPoolExecutor(max_workers=min(workers, max(1, len(unique)))) as pool:
-        futures = [pool.submit(_fetch_symbol, row) for row in unique.values()]
+    priority_refresh: list[dict[str, Any]] = []
+    background_refresh: list[dict[str, Any]] = []
+    for symbol, row in unique.items():
+        cached = cache.get(symbol)
+        if (
+            symbol not in priority
+            and isinstance(cached, dict)
+            and cached.get("news_data_available")
+            and _cache_age_hours(cached, now) <= max_age_hours
+        ):
+            results[symbol] = dict(cached)
+        elif symbol in priority:
+            priority_refresh.append(row)
+        else:
+            background_refresh.append(row)
+
+    if max_background_refresh is not None:
+        background_refresh = background_refresh[:max(0, max_background_refresh)]
+    refresh = priority_refresh + background_refresh
+
+    with ThreadPoolExecutor(max_workers=min(workers, max(1, len(refresh)))) as pool:
+        futures = [pool.submit(_fetch_symbol, row) for row in refresh]
         for future in as_completed(futures):
             symbol, result = future.result()
-            results[symbol] = result
+            if result.get("news_data_available"):
+                result["news_cache_stale"] = False
+                cache[symbol] = dict(result)
+                results[symbol] = result
+                continue
+            cached = cache.get(symbol)
+            if (
+                isinstance(cached, dict)
+                and cached.get("news_data_available")
+                and _cache_age_hours(cached, now) <= stale_fallback_hours
+            ):
+                fallback = dict(cached)
+                fallback["news_cache_stale"] = True
+                fallback["news_summary"] = (
+                    f"來源暫時連線失敗；沿用 {_cache_age_hours(cached, now):.1f} 小時前的已驗證掃描"
+                )
+                results[symbol] = fallback
+            else:
+                results[symbol] = result
+    _write_news_cache(cache_path, cache)
     return results
 
 

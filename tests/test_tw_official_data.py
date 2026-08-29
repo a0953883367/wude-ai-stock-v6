@@ -223,6 +223,26 @@ def test_fetch_splits_listed_and_otc_and_writes_cache(monkeypatch, tmp_path: Pat
     assert (tmp_path / "official.json").exists()
 
 
+def test_partial_refresh_preserves_dated_fundamental_fields(monkeypatch, tmp_path: Path):
+    cache = tmp_path / "official.json"
+    cache.write_text(json.dumps({
+        "data": {"fundamentals": {"6488": {
+            "per": 30, "pbr": 5, "valuation_date": "2026-08-21",
+            "revenue_yoy_pct": 6,
+        }}},
+    }), encoding="utf-8")
+    monkeypatch.setattr(official, "_parse_tpex", lambda _ids: (
+        {"6488": {"date": "2026-08-22"}}, {}, {},
+        {"6488": {"revenue_yoy_pct": 8, "revenue_date": "2026-08-22"}}, {},
+    ))
+    result = official.fetch_taiwan_official_data(
+        [{"symbol": "6488.TWO", "market": "TW"}], cache
+    )
+    assert result["fundamentals"]["6488"]["per"] == 30
+    assert result["fundamentals"]["6488"]["pbr"] == 5
+    assert result["fundamentals"]["6488"]["revenue_yoy_pct"] == 8
+
+
 def test_stale_cache_never_reuses_daily_price_or_flow(monkeypatch, tmp_path: Path):
     cache = tmp_path / "official.json"
     cache.write_text(json.dumps({

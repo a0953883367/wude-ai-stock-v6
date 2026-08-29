@@ -72,6 +72,24 @@ def test_bank_uses_financial_company_profile_instead_of_sales_fcf(tmp_path):
     assert set(item["peer_medians"]) == {"pbr", "earnings_years"}
 
 
+def test_official_per_and_pbr_can_classify_without_inventing_market_cap(tmp_path):
+    rows = [{
+        "symbol": f"TW{i}.TW", "name": f"TW{i}", "market": "TW",
+        "type": "個股", "industry": "電子", "official_session_date": "2026-08-28",
+        "official_close_price": 100, "per": 20 + i, "pbr": 2 + i * .1,
+    } for i in range(6)]
+    report = update_valuation_risk_shadow(
+        tmp_path, rows, period="morning",
+        updated_at="2026-08-29 06:00:00", intraday=False,
+    )
+    item = report["data"][0]
+    assert item["status"] == "ready"
+    assert item["market_cap"] is None
+    assert item["market_value_gap_available"] is False
+    assert item["estimated_excess_market_value"] is None
+    assert "市值差額仍待" in item["reason"]
+
+
 def test_shadow_does_not_mutate_official_rows_or_weights(tmp_path):
     rows = _peer_rows()
     before = json.loads(json.dumps(rows))

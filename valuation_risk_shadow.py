@@ -17,8 +17,8 @@ from statistics import median
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = 1
-MODEL_VERSION = "VALUATION-RISK-SHADOW-V1"
+SCHEMA_VERSION = 2
+MODEL_VERSION = "VALUATION-RISK-SHADOW-V2"
 MARKETS = ("TW", "US")
 CLOSED_PERIOD = {"TW": "evening", "US": "morning"}
 MAX_SNAPSHOTS = 30
@@ -219,7 +219,7 @@ def _score_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         metrics = (
             ("pbr", "earnings_years")
             if item.get("valuation_profile") == "FINANCIAL"
-            else ("sales_years", "earnings_years", "free_cash_flow_years")
+            else ("sales_years", "earnings_years", "free_cash_flow_years", "pbr")
         )
         for metric in metrics:
             value = _positive(item.get(metric))
@@ -248,7 +248,10 @@ def _score_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         metric_weights = (
             (("pbr", 0.55), ("earnings_years", 0.45))
             if item.get("valuation_profile") == "FINANCIAL"
-            else (("sales_years", 0.35), ("earnings_years", 0.30), ("free_cash_flow_years", 0.35))
+            else (
+                ("sales_years", 0.30), ("earnings_years", 0.30),
+                ("free_cash_flow_years", 0.25), ("pbr", 0.15),
+            )
         )
         for metric, base_weight in metric_weights:
             value = _positive(item.get(metric))
@@ -288,7 +291,10 @@ def _score_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             score = None
 
         metric_count = len(component_scores)
-        sufficient = metric_count >= 2 and item.get("market_cap") is not None
+        # Official PER/PBR are real valuation evidence even when a provider
+        # does not expose shares outstanding.  They can support the pressure
+        # classification; market-cap-dependent fair-value gaps remain absent.
+        sufficient = metric_count >= 2
         fair_value = median(fair_value_candidates) if fair_value_candidates else None
         market_cap = item.get("market_cap")
         excess_value = (
@@ -312,6 +318,7 @@ def _score_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "valuation_pressure_score": score,
             "valuation_pressure_label": _pressure_label(score, sufficient),
             "valuation_metric_count": metric_count,
+            "market_value_gap_available": market_cap is not None and fair_value is not None,
             "peer_percentiles": peer_percentiles,
             "peer_medians": peer_medians,
             "peer_based_fair_market_value": None if fair_value is None else round(fair_value, 2),
@@ -322,7 +329,10 @@ def _score_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             ),
             "reason": (
                 "同業倍數與至少兩項估值資料可用"
-                if sufficient else "至少需要市值及營收／獲利／自由現金流中的兩項倍數"
+                if sufficient and market_cap is not None
+                else "官方PER／PBR等至少兩項估值資料可用；市值差額仍待股份資料補齊"
+                if sufficient
+                else "至少需要PER、PBR、營收倍數或自由現金流倍數中的兩項"
             ),
         })
         output.append(item)
@@ -424,8 +434,17 @@ def update_valuation_risk_shadow(
         previous = {}
 
     valued = _score_rows([_company_values(dict(row)) for row in rows])
-    snapshots = previous.get("snapshots") if isinstance(previous.get("snapshots"), dict) else {}
-    outcomes = previous.get("outcomes") if isinstance(previous.get("outcomes"), list) else []
+    same_model = previous.get("model_version") == MODEL_VERSION
+    snapshots = (
+        previous.get("snapshots")
+        if same_model and isinstance(previous.get("snapshots"), dict)
+        else {}
+    )
+    outcomes = (
+        previous.get("outcomes")
+        if same_model and isinstance(previous.get("outcomes"), list)
+        else []
+    )
     market_snapshots: dict[str, list[dict[str, Any]]] = {}
     for market in MARKETS:
         history = list(snapshots.get(market) or [])
@@ -479,7 +498,7 @@ def update_valuation_risk_shadow(
         "places_orders": False,
         "method": {
             "purpose": "估值壓力與同業相對風險；不宣稱確定泡沫",
-            "company_metrics": ["市值／營收", "市值／獲利", "市值／自由現金流", "同業百分位"],
+            "company_metrics": ["市值／營收", "市值／獲利", "市值／自由現金流", "股價淨值比", "同業百分位"],
             "financial_company_metrics": ["股價淨值比", "市值／獲利", "ROE", "同業百分位"],
             "etf_method": "ETF不套公司倍數，待持股加權估值與NAV折溢價資料",
             "estimated_excess_value": "僅在同產業至少5筆有效倍數時，以同業中位數估算；不是確定泡沫",

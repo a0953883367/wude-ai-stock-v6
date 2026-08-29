@@ -244,7 +244,10 @@ def _build_decision(
     session_date = str(row.get("official_session_date") or row.get("cached_at") or updated_at)
     market_valid = row.get("market_contract_valid") is not False
     price = _number(row.get("price"))
-    hard_block = bool(row.get("trade_guard_blocked")) or not market_valid or not price or price <= 0
+    # A risk rejection is a valid decision, not missing data.  Keep the two
+    # states separate so a complete row is never mislabeled as insufficient.
+    risk_block = bool(row.get("trade_guard_blocked"))
+    data_block = not market_valid or not price or price <= 0
     data_missing = list(row.get("market_data_missing") or [])
     if not price or price <= 0:
         data_missing.append("current_price")
@@ -256,7 +259,7 @@ def _build_decision(
     short_code = _recommendation(
         short_score,
         bool(row.get("short_term_eligible")),
-        hard_block,
+        data_block,
     )
 
     # The existing 3-12 month plan is split into two read-only decision views.
@@ -272,7 +275,7 @@ def _build_decision(
     medium_code = _recommendation(
         medium_score,
         bool(row.get("mid_long_eligible")),
-        hard_block,
+        data_block,
     )
 
     financial = _number(row.get("financial_quality_score"))
@@ -295,7 +298,7 @@ def _build_decision(
         bool(row.get("mid_long_eligible")) and (
             is_etf or financial is not None or fundamental is not None
         ),
-        hard_block,
+        data_block,
     )
 
     evidence: list[dict[str, Any]] = []
@@ -306,7 +309,8 @@ def _build_decision(
     ))
     evidence.append(_evidence(
         "short_plan", "1～5 日短線模型", "short", _direction(short_score), short_score,
-        short_confidence, session_date, "ready" if not hard_block else "blocked",
+        short_confidence, session_date,
+        "data_blocked" if data_block else "risk_blocked" if risk_block else "ready",
         str(row.get("short_term_reason") or row.get("short_term_status") or "短線資料未提供"),
     ))
     evidence.append(_evidence(
@@ -367,7 +371,7 @@ def _build_decision(
         data_missing.append("verified_news")
 
     conflicts: list[dict[str, Any]] = []
-    if hard_block and short_score >= 60:
+    if data_block and short_score >= 60:
         conflicts.append({
             "code": "positive_signal_vs_data_block",
             "severity": "hard",
@@ -375,6 +379,15 @@ def _build_decision(
             "reason": "模型訊號偏多，但交易資料契約或風控條件不完整",
             "resolution_rule": "資料完整性優先，不提供進場判斷",
             "resolution": "data_insufficient",
+        })
+    if risk_block and not data_block and short_score >= 60:
+        conflicts.append({
+            "code": "positive_signal_vs_risk_block",
+            "severity": "hard",
+            "sources": ["short_plan", "trade_guard"],
+            "reason": "模型訊號偏多，但已觸發可驗證的交易風險條件",
+            "resolution_rule": "風險條件優先；資料仍保留，中央結論改為暫不考慮",
+            "resolution": "avoid",
         })
     if valuation_ready and (valuation_pressure or 0) >= 65 and short_score >= 65:
         conflicts.append({
@@ -407,10 +420,16 @@ def _build_decision(
         })
         short_code = medium_code = long_code = "avoid"
 
+    if risk_block and not data_block:
+        short_code = medium_code = long_code = "avoid"
+
     codes = [short_code, medium_code, long_code]
-    if hard_block:
+    if data_block:
         final_code = "data_insufficient"
-        final_reason = str(row.get("trade_guard_reason") or "行情資料契約不完整，中央層拒絕判斷")
+        final_reason = "缺少現價或市場資料契約無效，中央層暫不判斷"
+    elif risk_block:
+        final_code = "avoid"
+        final_reason = str(row.get("trade_guard_reason") or "已觸發交易風險條件，暫不考慮")
     elif "avoid" in codes:
         final_code = "avoid"
         final_reason = "至少一個獨立時段或重大風險不合格，採保守結論"
@@ -480,7 +499,13 @@ def _build_decision(
         "evidence": evidence,
         "conflicts": conflicts,
         "conflict_count": len(conflicts),
+        "resolved_conflict_count": len(conflicts),
         "unresolved_conflict_count": 0,
+        "core_data_missing": sorted(set(
+            item for item in ("current_price" if not price or price <= 0 else None,
+                              "market_contract" if not market_valid else None)
+            if item
+        )),
         "data_missing": sorted(set(str(item) for item in data_missing if item)),
         "data_quality": row.get("overall_data_quality") or row.get("market_data_quality") or "未標示",
         "risk_blocks": [row.get("trade_guard_reason")] if row.get("trade_guard_blocked") else [],
@@ -515,18 +540,28 @@ def update_decision_hub(
         "million": _read_json(reports_dir / "million_simulation.json"),
         "system_guard": _read_json(reports_dir / "system_guard.json"),
     }
+    news_cache = _read_json(reports_dir / "news_risk_cache.json") or {}
+    news_by_symbol = (
+        news_cache.get("symbols")
+        if isinstance(news_cache.get("symbols"), dict)
+        else {}
+    )
     valuation_by_symbol = _valuation_index(source_reports["valuation"])
     rotation_by_sector = _rotation_index(source_reports["rotation"])
-    decisions = [
-        _build_decision(
-            row,
+    decisions = []
+    for row in frozen_rows:
+        if not isinstance(row, dict) or not row.get("symbol"):
+            continue
+        decision_row = dict(row)
+        cached_news = news_by_symbol.get(str(row.get("symbol") or ""))
+        if isinstance(cached_news, dict):
+            decision_row.update(cached_news)
+        decisions.append(_build_decision(
+            decision_row,
             valuation=valuation_by_symbol.get(str(row.get("symbol") or "").upper()),
             rotation=rotation_by_sector.get(f"{row.get('market')}:{row.get('industry')}"),
             updated_at=updated_at,
-        )
-        for row in frozen_rows
-        if isinstance(row, dict) and row.get("symbol")
-    ]
+        ))
     decisions.sort(key=lambda item: (
         str(item.get("market") or ""),
         item.get("formal_rank") if isinstance(item.get("formal_rank"), (int, float)) else 999999,
@@ -536,8 +571,22 @@ def update_decision_hub(
     summary = {
         "decision_count": len(decisions),
         "conflict_count": sum(1 for item in decisions if item["conflict_count"]),
+        "detected_conflict_count": sum(1 for item in decisions if item["conflict_count"]),
+        "resolved_conflict_count": sum(
+            1 for item in decisions if item["resolved_conflict_count"]
+        ),
+        "unresolved_conflict_count": sum(
+            1 for item in decisions if item["unresolved_conflict_count"]
+        ),
         "data_insufficient_count": sum(
             1 for item in decisions if item["final"]["recommendation"] == "data_insufficient"
+        ),
+        "core_data_complete_count": sum(
+            1 for item in decisions if not item["core_data_missing"]
+        ),
+        "risk_blocked_count": sum(1 for item in decisions if item["risk_blocks"]),
+        "news_coverage_count": sum(
+            1 for item in decisions if "verified_news" not in item["data_missing"]
         ),
         "by_recommendation": {
             code: sum(1 for item in decisions if item["final"]["recommendation"] == code)
@@ -565,11 +614,18 @@ def update_decision_hub(
             "最終按鈕只保存你的人工選擇，不連券商、不下單",
         ],
         "source_status": {
+            "news_full_universe": {
+                "available": bool(news_by_symbol),
+                "updated_at": news_cache.get("updated_at"),
+                "symbols": len(news_by_symbol),
+            },
+            **{
             name: {
                 "available": report is not None,
                 "updated_at": (report or {}).get("updated_at"),
             }
             for name, report in source_reports.items()
+            },
         },
         "missing_sources": missing_sources,
         "readiness": _model_readiness(source_reports),

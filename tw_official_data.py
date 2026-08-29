@@ -580,6 +580,11 @@ def fetch_taiwan_official_data(
         "fundamentals": {}, "announcements": {},
     }
     try:
+        cached_payload = json.loads(cache_path.read_text(encoding="utf-8"))
+        cached_data = cached_payload.get("data") or {}
+    except (OSError, ValueError, TypeError):
+        cached_data = {}
+    try:
         twse = _parse_twse(twse_ids) if twse_ids else ({}, {}, {}, {}, {})
         tpex = _parse_tpex(tpex_ids) if tpex_ids else ({}, {}, {}, {}, {})
         result = {
@@ -588,6 +593,17 @@ def fetch_taiwan_official_data(
                 ("prices", "institutions", "credit", "fundamentals", "announcements")
             )
         }
+        # Individual OpenAPI datasets can fail independently.  Preserve only
+        # slowly changing, date-labelled fundamentals from the last successful
+        # response; never carry daily price, flow or announcements forward.
+        cached_fundamentals = cached_data.get("fundamentals") or {}
+        for sid, old_item in cached_fundamentals.items():
+            if not isinstance(old_item, dict):
+                continue
+            result["fundamentals"][sid] = {
+                **old_item,
+                **result["fundamentals"].get(sid, {}),
+            }
         if not any(result.values()):
             raise RuntimeError("official Taiwan endpoints returned no maintained symbols")
         payload = {
@@ -600,8 +616,7 @@ def fetch_taiwan_official_data(
     except Exception as exc:
         LOG.warning("Taiwan official data unavailable; using last cache: %s", exc)
         try:
-            payload = json.loads(cache_path.read_text(encoding="utf-8"))
-            cached = payload.get("data") or {}
+            cached = cached_data
             # A cache is useful for slowly changing valuation/revenue context,
             # but cached daily price/flow must never masquerade as current.
             return {
