@@ -219,6 +219,7 @@ def build_guard(
     holding = _load(reports_dir / "holding_simulation.json")
     rotation_health = _load(reports_dir / "market_rotation_shadow_health.json")
     valuation_health = _load(reports_dir / "valuation_risk_shadow_health.json")
+    decision_health = _load(reports_dir / "decision_hub_health.json")
     checks: list[dict[str, Any]] = []
 
     updated = _parse_taipei(latest.get("updated_at"))
@@ -330,6 +331,26 @@ def build_guard(
             "valuation_risk_shadow", "估值風險雷達", "warning",
             "尚未取得估值影子健康紀錄；不影響正式排名",
             "等待下一次完整股票報告建立估值影子紀錄",
+        ))
+
+    decision_status = str(decision_health.get("status") or "missing").lower()
+    if decision_status == "ok":
+        checks.append(_check(
+            "decision_hub", "中央 AI 決策中樞", "ok",
+            "證據整合與衝突判斷正常；正式排名、權重與下單維持隔離",
+        ))
+    elif decision_status == "warning":
+        error_type = str(decision_health.get("error_type") or "未分類錯誤")
+        checks.append(_check(
+            "decision_hub", "中央 AI 決策中樞", "warning",
+            f"中央決策中樞異常（{error_type}）；正式排名與早中晚報仍繼續",
+            "檢查中央中樞健康紀錄；不得改用不完整資料自行補分",
+        ))
+    else:
+        checks.append(_check(
+            "decision_hub", "中央 AI 決策中樞", "warning",
+            "尚未取得中央決策中樞健康紀錄；不影響正式排名",
+            "等待下一次完整股票報告建立中央中樞健康紀錄",
         ))
 
     checks.append(_publish_check("friend", friend_publish, previous))

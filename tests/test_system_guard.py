@@ -66,6 +66,11 @@ def _healthy_reports(tmp_path: Path) -> None:
         "formal_pipeline_continues": True, "changes_rankings": False,
         "changes_weights": False,
     })
+    _write(tmp_path / "decision_hub_health.json", {
+        "status": "ok", "checked_at": timestamp, "last_success_at": timestamp,
+        "formal_pipeline_continues": True, "changes_rankings": False,
+        "changes_weights": False, "places_orders": False,
+    })
 
 
 def test_healthy_guard_is_green(tmp_path: Path) -> None:
@@ -138,6 +143,23 @@ def test_valuation_failure_is_independent_warning(tmp_path: Path) -> None:
     assert guard["status"] == "warning"
     assert valuation["level"] == "warning"
     assert guard["safety"]["changes_rankings"] is False
+
+
+def test_decision_hub_failure_is_independent_warning(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "decision_hub_health.json", {
+        "status": "warning", "checked_at": "2026-08-24 16:00:00",
+        "last_success_at": None, "error_type": "RuntimeError",
+        "formal_pipeline_continues": True, "changes_rankings": False,
+        "changes_weights": False, "places_orders": False,
+    })
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+    check = next(item for item in guard["checks"] if item["code"] == "decision_hub")
+    assert guard["status"] == "warning"
+    assert check["level"] == "warning"
+    assert guard["safety"]["changes_rankings"] is False
+    assert guard["safety"]["places_orders"] is False
 
 
 def test_mixed_market_sessions_are_red(tmp_path: Path) -> None:
