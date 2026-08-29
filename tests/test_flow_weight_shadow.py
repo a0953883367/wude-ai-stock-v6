@@ -103,3 +103,59 @@ def test_completed_session_settles_next_open_to_close_with_cost(tmp_path: Path):
     assert outcome["models"]["flow_shadow"]["valid_positions"] == 10
     assert settled["markets"]["TW"]["summary"]["valid_trading_days"] == 1
     assert settled["markets"]["TW"]["summary"]["review_status"] == "collecting_only"
+
+
+def test_alert_signal_tracks_5_15_60_minute_direction(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = FlowWeightShadow(report, tmp_path / "state.json")
+    alert = _alert("T01")
+    alert["sequence"] = 7
+    model.record_alert(alert)
+    at = alert["detected_at_epoch"]
+    model.observe_trade("T01", "TW", price=101, timestamp=at + 301)
+    model.observe_trade("T01", "TW", price=102, timestamp=at + 901)
+    model.observe_trade("T01", "TW", price=103, timestamp=at + 3601)
+    performance = model.snapshot({})["markets"]["TW"]["signal_performance"]
+    assert performance["tracked_signals"] == 1
+    assert performance["horizons"]["5m"]["success_rate_pct"] == 100
+    assert performance["horizons"]["15m"]["average_directional_return_pct"] == 2
+    assert performance["horizons"]["60m"]["average_directional_return_pct"] == 3
+    assert performance["horizons"]["eod"]["samples"] == 1
+
+
+def test_sell_signal_counts_price_decline_as_correct_direction(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = FlowWeightShadow(report, tmp_path / "state.json")
+    alert = _alert("T02", side="sell")
+    alert["sequence"] = 8
+    model.record_alert(alert)
+    model.observe_trade(
+        "T02", "TW", price=99,
+        timestamp=alert["detected_at_epoch"] + 301,
+    )
+    metric = model.snapshot({})["markets"]["TW"]["signal_performance"]["horizons"]["5m"]
+    assert metric["samples"] == 1
+    assert metric["success_rate_pct"] == 100
+    assert metric["average_directional_return_pct"] == 1
+
+
+def test_signal_uses_completed_trading_days_not_calendar_days(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    state = tmp_path / "state.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = FlowWeightShadow(report, state)
+    alert = _alert("T03")
+    alert["sequence"] = 9
+    model.record_alert(alert)
+    model.snapshot({})
+    for session_date in ("2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"):
+        _write_report(report, session_date, "evening", next_prices=True)
+        model = FlowWeightShadow(report, state)
+        snapshot = model.snapshot({})
+    horizons = snapshot["markets"]["TW"]["signal_performance"]["horizons"]
+    assert horizons["day1"]["samples"] == 1
+    assert horizons["day3"]["samples"] == 1
+    assert horizons["day5"]["samples"] == 1
+    assert horizons["day5"]["quarantined"] == 0

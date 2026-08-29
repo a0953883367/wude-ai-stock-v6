@@ -392,6 +392,14 @@ class LargeBuyAlertService:
 
     def process_trade(self, symbol: str, **trade: Any) -> dict[str, Any] | None:
         self.flow.process_trade(symbol, **trade)
+        baseline = self.baselines.get(symbol)
+        if baseline is not None and getattr(self, "weight_shadow", None) is not None:
+            self.weight_shadow.observe_trade(
+                symbol,
+                baseline.market,
+                price=trade.get("price"),
+                timestamp=trade.get("timestamp"),
+            )
         alert = self.detector.process_trade(symbol, **trade)
         if alert is None:
             return None

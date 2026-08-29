@@ -492,6 +492,13 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                             "status": details.get("status"),
                             "valid_trading_days": (details.get("summary") or {}).get("valid_trading_days"),
                             "valid_signals": (details.get("summary") or {}).get("valid_signals"),
+                            "tracked_alert_signals": (details.get("signal_performance") or {}).get("tracked_signals"),
+                            "horizon_samples": {
+                                label: (metric or {}).get("samples")
+                                for label, metric in (
+                                    (details.get("signal_performance") or {}).get("horizons") or {}
+                                ).items()
+                            },
                         }
                         for market, details in (weight_shadow.get("markets") or {}).items()
                     },

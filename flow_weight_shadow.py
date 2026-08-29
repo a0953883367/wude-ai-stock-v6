@@ -29,6 +29,9 @@ MAX_POINT_ADJUSTMENT = 3.0
 MAX_SESSIONS = 90
 MIN_REVIEW_DAYS = 60
 MIN_REVIEW_SIGNALS = 200
+INTRADAY_HORIZONS = {"5m": 300, "15m": 900, "60m": 3600}
+DAILY_HORIZONS = {"eod": 0, "day1": 1, "day3": 3, "day5": 5}
+MAX_TRACKED_SIGNALS = 5_000
 
 
 def _finite(value: Any) -> float | None:
@@ -86,6 +89,8 @@ class FlowWeightShadow:
         self._report: dict[str, Any] = {}
         self._rows: list[dict[str, Any]] = []
         self._state = self._load_state()
+        self._pending_intraday: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        self._rebuild_pending_intraday()
         self._refresh_report(force=True)
 
     def _empty_market(self, market: str) -> dict[str, Any]:
@@ -94,6 +99,7 @@ class FlowWeightShadow:
             "signals": {},
             "sessions": [],
             "outcomes": [],
+            "intraday_signals": [],
         }
 
     def _load_state(self) -> dict[str, Any]:
@@ -116,6 +122,10 @@ class FlowWeightShadow:
                 clean["signals"] = saved.get("signals") if isinstance(saved.get("signals"), dict) else {}
                 clean["sessions"] = saved.get("sessions") if isinstance(saved.get("sessions"), list) else []
                 clean["outcomes"] = saved.get("outcomes") if isinstance(saved.get("outcomes"), list) else []
+                clean["intraday_signals"] = (
+                    saved.get("intraday_signals")
+                    if isinstance(saved.get("intraday_signals"), list) else []
+                )
             state["markets"][market] = clean
         return state
 
@@ -127,6 +137,15 @@ class FlowWeightShadow:
             encoding="utf-8",
         )
         temporary.replace(self.state_path)
+
+    def _rebuild_pending_intraday(self) -> None:
+        self._pending_intraday = {}
+        for market in MARKETS:
+            for signal in self._state["markets"][market]["intraday_signals"]:
+                horizons = signal.get("intraday") if isinstance(signal.get("intraday"), dict) else {}
+                if any(label not in horizons for label in INTRADAY_HORIZONS):
+                    key = (market, str(signal.get("symbol") or "").upper())
+                    self._pending_intraday.setdefault(key, []).append(signal)
 
     def _refresh_report(self, *, force: bool = False) -> None:
         try:
@@ -174,7 +193,94 @@ class FlowWeightShadow:
             ) + 1
             row["last_price"] = _finite(alert.get("price"))
             row["last_alert_at"] = alert.get("detected_at")
+            tracked = self._state["markets"][market]["intraday_signals"]
+            sequence = int(alert.get("sequence") or 0)
+            signal_id = f"{market}:{symbol}:{sequence or int(epoch * 1000)}"
+            if not any(item.get("signal_id") == signal_id for item in tracked):
+                tracked_signal = {
+                    "signal_id": signal_id,
+                    "symbol": symbol,
+                    "name": str(alert.get("name") or symbol),
+                    "market": market,
+                    "side": "sell" if side < 0 else "buy",
+                    "trigger_type": str(alert.get("trigger_type") or "single"),
+                    "signal_session_date": date,
+                    "signal_at": alert.get("detected_at"),
+                    "signal_at_epoch": epoch,
+                    "signal_price": _finite(alert.get("price")),
+                    "intraday": {},
+                    "eod": None,
+                    "daily_results": [],
+                }
+                tracked.append(tracked_signal)
+                if len(tracked) > MAX_TRACKED_SIGNALS:
+                    del tracked[:-MAX_TRACKED_SIGNALS]
+                    self._rebuild_pending_intraday()
+                else:
+                    self._pending_intraday.setdefault((market, symbol), []).append(tracked_signal)
             self._save()
+
+    @staticmethod
+    def _signal_result(signal: dict[str, Any], price: Any, *, observed_at: Any) -> dict[str, Any]:
+        signal_price = _finite(signal.get("signal_price"))
+        observed_price = _finite(price)
+        if signal_price is None or observed_price is None or signal_price <= 0:
+            return {"status": "quarantined_missing_price", "observed_at": observed_at}
+        raw_return = (observed_price / signal_price - 1) * 100
+        direction = -1 if signal.get("side") == "sell" else 1
+        directional_return = raw_return * direction
+        return {
+            "status": "valid",
+            "observed_at": observed_at,
+            "price": round(observed_price, 6),
+            "raw_return_pct": round(raw_return, 4),
+            "directional_return_pct": round(directional_return, 4),
+            "direction_correct": directional_return > 0,
+            "meaningful_move": directional_return >= 0.5,
+        }
+
+    def observe_trade(
+        self,
+        symbol: str,
+        market: str,
+        *,
+        price: Any,
+        timestamp: float | None = None,
+    ) -> None:
+        """Settle due intraday horizons from the first eligible later print."""
+        market = str(market or "").upper()
+        symbol = str(symbol or "").upper()
+        trade_price = _finite(price)
+        at = self.clock() if timestamp is None else _finite(timestamp)
+        if market not in MARKETS or not symbol or trade_price is None or at is None or trade_price <= 0:
+            return
+        with self._lock:
+            key = (market, symbol)
+            pending = self._pending_intraday.get(key) or []
+            if not pending:
+                return
+            changed = False
+            still_pending = []
+            observed_at = datetime.fromtimestamp(at, timezone.utc).isoformat(timespec="milliseconds")
+            for signal in pending:
+                signal_at = _finite(signal.get("signal_at_epoch"))
+                if signal_at is None or at < signal_at:
+                    still_pending.append(signal)
+                    continue
+                horizons = signal.setdefault("intraday", {})
+                elapsed = at - signal_at
+                for label, seconds in INTRADAY_HORIZONS.items():
+                    if label not in horizons and elapsed >= seconds:
+                        horizons[label] = self._signal_result(signal, trade_price, observed_at=observed_at)
+                        changed = True
+                if any(label not in horizons for label in INTRADAY_HORIZONS):
+                    still_pending.append(signal)
+            if still_pending:
+                self._pending_intraday[key] = still_pending
+            else:
+                self._pending_intraday.pop(key, None)
+            if changed:
+                self._save()
 
     def _official_date(self, market: str) -> str:
         dates = [
@@ -314,6 +420,103 @@ class FlowWeightShadow:
             changed = True
         return changed
 
+    def _reconcile_signal_horizons(self, market: str, official_date: str) -> bool:
+        """Attach only completed-session official closes to alert-level signals."""
+        if not official_date or str(self._report.get("period") or "") != CLOSED_PERIOD[market]:
+            return False
+        current = {
+            str(row.get("symbol") or "").upper(): row
+            for row in self._rows
+            if _is_stock(row, market)
+            and str(row.get("official_session_date") or "") == official_date
+        }
+        changed = False
+        for signal in self._state["markets"][market]["intraday_signals"]:
+            signal_date = str(signal.get("signal_session_date") or "")
+            if not signal_date or official_date < signal_date:
+                continue
+            row = current.get(str(signal.get("symbol") or "").upper())
+            close = _finite((row or {}).get("official_close_price"))
+            if official_date == signal_date and signal.get("eod") is None:
+                signal["eod"] = self._signal_result(
+                    signal,
+                    close,
+                    observed_at=f"{official_date} official_close",
+                )
+                changed = True
+            elif official_date > signal_date and signal.get("eod") is None:
+                signal["eod"] = {
+                    "status": "quarantined_missing_completed_session",
+                    "observed_at": f"advanced_to_{official_date}",
+                }
+                changed = True
+            if official_date <= signal_date:
+                continue
+            daily = signal.setdefault("daily_results", [])
+            if len(daily) >= max(DAILY_HORIZONS.values()):
+                continue
+            if any(item.get("session_date") == official_date for item in daily):
+                continue
+            result = self._signal_result(
+                signal,
+                close,
+                observed_at=f"{official_date} official_close",
+            )
+            result["session_date"] = official_date
+            result["trading_day_index"] = len(daily) + 1
+            daily.append(result)
+            signal["daily_results"] = daily
+            changed = True
+        return changed
+
+    @staticmethod
+    def _metric(results: list[dict[str, Any]]) -> dict[str, Any]:
+        valid = [item for item in results if item.get("status") == "valid"]
+        returns = [_number(item.get("directional_return_pct")) for item in valid]
+        return {
+            "samples": len(valid),
+            "quarantined": sum(item.get("status") != "valid" for item in results),
+            "success_rate_pct": (
+                round(sum(value > 0 for value in returns) / len(returns) * 100, 2)
+                if returns else None
+            ),
+            "meaningful_move_rate_pct": (
+                round(sum(value >= 0.5 for value in returns) / len(returns) * 100, 2)
+                if returns else None
+            ),
+            "average_directional_return_pct": (
+                round(sum(returns) / len(returns), 4) if returns else None
+            ),
+        }
+
+    def _signal_performance(self, market: str) -> dict[str, Any]:
+        signals = self._state["markets"][market]["intraday_signals"]
+        horizon_results: dict[str, list[dict[str, Any]]] = {
+            label: [] for label in (*INTRADAY_HORIZONS, *DAILY_HORIZONS)
+        }
+        for signal in signals:
+            intraday = signal.get("intraday") or {}
+            for label in INTRADAY_HORIZONS:
+                if isinstance(intraday.get(label), dict):
+                    horizon_results[label].append(intraday[label])
+            if isinstance(signal.get("eod"), dict):
+                horizon_results["eod"].append(signal["eod"])
+            daily = signal.get("daily_results") or []
+            by_index = {int(item.get("trading_day_index") or 0): item for item in daily}
+            for label, index in DAILY_HORIZONS.items():
+                if not index:
+                    continue
+                if isinstance(by_index.get(index), dict):
+                    horizon_results[label].append(by_index[index])
+        return {
+            "tracked_signals": len(signals),
+            "horizons": {
+                label: self._metric(horizon_results[label])
+                for label in horizon_results
+            },
+            "interpretation": "directional_return: buy expects up; sell expects down",
+        }
+
     def _summary(self, market: str) -> dict[str, Any]:
         market_state = self._state["markets"][market]
         valid = [row for row in market_state["outcomes"] if row.get("status") == "valid"]
@@ -344,6 +547,7 @@ class FlowWeightShadow:
             for market in MARKETS:
                 official_date = self._official_date(market)
                 changed = self._settle(market, official_date) or changed
+                changed = self._reconcile_signal_horizons(market, official_date) or changed
                 if period == CLOSED_PERIOD[market]:
                     changed = self._freeze(market, official_date, flow) or changed
                 today = _session_date(self.clock(), market)
@@ -360,6 +564,7 @@ class FlowWeightShadow:
                     "shadow_top10": self._select(market, points, adjusted=True),
                     "signals": list((market_state["signals"].get(preview_date) or {}).values()),
                     "summary": self._summary(market),
+                    "signal_performance": self._signal_performance(market),
                     "latest_outcomes": market_state["outcomes"][-5:],
                 }
             if changed:
@@ -383,5 +588,8 @@ class FlowWeightShadow:
                     "broker_orders": False,
                     "review_gate": {"trading_days": MIN_REVIEW_DAYS, "valid_signals": MIN_REVIEW_SIGNALS},
                     "missing_prices": "quarantine_not_score",
+                    "signal_validation_horizons": ["5m", "15m", "60m", "eod", "day1", "day3", "day5"],
+                    "intraday_settlement": "first_eligible_trade_at_or_after_horizon",
+                    "daily_settlement": "official_completed_session_close_only",
                 },
             }

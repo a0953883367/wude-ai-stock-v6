@@ -51,4 +51,11 @@ test('five-day flow weight experiment is isolated and visible', () => {
   assert.match(script, /flow_weight_shadow/);
   assert.match(script, /正式排名鎖定/);
   assert.match(script, /flow-alert-sound/);
+  assert.match(html, /訊號後實際方向驗證/);
+  assert.match(script, /訊號後5分鐘/);
+  assert.match(script, /訊號後15分鐘/);
+  assert.match(script, /訊號後60分鐘/);
+  assert.match(script, /第1交易日/);
+  assert.match(script, /第3交易日/);
+  assert.match(script, /第5交易日/);
 });
