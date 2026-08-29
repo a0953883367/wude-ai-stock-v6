@@ -499,10 +499,19 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
         de = debt_to_equity / 100 if debt_to_equity > 3 else debt_to_equity
         debt_ratio = de / (1 + de) * 100
     operating_cash_flow = number("operatingCashflow")
+    free_cash_flow = number("freeCashflow")
     eps = number("trailingEps", "forwardEps")
     market_cap = number("marketCap")
+    enterprise_value = number("enterpriseValue")
+    total_revenue = number("totalRevenue")
+    net_income = number("netIncomeToCommon", "netIncome")
+    total_cash = number("totalCash")
+    total_debt = number("totalDebt")
+    shares_outstanding = number("sharesOutstanding")
     fields = [per, pbr, dividend, revenue_growth, earnings_growth, gross_margin,
-              operating_margin, roe, debt_ratio, operating_cash_flow, eps, market_cap]
+              operating_margin, roe, debt_ratio, operating_cash_flow, eps, market_cap,
+              free_cash_flow, enterprise_value, total_revenue, net_income,
+              total_cash, total_debt, shares_outstanding]
     available = sum(value is not None for value in fields)
     return {
         "per": per, "pbr": pbr, "dividend_yield": dividend,
@@ -511,7 +520,15 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
         "roe_pct": roe, "debt_ratio_pct": debt_ratio,
         "operating_cash_flow": operating_cash_flow,
         "operating_cash_flow_positive": None if operating_cash_flow is None else float(operating_cash_flow > 0),
+        "free_cash_flow": free_cash_flow,
         "eps": eps, "market_cap": market_cap,
+        "enterprise_value": enterprise_value,
+        "total_revenue_ttm": total_revenue,
+        "net_income_ttm": net_income,
+        "total_cash": total_cash,
+        "total_debt": total_debt,
+        "shares_outstanding": shares_outstanding,
+        "valuation_shadow_schema_version": 1,
         "fundamental_available": float(any(value is not None for value in (per, pbr, dividend, revenue_growth))),
         "financial_quality_available": float(any(value is not None for value in (earnings_growth, gross_margin, operating_margin, roe, debt_ratio, operating_cash_flow))),
         "us_company_data_available": available > 0,
@@ -535,7 +552,10 @@ def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path |
     for symbol in symbols:
         item = cached.get(symbol, {})
         try:
-            fresh = (today - date.fromisoformat(str(item.get("cached_at")))).days < 1
+            fresh = (
+                (today - date.fromisoformat(str(item.get("cached_at")))).days < 1
+                and int(item.get("valuation_shadow_schema_version") or 0) >= 1
+            )
         except (TypeError, ValueError):
             fresh = False
         if fresh:
@@ -985,7 +1005,10 @@ def _aggregate_financial_quality_rows(
 
     output: dict[str, dict[str, float]] = {}
     for sid, sections in grouped.items():
-        item: dict[str, float] = {"financial_quality_available": 1.0}
+        item: dict[str, Any] = {
+            "financial_quality_available": 1.0,
+            "valuation_shadow_schema_version": 1,
+        }
         income_dates = sorted(sections.get("income", {}))
         net_income: float | None = None
         if income_dates:
@@ -997,6 +1020,10 @@ def _aggregate_financial_quality_rows(
             net_income = _statement_value(latest, {"IncomeAfterTaxes", "ProfitLoss", "NetIncome"}, ("本期淨利", "本期損益"))
             eps = _statement_value(latest, {"EPS", "BasicEarningsLossPerShare"}, ("每股盈餘",))
             item["financial_report_date"] = latest_date
+            if revenue is not None:
+                item["statement_revenue_ytd"] = revenue
+            if net_income is not None:
+                item["statement_net_income_ytd"] = net_income
             if eps is not None:
                 item["eps"] = eps
                 latest_year, latest_month = int(latest_date[:4]), latest_date[5:7]
@@ -1020,6 +1047,12 @@ def _aggregate_financial_quality_rows(
             assets = _statement_value(latest, {"Assets", "TotalAssets"}, ("資產總額", "資產合計"))
             liabilities = _statement_value(latest, {"Liabilities", "TotalLiabilities"}, ("負債總額", "負債合計"))
             equity = _statement_value(latest, {"Equity", "TotalEquity", "EquityAttributableToOwnersOfParent"}, ("權益總額", "權益合計"))
+            if assets is not None:
+                item["total_assets"] = assets
+            if liabilities is not None:
+                item["total_liabilities"] = liabilities
+            if equity is not None:
+                item["total_equity"] = equity
             if assets not in (None, 0) and liabilities is not None:
                 item["debt_ratio_pct"] = liabilities / assets * 100
         if net_income is not None and equity not in (None, 0):
@@ -1060,7 +1093,8 @@ def fetch_financial_quality(
             stale = (today - date.fromisoformat(cached_at)).days >= 30
         except ValueError:
             stale = True
-        if sid not in cached_rows or stale:
+        schema_missing = int(cached_rows.get(sid, {}).get("valuation_shadow_schema_version") or 0) < 1
+        if sid not in cached_rows or stale or schema_missing:
             pending.append(sid)
     target = set(pending[:batch_size])
     if target:

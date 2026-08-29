@@ -61,6 +61,11 @@ def _healthy_reports(tmp_path: Path) -> None:
         "status": "ok", "checked_at": timestamp, "last_success_at": timestamp,
         "formal_pipeline_continues": True, "changes_rankings": False,
     })
+    _write(tmp_path / "valuation_risk_shadow_health.json", {
+        "status": "ok", "checked_at": timestamp, "last_success_at": timestamp,
+        "formal_pipeline_continues": True, "changes_rankings": False,
+        "changes_weights": False,
+    })
 
 
 def test_healthy_guard_is_green(tmp_path: Path) -> None:
@@ -113,6 +118,25 @@ def test_rotation_failure_is_independent_warning(tmp_path: Path) -> None:
     assert guard["status"] == "warning"
     assert rotation["level"] == "warning"
     assert "正式排名與早中晚報仍繼續" in rotation["detail"]
+    assert guard["safety"]["changes_rankings"] is False
+
+
+def test_valuation_failure_is_independent_warning(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "valuation_risk_shadow_health.json", {
+        "status": "warning",
+        "checked_at": "2026-08-24 16:00:00",
+        "last_success_at": "2026-08-23 20:00:00",
+        "error_type": "RuntimeError",
+        "formal_pipeline_continues": True,
+        "changes_rankings": False,
+        "changes_weights": False,
+    })
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+    valuation = next(item for item in guard["checks"] if item["code"] == "valuation_risk_shadow")
+    assert guard["status"] == "warning"
+    assert valuation["level"] == "warning"
     assert guard["safety"]["changes_rankings"] is False
 
 

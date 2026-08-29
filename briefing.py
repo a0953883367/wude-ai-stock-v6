@@ -146,6 +146,64 @@ def _update_market_rotation_shadow_safely(
     return success
 
 
+def _update_valuation_risk_shadow_safely(
+    reports_dir,
+    rows,
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> bool:
+    """Quarantine valuation research failures from every formal output."""
+    health_path = reports_dir / "valuation_risk_shadow_health.json"
+    try:
+        previous = json.loads(health_path.read_text(encoding="utf-8"))
+        if not isinstance(previous, dict):
+            previous = {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        previous = {}
+    try:
+        from valuation_risk_shadow import update_valuation_risk_shadow
+
+        update_valuation_risk_shadow(
+            reports_dir,
+            rows,
+            period=period,
+            updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate shadow isolation
+        logging.exception("估值風險影子模組失敗；正式報表繼續")
+        health = {
+            "status": "warning",
+            "checked_at": updated_at,
+            "last_success_at": previous.get("last_success_at"),
+            "error_type": type(exc).__name__,
+            "detail": str(exc)[:300] or "估值影子發生未分類錯誤",
+            "formal_pipeline_continues": True,
+            "changes_rankings": False,
+            "changes_weights": False,
+            "places_orders": False,
+        }
+        success = False
+    else:
+        health = {
+            "status": "ok",
+            "checked_at": updated_at,
+            "last_success_at": updated_at,
+            "detail": "估值風險雷達正常；僅累積影子資料",
+            "formal_pipeline_continues": True,
+            "changes_rankings": False,
+            "changes_weights": False,
+            "places_orders": False,
+        }
+        success = True
+    tmp = reports_dir / "valuation_risk_shadow_health.tmp"
+    tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(health_path)
+    return success
+
+
 _NEXT_SESSION_FIELDS = (
     "next_session_model_version", "next_session_market_model",
     "next_session_direction", "next_session_confidence",
@@ -661,6 +719,12 @@ def main() -> int:
         for item in watchlist
         if item.get("market") == "TW"
     }
+    all_tw_stock_ids = {
+        item["symbol"].split(".")[0]
+        for item in universe
+        if item.get("market") == "TW"
+        and "ETF" not in str(item.get("type", "")).upper()
+    }
     us_symbols = {
         item["symbol"].upper()
         for item in universe
@@ -715,6 +779,13 @@ def main() -> int:
     )
     financial_quality = _stage(
         "財務品質快取", lambda: fetch_financial_quality(watchlist_stock_ids)
+    )
+    # Populate a separate, quota-bounded cache for the full Taiwan equity
+    # universe.  These rows are never merged into production features: only a
+    # copied input reaches the isolated valuation radar below.
+    valuation_tw_financial = _stage(
+        "估值影子財報快取",
+        lambda: fetch_financial_quality(all_tw_stock_ids, batch_size=30),
     )
     us_short_volume = _stage("美股放空量", lambda: fetch_us_short_volume(us_symbols))
     us_company_metadata = _stage(
@@ -1126,6 +1197,26 @@ def main() -> int:
     _update_market_rotation_shadow_safely(
         SETTINGS.reports_dir,
         simulation_rows,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+    )
+    valuation_rows = []
+    for source_row in ranked:
+        valuation_row = dict(source_row)
+        if (
+            valuation_row.get("market") == "TW"
+            and "ETF" not in str(valuation_row.get("type", "")).upper()
+        ):
+            valuation_row.update(
+                valuation_tw_financial.get(
+                    str(valuation_row.get("symbol") or "").split(".")[0], {}
+                )
+            )
+        valuation_rows.append(valuation_row)
+    _update_valuation_risk_shadow_safely(
+        SETTINGS.reports_dir,
+        valuation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
