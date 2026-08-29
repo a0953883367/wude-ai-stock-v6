@@ -24,9 +24,24 @@ def build_payload(report_dir: Path = Path("reports")) -> tuple[bytes, int]:
         candidate = json.loads(rotation_path.read_text(encoding="utf-8"))
         if isinstance(candidate, dict) and isinstance(candidate.get("markets"), dict):
             rotation = candidate
+    latest_path = report_dir / "latest.json"
+    latest = json.loads(latest_path.read_text(encoding="utf-8")) if latest_path.exists() else {}
+    guard_path = report_dir / "system_guard.json"
+    guard = json.loads(guard_path.read_text(encoding="utf-8")) if guard_path.exists() else {}
+    integrity = {
+        "report": {
+            "candidate_count": source.get("candidate_count"),
+            "analyzed_count": source.get("analyzed_count", len(rows)),
+            "unavailable_count": source.get("unavailable_count"),
+            "unavailable": latest.get("unavailable", []),
+            "data_status": latest.get("data_status", {}),
+        },
+        "guard": guard,
+    }
     payload = json.dumps({
         "data": rows,
         "rotation": rotation,
+        "integrity": integrity,
         "updated_at": source.get("updated_at", "等待更新"),
         "period": source.get("period", "—"),
     }, ensure_ascii=False).encode("utf-8")

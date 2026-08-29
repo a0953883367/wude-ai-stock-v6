@@ -13,6 +13,13 @@ def test_owner_payload_includes_rotation_without_environment_secrets(tmp_path, m
     (reports / "market_rotation_shadow.json").write_text(json.dumps({
         "version": 1, "markets": {"TW": {"status": "collecting"}, "US": {}}
     }), encoding="utf-8")
+    (reports / "latest.json").write_text(json.dumps({
+        "unavailable": [{"symbol": "6806.TW", "name": "森崴能源"}],
+        "data_status": {"broker_count": 0, "financial_quality_count": 59},
+    }), encoding="utf-8")
+    (reports / "system_guard.json").write_text(json.dumps({
+        "status": "warning", "checks": [{"code": "broker_data", "level": "warning"}],
+    }), encoding="utf-8")
     monkeypatch.setenv("OWNER_SITE_BYPASS_TOKEN", "must-never-enter-payload")
 
     encoded, count = build_payload(reports)
@@ -20,6 +27,9 @@ def test_owner_payload_includes_rotation_without_environment_secrets(tmp_path, m
 
     assert count == 1
     assert payload["rotation"]["markets"]["TW"]["status"] == "collecting"
+    assert payload["integrity"]["report"]["data_status"]["broker_count"] == 0
+    assert payload["integrity"]["report"]["unavailable"][0]["symbol"] == "6806.TW"
+    assert payload["integrity"]["guard"]["status"] == "warning"
     assert b"must-never-enter-payload" not in encoded
 
 

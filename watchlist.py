@@ -124,7 +124,7 @@ WATCHLIST: list[dict[str, Any]] = [
         "order": 13
     },
     {
-        "symbol": "8150.TWO",
+        "symbol": "8150.TW",
         "name": "南茂",
         "market": "TW",
         "type": "個股",
@@ -430,7 +430,7 @@ WATCHLIST: list[dict[str, Any]] = [
         "order": 47
     },
     {
-        "symbol": "00998A.TW",
+        "symbol": "00991A.TW",
         "name": "主動復華未來50",
         "market": "TW",
         "type": "ETF",
@@ -750,10 +750,10 @@ _POWER_AND_FRIEND_ADDITIONS = (
     ("2371.TW", "大同", "TW", "重電／電網", "重電設備"),
     # Taiwan: generation, renewables, storage, and power management.
     ("8926.TW", "台汽電", "TW", "發電／售電", "電力事業"),
-    ("6806.TW", "森崴能源", "TW", "再生能源", "綠能工程"),
+    # 森崴能源 6806 已終止上市，保留歷史報表但不再列入主動追蹤。
     ("6873.TW", "泓德能源", "TW", "再生能源", "綠能售電"),
     ("6869.TW", "雲豹能源", "TW", "再生能源", "綠能售電"),
-    ("3713.TW", "新晶投控", "TW", "再生能源", "太陽能"),
+    ("3713.TWO", "新晶投控", "TW", "再生能源", "太陽能"),
     ("2308.TW", "台達電", "TW", "AI資料中心電力", "電源管理"),
     ("6781.TW", "AES-KY", "TW", "儲能", "電池模組"),
     ("3027.TW", "盛達", "TW", "儲能", "能源管理"),
