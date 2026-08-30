@@ -15,7 +15,8 @@ assert.ok(html.includes('法人額外效益'));
   '資料完整度',
   '排名／次日漲幅一致性',
   '實際TOP20捕捉',
-  '10檔必須全部取得同一交易日官方開收盤價才算有效',
+  '每組原選10檔，至少9檔取得同一交易日官方開收盤價即可結算',
+  '缺少標的資金保留現金、不轉配',
   '不會自動把勝出權重套回正式排名'
 ].forEach((text) => assert.ok(html.includes(text), `missing weight UI contract: ${text}`));
 

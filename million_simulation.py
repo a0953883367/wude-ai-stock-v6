@@ -22,6 +22,7 @@ VERSION = 1
 CAPITAL_PER_MARKET = 1_000_000
 ALLOCATION_PER_PICK = 50_000
 PICKS_PER_STRATEGY = 10
+MIN_POSITIONS_PER_STRATEGY = PICKS_PER_STRATEGY - 1
 TARGET_TRADING_DAYS = 5
 START_DATE = "2026-08-24"
 STRATEGIES = ("overall", "short")
@@ -130,6 +131,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "capital_per_market_twd": CAPITAL_PER_MARKET,
             "allocation_per_pick_twd": ALLOCATION_PER_PICK,
             "picks_per_strategy": PICKS_PER_STRATEGY,
+            "minimum_positions_per_strategy": MIN_POSITIONS_PER_STRATEGY,
             "strategies": ["綜合排名前10名", "短線排名前10名"],
             "target_trading_days": TARGET_TRADING_DAYS,
             "start_date": START_DATE,
@@ -140,7 +142,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "benchmark": {market: BENCHMARKS[market]["label"] for market in MARKETS},
             "strict_portfolio": "只有排名資格層2且可驗證成交者才買；其他配置保留現金",
             "execution": "官方開盤／收盤；台股開高低同價且漲幅達9.5%視為鎖漲停買不到；缺資料不成交；部分成交無逐筆委託簿資料時不捏造",
-            "settlement_coverage": "20筆凍結標的與大盤基準都取得同一交易日正式收盤資料後才結算；缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳",
+            "settlement_coverage": "每組原選10檔、至少9檔取得同一交易日正式開收盤價即可結算；缺少標的配置保留現金、不轉配；任一組少於9檔或大盤基準缺價則等待或隔離；缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳",
             "manual_trades": "使用者暫時人工交易不列入正式模型成績",
             "orders": "純網頁影子試走，不連接券商、不送單",
         },
@@ -262,6 +264,13 @@ def _settle_strategy(
         "planned_capital_twd": PICKS_PER_STRATEGY * ALLOCATION_PER_PICK,
         "invested_twd": round(invested, 2),
         "idle_twd": round(PICKS_PER_STRATEGY * ALLOCATION_PER_PICK - invested, 2),
+        "available_positions": sum(position["data_available"] for position in positions),
+        "required_positions": PICKS_PER_STRATEGY,
+        "minimum_required_positions": MIN_POSITIONS_PER_STRATEGY,
+        "missing_symbols": [
+            str(position.get("symbol") or "")
+            for position in positions if not position["data_available"]
+        ],
         "gross_profit_twd": round(profit, 2),
         "gross_return_pct": round(profit / (PICKS_PER_STRATEGY * ALLOCATION_PER_PICK) * 100, 4),
         "net_profit_twd": round(net_profit, 2),
@@ -312,8 +321,10 @@ def _settlement_coverage(
         for row in rows if _is_stock(row, market)
     }
     missing: list[str] = []
-    available_positions = 0
+    strategy_coverage: dict[str, dict[str, Any]] = {}
     for strategy in STRATEGIES:
+        strategy_missing: list[str] = []
+        available_positions = 0
         for pick in pending.get("strategies", {}).get(strategy, []):
             symbol = str(pick.get("symbol") or "")
             row = row_map.get(symbol)
@@ -327,15 +338,31 @@ def _settlement_coverage(
                 available_positions += 1
             else:
                 missing.append(symbol)
+                strategy_missing.append(symbol)
+        strategy_coverage[strategy] = {
+            "required_positions": PICKS_PER_STRATEGY,
+            "minimum_required_positions": MIN_POSITIONS_PER_STRATEGY,
+            "available_positions": available_positions,
+            "missing_symbols": strategy_missing,
+            "eligible": (
+                len(pending.get("strategies", {}).get(strategy, [])) == PICKS_PER_STRATEGY
+                and available_positions >= MIN_POSITIONS_PER_STRATEGY
+            ),
+        }
     benchmark = _settle_benchmark(rows, market, session_date)
     if not benchmark.get("data_available"):
         missing.append(BENCHMARKS[market]["symbol"])
     return {
         "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
-        "available_positions": available_positions,
+        "minimum_required_positions": MIN_POSITIONS_PER_STRATEGY * len(STRATEGIES),
+        "minimum_positions_per_strategy": MIN_POSITIONS_PER_STRATEGY,
+        "available_positions": sum(
+            item["available_positions"] for item in strategy_coverage.values()
+        ),
+        "strategy_coverage": strategy_coverage,
         "benchmark_available": benchmark.get("data_available") is True,
         "missing_symbols": list(dict.fromkeys(missing)),
-        "complete": available_positions == PICKS_PER_STRATEGY * len(STRATEGIES)
+        "complete": all(item["eligible"] for item in strategy_coverage.values())
         and benchmark.get("data_available") is True,
     }
 
@@ -461,27 +488,159 @@ def _recalculate_market_totals(market_state: dict[str, Any]) -> None:
 def _quarantine_incomplete_legacy_days(market_state: dict[str, Any]) -> None:
     valid, invalid = [], list(market_state.get("invalid_days") or [])
     for day in market_state.get("days") or []:
-        positions = [
-            position
+        strategy_positions = {
+            strategy: day.get("strategies", {}).get(strategy, {}).get("positions", [])
             for strategy in STRATEGIES
-            for position in day.get("strategies", {}).get(strategy, {}).get("positions", [])
+        }
+        positions = [
+            position for strategy in STRATEGIES
+            for position in strategy_positions[strategy]
         ]
-        complete = (
-            len(positions) == PICKS_PER_STRATEGY * len(STRATEGIES)
-            and all(position.get("data_available") is True for position in positions)
+        strategy_coverage = {
+            strategy: {
+                "required_positions": PICKS_PER_STRATEGY,
+                "minimum_required_positions": MIN_POSITIONS_PER_STRATEGY,
+                "available_positions": sum(
+                    position.get("data_available") is True
+                    for position in strategy_positions[strategy]
+                ),
+            }
+            for strategy in STRATEGIES
+        }
+        complete = bool(
+            all(
+                len(strategy_positions[strategy]) == PICKS_PER_STRATEGY
+                and strategy_coverage[strategy]["available_positions"] >= MIN_POSITIONS_PER_STRATEGY
+                for strategy in STRATEGIES
+            )
             and day.get("benchmark", {}).get("data_available") is True
         )
         if complete:
+            for strategy in STRATEGIES:
+                result = day.get("strategies", {}).get(strategy, {})
+                available = [
+                    position for position in strategy_positions[strategy]
+                    if position.get("data_available") is True
+                ]
+                invested = sum(
+                    _finite(position.get("allocation_twd"), ALLOCATION_PER_PICK)
+                    for position in available
+                )
+                gross_profit = sum(_finite(position.get("gross_profit_twd")) for position in available)
+                net_profit = sum(_finite(position.get("net_profit_twd")) for position in available)
+                strict_positions = [
+                    position for position in available if position.get("strict_executed") is True
+                ]
+                strict_invested = sum(
+                    _finite(position.get("allocation_twd"), ALLOCATION_PER_PICK)
+                    for position in strict_positions
+                )
+                result.update({
+                    **strategy_coverage[strategy],
+                    "missing_symbols": [
+                        str(position.get("symbol") or "")
+                        for position in strategy_positions[strategy]
+                        if position.get("data_available") is not True
+                    ],
+                    "invested_twd": round(invested, 2),
+                    "idle_twd": round(PICKS_PER_STRATEGY * ALLOCATION_PER_PICK - invested, 2),
+                    "gross_profit_twd": round(gross_profit, 2),
+                    "gross_return_pct": round(
+                        gross_profit / (PICKS_PER_STRATEGY * ALLOCATION_PER_PICK) * 100, 4
+                    ),
+                    "net_profit_twd": round(net_profit, 2),
+                    "net_return_pct": round(
+                        net_profit / (PICKS_PER_STRATEGY * ALLOCATION_PER_PICK) * 100, 4
+                    ),
+                    "strict": {
+                        **(result.get("strict") or {}),
+                        "executed_positions": len(strict_positions),
+                        "planned_positions": PICKS_PER_STRATEGY,
+                        "invested_twd": round(strict_invested, 2),
+                        "idle_twd": round(
+                            PICKS_PER_STRATEGY * ALLOCATION_PER_PICK - strict_invested, 2
+                        ),
+                        "gross_profit_twd": round(sum(
+                            _finite(position.get("gross_profit_twd"))
+                            for position in strict_positions
+                        ), 2),
+                        "net_profit_twd": round(sum(
+                            _finite(position.get("net_profit_twd"))
+                            for position in strict_positions
+                        ), 2),
+                    },
+                })
+                result["strict"]["net_return_pct"] = round(
+                    _finite(result["strict"].get("net_profit_twd"))
+                    / (PICKS_PER_STRATEGY * ALLOCATION_PER_PICK) * 100, 4
+                )
+            day.update({
+                "available_positions": sum(
+                    item["available_positions"] for item in strategy_coverage.values()
+                ),
+                "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+                "minimum_required_positions": MIN_POSITIONS_PER_STRATEGY * len(STRATEGIES),
+                "minimum_positions_per_strategy": MIN_POSITIONS_PER_STRATEGY,
+                "strategy_coverage": strategy_coverage,
+                "missing_symbols": list(dict.fromkeys(
+                    str(position.get("symbol") or "")
+                    for position in positions if position.get("data_available") is not True
+                )),
+            })
+            day["nine_of_ten_settlement"] = day["available_positions"] < day["required_positions"]
+            day["gross_profit_twd"] = round(sum(
+                _finite(day.get("strategies", {}).get(strategy, {}).get("gross_profit_twd"))
+                for strategy in STRATEGIES
+            ), 2)
+            day["gross_return_pct"] = round(
+                _finite(day.get("gross_profit_twd")) / CAPITAL_PER_MARKET * 100, 4
+            )
+            day["ending_capital_twd"] = round(
+                CAPITAL_PER_MARKET + _finite(day.get("gross_profit_twd")), 2
+            )
+            day["net_profit_twd"] = round(sum(
+                _finite(day.get("strategies", {}).get(strategy, {}).get("net_profit_twd"))
+                for strategy in STRATEGIES
+            ), 2)
+            day["net_return_pct"] = round(
+                _finite(day.get("net_profit_twd")) / CAPITAL_PER_MARKET * 100, 4
+            )
+            day["net_ending_capital_twd"] = round(
+                CAPITAL_PER_MARKET + _finite(day.get("net_profit_twd")), 2
+            )
+            strict_invested = sum(
+                _finite(day.get("strategies", {}).get(strategy, {}).get("strict", {}).get("invested_twd"))
+                for strategy in STRATEGIES
+            )
+            strict_net_profit = sum(
+                _finite(day.get("strategies", {}).get(strategy, {}).get("strict", {}).get("net_profit_twd"))
+                for strategy in STRATEGIES
+            )
+            day["strict_portfolio"] = {
+                **(day.get("strict_portfolio") or {}),
+                "executed_positions": sum(
+                    int(_finite(day.get("strategies", {}).get(strategy, {}).get("strict", {}).get("executed_positions")))
+                    for strategy in STRATEGIES
+                ),
+                "planned_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+                "invested_twd": round(strict_invested, 2),
+                "idle_twd": round(CAPITAL_PER_MARKET - strict_invested, 2),
+                "net_profit_twd": round(strict_net_profit, 2),
+                "net_return_pct": round(strict_net_profit / CAPITAL_PER_MARKET * 100, 4),
+            }
             valid.append(day)
             continue
         invalid.append({
             "status": "data_insufficient",
-            "reason": "舊版曾在官方成交資料未滿20筆時提前結算，已自動撤銷成績",
+            "reason": "舊版結算未達每組至少9/10檔或缺少大盤基準，已自動撤銷成績",
             "signal_session_date": day.get("signal_session_date"),
             "session_date": day.get("session_date"),
             "ranking_snapshot_id": day.get("ranking_snapshot_id"),
             "available_positions": sum(position.get("data_available") is True for position in positions),
             "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
+            "minimum_required_positions": MIN_POSITIONS_PER_STRATEGY * len(STRATEGIES),
+            "minimum_positions_per_strategy": MIN_POSITIONS_PER_STRATEGY,
+            "strategy_coverage": strategy_coverage,
             "missing_symbols": list(dict.fromkeys(
                 str(position.get("symbol") or "")
                 for position in positions if position.get("data_available") is not True
@@ -530,9 +689,12 @@ def _settle_pending(
             "signal_session_date": signal_date,
             "session_date": execution_date,
             "ranking_snapshot_id": pending.get("snapshot_id"),
-            "available_positions": pending.get("available_positions", 0),
+            "available_positions": coverage["available_positions"],
             "required_positions": PICKS_PER_STRATEGY * len(STRATEGIES),
-            "missing_symbols": pending.get("missing_symbols", []),
+            "minimum_required_positions": coverage["minimum_required_positions"],
+            "minimum_positions_per_strategy": coverage["minimum_positions_per_strategy"],
+            "strategy_coverage": coverage["strategy_coverage"],
+            "missing_symbols": coverage["missing_symbols"],
         })
         market_state["invalid_days"] = market_state["invalid_days"][-20:]
         market_state["pending"] = None
@@ -543,6 +705,9 @@ def _settle_pending(
             "settlement_status": "waiting_for_official_prices",
             "available_positions": coverage["available_positions"],
             "required_positions": coverage["required_positions"],
+            "minimum_required_positions": coverage["minimum_required_positions"],
+            "minimum_positions_per_strategy": coverage["minimum_positions_per_strategy"],
+            "strategy_coverage": coverage["strategy_coverage"],
             "benchmark_available": coverage["benchmark_available"],
             "missing_symbols": coverage["missing_symbols"],
         })
@@ -550,7 +715,8 @@ def _settle_pending(
         return False
     for key in (
         "settlement_status", "available_positions", "required_positions",
-        "benchmark_available", "missing_symbols",
+        "minimum_required_positions", "minimum_positions_per_strategy",
+        "strategy_coverage", "benchmark_available", "missing_symbols",
     ):
         pending.pop(key, None)
     row_map = {
@@ -600,6 +766,13 @@ def _settle_pending(
         "benchmark": benchmark,
         "ranking_snapshot_id": pending.get("snapshot_id"),
         "ranking_model_versions": pending.get("model_versions"),
+        "available_positions": coverage["available_positions"],
+        "required_positions": coverage["required_positions"],
+        "minimum_required_positions": coverage["minimum_required_positions"],
+        "minimum_positions_per_strategy": coverage["minimum_positions_per_strategy"],
+        "strategy_coverage": coverage["strategy_coverage"],
+        "missing_symbols": coverage["missing_symbols"],
+        "nine_of_ten_settlement": coverage["available_positions"] < coverage["required_positions"],
         "strategies": strategies,
     }
     market_state.setdefault("days", []).append(day)
@@ -624,15 +797,17 @@ def update_state(
         "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入"
     )
     state["policy"]["benchmark"] = {market: BENCHMARKS[market]["label"] for market in MARKETS}
+    state["policy"]["minimum_positions_per_strategy"] = MIN_POSITIONS_PER_STRATEGY
     state["policy"]["strict_portfolio"] = "只有排名資格層2且可驗證成交者才買；其他配置保留現金"
     state["policy"]["execution"] = (
         "官方開盤／收盤；台股開高低同價且漲幅達9.5%視為鎖漲停買不到；"
-        "20筆凍結標的與基準未完整時不結算；部分成交無逐筆委託簿資料時不捏造"
+        "每組原選10檔、至少9檔且基準完整才結算；缺少標的資金保留現金；"
+        "部分成交無逐筆委託簿資料時不捏造"
     )
     state["policy"]["settlement_coverage"] = (
-        "20筆凍結標的與大盤基準都取得同一交易日正式收盤資料後才結算；"
-        "缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳；"
-        "跨至下一交易日仍不足則隔離且不列成績"
+        "每組原選10檔、至少9檔取得同一交易日正式開收盤價即可結算；"
+        "缺少標的配置保留現金、不轉配；任一組少於9檔或基準缺價時不結算；"
+        "缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳；跨至下一交易日仍不足則隔離"
     )
     state["policy"]["manual_trades"] = "使用者暫時人工交易不列入正式模型成績"
     for market in MARKETS:
