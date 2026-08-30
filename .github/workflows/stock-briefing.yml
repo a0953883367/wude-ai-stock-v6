@@ -5,12 +5,15 @@ name: AI 股票早中晚報
 
 on:
   schedule:
-    # Fixed official reports only (UTC): Taiwan 06:00 / 12:00 / 20:00.
+    # UTC schedule: Taiwan 06:00 / 12:00 / 20:00 reports plus a weekday
+    # 17:00 Taiwan-close settlement.  The 17:00 run is silent and exists only
+    # to settle Taiwan ledgers before the 20:00 evening notification.
     # Code pushes must not start a competing refresh or replace a close
     # checkpoint. A newly merged change takes effect at the next fixed report,
     # or can be verified with an explicit workflow_dispatch run.
     - cron: "0 22 * * *"
     - cron: "0 4 * * *"
+    - cron: "0 9 * * 1-5"
     - cron: "0 12 * * *"
   workflow_dispatch:
     inputs:
@@ -52,6 +55,7 @@ jobs:
         shell: bash
         run: |
           commit_message=""
+          no_telegram="false"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             period="${{ inputs.period }}"
             commit_message="更新 AI 股票${period}報"
@@ -59,6 +63,11 @@ jobs:
             case "${{ github.event.schedule }}" in
               "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;
               "0 4 * * *") period="noon"; commit_message="更新 AI 股票noon報" ;;
+              "0 9 * * 1-5")
+                period="evening"
+                no_telegram="true"
+                commit_message="更新台股17:00收盤結算"
+                ;;
               "0 12 * * *") period="evening"; commit_message="更新 AI 股票evening報" ;;
               *)
                 echo "Unsupported schedule: ${{ github.event.schedule }}" >&2
@@ -67,6 +76,7 @@ jobs:
             esac
           fi
           echo "value=$period" >> "$GITHUB_OUTPUT"
+          echo "no_telegram=$no_telegram" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
       - name: Generate report
         id: generate
@@ -81,6 +91,9 @@ jobs:
         shell: bash
         run: |
           args=(--period "${{ steps.period.outputs.value }}")
+          if [ "${{ steps.period.outputs.no_telegram }}" = "true" ]; then
+            args+=(--no-telegram)
+          fi
           python briefing.py "${args[@]}"
       - name: Publish sanitized friend-site data
         id: friend_publish
