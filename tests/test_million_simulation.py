@@ -324,10 +324,10 @@ def test_legacy_day_with_only_eight_in_one_strategy_is_quarantined():
     assert market["invalid_days"][-1]["reason"].startswith("舊版結算未達")
 
 
-def test_experiment_stops_after_five_completed_sessions():
+def test_taiwan_experiment_stops_after_six_completed_sessions():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="evening", updated_at="start")
-    for day in range(24, 29):
+    for day in range(24, 30):
         update_state(
             state,
             universe(f"2026-08-{day}"),
@@ -335,6 +335,24 @@ def test_experiment_stops_after_five_completed_sessions():
             updated_at=f"2026-08-{day} 20:00:00",
         )
     market = state["markets"]["TW"]
+    assert market["completed_days"] == 6
+    assert market["target_trading_days"] == 6
+    assert market["status"] == "complete"
+    assert market["pending"] is None
+
+
+def test_us_experiment_remains_complete_after_five_sessions():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="start")
+    for day in range(24, 29):
+        update_state(
+            state,
+            universe(f"2026-08-{day}"),
+            period="morning",
+            updated_at=f"2026-08-{day} 06:00:00",
+        )
+    market = state["markets"]["US"]
     assert market["completed_days"] == 5
+    assert market["target_trading_days"] == 5
     assert market["status"] == "complete"
     assert market["pending"] is None

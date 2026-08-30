@@ -23,7 +23,7 @@ CAPITAL_PER_MARKET = 1_000_000
 ALLOCATION_PER_PICK = 50_000
 PICKS_PER_STRATEGY = 10
 MIN_POSITIONS_PER_STRATEGY = PICKS_PER_STRATEGY - 1
-TARGET_TRADING_DAYS = 5
+TARGET_TRADING_DAYS_BY_MARKET = {"TW": 6, "US": 5}
 START_DATE = "2026-08-24"
 STRATEGIES = ("overall", "short")
 MARKETS = ("TW", "US")
@@ -105,7 +105,7 @@ def _empty_market(market: str) -> dict[str, Any]:
         "market": market,
         "label": MARKET_LABELS[market],
         "capital_twd": CAPITAL_PER_MARKET,
-        "target_trading_days": TARGET_TRADING_DAYS,
+        "target_trading_days": TARGET_TRADING_DAYS_BY_MARKET[market],
         "completed_days": 0,
         "status": "waiting",
         "cumulative_gross_profit_twd": 0.0,
@@ -133,7 +133,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "picks_per_strategy": PICKS_PER_STRATEGY,
             "minimum_positions_per_strategy": MIN_POSITIONS_PER_STRATEGY,
             "strategies": ["綜合排名前10名", "短線排名前10名"],
-            "target_trading_days": TARGET_TRADING_DAYS,
+            "target_trading_days_by_market": TARGET_TRADING_DAYS_BY_MARKET,
             "start_date": START_DATE,
             "entry": "前一個完成交易日排名快照；下一交易日官方開盤價",
             "exit": "同一交易日官方收盤價，作為收盤前賣出代理",
@@ -778,7 +778,9 @@ def _settle_pending(
     market_state.setdefault("days", []).append(day)
     market_state["pending"] = None
     _recalculate_market_totals(market_state)
-    market_state["status"] = "complete" if market_state["completed_days"] >= TARGET_TRADING_DAYS else "running"
+    target_days = TARGET_TRADING_DAYS_BY_MARKET[market]
+    market_state["target_trading_days"] = target_days
+    market_state["status"] = "complete" if market_state["completed_days"] >= target_days else "running"
     return True
 
 
@@ -792,6 +794,8 @@ def update_state(
     price_history: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     state["updated_at"] = updated_at
+    state.setdefault("policy", {}).pop("target_trading_days", None)
+    state["policy"]["target_trading_days_by_market"] = TARGET_TRADING_DAYS_BY_MARKET
     state.setdefault("policy", {})["round_trip_cost_pct"] = ROUND_TRIP_COST_PCT
     state["policy"]["costs"] = (
         "同時保留毛損益與估算淨損益；台股0.685%，美股0.20%；美股匯率另列不混入"
@@ -812,6 +816,8 @@ def update_state(
     state["policy"]["manual_trades"] = "使用者暫時人工交易不列入正式模型成績"
     for market in MARKETS:
         market_state = state["markets"].setdefault(market, _empty_market(market))
+        target_days = TARGET_TRADING_DAYS_BY_MARKET[market]
+        market_state["target_trading_days"] = target_days
         market_state.setdefault("cumulative_net_profit_twd", 0.0)
         market_state.setdefault("cumulative_net_return_pct", 0.0)
         market_state.setdefault("cumulative_strict_net_profit_twd", 0.0)
@@ -820,14 +826,14 @@ def update_state(
         market_state.setdefault("cumulative_benchmark_net_return_pct", 0.0)
         market_state.setdefault("invalid_days", [])
         _quarantine_incomplete_legacy_days(market_state)
-        if market_state.get("status") == "complete" and market_state.get("completed_days", 0) < TARGET_TRADING_DAYS:
+        if market_state.get("status") == "complete" and market_state.get("completed_days", 0) < target_days:
             market_state["status"] = "running"
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         if market_state.get("status") == "complete":
             continue
         _settle_pending(market_state, rows, market, price_history)
-        if market_state.get("completed_days", 0) >= TARGET_TRADING_DAYS:
+        if market_state.get("completed_days", 0) >= target_days:
             market_state["status"] = "complete"
             market_state["pending"] = None
             continue

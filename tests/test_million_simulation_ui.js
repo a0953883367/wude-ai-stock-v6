@@ -6,7 +6,7 @@ const fs = require('fs');
 const html = fs.readFileSync('index.html', 'utf8');
 const required = [
   'data-view="MILLION"',
-  '100萬元5日試走',
+  '100萬元試走',
   'reports/million_simulation.json',
   'function showMillionSimulation()',
   '綜合排名前10名',
@@ -36,6 +36,11 @@ const state = JSON.parse(fs.readFileSync('reports/million_simulation.json', 'utf
 assert.strictEqual(state.mode, 'web_shadow_only');
 assert.strictEqual(state.policy.start_date, '2026-08-24');
 assert.strictEqual(state.policy.capital_per_market_twd, 1000000);
+assert.deepStrictEqual(state.policy.target_trading_days_by_market, {TW: 6, US: 5});
+assert.strictEqual(state.markets.TW.completed_days, 5);
+assert.strictEqual(state.markets.TW.target_trading_days, 6);
+assert.strictEqual(state.markets.US.completed_days, 5);
+assert.strictEqual(state.markets.US.target_trading_days, 5);
 for (const market of ['TW', 'US']) {
   const pending = state.markets[market].pending;
   if (pending) {
