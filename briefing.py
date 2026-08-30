@@ -71,6 +71,7 @@ from stockq_us_close import (
     load_us_shadow_symbols,
     update_stockq_us_close_fallback,
 )
+from tiingo_us_close import update_tiingo_us_close_fallback
 from tw_financial_official import fetch_tw_official_financials
 from watchlist import load_watchlist
 
@@ -85,6 +86,14 @@ def _stage(label: str, action):
     result = action()
     logging.info("資料階段完成：%s（%.1f 秒）", label, time.monotonic() - started)
     return result
+
+
+def _tiingo_public_summary(payload: dict) -> dict:
+    """Expose coverage diagnostics without leaking internal-use raw prices."""
+    private_keys = {
+        "rows", "covered_requested_symbols", "missing_requested_symbols"
+    }
+    return {key: value for key, value in payload.items() if key not in private_keys}
 
 
 def _update_market_rotation_shadow_safely(
@@ -899,6 +908,18 @@ def main() -> int:
             timeout=SETTINGS.request_timeout,
         ),
     )
+    # Tiingo's free individual tier is quota-bounded and private/internal-use
+    # only. It rotates through at most 45 symbols per report and promotes only
+    # a completed collection cycle. The rows never enter feature construction.
+    tiingo_us_close_fallback = _stage(
+        "Tiingo免費美股收盤價分批備援層",
+        lambda: update_tiingo_us_close_fallback(
+            SETTINGS.reports_dir,
+            updated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
+            requested_symbols=us_symbols,
+            timeout=SETTINGS.request_timeout,
+        ),
+    )
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
     previous = previous_rows if freeze_tw_prices else {}
@@ -1249,6 +1270,11 @@ def main() -> int:
         "market": market,
         "stockq_market_context": stockq_market_context,
         "stockq_us_close_fallback": stockq_us_close_fallback,
+        # Never serialize Tiingo's internal-use raw rows into GitHub Pages.
+        # Only non-price coverage diagnostics may leave the private CI cache.
+        "tiingo_us_close_fallback": _tiingo_public_summary(
+            tiingo_us_close_fallback
+        ),
         "macro_regime": macro_regime,
         "tw_market_context": tw_market_context,
         "data_status": {
@@ -1290,6 +1316,17 @@ def main() -> int:
             "stockq_us_close_covered_count": stockq_us_close_fallback.get(
                 "covered_requested_count", 0
             ),
+            "tiingo_us_close_configured": bool(
+                tiingo_us_close_fallback.get("configured")
+            ),
+            "tiingo_us_close_status": tiingo_us_close_fallback.get("status"),
+            "tiingo_us_close_count": tiingo_us_close_fallback.get("symbol_count", 0),
+            "tiingo_us_close_covered_count": tiingo_us_close_fallback.get(
+                "covered_requested_count", 0
+            ),
+            "tiingo_us_close_staging_count": tiingo_us_close_fallback.get(
+                "staging_attempted_count", 0
+            ),
             "expected_tw_count": len(watchlist_stock_ids),
         },
         "watchlist": watchlist_rows,
@@ -1315,11 +1352,12 @@ def main() -> int:
             "market_isolation": "台股個股TW-STOCK-V5、台灣ETF TW-ETF-V5與美股US-V3使用獨立資料契約；台股採個股／同族群／台股市場分層校正，跨市場欄位會在計分前清除",
             "tw_layered_context": "台股個股以個股70%、同族群20%、台股市場10%計分；台灣ETF提高市場層比重。缺少背景資料時不以中性值冒充，且不影響US-V3",
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
-            "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/StockQ/FINRA備援且明確降低資料涵蓋",
+            "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/StockQ/FINRA備援，Tiingo免費版僅私密測試涵蓋率",
             "us_fundamental_fallback": "美股個股財務資料不足時以免費官方SEC EDGAR companyfacts補空值；不覆蓋既有值、ETF不適用、非美元申報不混入美元絕對金額",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "after_close_prices": "自動報告盤中不抓、不補、不結算台股價格；中午報沿用上一個完整交易日，晚報收盤後才更新",
             "stockq_context": "StockQ作收盤後備援：全球市場頁只補缺少的市場指標；熱門美股頁只補已完成交易日收盤價。兩者皆不覆蓋完整主來源；個股備援不補開盤、最高、最低、成交量，不建立新持倉、不結算開收盤試驗、不重算正式排名",
+            "tiingo_context": "Tiingo免費個人方案目前只做私密覆蓋測試；每次最多45檔、完整輪巡後只公開涵蓋檔數與日期，原始價格不進網站、結算、持倉、排名或朋友版",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
             "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
             "institutional_accumulation": "台股法人蓄力分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；資料完整時占台股個股短線排名20%，另設獨立法人蓄力榜並持續累積扣成本驗證",
@@ -1343,11 +1381,14 @@ def main() -> int:
     # full price universe. Otherwise yesterday's frozen pick is falsely marked
     # missing as soon as it falls outside today's TOP20.
     simulation_rows = _simulation_input_rows(ranking_rows, ranked)
+    required_us_shadow_symbols = load_us_shadow_symbols(SETTINGS.reports_dir)
+    # The free Tiingo license is coverage-audit only. StockQ remains the only
+    # externally displayable close-only fallback applied to shadow valuation.
     holding_simulation_rows, stockq_close_applied = apply_stockq_us_close_to_simulation_rows(
         simulation_rows,
         stockq_us_close_fallback,
         universe,
-        required_symbols=load_us_shadow_symbols(SETTINGS.reports_dir),
+        required_symbols=required_us_shadow_symbols,
     )
     if stockq_close_applied:
         logging.info(

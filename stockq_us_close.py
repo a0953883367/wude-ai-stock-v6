@@ -152,6 +152,7 @@ def parse_stockq_us_close_html(html: str, *, updated_at: str) -> dict[str, dict[
             "source": "StockQ",
             "source_url": SOURCE_URL,
             "stockq_close_only": True,
+            "close_only_fallback": True,
         }
     return output
 
@@ -377,6 +378,7 @@ def apply_stockq_us_close_to_simulation_rows(
                 "price": current.get("price") or close_price,
                 "official_price_source": "StockQ_after_close_close_only",
                 "stockq_close_only": True,
+                "close_only_fallback": True,
             })
         else:
             item = catalog.get(symbol)
@@ -393,6 +395,7 @@ def apply_stockq_us_close_to_simulation_rows(
                 "price": close_price,
                 "official_price_source": "StockQ_after_close_close_only",
                 "stockq_close_only": True,
+                "close_only_fallback": True,
                 "trade_guard_blocked": True,
                 "market_contract_valid": False,
             })

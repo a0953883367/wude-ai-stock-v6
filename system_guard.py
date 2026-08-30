@@ -357,6 +357,34 @@ def build_guard(
             "等待收盤後排程自動重試，盤中只沿用三日內快取",
         ))
 
+    tiingo_configured = bool(data_status.get("tiingo_us_close_configured"))
+    tiingo_status = str(data_status.get("tiingo_us_close_status") or "")
+    tiingo_covered = int(data_status.get("tiingo_us_close_covered_count") or 0)
+    tiingo_staging = int(data_status.get("tiingo_us_close_staging_count") or 0)
+    if tiingo_status in {"ok", "stale_fallback"} and tiingo_covered:
+        checks.append(_check(
+            "tiingo_us_close", "Tiingo 免費版覆蓋測試", "ok",
+            f"私密完整快取涵蓋 {tiingo_covered} 檔；原始價格未進入網站或計算",
+        ))
+    elif tiingo_configured and tiingo_status == "collecting":
+        checks.append(_check(
+            "tiingo_us_close", "Tiingo 免費版覆蓋測試", "info",
+            f"免費版分批收集中，目前已嘗試 {tiingo_staging} 檔；尚未切換半套快取",
+            "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算",
+        ))
+    elif tiingo_configured:
+        checks.append(_check(
+            "tiingo_us_close", "Tiingo 免費版覆蓋測試", "info",
+            "本次免費備援未取得完整快取；Yahoo／StockQ與最後完整值仍照常運作",
+            "等待下一次美股收盤後排程自動重試",
+        ))
+    else:
+        checks.append(_check(
+            "tiingo_us_close", "Tiingo 免費版覆蓋測試", "info",
+            "尚未設定免費 API key；此為選用備援，不影響整體報告",
+            "需要啟用時在 GitHub Actions Secrets 設定 TIINGO_API_KEY",
+        ))
+
     sec_available = int(data_status.get("us_sec_company_count") or 0)
     sec_used = int(data_status.get("us_sec_fallback_count") or 0)
     if sec_available:
