@@ -1,0 +1,41 @@
+name: 本人版完整快照同步
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - tools/publish_owner_data.py
+      - .github/workflows/owner-site-sync.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stock-briefing
+  cancel-in-progress: false
+
+jobs:
+  sync-owner-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Republish latest completed snapshot without fetching prices
+        env:
+          OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
+        run: python tools/publish_owner_data.py
+      - name: Record successful owner sync without changing reports
+        run: python system_guard.py --friend-publish unknown --owner-publish success --state-change-only
+      - name: Commit guard recovery status
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/system_guard.json
+          git diff --cached --quiet && exit 0
+          git commit -m "恢復本人版完整快照同步"
+          git push
