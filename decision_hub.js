@@ -15,7 +15,7 @@ metric('60日向前驗證',(v.collected_trading_days||0)+' / '+(v.target_trading
 metric('台股官方財報',(tf.available||0)+' / '+(tf.requested||0),(tf.coverage_pct==null?'尚待更新':num(tf.coverage_pct,2)+'% 完整'))+
 metric('統一證據',(ue.evidence_count||0)+' 筆','格式錯誤 '+(ue.invalid_count||0)+' 筆')+
 metric('模型畢業','可審查 '+(gf.eligible_for_manual_graduation||0),'累積中 '+(gf.collecting||0)+'｜需複核 '+(gf.review_required||0))+
-metric('StockQ 市場背景',esc(((sq.market_signal||{}).regime)||'尚待更新'),'指標 '+(sq.indicator_count||0)+'｜不改正式排名')+
+metric('StockQ 收盤後備援',esc(((sq.market_signal||{}).regime)||'尚待更新'),'指標 '+(sq.indicator_count||0)+'｜只補缺值、不改正式排名')+
 metric('部位控制',money(pc.suggested_invested_twd||0),'等待買點不計入已投資');
 var answerBox=document.getElementById('singleAnswer');answerBox.className='single-answer '+esc(answer.code||'hold_cash');answerBox.innerHTML='<span>中央唯一答案</span><b>'+esc(answer.headline||'尚無結論')+'</b><p>'+esc(answer.detail||'等待完整資料')+'</p>';
 document.getElementById('updatedChip').textContent='更新 '+reportAge(p.updated_at);
