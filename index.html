@@ -568,7 +568,7 @@ function millionMarketHtml(market){
   var pending=market.pending||{},pendingStrategies=pending.strategies||{};
   var waitingForPrices=pending.settlement_status==='waiting_for_official_prices';
   var pendingHtml=market.status==='complete'
-    ?'<div class="million-empty">五個交易日已完成，不再新增部位。</div>'
+    ?'<div class="million-empty">'+esc(market.target_trading_days||6)+'個交易日已完成，不再新增部位。</div>'
     :'<div class="million-note">'+(waitingForPrices?'<b>尚未結算：</b>目前取得 '+esc(pending.available_positions||0)+' / '+esc(pending.required_positions||20)+' 筆官方開收盤價；缺少 '+esc((pending.missing_symbols||[]).join('、')||'大盤基準')+'。每組未達至少9檔前不計損益、不增加完成日。<br>':'')+'下一次使用 '+esc(pending.signal_session_date||'等待中')+' 完成排名；快照編號 '+esc(pending.snapshot_id||'等待建立')+'。排名組照前10名測試；嚴格組只買達標且可成交者，其餘留現金。</div><div class="million-strategies">'+millionPendingStrategy('綜合排名前10名',pendingStrategies.overall)+millionPendingStrategy('短線排名前10名',pendingStrategies.short)+'</div>';
   var invalidHtml=invalidDays.length?'<div class="million-note"><b>資料不足隔離 '+esc(invalidDays.length)+' 日（不列成績）：</b>'+invalidDays.map(function(item){return esc(item.session_date||'未知日期')+'｜取得 '+esc(item.available_positions||0)+' / '+esc(item.required_positions||20)+'｜缺 '+esc((item.missing_symbols||[]).join('、')||'官方基準資料');}).join('<br>')+'</div>':'';
   var compare='<div class="holding-summary"><div class="item"><div class="label">排名組淨損益</div><div class="value">'+esc(millionMoney(market.cumulative_net_profit_twd))+'</div></div><div class="item"><div class="label">嚴格達標組</div><div class="value">'+esc(millionMoney(market.cumulative_strict_net_profit_twd))+'</div></div><div class="item"><div class="label">大盤基準</div><div class="value">'+esc(millionMoney(market.cumulative_benchmark_net_profit_twd))+'</div></div></div>';
@@ -576,7 +576,7 @@ function millionMarketHtml(market){
 }
 function showMillionSimulation(){
   STATE.view='MILLION';setActive('#marketButtons button','data-view','MILLION');clearOtherNav('#marketButtons button');
-  document.getElementById('title').textContent='💰 台股＋美股各100萬元｜台股6日／美股5日自動試走';
+  document.getElementById('title').textContent='💰 台股＋美股各100萬元｜台股6日／美股6日自動試走';
   var simulation=STATE.millionSimulation;
   if(!simulation||!simulation.markets){
     document.getElementById('status').textContent='模擬帳本會在下一次完成報告後自動建立';

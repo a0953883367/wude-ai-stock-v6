@@ -341,7 +341,24 @@ def test_taiwan_experiment_stops_after_six_completed_sessions():
     assert market["pending"] is None
 
 
-def test_us_experiment_remains_complete_after_five_sessions():
+def test_us_experiment_stops_after_six_completed_sessions():
+    state = empty_state()
+    update_state(state, universe("2026-08-21"), period="morning", updated_at="start")
+    for day in range(24, 30):
+        update_state(
+            state,
+            universe(f"2026-08-{day}"),
+            period="morning",
+            updated_at=f"2026-08-{day} 06:00:00",
+        )
+    market = state["markets"]["US"]
+    assert market["completed_days"] == 6
+    assert market["target_trading_days"] == 6
+    assert market["status"] == "complete"
+    assert market["pending"] is None
+
+
+def test_legacy_us_five_day_completion_reopens_and_freezes_day_six():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="morning", updated_at="start")
     for day in range(24, 29):
@@ -353,6 +370,14 @@ def test_us_experiment_remains_complete_after_five_sessions():
         )
     market = state["markets"]["US"]
     assert market["completed_days"] == 5
-    assert market["target_trading_days"] == 5
-    assert market["status"] == "complete"
-    assert market["pending"] is None
+    market["status"] = "complete"
+    market["pending"] = None
+
+    update_state(
+        state, universe("2026-08-28"), period="morning",
+        updated_at="2026-08-30 20:00:00",
+    )
+    assert market["status"] == "running"
+    assert market["pending"]["signal_session_date"] == "2026-08-28"
+    assert len(market["pending"]["strategies"]["overall"]) == 10
+    assert len(market["pending"]["strategies"]["short"]) == 10
