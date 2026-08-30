@@ -2,24 +2,24 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "critical",
   "status_label": "🔴 需要處理",
-  "checked_at": "2026-08-30T10:31:31+08:00",
+  "checked_at": "2026-08-30T12:05:57+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-08-29 21:22:40",
-  "report_age_minutes": 788.9,
+  "report_updated_at": "2026-08-30 12:04:15",
+  "report_age_minutes": 1.7,
   "counts": {
-    "ok": 15,
+    "ok": 14,
     "info": 0,
     "warning": 2,
-    "critical": 1
+    "critical": 2
   },
   "checks": [
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "critical",
-      "label": "異常",
-      "detail": "已 13.1 小時沒有完成新報表",
-      "action": "檢查 GitHub Actions、電腦排程及上游行情來源"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 2 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -42,7 +42,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-08-28 33/33；TW_STOCK 2026-08-28 155/155；US_ETF 2026-08-28 34/35；US_STOCK 2026-08-28 150/151",
+      "detail": "TW_ETF 2026-08-28 33/33；TW_STOCK 2026-08-28 155/155；US_ETF 2026-08-28 34/35；US_STOCK 2026-08-28 151/151",
       "action": ""
     },
     {
@@ -56,10 +56,10 @@
     {
       "code": "tw_core_data",
       "title": "台股核心資料",
-      "level": "ok",
-      "label": "正常",
-      "detail": "價格 151、法人 159、信用 158",
-      "action": ""
+      "level": "critical",
+      "label": "異常",
+      "detail": "預期 66 檔，但價格／法人／信用資料至少一項為0",
+      "action": "檢查 FinMind、官方資料源與當日市場狀態"
     },
     {
       "code": "broker_data",
@@ -152,16 +152,17 @@
     {
       "code": "publish_owner",
       "title": "本人版同步",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近一次發布已成功",
-      "action": ""
+      "level": "critical",
+      "label": "異常",
+      "detail": "最近一次發布結果：failure",
+      "action": "檢查發布網站狀態與授權，修復後重新執行報告"
     }
   ],
   "action_required": [
-    "檢查 GitHub Actions、電腦排程及上游行情來源",
+    "檢查 FinMind、官方資料源與當日市場狀態",
     "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
-    "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
+    "每次排程續補；只降低6個月信心，不把整檔標成資料不足",
+    "檢查發布網站狀態與授權，修復後重新執行報告"
   ],
   "safety": {
     "changes_rankings": false,
