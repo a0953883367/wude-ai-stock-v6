@@ -109,6 +109,43 @@ def test_medium_waits_until_all_five_prices_and_benchmark_are_available():
     assert portfolio["status"] == "active"
 
 
+def test_stockq_close_only_row_cannot_open_a_new_holding():
+    state = start_state()
+    monday = universe("2026-08-24", close_offset=2)
+    blocked_symbol = state["medium"]["US"]["pending"]["picks"][0]["symbol"]
+    for item in monday:
+        if item["symbol"] == blocked_symbol:
+            item["stockq_close_only"] = True
+            item["official_price_source"] = "StockQ_after_close_close_only"
+
+    update_state(state, monday, period="morning", updated_at="stockq entry blocked")
+
+    assert state["medium"]["US"]["positions"] == []
+    assert state["medium"]["US"]["status"] == "waiting_data"
+    assert blocked_symbol in state["medium"]["US"]["pending"]["missing_symbols"]
+
+
+def test_stockq_close_only_row_can_value_an_existing_holding_with_source_label():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=1)
+    update_state(state, entry, period="morning", updated_at="entry")
+    next_session = universe("2026-08-25", close_offset=4)
+    symbol = state["medium"]["US"]["positions"][0]["symbol"]
+    for item in next_session:
+        if item["symbol"] == symbol:
+            item["stockq_close_only"] = True
+            item["official_open_price"] = None
+            item["official_price_source"] = "StockQ_after_close_close_only"
+
+    update_state(state, next_session, period="morning", updated_at="stockq valuation")
+
+    position = next(
+        item for item in state["medium"]["US"]["positions"] if item["symbol"] == symbol
+    )
+    assert position["last_valuation_date"] == "2026-08-25"
+    assert position["last_price_source"] == "StockQ_after_close_close_only"
+
+
 def test_legacy_partial_medium_positions_are_quarantined_and_reset():
     state = start_state()
     monday = universe("2026-08-24", close_offset=2)

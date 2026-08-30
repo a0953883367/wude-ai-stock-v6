@@ -307,7 +307,12 @@ def _enter_positions(
         row = row_map.get(str(pick.get("symbol") or ""))
         open_price = _finite(row.get("official_open_price")) if row else 0.0
         close_price = _finite(row.get("official_close_price")) if row else 0.0
-        if not row or str(row.get("official_session_date") or "") != session_date or open_price <= 0:
+        if (
+            not row
+            or str(row.get("official_session_date") or "") != session_date
+            or open_price <= 0
+            or row.get("stockq_close_only") is True
+        ):
             continue
         target = None if hold_days is not None else _add_months(session_date, int(hold_months or 0))
         allocation = _finite(pick.get("allocation_twd"))
@@ -321,6 +326,7 @@ def _enter_positions(
             "hold_trading_days": hold_days,
             "ranking_snapshot_id": pending.get("snapshot_id"),
             "last_price": round(close_price, 4) if close_price > 0 else round(open_price, 4),
+            "last_price_source": row.get("official_price_source") or "primary_official_OHLC",
             "last_valuation_date": session_date,
             "gross_return_pct": round(return_pct, 4),
             "gross_profit_twd": round(allocation * return_pct / 100, 2),
@@ -342,7 +348,12 @@ def _enter_benchmark_position(
     row = next((item for item in rows if str(item.get("symbol") or "") == config["symbol"]), None)
     open_price = _finite(row.get("official_open_price")) if row else 0.0
     close_price = _finite(row.get("official_close_price")) if row else 0.0
-    if not row or str(row.get("official_session_date") or "") != session_date or open_price <= 0:
+    if (
+        not row
+        or str(row.get("official_session_date") or "") != session_date
+        or open_price <= 0
+        or row.get("stockq_close_only") is True
+    ):
         return []
     target = None if hold_days is not None else _add_months(session_date, int(hold_months or 0))
     gross_return = (close_price / open_price - 1) * 100 if close_price > 0 else 0.0
@@ -356,6 +367,7 @@ def _enter_benchmark_position(
         "target_exit_date": target,
         "hold_trading_days": hold_days,
         "last_price": round(close_price, 4) if close_price > 0 else round(open_price, 4),
+        "last_price_source": row.get("official_price_source") or "primary_official_OHLC",
         "last_valuation_date": session_date,
         "gross_return_pct": round(gross_return, 4),
         "gross_profit_twd": round(allocation_twd * gross_return / 100, 2),
@@ -392,7 +404,13 @@ def _entry_coverage_ready(
     available = 0
     for pick in pending.get("picks") or []:
         row = row_map.get(str(pick.get("symbol") or ""))
-        price = _finite(row.get("official_open_price")) if row and str(row.get("official_session_date") or "") == session_date else 0.0
+        price = (
+            _finite(row.get("official_open_price"))
+            if row
+            and str(row.get("official_session_date") or "") == session_date
+            and row.get("stockq_close_only") is not True
+            else 0.0
+        )
         if price > 0:
             available += 1
         else:
@@ -456,6 +474,9 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
         return_pct = ((close_price / entry_price) - 1) * 100 if entry_price > 0 else 0.0
         net_return_pct = return_pct - ROUND_TRIP_COST_PCT[market]
         position["last_price"] = round(close_price, 4)
+        position["last_price_source"] = (
+            row.get("official_price_source") or "primary_official_OHLC"
+        )
         position["last_valuation_date"] = session_date
         position["gross_return_pct"] = round(return_pct, 4)
         position["gross_profit_twd"] = round(allocation * return_pct / 100, 2)
@@ -487,6 +508,9 @@ def _value_benchmark_positions(
         gross_return = (close_price / entry_price - 1) * 100 if entry_price > 0 else 0.0
         net_return = gross_return - ROUND_TRIP_COST_PCT[market]
         position["last_price"] = round(close_price, 4)
+        position["last_price_source"] = (
+            row.get("official_price_source") or "primary_official_OHLC"
+        )
         position["last_valuation_date"] = session_date
         position["gross_return_pct"] = round(gross_return, 4)
         position["gross_profit_twd"] = round(allocation * gross_return / 100, 2)
@@ -830,8 +854,9 @@ def update_state(
         "不足即等待補抓或隔離"
     )
     state["policy"]["valuation_coverage"] = (
-        "同一市場全部持股與同期基準都取得同一交易日官方收盤價後才整組更新；"
-        "不足時保留前一完整估值"
+        "同一市場全部持股與同期基準都取得同一交易日收盤價後才整組更新；"
+        "美股主來源缺收盤時可用StockQ同日收盤備援並標示來源；"
+        "StockQ不建立新持倉，不足時保留前一完整估值"
     )
     state["policy"]["medium"] = {
         "capital_per_market_twd": MEDIUM_CAPITAL_TWD,
@@ -839,7 +864,7 @@ def update_state(
         "ranking": "中長線排名前5名",
         "allocation_per_pick_twd": MEDIUM_ALLOCATION_TWD,
         "hold_trading_days": MEDIUM_HOLD_DAYS,
-        "hold_unit": "只計完整官方收盤估值的有效交易日",
+        "hold_unit": "只計完整同日收盤估值的有效交易日；美股可用StockQ收盤價備援",
     }
     state["policy"].setdefault("long", {})["validation_target_trading_days"] = VALIDATION_TARGET_DAYS
     state["policy"]["validation_60d"] = (

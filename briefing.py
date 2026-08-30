@@ -66,6 +66,11 @@ from stockq_market_context import (
     apply_stockq_market_fallback,
     update_stockq_market_context,
 )
+from stockq_us_close import (
+    apply_stockq_us_close_to_simulation_rows,
+    load_us_shadow_symbols,
+    update_stockq_us_close_fallback,
+)
 from tw_financial_official import fetch_tw_official_financials
 from watchlist import load_watchlist
 
@@ -882,6 +887,18 @@ def main() -> int:
     us_extended_hours = _stage(
         "美股盤前盤後", lambda: download_us_extended_hours(list(us_symbols))
     )
+    # StockQ covers only a limited popular-US-stock list and does not provide
+    # complete OHLCV.  Keep it outside feature construction and formal ranking;
+    # its completed-session close may later repair an existing shadow holding.
+    stockq_us_close_fallback = _stage(
+        "StockQ美股收盤價備援層",
+        lambda: update_stockq_us_close_fallback(
+            SETTINGS.reports_dir,
+            updated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
+            requested_symbols=us_symbols,
+            timeout=SETTINGS.request_timeout,
+        ),
+    )
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
     previous = previous_rows if freeze_tw_prices else {}
@@ -1231,6 +1248,7 @@ def main() -> int:
         "watchlist_analyzed_count": len(watchlist_rows),
         "market": market,
         "stockq_market_context": stockq_market_context,
+        "stockq_us_close_fallback": stockq_us_close_fallback,
         "macro_regime": macro_regime,
         "tw_market_context": tw_market_context,
         "data_status": {
@@ -1259,6 +1277,11 @@ def main() -> int:
             ),
             "stockq_status": stockq_market_context.get("status"),
             "stockq_indicator_count": stockq_market_context.get("indicator_count", 0),
+            "stockq_us_close_status": stockq_us_close_fallback.get("status"),
+            "stockq_us_close_count": stockq_us_close_fallback.get("symbol_count", 0),
+            "stockq_us_close_covered_count": stockq_us_close_fallback.get(
+                "covered_requested_count", 0
+            ),
             "expected_tw_count": len(watchlist_stock_ids),
         },
         "watchlist": watchlist_rows,
@@ -1287,7 +1310,7 @@ def main() -> int:
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "after_close_prices": "自動報告盤中不抓、不補、不結算台股價格；中午報沿用上一個完整交易日，晚報收盤後才更新",
-            "stockq_context": "StockQ作收盤後市場指標備援；只補主要來源缺值，不覆蓋完整資料，也不提供或捏造個股開高低收",
+            "stockq_context": "StockQ作收盤後備援：全球市場頁只補缺少的市場指標；熱門美股頁只補已完成交易日收盤價。兩者皆不覆蓋完整主來源；個股備援不補開盤、最高、最低、成交量，不建立新持倉、不結算開收盤試驗、不重算正式排名",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
             "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
             "institutional_accumulation": "台股法人蓄力分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；資料完整時占台股個股短線排名20%，另設獨立法人蓄力榜並持續累積扣成本驗證",
@@ -1311,6 +1334,17 @@ def main() -> int:
     # full price universe. Otherwise yesterday's frozen pick is falsely marked
     # missing as soon as it falls outside today's TOP20.
     simulation_rows = _simulation_input_rows(ranking_rows, ranked)
+    holding_simulation_rows, stockq_close_applied = apply_stockq_us_close_to_simulation_rows(
+        simulation_rows,
+        stockq_us_close_fallback,
+        universe,
+        required_symbols=load_us_shadow_symbols(SETTINGS.reports_dir),
+    )
+    if stockq_close_applied:
+        logging.info(
+            "StockQ僅補影子持倉收盤價（不影響排名／新進場）：%s",
+            "、".join(stockq_close_applied),
+        )
     update_million_simulation(
         SETTINGS.reports_dir,
         simulation_rows,
@@ -1329,7 +1363,7 @@ def main() -> int:
     )
     update_holding_simulation(
         SETTINGS.reports_dir,
-        simulation_rows,
+        holding_simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
