@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-30T21:53:47+08:00",
+  "checked_at": "2026-08-30T23:31:54+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-08-30 12:04:15",
-  "report_age_minutes": 589.5,
+  "report_age_minutes": 687.7,
   "counts": {
     "ok": 15,
-    "info": 0,
+    "info": 1,
     "warning": 3,
     "critical": 0
   },
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "warning",
       "label": "注意",
-      "detail": "最近更新距今 9.8 小時",
+      "detail": "最近更新距今 11.5 小時",
       "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
@@ -92,6 +92,14 @@
       "label": "正常",
       "detail": "已取得 16 項全球指標；只在主要來源缺值時補入",
       "action": ""
+    },
+    {
+      "code": "us_sec_fundamentals",
+      "title": "SEC 美股財報備援",
+      "level": "info",
+      "label": "資訊",
+      "detail": "本次沒有需要SEC補值的美股，或免費官方快取尚待建立",
+      "action": "只在美股個股財報缺值時分批啟用，不影響價格結算"
     },
     {
       "code": "validation_60d",
