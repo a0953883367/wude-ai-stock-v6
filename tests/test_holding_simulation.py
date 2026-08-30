@@ -146,6 +146,35 @@ def test_stockq_close_only_row_can_value_an_existing_holding_with_source_label()
     assert position["last_price_source"] == "StockQ_after_close_close_only"
 
 
+def test_tiingo_close_only_row_can_value_but_not_open_a_holding():
+    pending_state = start_state()
+    blocked = universe("2026-08-24", close_offset=2)
+    symbol = pending_state["medium"]["US"]["pending"]["picks"][0]["symbol"]
+    for item in blocked:
+        if item["symbol"] == symbol:
+            item["tiingo_close_only"] = True
+            item["official_open_price"] = None
+            item["official_price_source"] = "Tiingo_after_close_close_only"
+    update_state(pending_state, blocked, period="morning", updated_at="blocked")
+    assert pending_state["medium"]["US"]["positions"] == []
+
+    active_state = start_state()
+    update_state(active_state, universe("2026-08-24"), period="morning", updated_at="entry")
+    valuation = universe("2026-08-25", close_offset=4)
+    active_symbol = active_state["medium"]["US"]["positions"][0]["symbol"]
+    for item in valuation:
+        if item["symbol"] == active_symbol:
+            item["tiingo_close_only"] = True
+            item["official_open_price"] = None
+            item["official_price_source"] = "Tiingo_after_close_close_only"
+    update_state(active_state, valuation, period="morning", updated_at="valuation")
+    position = next(
+        item for item in active_state["medium"]["US"]["positions"]
+        if item["symbol"] == active_symbol
+    )
+    assert position["last_price_source"] == "Tiingo_after_close_close_only"
+
+
 def test_legacy_partial_medium_positions_are_quarantined_and_reset():
     state = start_state()
     monday = universe("2026-08-24", close_offset=2)

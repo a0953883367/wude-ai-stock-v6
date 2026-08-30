@@ -30,6 +30,11 @@ def build_payload(report_dir: Path = Path("reports")) -> tuple[bytes, int]:
     latest = json.loads(latest_path.read_text(encoding="utf-8")) if latest_path.exists() else {}
     guard_path = report_dir / "system_guard.json"
     guard = json.loads(guard_path.read_text(encoding="utf-8")) if guard_path.exists() else {}
+    private_holding_path = report_dir / "owner_private_holding_simulation.json"
+    private_holding = (
+        json.loads(private_holding_path.read_text(encoding="utf-8"))
+        if private_holding_path.exists() else None
+    )
     integrity = {
         "report": {
             "candidate_count": source.get("candidate_count"),
@@ -44,6 +49,7 @@ def build_payload(report_dir: Path = Path("reports")) -> tuple[bytes, int]:
         "data": rows,
         "rotation": rotation,
         "integrity": integrity,
+        "private_holding": private_holding,
         "updated_at": source.get("updated_at", "等待更新"),
         "period": source.get("period", "—"),
     }, ensure_ascii=False).encode("utf-8")
@@ -78,6 +84,7 @@ def build_chunked_bodies(payload: bytes, *, generation: int, chunk_size: int = C
         "action": "commit",
         "rotation": source.get("rotation"),
         "integrity": source.get("integrity"),
+        "private_holding": source.get("private_holding"),
     }
     return bodies, commit
 

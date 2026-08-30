@@ -2,6 +2,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from tiingo_us_close import (
+    FREE_BATCH_LIMIT,
+    apply_tiingo_us_close_to_simulation_rows,
     parse_tiingo_eod,
     update_tiingo_us_close_fallback,
 )
@@ -27,6 +29,38 @@ def test_parse_tiingo_eod_keeps_only_raw_close_and_date():
     assert result["tiingo_close_only"] is True
     assert result["close_only_fallback"] is True
     assert "official_open_price" not in result
+
+
+def test_private_close_fallback_does_not_overwrite_primary():
+    rows = [{
+        "symbol": "MSFT", "market": "US", "type": "個股",
+        "official_session_date": "2026-08-28", "official_close_price": 510.0,
+        "official_price_source": "Yahoo",
+    }]
+    fallback = {"rows": {"MSFT": parse_tiingo_eod(_price(), "MSFT")}}
+
+    result, applied = apply_tiingo_us_close_to_simulation_rows(
+        rows, fallback, [{"symbol": "MSFT", "market": "US", "type": "個股"}]
+    )
+
+    assert applied == []
+    assert result[0]["official_close_price"] == 510.0
+    assert result[0]["official_price_source"] == "Yahoo"
+
+
+def test_private_close_fallback_is_entry_blocked_for_required_holding():
+    fallback = {"rows": {"MSFT": parse_tiingo_eod(_price(), "MSFT")}}
+    universe = [{"symbol": "MSFT", "name": "Microsoft", "market": "US", "type": "個股"}]
+
+    result, applied = apply_tiingo_us_close_to_simulation_rows(
+        [], fallback, universe, required_symbols={"MSFT"}
+    )
+
+    assert applied == ["MSFT"]
+    assert result[0]["official_open_price"] is None
+    assert result[0]["official_price_source"] == "Tiingo_after_close_close_only"
+    assert result[0]["trade_guard_blocked"] is True
+    assert result[0]["market_contract_valid"] is False
 
 
 def test_us_regular_session_never_requests_tiingo(tmp_path):
@@ -127,3 +161,25 @@ def test_newer_session_resets_older_staging_without_mixing_dates(tmp_path):
     assert second["staging_attempted_count"] == 1
     assert second["staging_available_count"] == 1
 
+
+def test_four_daily_runs_finish_186_symbol_cycle_before_next_session(tmp_path):
+    symbols = {f"S{index:03d}" for index in range(186)}
+    results = []
+
+    for run_number in range(4):
+        results.append(update_tiingo_us_close_fallback(
+            tmp_path,
+            updated_at=f"2026-08-31 {6 + run_number * 4:02d}:00:00",
+            requested_symbols=symbols,
+            now_epoch=1000 + run_number,
+            now=datetime(2026, 8, 30, 10, 0, tzinfo=ZoneInfo("America/New_York")),
+            api_token="test",
+            fetcher=lambda _symbol: _price("2026-08-28"),
+        ))
+
+    assert FREE_BATCH_LIMIT == 47
+    assert [item["staging_attempted_count"] for item in results[:3]] == [47, 94, 141]
+    assert results[3]["status"] == "ok"
+    assert results[3]["covered_requested_count"] == 186
+    assert results[3]["attempted_count"] == 186
+    assert not (tmp_path / "tiingo_us_close_staging.json").exists()
