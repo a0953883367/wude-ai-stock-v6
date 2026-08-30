@@ -1,16 +1,16 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "critical",
-  "status_label": "🔴 需要處理",
-  "checked_at": "2026-08-30T17:31:44+08:00",
+  "status": "warning",
+  "status_label": "🟡 需要注意",
+  "checked_at": "2026-08-30T21:53:47+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-08-30 12:04:15",
-  "report_age_minutes": 327.5,
+  "report_age_minutes": 589.5,
   "counts": {
-    "ok": 13,
+    "ok": 15,
     "info": 0,
     "warning": 3,
-    "critical": 2
+    "critical": 0
   },
   "checks": [
     {
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "warning",
       "label": "注意",
-      "detail": "最近更新距今 5.5 小時",
+      "detail": "最近更新距今 9.8 小時",
       "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
@@ -56,10 +56,10 @@
     {
       "code": "tw_core_data",
       "title": "台股核心資料",
-      "level": "critical",
-      "label": "異常",
-      "detail": "預期 66 檔，但價格／法人／信用資料至少一項為0",
-      "action": "檢查 FinMind、官方資料源與當日市場狀態"
+      "level": "ok",
+      "label": "正常",
+      "detail": "價格 188、法人 188、信用 188（沿用最近完整收盤）",
+      "action": ""
     },
     {
       "code": "broker_data",
@@ -152,18 +152,16 @@
     {
       "code": "publish_owner",
       "title": "本人版同步",
-      "level": "critical",
-      "label": "異常",
-      "detail": "最近一次發布結果：failure",
-      "action": "檢查發布網站狀態與授權，修復後重新執行報告"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近一次發布已成功",
+      "action": ""
     }
   ],
   "action_required": [
     "若已跨過下一個排程時間，檢查排程是否延遲",
-    "檢查 FinMind、官方資料源與當日市場狀態",
     "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
-    "每次排程續補；只降低6個月信心，不把整檔標成資料不足",
-    "檢查發布網站狀態與授權，修復後重新執行報告"
+    "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
   ],
   "safety": {
     "changes_rankings": false,
