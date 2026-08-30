@@ -1271,6 +1271,14 @@ def main() -> int:
             "us_extended_hours_count": len(us_extended_hours),
             "us_sip_count": len(us_live),
             "us_opra_count": len(us_options),
+            "us_sec_company_count": sum(
+                1 for item in us_company_metadata.values()
+                if item.get("us_sec_data_available")
+            ),
+            "us_sec_fallback_count": sum(
+                1 for item in us_company_metadata.values()
+                if item.get("us_sec_fallback_used")
+            ),
             "news_scanned_count": len(news_risks),
             "news_verified_risk_count": sum(
                 1 for item in news_risks.values() if item.get("news_penalty", 0) > 0
@@ -1307,7 +1315,8 @@ def main() -> int:
             "market_isolation": "台股個股TW-STOCK-V5、台灣ETF TW-ETF-V5與美股US-V3使用獨立資料契約；台股採個股／同族群／台股市場分層校正，跨市場欄位會在計分前清除",
             "tw_layered_context": "台股個股以個股70%、同族群20%、台股市場10%計分；台灣ETF提高市場層比重。缺少背景資料時不以中性值冒充，且不影響US-V3",
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
-            "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
+            "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/StockQ/FINRA備援且明確降低資料涵蓋",
+            "us_fundamental_fallback": "美股個股財務資料不足時以免費官方SEC EDGAR companyfacts補空值；不覆蓋既有值、ETF不適用、非美元申報不混入美元絕對金額",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "after_close_prices": "自動報告盤中不抓、不補、不結算台股價格；中午報沿用上一個完整交易日，晚報收盤後才更新",
             "stockq_context": "StockQ作收盤後備援：全球市場頁只補缺少的市場指標；熱門美股頁只補已完成交易日收盤價。兩者皆不覆蓋完整主來源；個股備援不補開盤、最高、最低、成交量，不建立新持倉、不結算開收盤試驗、不重算正式排名",

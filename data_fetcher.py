@@ -21,6 +21,7 @@ import yfinance as yf
 from zoneinfo import ZoneInfo
 
 from config import SETTINGS
+from sec_edgar import fetch_sec_company_fundamentals, merge_sec_fallback
 
 
 LOG = logging.getLogger(__name__)
@@ -533,11 +534,16 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
         "financial_quality_available": float(any(value is not None for value in (earnings_growth, gross_margin, operating_margin, roe, debt_ratio, operating_cash_flow))),
         "us_company_data_available": available > 0,
         "us_company_data_fields": available,
+        "us_company_data_source": "Yahoo Finance",
     }
 
 
 def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path | None = None) -> dict[str, dict[str, Any]]:
-    """Fetch US company fundamentals once daily with cache/fallback; ETFs are excluded."""
+    """Fetch US company fundamentals with free official SEC gap filling.
+
+    ETFs stay excluded.  SEC EDGAR never replaces a Yahoo value; it fills only
+    missing fields and preserves a separately attributable daily cache.
+    """
     cache_path = cache_path or (SETTINGS.reports_dir / "us_company_metadata_cache.json")
     symbols = [str(item.get("symbol") or "").upper() for item in universe
                if item.get("market") == "US" and "ETF" not in str(item.get("type") or "").upper() and item.get("symbol")]
@@ -577,6 +583,27 @@ def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path |
                 cached[symbol] = {**item, "cached_at": today.isoformat()}
             elif symbol in cached:
                 output[symbol] = {k: v for k, v in cached[symbol].items() if k != "cached_at"}
+
+    # SEC companyfacts is a free official source.  Query only incomplete rows,
+    # so ordinary runs remain light and an upstream metadata outage no longer
+    # turns every US company's financial dimensions into missing data.
+    incomplete = [
+        symbol for symbol in symbols
+        if int((output.get(symbol) or {}).get("us_company_data_fields") or 0) < 8
+        or bool((output.get(symbol) or {}).get("us_sec_fallback_used"))
+    ]
+    if incomplete:
+        sec_rows = fetch_sec_company_fundamentals(
+            incomplete,
+            cache_path=cache_path.parent / "us_sec_companyfacts_cache.json",
+            timeout=min(SETTINGS.request_timeout, 20),
+        )
+        for symbol in incomplete:
+            fallback = sec_rows.get(symbol, {})
+            if not fallback:
+                continue
+            output[symbol] = merge_sec_fallback(output.get(symbol, {}), fallback)
+            cached[symbol] = {**output[symbol], "cached_at": today.isoformat()}
     try:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps({"updated_at": today.isoformat(), "companies": cached}, ensure_ascii=False, indent=2), encoding="utf-8")

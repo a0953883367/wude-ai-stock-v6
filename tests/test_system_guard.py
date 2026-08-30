@@ -21,6 +21,8 @@ def _healthy_reports(tmp_path: Path) -> None:
         "credit_count": 175,
         "broker_count": 10,
         "financial_quality_count": 67,
+        "us_sec_company_count": 12,
+        "us_sec_fallback_count": 3,
     }
     _write(tmp_path / "latest.json", {"updated_at": timestamp, "universe_count": 337, "analyzed_count": 330, "data_status": status})
     rows = [
@@ -90,6 +92,9 @@ def test_healthy_guard_is_green(tmp_path: Path) -> None:
     guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
     assert guard["status"] == "ok"
     assert guard["safety"]["places_orders"] is False
+    sec = next(item for item in guard["checks"] if item["code"] == "us_sec_fundamentals")
+    assert sec["level"] == "ok"
+    assert "實際補值 3 檔" in sec["detail"]
 
 
 def test_stale_and_inconsistent_reports_are_red(tmp_path: Path) -> None:
