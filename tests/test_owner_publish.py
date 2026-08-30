@@ -64,3 +64,29 @@ def test_owner_payload_is_chunked_and_committed_only_after_all_rows(tmp_path):
     assert commit["total_count"] == 45
     assert "data" not in commit
     assert [row for item in chunks for row in item["data"]] == rows
+
+
+def test_owner_payload_carries_private_holding_only_in_commit(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "all_analysis.json").write_text(json.dumps({
+        "data": [{"symbol": "MSFT"}], "period": "morning",
+    }), encoding="utf-8")
+    private = {
+        "updated_at": "2026-08-31 06:00:00",
+        "medium": {"US": {"positions": [{
+            "symbol": "MSFT", "last_price_source": "Tiingo_after_close_close_only",
+        }]}},
+        "long": {"positions": []},
+    }
+    (reports / "owner_private_holding_simulation.json").write_text(
+        json.dumps(private), encoding="utf-8"
+    )
+    monkeypatch.setenv("TIINGO_API_KEY", "must-never-enter-payload")
+
+    encoded, _ = build_payload(reports)
+    chunks, commit = build_chunked_bodies(encoded, generation=1788062400001)
+
+    assert commit["private_holding"] == private
+    assert all("private_holding" not in chunk for chunk in chunks)
+    assert b"must-never-enter-payload" not in encoded
