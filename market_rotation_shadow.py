@@ -16,6 +16,8 @@ from pathlib import Path
 from statistics import median
 from typing import Any, Iterable
 
+from capital_flow_shadow import normalize_theme
+
 
 VERSION = 1
 MARKETS = ("TW", "US")
@@ -24,6 +26,7 @@ PICKS = 10
 CAPITAL_TWD = 1_000_000
 ALLOCATION_TWD = CAPITAL_TWD // PICKS
 ROTATION_WEIGHT = 0.15
+DAILY_FLOW_WEIGHT = 0.15
 MIN_SECTOR_MEMBERS = 2
 MIN_ANALYZED_STOCKS = PICKS
 MIN_POSITIONS_PER_MODEL = PICKS - 1
@@ -169,6 +172,24 @@ def _rotation_score(components: dict[str, float], market: str) -> float:
     return round(sum(components[key] * weight for key, weight in weights.items()), 2)
 
 
+def _closed_daily_flow(
+    daily_flow: dict[str, Any] | None, market: str, session_date: str
+) -> dict[str, Any] | None:
+    if not isinstance(daily_flow, dict):
+        return None
+    if (daily_flow.get("policy") or {}).get("intraday_exposed") is not False:
+        return None
+    sessions = (daily_flow.get("markets") or {}).get(market) or []
+    return next((
+        item for item in sessions
+        if isinstance(item, dict)
+        and item.get("session_date") == session_date
+        and item.get("closed") is True
+        and item.get("complete") is True
+        and item.get("session_scope") == "regular_hours_only"
+    ), None)
+
+
 def _stage(
     current: dict[str, Any], previous: dict[str, Any] | None, market: str
 ) -> tuple[str, str]:
@@ -194,6 +215,7 @@ def _stage(
 def build_market_snapshot(
     rows: list[dict[str, Any]], market: str,
     previous_snapshot: dict[str, Any] | None = None,
+    daily_flow: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Build one completed-session snapshot without mutating ranking rows."""
     session_date = _session_date(rows, market)
@@ -213,16 +235,43 @@ def build_market_snapshot(
         str(item.get("industry")): item
         for item in (previous_snapshot or {}).get("sectors") or []
     }
+    flow_session = _closed_daily_flow(daily_flow, market, session_date)
+    flow_themes = {
+        normalize_theme(item.get("theme")): item
+        for item in (flow_session or {}).get("themes") or []
+        if isinstance(item, dict)
+    }
     sectors = []
     for industry, members in grouped.items():
         components = _sector_components(members, market_median, market)
         eligible = len(members) >= MIN_SECTOR_MEMBERS
+        base_rotation = _rotation_score(components, market) if eligible else None
+        theme_flow = flow_themes.get(normalize_theme(industry))
+        flow_score = None
+        directional_members = (
+            _number((theme_flow or {}).get("positive_symbols"))
+            + _number((theme_flow or {}).get("negative_symbols"))
+        )
+        if eligible and theme_flow and directional_members >= 2:
+            positive_breadth = (
+                _number(theme_flow.get("positive_symbols")) / directional_members * 100
+                if directional_members else 50.0
+            )
+            flow_score = _clamp(
+                _number(theme_flow.get("buy_ratio_pct"), 50.0) * 0.55
+                + positive_breadth * 0.45
+            )
         sector = {
             "industry": industry,
             "member_count": len(members),
             "eligible": eligible,
             **components,
-            "rotation_score": _rotation_score(components, market) if eligible else None,
+            "base_rotation_score": base_rotation,
+            "daily_flow_score": round(flow_score, 2) if flow_score is not None else None,
+            "daily_flow_status": "linked" if flow_score is not None else "not_available",
+            "rotation_score": round(
+                base_rotation * (1 - DAILY_FLOW_WEIGHT) + flow_score * DAILY_FLOW_WEIGHT, 2
+            ) if base_rotation is not None and flow_score is not None else base_rotation,
         }
         stage, reason = _stage(sector, previous_sectors.get(industry), market)
         sector["stage"] = stage if eligible else "insufficient_members"
@@ -253,6 +302,13 @@ def build_market_snapshot(
         "market_state": state,
         "market_state_label": label,
         "hot_sector_count": len(hot),
+        "daily_flow": {
+            "status": "linked" if flow_session is not None else "not_available",
+            "session_date": flow_session.get("session_date") if flow_session else None,
+            "source": flow_session.get("source") if flow_session else None,
+            "weight_within_rotation_score": DAILY_FLOW_WEIGHT,
+            "intraday_used": False,
+        },
         "sectors": sectors,
     }
     raw = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -404,9 +460,10 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
         "policy": {
             "baseline": "A組＝正式V6短線排序；只讀取、不修改",
             "shadow": "B組＝正式短線分數85%＋同市場族群輪動15%",
+            "daily_capital_flow": "盤中只累積；收盤完整日結後才以15%納入輪動分數，缺資料不扣分",
             "tw_strict": "台股嚴格組＝產業轉強＋3檔共振＋量增突破＋法人連買＋未過熱，5/5",
             "tw_practical": "台股實用組＝產業轉強＋3檔共振＋未過熱必須成立，量增突破／法人連買至少一項",
-            "market_isolation": "台股使用法人／量價；美股使用成長財報代理／量價",
+            "market_isolation": "台股使用法人／量價／台股日結資金流；美股使用成長財報代理／量價／美股日結資金流，互不混用",
             "settlement_coverage": "A/B原選10檔至少9檔同日正式開收盤價即可結算；缺價配置保留現金",
             "formal_checkpoint": "台股晚報／美股早報可延遲完成；依正式時段與同日行情判定，不用完成小時阻擋",
             "review_gate": "5日只查程式、20日初步比較、60日後只標候選",
@@ -589,6 +646,7 @@ def _summary(market_state: dict[str, Any]) -> dict[str, Any]:
 def update_market_rotation_shadow(
     reports_dir: Path, rows: list[dict[str, Any]], *,
     period: str, updated_at: str, intraday: bool = False,
+    daily_flow: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     reports_dir.mkdir(parents=True, exist_ok=True)
     path = reports_dir / "market_rotation_shadow.json"
@@ -599,6 +657,12 @@ def update_market_rotation_shadow(
     )
     state["policy"]["formal_checkpoint"] = (
         "台股晚報／美股早報可延遲完成；依正式時段與同日行情判定，不用完成小時阻擋"
+    )
+    state["policy"]["daily_capital_flow"] = (
+        "盤中只累積；僅同市場、同交易日、正常盤完整日結可占輪動分數15%；缺漏時沿用原輪動分數"
+    )
+    state["policy"]["market_isolation"] = (
+        "台股使用法人／量價／台股日結資金流；美股使用成長財報代理／量價／美股日結資金流，互不混用"
     )
     if intraday:
         return state
@@ -613,7 +677,10 @@ def update_market_rotation_shadow(
         snapshots = market_state.get("snapshots") or []
         existing = next((item for item in snapshots if item.get("session_date") == session_date), None)
         if existing is None:
-            snapshot = build_market_snapshot(rows, market, snapshots[-1] if snapshots else None)
+            snapshot = build_market_snapshot(
+                rows, market, snapshots[-1] if snapshots else None,
+                daily_flow=daily_flow,
+            )
             if snapshot is None:
                 continue
             snapshots.append(snapshot)

@@ -22,7 +22,10 @@ const html = fs.readFileSync('index.html', 'utf8');
   '嚴格組5／5全過',
   '至少3檔共振',
   '缺法人資料列資料不足',
-  '嚴格組跳空失效'
+  '嚴格組跳空失效',
+  '日結資金流',
+  '收盤資金流已連動',
+  '等待完整收盤資金流'
 ].forEach((text) => assert.ok(html.includes(text), `missing rotation UI contract: ${text}`));
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
