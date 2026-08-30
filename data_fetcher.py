@@ -584,10 +584,26 @@ def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path |
         LOG.debug("US company metadata cache write failed: %s", exc)
     return output
 
-def fetch_core_market() -> dict[str, dict[str, Any]]:
-    histories = download_history(list(CORE_MARKET.values()), period="7d")
+def fetch_core_market(
+    exclude_labels: set[str] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Fetch completed market indicators, optionally skipping an open market."""
+    excluded = set(exclude_labels or ())
+    requested = [
+        symbol for label, symbol in CORE_MARKET.items()
+        if label not in excluded
+    ]
+    histories = download_history(requested, period="7d")
     output: dict[str, dict[str, Any]] = {}
     for label, symbol in CORE_MARKET.items():
+        if label in excluded:
+            output[label] = {
+                "price": None,
+                "change_pct": None,
+                "session_date": None,
+                "source": "after_close_policy",
+            }
+            continue
         frame = histories.get(symbol)
         if frame is None or frame.empty or "close" not in frame:
             output[label] = {
