@@ -1,10 +1,11 @@
 """Quota-bounded Tiingo EOD fallback for private US holding valuation.
 
 The free Tiingo plan is an internal-use source with an hourly request limit.
-This collector therefore refreshes at most 45 symbols per scheduled run and
+This collector therefore refreshes at most 47 symbols per scheduled run and
 promotes a batch only after every requested symbol has been attempted. During
-the free-tier trial it is coverage-audit only: raw prices stay in a private CI
-cache and cannot enter positions, settlement, ranking, or any website payload.
+the free-tier trial raw prices stay in a private CI cache. They may value
+already-open owner-only medium/long holdings, but can never create positions,
+settle the five-day experiment, alter ranking, or enter a public payload.
 """
 
 from __future__ import annotations
@@ -26,7 +27,10 @@ import requests
 
 API_ROOT = "https://api.tiingo.com/tiingo/daily"
 SCHEMA_VERSION = 1
-FREE_BATCH_LIMIT = 45
+# Four fixed daily report runs must be able to finish the 186-symbol universe
+# before the next completed US session appears. 47 * 4 = 188, while each run
+# remains below Tiingo Starter's 50-request hourly ceiling.
+FREE_BATCH_LIMIT = 47
 MAX_STALE_SECONDS = 10 * 24 * 60 * 60
 NEW_YORK = ZoneInfo("America/New_York")
 
@@ -172,6 +176,78 @@ def _active_or_empty(
     }, requested)
 
 
+def apply_tiingo_us_close_to_simulation_rows(
+    rows: list[dict[str, Any]],
+    tiingo: dict[str, Any],
+    universe: Iterable[dict[str, Any]],
+    *,
+    required_symbols: Iterable[str] = (),
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Fill missing US closes for owner-only existing-holding valuation.
+
+    The active cache is atomic: this function never reads the staging file.
+    Close-only rows are deliberately entry-ineligible, so they cannot create a
+    new holding even if a required symbol is absent from the primary rows.
+    """
+    output = [dict(row) for row in rows]
+    indexes = {
+        str(row.get("symbol") or "").upper(): index
+        for index, row in enumerate(output)
+        if str(row.get("market") or "").upper() == "US"
+    }
+    catalog = {
+        str(item.get("symbol") or "").upper(): item
+        for item in universe
+        if str(item.get("market") or "").upper() == "US"
+    }
+    requested = set(indexes).union(str(symbol).upper() for symbol in required_symbols)
+    fallback_rows = tiingo.get("rows") if isinstance(tiingo.get("rows"), dict) else {}
+    applied: list[str] = []
+    for symbol in sorted(requested.intersection(fallback_rows)):
+        fallback = fallback_rows[symbol]
+        if not isinstance(fallback, dict) or fallback.get("tiingo_close_only") is not True:
+            continue
+        session_date = str(fallback.get("official_session_date") or "")
+        close_price = _number(fallback.get("official_close_price"))
+        if not session_date or close_price is None:
+            continue
+        if symbol in indexes:
+            current = output[indexes[symbol]]
+            current_date = str(current.get("official_session_date") or "")
+            current_close = _number(current.get("official_close_price"))
+            if current_close is not None or (current_date and current_date != session_date):
+                continue
+            current.update({
+                "official_session_date": session_date,
+                "official_close_price": close_price,
+                "price": current.get("price") or close_price,
+                "official_price_source": "Tiingo_after_close_close_only",
+                "tiingo_close_only": True,
+                "close_only_fallback": True,
+            })
+        else:
+            item = catalog.get(symbol)
+            if not item:
+                continue
+            output.append({
+                "symbol": symbol,
+                "name": item.get("name") or symbol,
+                "market": "US",
+                "type": item.get("type") or "個股",
+                "official_session_date": session_date,
+                "official_close_price": close_price,
+                "official_open_price": None,
+                "price": close_price,
+                "official_price_source": "Tiingo_after_close_close_only",
+                "tiingo_close_only": True,
+                "close_only_fallback": True,
+                "trade_guard_blocked": True,
+                "market_contract_valid": False,
+            })
+        applied.append(symbol)
+    return output, applied
+
+
 def update_tiingo_us_close_fallback(
     reports_dir: Path,
     *,
@@ -296,7 +372,7 @@ def update_tiingo_us_close_fallback(
             "configured": True,
             "source": "Tiingo",
             "source_url": "https://www.tiingo.com/",
-            "role": "美股收盤價私密涵蓋測試層",
+            "role": "美股既有中長期持倉私密收盤備援層",
             "after_close_only": True,
             "close_only": True,
             "private_internal_use_only": True,
@@ -307,7 +383,7 @@ def update_tiingo_us_close_fallback(
             "symbol_count": len(staged_rows),
             "attempted_count": len(attempted),
             "rows": staged_rows,
-            "warning": "免費版分批完成後才切換私密快取；只驗證涵蓋率，原始價格不進網站、持倉、結算或排名。",
+            "warning": "免費版分批完成後才切換私密快取；只補本人版既有中長期持倉估值，原始價格不進公開網站、五日結算或排名。",
         }
         _write_json(active_path, payload)
         try:
