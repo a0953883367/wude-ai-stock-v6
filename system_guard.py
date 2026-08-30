@@ -357,6 +357,20 @@ def build_guard(
             "等待收盤後排程自動重試，盤中只沿用三日內快取",
         ))
 
+    sec_available = int(data_status.get("us_sec_company_count") or 0)
+    sec_used = int(data_status.get("us_sec_fallback_count") or 0)
+    if sec_available:
+        checks.append(_check(
+            "us_sec_fundamentals", "SEC 美股財報備援", "ok",
+            f"官方財報可用 {sec_available} 檔；本次實際補值 {sec_used} 檔",
+        ))
+    else:
+        checks.append(_check(
+            "us_sec_fundamentals", "SEC 美股財報備援", "info",
+            "本次沒有需要SEC補值的美股，或免費官方快取尚待建立",
+            "只在美股個股財報缺值時分批啟用，不影響價格結算",
+        ))
+
     if not validation_60d:
         checks.append(_check("validation_60d", "60日向前驗證", "warning", "尚未建立統一60日進度檔", "下一次報告自動重建"))
     else:
