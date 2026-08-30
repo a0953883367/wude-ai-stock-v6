@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-08-30 12:04:15",
+  "updated_at": "2026-08-31 00:21:16",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -83,12 +83,12 @@
             "median_change_pct": -3.98,
             "breakdown_pct": 14.3
           },
-          "signal_close": null,
+          "signal_close": 49.81999969482422,
           "entry_open": null,
           "observed_sessions": [],
           "outcomes": {},
-          "status": "quarantined",
-          "quarantine_reason": "signal_session_inverse_price_missing"
+          "status": "pending_entry",
+          "quarantine_reason": null
         },
         {
           "cohort_id": "US:2026-08-28:SDP",
@@ -104,12 +104,12 @@
             "median_change_pct": -0.81,
             "breakdown_pct": 50.0
           },
-          "signal_close": null,
+          "signal_close": 24.3700008392334,
           "entry_open": null,
           "observed_sessions": [],
           "outcomes": {},
-          "status": "quarantined",
-          "quarantine_reason": "signal_session_inverse_price_missing"
+          "status": "pending_entry",
+          "quarantine_reason": null
         }
       ],
       "current_candidates": [
@@ -119,14 +119,18 @@
           "inverse_name": "Direxion Daily Semiconductor Bear 3X",
           "daily_target": -3,
           "bear_score": 100.0,
-          "status": "confirmed",
+          "status": "no_chase",
           "constituent_count": 42,
           "evidence": {
             "coverage": 42,
             "negative_breadth_pct": 95.2,
             "median_change_pct": -3.98,
             "breakdown_pct": 14.3
-          }
+          },
+          "product_session_change_pct": 6.89,
+          "product_opening_gap_pct": 2.78,
+          "product_volume_ratio_20d": 0.91,
+          "no_chase": true
         },
         {
           "group": "us_utilities",
@@ -141,7 +145,11 @@
             "negative_breadth_pct": 100.0,
             "median_change_pct": -0.81,
             "breakdown_pct": 50.0
-          }
+          },
+          "product_session_change_pct": 2.78,
+          "product_opening_gap_pct": -0.38,
+          "product_volume_ratio_20d": 0.53,
+          "no_chase": false
         },
         {
           "group": "us_broad",
@@ -156,22 +164,30 @@
             "negative_breadth_pct": 87.5,
             "median_change_pct": -1.98,
             "breakdown_pct": 9.4
-          }
+          },
+          "product_session_change_pct": 0.91,
+          "product_opening_gap_pct": -0.16,
+          "product_volume_ratio_20d": 1.07,
+          "no_chase": false
         },
         {
           "group": "us_technology",
           "inverse_symbol": "TECS",
           "inverse_name": "Direxion Daily Technology Bear 3X",
           "daily_target": -3,
-          "bear_score": 69.5,
+          "bear_score": 70.3,
           "status": "watch",
           "constituent_count": 63,
           "evidence": {
             "coverage": 63,
-            "negative_breadth_pct": 81.0,
+            "negative_breadth_pct": 82.5,
             "median_change_pct": -1.88,
             "breakdown_pct": 9.5
-          }
+          },
+          "product_session_change_pct": 3.6,
+          "product_opening_gap_pct": 1.05,
+          "product_volume_ratio_20d": 1.27,
+          "no_chase": false
         },
         {
           "group": "us_nasdaq",
@@ -186,7 +202,11 @@
             "negative_breadth_pct": 100.0,
             "median_change_pct": -0.65,
             "breakdown_pct": 0.0
-          }
+          },
+          "product_session_change_pct": 1.37,
+          "product_opening_gap_pct": 0.64,
+          "product_volume_ratio_20d": 0.96,
+          "no_chase": false
         },
         {
           "group": "us_energy",
@@ -199,7 +219,11 @@
           "evidence": {
             "coverage": 2,
             "reason": "樣本不足"
-          }
+          },
+          "product_session_change_pct": -0.96,
+          "product_opening_gap_pct": -0.21,
+          "product_volume_ratio_20d": 2.81,
+          "no_chase": false
         },
         {
           "group": "us_real_estate",
@@ -212,7 +236,11 @@
           "evidence": {
             "coverage": 1,
             "reason": "樣本不足"
-          }
+          },
+          "product_session_change_pct": 1.97,
+          "product_opening_gap_pct": -0.43,
+          "product_volume_ratio_20d": 1.72,
+          "no_chase": false
         }
       ],
       "summary": {

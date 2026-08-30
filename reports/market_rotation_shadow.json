@@ -1,19 +1,20 @@
 {
   "version": 1,
-  "updated_at": "2026-08-30 12:04:15",
+  "updated_at": "2026-08-31 00:21:16",
   "mode": "forward_shadow_only",
   "policy": {
     "baseline": "A組＝正式V6短線排序；只讀取、不修改",
     "shadow": "B組＝正式短線分數85%＋同市場族群輪動15%",
     "tw_strict": "台股嚴格組＝產業轉強＋3檔共振＋量增突破＋法人連買＋未過熱，5/5",
     "tw_practical": "台股實用組＝產業轉強＋3檔共振＋未過熱必須成立，量增突破／法人連買至少一項",
-    "market_isolation": "台股使用法人／量價；美股使用成長財報代理／量價",
+    "market_isolation": "台股使用法人／量價／台股日結資金流；美股使用成長財報代理／量價／美股日結資金流，互不混用",
     "review_gate": "5日只查程式、20日初步比較、60日後只標候選",
     "formal_ranking_locked": true,
     "automatic_merge": false,
     "broker_orders": false,
     "settlement_coverage": "A/B原選10檔至少9檔同日正式開收盤價即可結算；缺價配置保留現金",
-    "formal_checkpoint": "台股晚報／美股早報可延遲完成；依正式時段與同日行情判定，不用完成小時阻擋"
+    "formal_checkpoint": "台股晚報／美股早報可延遲完成；依正式時段與同日行情判定，不用完成小時阻擋",
+    "daily_capital_flow": "盤中只累積；僅同市場、同交易日、正常盤完整日結可占輪動分數15%；缺漏時沿用原輪動分數"
   },
   "markets": {
     "TW": {

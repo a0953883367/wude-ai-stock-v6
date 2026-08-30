@@ -2,24 +2,24 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-30T23:31:54+08:00",
+  "checked_at": "2026-08-31T00:24:07+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-08-30 12:04:15",
-  "report_age_minutes": 687.7,
+  "report_updated_at": "2026-08-31 00:21:16",
+  "report_age_minutes": 2.9,
   "counts": {
-    "ok": 15,
-    "info": 1,
-    "warning": 3,
+    "ok": 16,
+    "info": 2,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 11.5 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -58,7 +58,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 188、法人 188、信用 188（沿用最近完整收盤）",
+      "detail": "價格 188、法人 187、信用 184",
       "action": ""
     },
     {
@@ -92,6 +92,14 @@
       "label": "正常",
       "detail": "已取得 16 項全球指標；只在主要來源缺值時補入",
       "action": ""
+    },
+    {
+      "code": "tiingo_us_close",
+      "title": "Tiingo 免費版覆蓋測試",
+      "level": "info",
+      "label": "資訊",
+      "detail": "免費版分批收集中，目前已嘗試 45 檔；尚未切換半套快取",
+      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
       "code": "us_sec_fundamentals",
@@ -167,7 +175,6 @@
     }
   ],
   "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲",
     "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
     "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
   ],
