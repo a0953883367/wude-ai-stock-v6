@@ -164,7 +164,7 @@ Repository Settings → Secrets and variables → Actions 設定：
 每次最多更新 24 檔並保留舊快取，避免官方端延遲拖垮整份報告。若要自訂 SEC
 識別資訊，可設定 `SEC_USER_AGENT`，未設定時使用本專案公開網址識別。
 
-Tiingo 免費方案以 Secret `TIINGO_API_KEY` 啟用；每次正式排程最多抓45檔，
+Tiingo 免費方案以 Secret `TIINGO_API_KEY` 啟用；每次正式排程最多抓47檔，
 分批嘗試完整個美股名單後才切換私密快取。免費試用階段只檢查186檔涵蓋率，
 原始價格不寫入 GitHub Pages、本人網站或朋友版，也不建立持倉、不進入結算與
 正式排名。未設定或服務暫時失敗時不會中止整份報告。
