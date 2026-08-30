@@ -1,9 +1,11 @@
 from briefing import (
     _attach_next_session_predictions,
+    _carry_completed_tw_rows,
     _carry_forward_symbol_session_regressions,
     _qualified_tw_market_top,
     _report_session_issues,
     _simulation_input_rows,
+    _freeze_tw_prices_until_close,
     _tw_intraday_enrichment,
 )
 
@@ -136,6 +138,38 @@ def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
     assert "price" not in institutions["6116"]
     assert "rsi" not in institutions["6116"]
     assert "AAPL" not in institutions
+
+
+def test_noon_and_intraday_defer_taiwan_price_fetch_until_close():
+    assert _freeze_tw_prices_until_close("noon") is True
+    assert _freeze_tw_prices_until_close("morning") is False
+    assert _freeze_tw_prices_until_close("evening") is False
+    assert _freeze_tw_prices_until_close("evening", intraday=True) is True
+
+
+def test_noon_report_carries_only_last_completed_taiwan_rows():
+    universe = [
+        {"symbol": "1590.TW", "market": "TW"},
+        {"symbol": "4979.TWO", "market": "TW"},
+        {"symbol": "NVDA", "market": "US"},
+    ]
+    previous = {
+        "1590.TW": {
+            "symbol": "1590.TW", "market": "TW",
+            "official_session_date": "2026-08-28", "price": 1415.0,
+        },
+        "4979.TWO": {"symbol": "4979.TWO", "market": "TW", "price": 300.0},
+        "NVDA": {
+            "symbol": "NVDA", "market": "US",
+            "official_session_date": "2026-08-28", "price": 227.98,
+        },
+    }
+
+    rows = _carry_completed_tw_rows(universe, previous)
+
+    assert [row["symbol"] for row in rows] == ["1590.TW"]
+    assert rows[0]["official_session_date"] == "2026-08-28"
+    assert rows[0]["price_fetch_deferred_until_close"] is True
 
 
 def test_intraday_snapshot_does_not_count_empty_broker_placeholders():
