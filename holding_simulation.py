@@ -1,7 +1,7 @@
 """Medium- and long-horizon web-only shadow portfolios.
 
 Medium portfolios allocate TWD 1,000,000 to the top five mid/long ranking
-rows in each market and hold for 45 calendar days.  The long portfolio holds
+rows in each market and hold for 45 valid valuation sessions.  The long portfolio holds
 the top Taiwan stock and top US stock, TWD 500,000 each, for six calendar
 months.  Entries use the next completed session's official open; valuations
 and exits use official closes.  This module never imports a broker client.
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from calendar import monthrange
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 import hashlib
 import json
 from pathlib import Path
@@ -27,6 +27,7 @@ MEDIUM_CAPITAL_TWD = 1_000_000
 MEDIUM_PICK_COUNT = 5
 MEDIUM_ALLOCATION_TWD = 200_000
 MEDIUM_HOLD_DAYS = 45
+VALIDATION_TARGET_DAYS = 60
 LONG_CAPITAL_TWD = 1_000_000
 LONG_PICK_COUNT_PER_MARKET = 1
 LONG_ALLOCATION_TWD = 500_000
@@ -105,6 +106,10 @@ def _empty_medium_market(market: str) -> dict[str, Any]:
         "capital_twd": MEDIUM_CAPITAL_TWD,
         "status": "waiting",
         "hold_days": MEDIUM_HOLD_DAYS,
+        "hold_unit": "valid_trading_sessions",
+        "valuation_sessions": [],
+        "completed_trading_days": 0,
+        "remaining_trading_days": MEDIUM_HOLD_DAYS,
         "pending": None,
         "invalid_entries": [],
         "positions": [],
@@ -131,6 +136,9 @@ def _empty_long() -> dict[str, Any]:
         "capital_twd": LONG_CAPITAL_TWD,
         "status": "waiting",
         "hold_months": LONG_HOLD_MONTHS,
+        "validation_target_trading_days": VALIDATION_TARGET_DAYS,
+        "validation_sessions": {"TW": [], "US": []},
+        "validation_completed_days": {"TW": 0, "US": 0},
         "pending": {"TW": None, "US": None},
         "invalid_entries": [],
         "positions": [],
@@ -161,7 +169,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
                 "markets": ["台股", "美股"],
                 "ranking": "中長線排名前5名",
                 "allocation_per_pick_twd": MEDIUM_ALLOCATION_TWD,
-                "hold_calendar_days": MEDIUM_HOLD_DAYS,
+                "hold_trading_days": MEDIUM_HOLD_DAYS,
+                "hold_unit": "只計完整官方收盤估值的有效交易日",
             },
             "long": {
                 "total_capital_twd": LONG_CAPITAL_TWD,
@@ -169,7 +178,9 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
                 "total_picks": 2,
                 "allocation_per_pick_twd": LONG_ALLOCATION_TWD,
                 "hold_calendar_months": LONG_HOLD_MONTHS,
+                "validation_target_trading_days": VALIDATION_TARGET_DAYS,
             },
+            "validation_60d": "60個有效交易日只作模型驗證門檻，不取代中期45個有效交易日或長期6個月持有週期",
             "duplicates": "同一股票若同時入選中期與長期，兩個模擬帳戶都照買並分開計算",
             "entry": "2026-08-24起，使用前一完成交易日排名並按下一交易日官方開盤價",
             "entry_coverage": "中期5檔／長期各市場1檔與同期基準都取得同日官方開盤價後才建立持倉",
@@ -298,10 +309,7 @@ def _enter_positions(
         close_price = _finite(row.get("official_close_price")) if row else 0.0
         if not row or str(row.get("official_session_date") or "") != session_date or open_price <= 0:
             continue
-        if hold_days is not None:
-            target = (date.fromisoformat(session_date) + timedelta(days=hold_days)).isoformat()
-        else:
-            target = _add_months(session_date, int(hold_months or 0))
+        target = None if hold_days is not None else _add_months(session_date, int(hold_months or 0))
         allocation = _finite(pick.get("allocation_twd"))
         return_pct = ((close_price / open_price) - 1) * 100 if close_price > 0 else 0.0
         net_return_pct = return_pct - ROUND_TRIP_COST_PCT[market]
@@ -310,6 +318,7 @@ def _enter_positions(
             "entry_session_date": session_date,
             "entry_price": round(open_price, 4),
             "target_exit_date": target,
+            "hold_trading_days": hold_days,
             "ranking_snapshot_id": pending.get("snapshot_id"),
             "last_price": round(close_price, 4) if close_price > 0 else round(open_price, 4),
             "last_valuation_date": session_date,
@@ -335,10 +344,7 @@ def _enter_benchmark_position(
     close_price = _finite(row.get("official_close_price")) if row else 0.0
     if not row or str(row.get("official_session_date") or "") != session_date or open_price <= 0:
         return []
-    target = (
-        (date.fromisoformat(session_date) + timedelta(days=hold_days)).isoformat()
-        if hold_days is not None else _add_months(session_date, int(hold_months or 0))
-    )
+    target = None if hold_days is not None else _add_months(session_date, int(hold_months or 0))
     gross_return = (close_price / open_price - 1) * 100 if close_price > 0 else 0.0
     net_return = gross_return - ROUND_TRIP_COST_PCT[market]
     return [{
@@ -348,6 +354,7 @@ def _enter_benchmark_position(
         "entry_session_date": session_date,
         "entry_price": round(open_price, 4),
         "target_exit_date": target,
+        "hold_trading_days": hold_days,
         "last_price": round(close_price, 4) if close_price > 0 else round(open_price, 4),
         "last_valuation_date": session_date,
         "gross_return_pct": round(gross_return, 4),
@@ -455,7 +462,8 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
         position["net_return_pct"] = round(net_return_pct, 4)
         position["net_profit_twd"] = round(allocation * net_return_pct / 100, 2)
         position["estimated_cost_twd"] = round(allocation * ROUND_TRIP_COST_PCT[market] / 100, 2)
-        if session_date >= str(position.get("target_exit_date") or "9999-12-31"):
+        target_exit_date = str(position.get("target_exit_date") or "")
+        if not position.get("hold_trading_days") and target_exit_date and session_date >= target_exit_date:
             position["exit_session_date"] = session_date
             position["exit_price"] = round(close_price, 4)
             position["realized"] = True
@@ -484,7 +492,8 @@ def _value_benchmark_positions(
         position["gross_profit_twd"] = round(allocation * gross_return / 100, 2)
         position["net_return_pct"] = round(net_return, 4)
         position["net_profit_twd"] = round(allocation * net_return / 100, 2)
-        if session_date >= str(position.get("target_exit_date") or "9999-12-31"):
+        target_exit_date = str(position.get("target_exit_date") or "")
+        if not position.get("hold_trading_days") and target_exit_date and session_date >= target_exit_date:
             position["exit_session_date"] = session_date
             position["exit_price"] = round(close_price, 4)
             position["realized"] = True
@@ -610,6 +619,74 @@ def _summarize_benchmark(portfolio: dict[str, Any]) -> None:
         portfolio["status"] = "active"
 
 
+def _migrate_horizon_tracking(state: dict[str, Any]) -> None:
+    """Preserve legacy holdings while switching medium duration to valid sessions.
+
+    Old reports did not retain every valuation date.  We therefore keep only
+    the latest fully consistent date as verified history instead of inventing
+    intermediate sessions.
+    """
+    for market in MARKETS:
+        portfolio = state["medium"][market]
+        sessions = list(dict.fromkeys(str(value) for value in portfolio.get("valuation_sessions", []) if value))
+        if not sessions and portfolio.get("positions") and portfolio.get("valuation_consistent") is not False:
+            latest = str(portfolio.get("last_valuation_date") or "")
+            if latest:
+                sessions.append(latest)
+        portfolio["valuation_sessions"] = sessions
+        portfolio["completed_trading_days"] = min(len(sessions), MEDIUM_HOLD_DAYS)
+        portfolio["remaining_trading_days"] = max(MEDIUM_HOLD_DAYS - len(sessions), 0)
+        portfolio["hold_days"] = MEDIUM_HOLD_DAYS
+        portfolio["hold_unit"] = "valid_trading_sessions"
+        if portfolio.get("status") != "complete":
+            portfolio["target_exit_date"] = None
+            for position in (portfolio.get("positions") or []) + (portfolio.get("benchmark_positions") or []):
+                position["hold_trading_days"] = MEDIUM_HOLD_DAYS
+                position["target_exit_date"] = None
+
+    long = state["long"]
+    sessions_by_market = long.setdefault("validation_sessions", {"TW": [], "US": []})
+    completed = long.setdefault("validation_completed_days", {"TW": 0, "US": 0})
+    for market in MARKETS:
+        sessions = list(dict.fromkeys(str(value) for value in sessions_by_market.get(market, []) if value))
+        if not sessions and any(position.get("market") == market for position in long.get("positions") or []):
+            latest = str((long.get("last_valuation_date") or {}).get(market) or "")
+            consistent = (long.get("valuation_consistent") or {}).get(market) is not False
+            if latest and consistent:
+                sessions.append(latest)
+        sessions_by_market[market] = sessions
+        completed[market] = min(len(sessions), VALIDATION_TARGET_DAYS)
+    long["validation_target_trading_days"] = VALIDATION_TARGET_DAYS
+
+
+def _record_medium_session(portfolio: dict[str, Any], session_date: str) -> None:
+    sessions = portfolio.setdefault("valuation_sessions", [])
+    if session_date not in sessions:
+        sessions.append(session_date)
+        sessions.sort()
+    portfolio["completed_trading_days"] = min(len(sessions), MEDIUM_HOLD_DAYS)
+    portfolio["remaining_trading_days"] = max(MEDIUM_HOLD_DAYS - len(sessions), 0)
+
+
+def _record_long_validation_session(portfolio: dict[str, Any], market: str, session_date: str) -> None:
+    sessions = portfolio.setdefault("validation_sessions", {"TW": [], "US": []}).setdefault(market, [])
+    if session_date not in sessions:
+        sessions.append(session_date)
+        sessions.sort()
+    portfolio.setdefault("validation_completed_days", {"TW": 0, "US": 0})[market] = min(
+        len(sessions), VALIDATION_TARGET_DAYS
+    )
+
+
+def _realize_at_session(positions: list[dict[str, Any]], market: str, session_date: str) -> None:
+    for position in positions:
+        if position.get("market") != market or position.get("realized"):
+            continue
+        position["exit_session_date"] = session_date
+        position["exit_price"] = position.get("last_price")
+        position["realized"] = True
+
+
 def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: str, session_date: str) -> None:
     portfolio = state["medium"][market]
     if portfolio.get("status") == "complete":
@@ -636,7 +713,7 @@ def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: st
             )
             portfolio["pending"] = None
             portfolio["entry_session_date"] = session_date
-            portfolio["target_exit_date"] = positions[0]["target_exit_date"]
+            portfolio["target_exit_date"] = None
             portfolio["status"] = "active"
     valuation_pending = _value_market_atomically(
         portfolio.get("positions") or [],
@@ -649,6 +726,11 @@ def _update_medium(state: dict[str, Any], rows: list[dict[str, Any]], market: st
         portfolio["valuation_pending"] = valuation_pending
     elif not valuation_pending:
         portfolio["valuation_pending"] = None
+        if portfolio.get("positions"):
+            _record_medium_session(portfolio, session_date)
+            if portfolio.get("completed_trading_days", 0) >= MEDIUM_HOLD_DAYS:
+                _realize_at_session(portfolio.get("positions") or [], market, session_date)
+                _realize_at_session(portfolio.get("benchmark_positions") or [], market, session_date)
     portfolio["valuation_consistent"] = _valuation_dates_consistent(
         portfolio.get("positions") or [], portfolio.get("benchmark_positions") or [], market
     )
@@ -698,6 +780,8 @@ def _update_long(state: dict[str, Any], rows: list[dict[str, Any]], market: str,
         portfolio["valuation_pending"][market] = valuation_pending
     elif not valuation_pending:
         portfolio["valuation_pending"][market] = None
+        if any(position.get("market") == market for position in portfolio.get("positions") or []):
+            _record_long_validation_session(portfolio, market, session_date)
     portfolio.setdefault("valuation_consistent", {"TW": True, "US": True})[market] = (
         _valuation_dates_consistent(
             portfolio.get("positions") or [],
@@ -749,6 +833,18 @@ def update_state(
         "同一市場全部持股與同期基準都取得同一交易日官方收盤價後才整組更新；"
         "不足時保留前一完整估值"
     )
+    state["policy"]["medium"] = {
+        "capital_per_market_twd": MEDIUM_CAPITAL_TWD,
+        "markets": ["台股", "美股"],
+        "ranking": "中長線排名前5名",
+        "allocation_per_pick_twd": MEDIUM_ALLOCATION_TWD,
+        "hold_trading_days": MEDIUM_HOLD_DAYS,
+        "hold_unit": "只計完整官方收盤估值的有效交易日",
+    }
+    state["policy"].setdefault("long", {})["validation_target_trading_days"] = VALIDATION_TARGET_DAYS
+    state["policy"]["validation_60d"] = (
+        "60個有效交易日只作模型驗證門檻，不取代中期45個有效交易日或長期6個月持有週期"
+    )
     for market in MARKETS:
         state["medium"].setdefault(market, _empty_medium_market(market))
         state["medium"][market].setdefault("net_profit_twd", 0.0)
@@ -770,6 +866,7 @@ def update_state(
         state["long"].setdefault("invalid_entries", [])
         state["long"].setdefault("valuation_consistent", {"TW": True, "US": True})
         state["long"].setdefault("valuation_pending", {"TW": None, "US": None})
+        _migrate_horizon_tracking(state)
         if intraday or period != CLOSED_PERIOD[market]:
             continue
         prepare_pending(state, rows, market, updated_at)
