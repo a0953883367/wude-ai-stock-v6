@@ -83,7 +83,7 @@ def test_experiment_freezes_previous_rank_then_settles_open_to_close_net_of_cost
     assert model["pending"]["signal_session_date"] == "2026-08-24"
 
 
-def test_partial_or_mixed_official_prices_wait_without_counting_a_day():
+def test_one_missing_stock_per_model_settles_and_holds_allocation_as_cash():
     state = empty_state()
     update_state(state, universe(), period="evening", updated_at="start")
     mixed = universe("2026-08-24")
@@ -99,14 +99,40 @@ def test_partial_or_mixed_official_prices_wait_without_counting_a_day():
     update_state(state, mixed, period="evening", updated_at="partial close")
 
     for model in state["models"].values():
+        assert model["completed_days"] == 1
+        day = model["days"][0]
+        assert day["available_positions"] == 9
+        assert day["minimum_required_positions"] == 9
+        assert day["nine_of_ten_settlement"] is True
+        assert day["invested_twd"] == 900_000
+        assert day["idle_twd"] == 100_000
+        assert len(day["missing_symbols"]) == 1
+
+
+def test_only_eight_available_stocks_wait_without_counting_a_day():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    mixed = universe("2026-08-24")
+    frozen_symbols = {
+        pick["symbol"]
+        for model in state["models"].values()
+        for pick in model["pending"]["picks"][:2]
+    }
+    for item in mixed:
+        if item["symbol"] in frozen_symbols:
+            item["official_session_date"] = "2026-08-21"
+            item["official_open_price"] = None
+
+    update_state(state, mixed, period="evening", updated_at="partial close")
+
+    for model in state["models"].values():
         assert model["completed_days"] == 0
         assert model["days"] == []
         assert model["pending"]["settlement_status"] == "waiting_for_official_prices"
-        assert model["pending"]["available_positions"] < 10
-        assert model["pending"]["missing_symbols"]
+        assert model["pending"]["available_positions"] == 8
 
 
-def test_legacy_partial_day_is_quarantined_and_no_longer_counts():
+def test_legacy_nine_of_ten_day_remains_valid_and_holds_cash():
     state = empty_state()
     update_state(state, universe(), period="evening", updated_at="start")
     update_state(state, universe("2026-08-24"), period="evening", updated_at="day one")
@@ -121,11 +147,34 @@ def test_legacy_partial_day_is_quarantined_and_no_longer_counts():
     update_state(state, universe("2026-08-25"), period="evening", updated_at="migration")
 
     for model in state["models"].values():
+        assert model["completed_days"] == 2
+        assert model["days"][0]["session_date"] == "2026-08-24"
+        assert model["days"][0]["available_positions"] == 9
+        assert model["days"][0]["invested_twd"] == 900_000
+        assert model["days"][0]["idle_twd"] == 100_000
+        assert model["invalid_days"] == []
+
+
+def test_legacy_day_with_only_eight_available_stocks_is_quarantined():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    update_state(state, universe("2026-08-24"), period="evening", updated_at="day one")
+    for model in state["models"].values():
+        for position in model["days"][0]["positions"][:2]:
+            position.update({
+                "data_available": False,
+                "open_price": None,
+                "sell_price": None,
+            })
+        model["days"][0]["invested_twd"] = CAPITAL_TWD - 2 * ALLOCATION_TWD
+
+    update_state(state, universe("2026-08-25"), period="morning", updated_at="migration")
+
+    for model in state["models"].values():
         assert model["completed_days"] == 1
         assert model["days"][0]["session_date"] == "2026-08-25"
-        assert len(model["invalid_days"]) == 1
         assert model["invalid_days"][0]["status"] == "data_incomplete"
-        assert model["invalid_days"][0]["available_positions"] == 9
+        assert model["invalid_days"][0]["available_positions"] == 8
 
 
 def test_diagnostics_explain_equal_weight_overlap_and_rank_quality():

@@ -22,6 +22,7 @@ START_DATE = "2026-08-24"
 TARGET_DAYS = 5
 CAPITAL_TWD = 1_000_000
 PICKS = 10
+MIN_POSITIONS = PICKS - 1
 ALLOCATION_TWD = CAPITAL_TWD // PICKS
 ROUND_TRIP_COST_PCT = 0.685
 MODELS = {
@@ -68,7 +69,7 @@ def _price_snapshot(row: dict[str, Any] | None) -> tuple[str, float, float]:
 def _pending_readiness(
     pending: dict[str, Any], rows: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Require every frozen pick to share one later, complete official session."""
+    """Require at least nine frozen picks to share one later official session."""
     picks = pending.get("picks") or []
     signal_date = str(pending.get("signal_session_date") or "")
     row_map = {str(row.get("symbol") or ""): row for row in rows if _is_tw_stock(row)}
@@ -91,18 +92,27 @@ def _pending_readiness(
         or open_price <= 0 or close_price <= 0
     ]
     required = PICKS
+    available = sum(
+        bool(
+            target_session and session_date == target_session
+            and open_price > 0 and close_price > 0
+        )
+        for session_date, open_price, close_price in observations.values()
+    )
     complete = bool(
         len(picks) == required
         and target_session
-        and not missing_symbols
+        and available >= MIN_POSITIONS
         and len(set(eligible_dates)) == 1
     )
     return {
         "settlement_status": "ready" if complete else "waiting_for_official_prices",
         "session_date": target_session if complete else None,
-        "available_positions": required - len(missing_symbols) if len(picks) == required else 0,
+        "available_positions": available if len(picks) == required else 0,
         "required_positions": required,
+        "minimum_required_positions": MIN_POSITIONS,
         "missing_symbols": missing_symbols,
+        "nine_of_ten_settlement": complete and available < required,
         "observed_session_dates": sorted({date for date, _, _ in observations.values() if date}),
     }
 
@@ -128,15 +138,40 @@ def _day_completeness(day: dict[str, Any]) -> dict[str, Any]:
     )
     complete = bool(
         len(positions) == PICKS
-        and available == PICKS
-        and math.isclose(_finite(day.get("invested_twd")), CAPITAL_TWD, abs_tol=0.01)
+        and available >= MIN_POSITIONS
+        and math.isclose(
+            _finite(day.get("invested_twd")), available * ALLOCATION_TWD, abs_tol=0.01
+        )
     )
     return {
         "data_complete": complete,
         "available_positions": available,
         "required_positions": PICKS,
+        "minimum_required_positions": MIN_POSITIONS,
         "missing_symbols": missing_symbols,
+        "nine_of_ten_settlement": complete and available < PICKS,
     }
+
+
+def _recalculate_day_from_positions(day: dict[str, Any]) -> None:
+    """Rebuild portfolio totals so an unavailable pick remains idle cash."""
+    available = [
+        position for position in day.get("positions") or []
+        if position.get("data_available") is True
+    ]
+    invested = sum(
+        _finite(position.get("allocation_twd"), ALLOCATION_TWD)
+        for position in available
+    )
+    gross_profit = sum(_finite(position.get("gross_profit_twd")) for position in available)
+    net_profit = sum(_finite(position.get("net_profit_twd")) for position in available)
+    day.update({
+        "invested_twd": round(invested, 2),
+        "idle_twd": round(CAPITAL_TWD - invested, 2),
+        "gross_profit_twd": round(gross_profit, 2),
+        "net_profit_twd": round(net_profit, 2),
+        "net_return_pct": round(net_profit / CAPITAL_TWD * 100, 4),
+    })
 
 
 def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
@@ -150,6 +185,7 @@ def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
     for day in model.get("days") or []:
         completeness = _day_completeness(day)
         if completeness["data_complete"]:
+            _recalculate_day_from_positions(day)
             day.update(completeness)
             day["rank_return_spearman"] = _day_rank_return_spearman(day)
             valid_days.append(day)
@@ -163,7 +199,7 @@ def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
                 **day,
                 **completeness,
                 "status": "data_incomplete",
-                "invalid_reason": "未取得10/10同一交易日官方開盤與收盤價",
+                "invalid_reason": "未達至少9/10檔同一交易日官方開盤與收盤價",
                 "invalidated_at": updated_at,
             })
             invalid_keys.add(invalid_key)
@@ -435,6 +471,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "target_trading_days": TARGET_DAYS,
             "capital_per_model_twd": CAPITAL_TWD,
             "picks_per_model": PICKS,
+            "minimum_positions_per_model": MIN_POSITIONS,
             "allocation_per_pick_twd": ALLOCATION_TWD,
             "entry": "前一完成交易日排名；下一交易日官方開盤價",
             "exit": "同日官方收盤價，作為收盤前賣出代理",
@@ -442,8 +479,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "cost_assumption": "台股買賣手續費0.285%＋證交稅0.3%＋滑價0.1%",
             "orders": "純網頁影子試走，不連接券商、不送單",
             "selection": "安全資格分層優先；每組前10名等權",
-            "valid_session_rule": "10檔均須取得同一個較晚交易日的官方開盤與收盤價",
-            "incomplete_policy": "任一檔缺價即等待補抓；既有不完整日移入無效樣本，不增加完成天數",
+            "valid_session_rule": "每組原選10檔；至少9檔取得同一個較晚交易日的官方開盤與收盤價即可結算",
+            "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔才等待補抓，既有不合格日移入無效樣本",
             "decision_rule": "5日只做第一次檢查，不自動改權重；20日樣本後再決定正式調整",
         },
         "models": {key: _empty_model(key) for key in MODELS},
@@ -502,6 +539,7 @@ def _new_pending(
         "settlement_status": "waiting_for_official_prices",
         "available_positions": 0,
         "required_positions": PICKS,
+        "minimum_required_positions": MIN_POSITIONS,
         "missing_symbols": [pick["symbol"] for pick in picks],
         "observed_session_dates": [],
     }
@@ -570,9 +608,12 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
         "net_return_pct": round(net_profit / CAPITAL_TWD * 100, 4),
         "positions": positions,
         "data_complete": True,
-        "available_positions": PICKS,
+        "available_positions": readiness["available_positions"],
         "required_positions": PICKS,
-        "missing_symbols": [],
+        "minimum_required_positions": MIN_POSITIONS,
+        "missing_symbols": readiness["missing_symbols"],
+        "nine_of_ten_settlement": readiness["nine_of_ten_settlement"],
+        "idle_twd": round(CAPITAL_TWD - invested, 2),
         **capture,
     }
     day["rank_return_spearman"] = _day_rank_return_spearman(day)
@@ -716,6 +757,11 @@ def update_state(
     if intraday or period not in {"morning", "evening"}:
         return state
     state["updated_at"] = updated_at
+    state.setdefault("policy", {}).update({
+        "minimum_positions_per_model": MIN_POSITIONS,
+        "valid_session_rule": "每組原選10檔；至少9檔取得同一個較晚交易日的官方開盤與收盤價即可結算",
+        "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔才等待補抓，既有不合格日移入無效樣本",
+    })
     settle_only = period == "morning"
     for key, model in state["models"].items():
         _repair_incomplete_days(model, price_history)
