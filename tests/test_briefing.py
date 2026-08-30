@@ -1,4 +1,5 @@
 from briefing import (
+    _tiingo_public_summary,
     _attach_next_session_predictions,
     _carry_completed_tw_rows,
     _carry_forward_symbol_session_regressions,
@@ -18,6 +19,18 @@ def _session_rows(session_dates: list[str]) -> list[dict]:
         }
         for index, session_date in enumerate(session_dates)
     ]
+
+
+def test_tiingo_public_summary_never_contains_internal_prices_or_symbol_lists():
+    summary = _tiingo_public_summary({
+        "status": "ok",
+        "covered_requested_count": 185,
+        "rows": {"MSFT": {"official_close_price": 513.53}},
+        "covered_requested_symbols": ["MSFT"],
+        "missing_requested_symbols": ["WOLF"],
+    })
+
+    assert summary == {"status": "ok", "covered_requested_count": 185}
 
 
 def test_report_session_guard_rejects_mixed_and_regressed_market_data():

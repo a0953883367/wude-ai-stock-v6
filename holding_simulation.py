@@ -54,6 +54,14 @@ def _is_stock(row: dict[str, Any], market: str) -> bool:
     )
 
 
+def _is_close_only_fallback(row: dict[str, Any]) -> bool:
+    return bool(
+        row.get("close_only_fallback") is True
+        or row.get("stockq_close_only") is True
+        or row.get("tiingo_close_only") is True
+    )
+
+
 def _rank_tier(row: dict[str, Any]) -> int:
     explicit = row.get("mid_long_rank_tier")
     if explicit is not None:
@@ -311,7 +319,7 @@ def _enter_positions(
             not row
             or str(row.get("official_session_date") or "") != session_date
             or open_price <= 0
-            or row.get("stockq_close_only") is True
+            or _is_close_only_fallback(row)
         ):
             continue
         target = None if hold_days is not None else _add_months(session_date, int(hold_months or 0))
@@ -352,7 +360,7 @@ def _enter_benchmark_position(
         not row
         or str(row.get("official_session_date") or "") != session_date
         or open_price <= 0
-        or row.get("stockq_close_only") is True
+        or _is_close_only_fallback(row)
     ):
         return []
     target = None if hold_days is not None else _add_months(session_date, int(hold_months or 0))
@@ -408,7 +416,7 @@ def _entry_coverage_ready(
             _finite(row.get("official_open_price"))
             if row
             and str(row.get("official_session_date") or "") == session_date
-            and row.get("stockq_close_only") is not True
+            and not _is_close_only_fallback(row)
             else 0.0
         )
         if price > 0:
