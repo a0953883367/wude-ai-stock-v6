@@ -3,6 +3,7 @@ import json
 
 from stockq_market_context import (
     CACHE_TTL_SECONDS,
+    apply_stockq_market_fallback,
     decode_stockq_value,
     parse_stockq_html,
     update_stockq_market_context,
@@ -81,6 +82,64 @@ def test_update_uses_fresh_cache_without_refetch(tmp_path):
     )
     assert result["cache_status"] == "fresh"
     assert called is False
+
+
+def test_open_market_uses_cache_without_any_stockq_request(tmp_path):
+    cached = {
+        "schema_version": 1,
+        "updated_at": "2026-08-28 20:00:00",
+        "fetched_epoch": 1000,
+        "status": "ok",
+        "indicator_count": 12,
+        "indicators": {"taiwan_weighted": {"price": 46331.45}},
+    }
+    (tmp_path / "stockq_market_context.json").write_text(json.dumps(cached))
+    called = False
+
+    def fail_fetch():
+        nonlocal called
+        called = True
+        raise AssertionError("盤中不得連線抓 StockQ")
+
+    result = update_stockq_market_context(
+        tmp_path,
+        updated_at="2026-08-29 12:00:00",
+        now_epoch=1000 + 86400,
+        fetcher=fail_fetch,
+        allow_network=False,
+    )
+
+    assert called is False
+    assert result["cache_status"] == "after_close_hold"
+    assert result["network_fetch_skipped"] is True
+    assert result["indicators"]["taiwan_weighted"]["price"] == 46331.45
+
+
+def test_stockq_fills_only_missing_primary_market_values():
+    primary = {
+        "加權指數": {"price": None, "change_pct": None, "session_date": None},
+        "S&P 500": {"price": 7700.0, "change_pct": 0.2, "session_date": "2026-08-28"},
+    }
+    stockq = {
+        "updated_at": "2026-08-29 06:00:00",
+        "indicators": {
+            "taiwan_weighted": {
+                "price": 46331.45, "change_pct": 0.77, "observed_at": "08/28",
+            },
+            "sp500": {"price": 7711.76, "change_pct": -0.25, "observed_at": "08/28"},
+        },
+    }
+
+    result = apply_stockq_market_fallback(primary, stockq)
+
+    assert result["加權指數"] == {
+        "price": 46331.45,
+        "change_pct": 0.77,
+        "session_date": "2026-08-28",
+        "source": "StockQ_after_close_fallback",
+        "source_url": "https://www.stockq.org/",
+    }
+    assert result["S&P 500"] == primary["S&P 500"]
 
 
 def test_update_uses_dated_stale_fallback_on_provider_error(tmp_path):

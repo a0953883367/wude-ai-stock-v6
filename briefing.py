@@ -60,7 +60,10 @@ from tw_official_data import (
     overlay_official_daily,
 )
 from tw_market_context import build_tw_market_context
-from stockq_market_context import update_stockq_market_context
+from stockq_market_context import (
+    apply_stockq_market_fallback,
+    update_stockq_market_context,
+)
 from tw_financial_official import fetch_tw_official_financials
 from watchlist import load_watchlist
 
@@ -457,6 +460,34 @@ def _previous_rows() -> dict[str, dict]:
     }
 
 
+def _freeze_tw_prices_until_close(period: str, intraday: bool = False) -> bool:
+    """Never request or publish Taiwan prices during its regular session."""
+    return intraday or period == "noon"
+
+
+def _is_tw_price_symbol(symbol: str) -> bool:
+    return str(symbol).upper().endswith((".TW", ".TWO"))
+
+
+def _carry_completed_tw_rows(
+    universe: list[dict], previous: dict[str, dict],
+) -> list[dict]:
+    """Reuse the latest verified Taiwan close while the market is still open."""
+    output: list[dict] = []
+    for item in universe:
+        if item.get("market") != "TW":
+            continue
+        symbol = str(item.get("symbol") or "")
+        prior = previous.get(symbol)
+        if not prior or not prior.get("official_session_date"):
+            continue
+        row = dict(prior)
+        row["after_close_price_policy"] = "carried_completed_session"
+        row["price_fetch_deferred_until_close"] = True
+        output.append(row)
+    return output
+
+
 def _cohort_name(row: dict) -> str:
     market = str(row.get("market") or "").upper()
     asset = "ETF" if "ETF" in str(row.get("type") or "").upper() else "STOCK"
@@ -758,6 +789,12 @@ def main() -> int:
     combined.update({item["symbol"]: item for item in watchlist})
     universe = list(combined.values())
     symbols = list(combined)
+    previous_rows = _previous_rows()
+    for symbol, forecast in load_frozen_forecasts(
+        SETTINGS.reports_dir, market="TW"
+    ).items():
+        previous_rows[symbol] = {**previous_rows.get(symbol, {}), **forecast}
+    freeze_tw_prices = _freeze_tw_prices_until_close(args.period, args.intraday)
 
     # The inverse ETFs are price inputs for one isolated shadow experiment.
     # They deliberately never enter `combined`, `universe`, ALL or ranking.
@@ -781,13 +818,21 @@ def main() -> int:
         for symbol in leveraged_inverse_symbols
         if not symbol.endswith((".TW", ".TWO"))
     })
+    price_data_symbols = [
+        symbol for symbol in data_symbols
+        if not (freeze_tw_prices and _is_tw_price_symbol(symbol))
+    ]
     history = _stage(
         "日線價格",
         lambda: download_history(
-            data_symbols, us_cohorts=us_history_cohorts
+            price_data_symbols, us_cohorts=us_history_cohorts
         ),
     )
-    intraday = _stage("盤中量價", lambda: download_intraday(symbols))
+    intraday_symbols = [
+        symbol for symbol in symbols
+        if not (freeze_tw_prices and _is_tw_price_symbol(symbol))
+    ]
+    intraday = _stage("盤中量價", lambda: download_intraday(intraday_symbols))
     watchlist_stock_ids = {
         item["symbol"].split(".")[0]
         for item in watchlist
@@ -813,11 +858,7 @@ def main() -> int:
     )
     # Free FinMind plans allow per-stock requests, so enrichment targets the
     # fixed list while the wider background scan safely remains neutral.
-    previous_rows = _previous_rows()
-    # Do not trust a mutable report over the fixed TW forecast. This overlay
-    # repairs earlier reports that were recomputed after the close.
-    previous_rows.update(load_frozen_forecasts(SETTINGS.reports_dir, market="TW"))
-    previous = previous_rows if args.intraday else {}
+    previous = previous_rows if freeze_tw_prices else {}
     if previous:
         logging.info("盤中更新沿用上一份法人、融資、基本面與分點快照")
         institutions, credit_flows, fundamentals, broker_branches = (
@@ -839,8 +880,13 @@ def main() -> int:
     # Official exchange data is fetched once for the entire Taiwan universe.
     # It replaces Taiwan fields only; US inputs and scoring stay untouched.
     # FinMind/previous snapshots remain fallbacks for multi-session history.
-    tw_official = _stage(
-        "台股官方資料", lambda: fetch_taiwan_official_data(universe)
+    tw_official = (
+        {
+            "prices": {}, "institutions": {}, "credit": {},
+            "fundamentals": {}, "announcements": {},
+        }
+        if freeze_tw_prices
+        else _stage("台股官方資料", lambda: fetch_taiwan_official_data(universe))
     )
     institutions = merge_official_with_fallback(
         institutions, tw_official.get("institutions", {}), kind="institution"
@@ -886,9 +932,11 @@ def main() -> int:
     )
     etf_metadata = _stage("ETF 資料快取", lambda: fetch_etf_metadata(universe))
 
-    features = []
+    features = _carry_completed_tw_rows(universe, previous_rows) if freeze_tw_prices else []
     for item in universe:
         symbol = item["symbol"]
+        if freeze_tw_prices and item.get("market") == "TW":
+            continue
         daily = history.get(symbol)
         official_price = None
         if item.get("market") == "TW":
@@ -959,18 +1007,24 @@ def main() -> int:
             + "；".join(source_session_issues)
         )
 
-    market = _stage("核心市場", fetch_core_market)
-    # StockQ is a low-frequency secondary context source. It is written to its
-    # own dated cache and never overwrites the broker/official symbol rows used
-    # by rankings or simulations.
+    market = _stage(
+        "核心市場",
+        lambda: fetch_core_market(
+            {"加權指數", "櫃買指數"} if freeze_tw_prices else None
+        ),
+    )
+    # StockQ is an after-close secondary fallback for the market indicators it
+    # publishes. It never overwrites complete primary values or individual rows.
     stockq_market_context = _stage(
-        "StockQ市場環境輔助層",
+        "StockQ收盤後市場備援層",
         lambda: update_stockq_market_context(
             SETTINGS.reports_dir,
             updated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
             timeout=SETTINGS.request_timeout,
+            allow_network=not freeze_tw_prices,
         ),
     )
+    market = apply_stockq_market_fallback(market, stockq_market_context)
     tw_market_context = build_tw_market_context(features, market)
     nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
     nasdaq_change = float(nasdaq_raw) if nasdaq_raw is not None else None
@@ -1206,7 +1260,8 @@ def main() -> int:
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
             "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/SEC/FINRA備援且明確降低資料涵蓋",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
-            "stockq_context": "StockQ只作全球指數、期貨、匯率、利率與商品交叉驗證；獨立快取且不覆蓋個股行情、財報、正式排名或下單",
+            "after_close_prices": "自動報告盤中不抓、不補、不結算台股價格；中午報沿用上一個完整交易日，晚報收盤後才更新",
+            "stockq_context": "StockQ作收盤後市場指標備援；只補主要來源缺值，不覆蓋完整資料，也不提供或捏造個股開高低收",
             "verified_outcome_feedback": "V6 market-specific close-to-open, open-to-close, and close-to-close shadow outcomes; four market/asset cohorts; no automatic score effect",
             "regime_validation": "台股以加權指數、美股以S&P 500，只用預測當日以前的MA20、MA60與20日報酬固定多頭／空頭／盤整標籤；分段結果不自動改分",
             "institutional_accumulation": "台股法人蓄力分數＝成交量正規化法人強度35%＋連買20%＋K線穩定20%＋吸收15%＋量縮10%；資料完整時占台股個股短線排名20%，另設獨立法人蓄力榜並持續累積扣成本驗證",

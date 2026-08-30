@@ -1,8 +1,9 @@
 """Low-frequency StockQ market-context collector.
 
 StockQ is a useful human-facing aggregation page, not a broker quote API.  This
-module therefore treats it as attributable secondary evidence only: it never
-overwrites symbol prices, fundamentals, rankings, weights, or order fields.
+module therefore treats it as an attributable after-close fallback for the
+market indicators it actually publishes.  It never overwrites complete primary
+data, individual-symbol prices, fundamentals, rankings, weights, or order fields.
 """
 
 from __future__ import annotations
@@ -46,6 +47,16 @@ TARGETS = {
     "sp500_futures": ("S&P 500", "index_future"),
     "nasdaq100_futures": ("NASDAQ 100", "index_future"),
     "vix_futures": ("S&P 500 VIX", "index_future"),
+}
+
+CORE_MARKET_FALLBACKS = {
+    "加權指數": "taiwan_weighted",
+    "S&P 500": "sp500",
+    "Nasdaq": "nasdaq",
+    "費城半導體": "sox",
+    "美元指數": "dollar_index",
+    "VIX": "vix",
+    "美國10年期公債殖利率": "us10y_yield",
 }
 
 
@@ -245,6 +256,54 @@ def _cache_age(payload: dict[str, Any], now_epoch: float) -> float | None:
     return max(0.0, now_epoch - fetched_epoch) if fetched_epoch is not None else None
 
 
+def _observed_session_date(value: Any, updated_at: str) -> str | None:
+    text = str(value or "").strip()
+    if not re.fullmatch(r"\d{2}/\d{2}", text):
+        return None
+    try:
+        year = datetime.fromisoformat(updated_at).year
+        month, day = (int(part) for part in text.split("/"))
+        candidate = datetime(year, month, day)
+        updated = datetime.fromisoformat(updated_at)
+        if candidate > updated.replace(tzinfo=None):
+            candidate = candidate.replace(year=year - 1)
+        return candidate.date().isoformat()
+    except (TypeError, ValueError):
+        return None
+
+
+def apply_stockq_market_fallback(
+    primary: dict[str, dict[str, Any]],
+    stockq: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Fill missing completed market indicators without overwriting primary data."""
+    output = {label: dict(row or {}) for label, row in primary.items()}
+    indicators = stockq.get("indicators") or {}
+    updated_at = str(stockq.get("updated_at") or "")
+    for label, indicator_key in CORE_MARKET_FALLBACKS.items():
+        fallback = indicators.get(indicator_key) or {}
+        price = _number(fallback.get("price"))
+        if price is None:
+            continue
+        current = output.setdefault(label, {})
+        used = False
+        if _number(current.get("price")) is None:
+            current["price"] = price
+            used = True
+        if _number(current.get("change_pct")) is None:
+            current["change_pct"] = _number(fallback.get("change_pct"))
+            used = True
+        if not current.get("session_date"):
+            current["session_date"] = _observed_session_date(
+                fallback.get("observed_at"), updated_at
+            )
+            used = True
+        if used:
+            current["source"] = "StockQ_after_close_fallback"
+            current["source_url"] = SOURCE_URL
+    return output
+
+
 def update_stockq_market_context(
     reports_dir: Path,
     *,
@@ -252,15 +311,51 @@ def update_stockq_market_context(
     timeout: int = 20,
     now_epoch: float | None = None,
     fetcher: Callable[[], str] | None = None,
+    allow_network: bool = True,
 ) -> dict[str, Any]:
-    """Fetch one page at low frequency and keep a dated stale fallback."""
+    """Fetch after close only and keep a dated fallback for market indicators."""
     reports_dir.mkdir(parents=True, exist_ok=True)
     path = reports_dir / "stockq_market_context.json"
     cached = _read_cache(path)
     now_epoch = time.time() if now_epoch is None else now_epoch
     age = _cache_age(cached, now_epoch) if cached else None
+    if not allow_network:
+        if cached:
+            return {
+                **cached,
+                "cache_status": "after_close_hold",
+                "cache_age_seconds": round(age) if age is not None else None,
+                "network_fetch_skipped": True,
+                "after_close_only": True,
+            }
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "updated_at": updated_at,
+            "status": "waiting_for_close",
+            "cache_status": "missing",
+            "source": "StockQ",
+            "source_url": SOURCE_URL,
+            "role": "收盤後全球市場與總體環境備援層",
+            "affects_formal_ranking": False,
+            "overwrites_symbol_data": False,
+            "indicator_count": 0,
+            "indicators": {},
+            "market_signal": {
+                "score": None,
+                "regime": "等待收盤",
+                "reasons": ["盤中禁止抓價；等待正式收盤後再更新 StockQ 備援"],
+                "affects_formal_ranking": False,
+            },
+            "network_fetch_skipped": True,
+            "after_close_only": True,
+        }
     if cached and age is not None and age < CACHE_TTL_SECONDS:
-        return {**cached, "cache_status": "fresh", "cache_age_seconds": round(age)}
+        return {
+            **cached,
+            "cache_status": "fresh",
+            "cache_age_seconds": round(age),
+            "after_close_only": True,
+        }
 
     error: str | None = None
     try:
@@ -290,13 +385,14 @@ def update_stockq_market_context(
             "cache_age_seconds": 0,
             "source": "StockQ",
             "source_url": SOURCE_URL,
-            "role": "全球市場與總體環境輔助層",
+            "role": "收盤後全球市場與總體環境備援層",
             "affects_formal_ranking": False,
             "overwrites_symbol_data": False,
+            "after_close_only": True,
             "indicator_count": len(indicators),
             "indicators": indicators,
             "market_signal": _market_signal(indicators),
-            "warning": "聚合網站資料僅供交叉驗證；個股價格、財報及逐筆成交仍以授權或官方來源為準。",
+            "warning": "StockQ只在收盤後補主要來源缺少的市場指標；個股價格、財報及逐筆成交仍以授權或官方來源為準。",
         }
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -318,9 +414,10 @@ def update_stockq_market_context(
         "cache_status": "missing",
         "source": "StockQ",
         "source_url": SOURCE_URL,
-        "role": "全球市場與總體環境輔助層",
+        "role": "收盤後全球市場與總體環境備援層",
         "affects_formal_ranking": False,
         "overwrites_symbol_data": False,
+        "after_close_only": True,
         "indicator_count": 0,
         "indicators": {},
         "market_signal": {

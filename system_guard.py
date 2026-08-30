@@ -326,16 +326,16 @@ def build_guard(
             f"官方財報 {official_available}/{official_requested}（{official_coverage:.2f}%）",
         ))
 
-    if stockq.get("status") in {"ok", "stale_cache"} and int(stockq.get("indicator_count") or 0) > 0:
+    if stockq.get("status") in {"ok", "stale_cache", "stale_fallback"} and int(stockq.get("indicator_count") or 0) > 0:
         checks.append(_check(
-            "stockq_context", "StockQ 市場背景", "ok",
-            f"已取得 {int(stockq.get('indicator_count') or 0)} 項全球指標；只作市場背景",
+            "stockq_context", "StockQ 收盤後備援", "ok",
+            f"已取得 {int(stockq.get('indicator_count') or 0)} 項全球指標；只在主要來源缺值時補入",
         ))
     else:
         checks.append(_check(
-            "stockq_context", "StockQ 市場背景", "warning",
+            "stockq_context", "StockQ 收盤後備援", "warning",
             "StockQ 指標暫時不可用；不影響個股資料與正式排名",
-            "下次排程自動重試並優先使用三日內快取",
+            "等待收盤後排程自動重試，盤中只沿用三日內快取",
         ))
 
     if not validation_60d:

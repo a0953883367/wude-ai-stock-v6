@@ -42,6 +42,24 @@ def test_download_history_retries_partial_batch_omissions_individually(monkeypat
     assert calls == [["ANET", "QUBT"], "QUBT"]
 
 
+def test_core_market_does_not_request_excluded_open_market_prices(monkeypatch):
+    from data_fetcher import CORE_MARKET, fetch_core_market
+
+    requested = []
+
+    def fake_history(symbols, period="7d"):
+        requested.extend(symbols)
+        return {}
+
+    monkeypatch.setattr("data_fetcher.download_history", fake_history)
+    result = fetch_core_market({"加權指數", "櫃買指數"})
+
+    assert CORE_MARKET["加權指數"] not in requested
+    assert CORE_MARKET["櫃買指數"] not in requested
+    assert result["加權指數"]["source"] == "after_close_policy"
+    assert result["櫃買指數"]["price"] is None
+
+
 def test_stale_nonempty_us_daily_frames_retry_after_close(monkeypatch):
     target = pd.to_datetime(["2026-08-27", "2026-08-28"])
     stale = pd.to_datetime(["2026-08-26", "2026-08-27"])
