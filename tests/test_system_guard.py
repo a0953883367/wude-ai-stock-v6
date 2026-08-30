@@ -118,6 +118,32 @@ def test_missing_broker_is_warning_not_critical(tmp_path: Path) -> None:
     assert broker["level"] == "warning"
 
 
+def test_closed_market_carried_official_snapshot_is_not_a_false_red(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    latest = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    latest["data_status"]["expected_tw_count"] = 2
+    latest["data_status"]["tw_official_price_count"] = 0
+    latest["data_status"]["tw_official_institution_count"] = 0
+    latest["data_status"]["tw_official_credit_count"] = 0
+    _write(tmp_path / "latest.json", latest)
+    analysis = json.loads((tmp_path / "all_analysis.json").read_text(encoding="utf-8"))
+    for row in analysis["data"]:
+        if row.get("market") == "TW":
+            row.update({
+                "official_close_price": 100,
+                "institution_available": True,
+                "credit_available": 1,
+            })
+    _write(tmp_path / "all_analysis.json", analysis)
+
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+    core = next(item for item in guard["checks"] if item["code"] == "tw_core_data")
+
+    assert core["level"] == "ok"
+    assert "沿用最近完整收盤" in core["detail"]
+
+
 def test_rotation_failure_is_independent_warning(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     _write(tmp_path / "market_rotation_shadow_health.json", {
