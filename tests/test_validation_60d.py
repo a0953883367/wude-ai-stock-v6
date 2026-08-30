@@ -32,3 +32,24 @@ def test_validation_requires_days_samples_and_quality_gate(tmp_path):
     payload = update_validation_60d(tmp_path, updated_at="now")
     assert payload["status"] == "complete"
     assert payload["ready_for_model_selection"] is True
+
+
+def test_validation_reports_medium_and_long_without_changing_horizons(tmp_path):
+    _write(tmp_path / "holding_simulation.json", {
+        "medium": {
+            "TW": {"status": "active", "completed_trading_days": 5},
+            "US": {"status": "active", "completed_trading_days": 4},
+        },
+        "long": {
+            "status": "active",
+            "validation_completed_days": {"TW": 5, "US": 4},
+        },
+    })
+    payload = update_validation_60d(tmp_path, updated_at="now")
+    assert payload["tracks"]["medium_45d"]["TW"] == {
+        "status": "active", "completed_days": 5, "target_days": 45,
+    }
+    assert payload["tracks"]["long_6m"]["validation"]["US"] == {
+        "completed_days": 4, "target_days": 60,
+    }
+    assert payload["rules"]["holding_horizons_unchanged"] is True
