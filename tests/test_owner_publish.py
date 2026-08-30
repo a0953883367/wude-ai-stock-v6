@@ -1,6 +1,6 @@
 import json
 
-from tools.publish_owner_data import build_payload
+from tools.publish_owner_data import CHUNK_PROTOCOL, build_chunked_bodies, build_payload
 
 
 def test_owner_payload_includes_rotation_without_environment_secrets(tmp_path, monkeypatch):
@@ -44,3 +44,23 @@ def test_owner_payload_remains_compatible_when_rotation_is_missing(tmp_path):
 
     assert count == 1
     assert json.loads(encoded)["rotation"] is None
+
+
+def test_owner_payload_is_chunked_and_committed_only_after_all_rows(tmp_path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    rows = [{"symbol": f"TW{index:03d}"} for index in range(45)]
+    (reports / "all_analysis.json").write_text(json.dumps({
+        "data": rows, "updated_at": "2026-08-30 20:00:00", "period": "evening",
+    }), encoding="utf-8")
+
+    encoded, _ = build_payload(reports)
+    chunks, commit = build_chunked_bodies(encoded, generation=1788062400000, chunk_size=20)
+
+    assert [len(item["data"]) for item in chunks] == [20, 20, 5]
+    assert all(item["protocol"] == CHUNK_PROTOCOL and item["action"] == "chunk" for item in chunks)
+    assert commit["action"] == "commit"
+    assert commit["chunk_count"] == 3
+    assert commit["total_count"] == 45
+    assert "data" not in commit
+    assert [row for item in chunks for row in item["data"]] == rows
