@@ -9,7 +9,6 @@ on the next completed session.  There are deliberately no broker imports.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import datetime
 import hashlib
 import json
 import math
@@ -26,6 +25,8 @@ CAPITAL_TWD = 1_000_000
 ALLOCATION_TWD = CAPITAL_TWD // PICKS
 ROTATION_WEIGHT = 0.15
 MIN_SECTOR_MEMBERS = 2
+MIN_ANALYZED_STOCKS = PICKS
+MIN_POSITIONS_PER_MODEL = PICKS - 1
 MAX_SNAPSHOTS = 90
 MAX_OUTCOMES = 120
 ROUND_TRIP_COST_PCT = {"TW": 0.685, "US": 0.20}
@@ -64,14 +65,11 @@ def _session_date(rows: Iterable[dict[str, Any]], market: str) -> str:
     return Counter(dates).most_common(1)[0][0] if dates else ""
 
 
-def _completed_checkpoint(market: str, period: str, updated_at: str) -> bool:
-    if period != CLOSED_PERIOD[market]:
-        return False
-    try:
-        local_time = datetime.fromisoformat(updated_at.replace("/", "-"))
-    except (TypeError, ValueError):
-        return False
-    return local_time.hour >= 14 if market == "TW" else 5 <= local_time.hour < 12
+def _completed_checkpoint(market: str, period: str, _updated_at: str) -> bool:
+    # `intraday` is rejected by the caller.  A non-intraday formal report may
+    # finish late because upstream providers are slow, so its period and exact
+    # official session dates are authoritative; wall-clock hour is not.
+    return period == CLOSED_PERIOD[market]
 
 
 def _industry(row: dict[str, Any]) -> str:
@@ -205,7 +203,7 @@ def build_market_snapshot(
         and str(row.get("official_session_date") or "") == session_date
         and _finite(row.get("change_pct")) is not None
     ]
-    if not session_date or len(market_rows) < 20:
+    if not session_date or len(market_rows) < MIN_ANALYZED_STOCKS:
         return None
     market_median = float(median(_number(row.get("change_pct")) for row in market_rows))
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -272,8 +270,12 @@ def select_picks(
         for item in snapshot.get("sectors") or []
     }
     ranked = []
+    snapshot_date = str(snapshot.get("session_date") or "")
     for source in rows:
-        if not _is_stock(source, market):
+        if (
+            not _is_stock(source, market)
+            or str(source.get("official_session_date") or "") != snapshot_date
+        ):
             continue
         row = dict(source)
         base = _base_score(row)
@@ -405,6 +407,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "tw_strict": "台股嚴格組＝產業轉強＋3檔共振＋量增突破＋法人連買＋未過熱，5/5",
             "tw_practical": "台股實用組＝產業轉強＋3檔共振＋未過熱必須成立，量增突破／法人連買至少一項",
             "market_isolation": "台股使用法人／量價；美股使用成長財報代理／量價",
+            "settlement_coverage": "A/B原選10檔至少9檔同日正式開收盤價即可結算；缺價配置保留現金",
+            "formal_checkpoint": "台股晚報／美股早報可延遲完成；依正式時段與同日行情判定，不用完成小時阻擋",
             "review_gate": "5日只查程式、20日初步比較、60日後只標候選",
             "formal_ranking_locked": True,
             "automatic_merge": False,
@@ -451,20 +455,35 @@ def _settle_pending(
         if _is_stock(row, market)
         and str(row.get("official_session_date") or "") == session_date
     }
-    required = {
-        pick["symbol"]
-        for model in (pending.get("models") or {}).values()
-        for pick in model.get("picks") or []
-    }
-    missing = sorted(symbol for symbol in required if not (
-        symbol in row_map
-        and _number(row_map[symbol].get("official_open_price")) > 0
-        and _number(row_map[symbol].get("official_close_price")) > 0
-    ))
-    if missing:
+    coverage = {}
+    blocking_missing = set()
+    for key, model in (pending.get("models") or {}).items():
+        picks = list(model.get("picks") or [])
+        missing = sorted({
+            str(pick.get("symbol") or "") for pick in picks
+            if not (
+                str(pick.get("symbol") or "") in row_map
+                and _number(row_map[str(pick.get("symbol") or "")].get("official_open_price")) > 0
+                and _number(row_map[str(pick.get("symbol") or "")].get("official_close_price")) > 0
+            )
+        })
+        minimum = MIN_POSITIONS_PER_MODEL if len(picks) == PICKS else len(picks)
+        available = len(picks) - len(missing)
+        eligible = available >= minimum
+        coverage[key] = {
+            "required_positions": len(picks),
+            "minimum_required_positions": minimum,
+            "available_positions": available,
+            "missing_symbols": missing,
+            "eligible": eligible,
+        }
+        if not eligible:
+            blocking_missing.update(missing)
+    if blocking_missing:
         pending["settlement_status"] = "waiting_for_official_prices"
         pending["waiting_session_date"] = session_date
-        pending["missing_symbols"] = missing
+        pending["missing_symbols"] = sorted(blocking_missing)
+        pending["model_coverage"] = coverage
         return False
     cost = ROUND_TRIP_COST_PCT[market]
     models = {}
@@ -472,9 +491,13 @@ def _settle_pending(
         positions = []
         gross_profit = net_profit = 0.0
         for pick in model.get("picks") or []:
+            if pick["symbol"] not in row_map:
+                continue
             row = row_map[pick["symbol"]]
             open_price = _number(row.get("official_open_price"))
             close_price = _number(row.get("official_close_price"))
+            if open_price <= 0 or close_price <= 0:
+                continue
             gross_return = (close_price / open_price - 1) * 100
             net_return = gross_return - cost
             signal_close = _number(pick.get("signal_close_price"))
@@ -495,6 +518,13 @@ def _settle_pending(
         models[key] = {
             "label": model.get("label"), "positions": positions,
             "executed_positions": len(positions),
+            "planned_positions": coverage[key]["required_positions"],
+            "minimum_required_positions": coverage[key]["minimum_required_positions"],
+            "missing_symbols": coverage[key]["missing_symbols"],
+            "nine_of_ten_settlement": bool(
+                coverage[key]["required_positions"] == PICKS
+                and len(positions) < PICKS
+            ),
             "invested_twd": len(positions) * ALLOCATION_TWD,
             "idle_twd": CAPITAL_TWD - len(positions) * ALLOCATION_TWD,
             "gross_profit_twd": round(gross_profit, 2),
@@ -564,6 +594,12 @@ def update_market_rotation_shadow(
     path = reports_dir / "market_rotation_shadow.json"
     state = _load(path, updated_at)
     state["updated_at"] = updated_at
+    state.setdefault("policy", {})["settlement_coverage"] = (
+        "A/B原選10檔至少9檔同日正式開收盤價即可結算；缺價配置保留現金"
+    )
+    state["policy"]["formal_checkpoint"] = (
+        "台股晚報／美股早報可延遲完成；依正式時段與同日行情判定，不用完成小時阻擋"
+    )
     if intraday:
         return state
     for market in MARKETS:
