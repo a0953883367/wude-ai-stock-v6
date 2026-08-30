@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import time
 from collections import Counter
 from datetime import datetime
+from urllib.request import Request, urlopen
 
 from config import SETTINGS, TAIPEI
 from data_fetcher import (
@@ -87,6 +89,7 @@ def _update_market_rotation_shadow_safely(
     period: str,
     updated_at: str,
     intraday: bool,
+    daily_flow: dict | None = None,
 ) -> bool:
     """Run the research-only module without risking the formal report pipeline."""
     health_path = reports_dir / "market_rotation_shadow_health.json"
@@ -107,6 +110,7 @@ def _update_market_rotation_shadow_safely(
             period=period,
             updated_at=updated_at,
             intraday=intraday,
+            daily_flow=daily_flow,
         )
     except Exception as exc:  # noqa: BLE001 - deliberate research isolation
         logging.exception("族群輪動影子模組失敗；正式報表繼續")
@@ -149,6 +153,28 @@ def _update_market_rotation_shadow_safely(
     tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(health_path)
     return success
+
+
+def _fetch_closed_daily_flow(*, intraday: bool) -> dict:
+    """Read sanitized closed-session flow; never fetch it for an intraday run."""
+    if intraday:
+        return {}
+    url = os.getenv(
+        "CAPITAL_FLOW_DAILY_URL",
+        "https://wude-ai-stock-v6-production.up.railway.app/api/capital-flow-daily",
+    ).strip()
+    if not url:
+        return {}
+    try:
+        request = Request(url, headers={"User-Agent": "wude-daily-briefing/1"})
+        with urlopen(request, timeout=6) as response:  # noqa: S310 - fixed HTTPS endpoint
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:  # noqa: BLE001 - optional shadow evidence only
+        logging.warning("收盤資金流日結讀取失敗；輪動沿用原證據：%s", exc)
+        return {}
+    if not isinstance(payload, dict) or payload.get("mode") != "closed_session_shadow_only":
+        return {}
+    return payload
 
 
 def _update_valuation_risk_shadow_safely(
@@ -1371,6 +1397,7 @@ def main() -> int:
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
+        daily_flow=_fetch_closed_daily_flow(intraday=args.intraday),
     )
     valuation_rows = []
     for source_row in ranked:

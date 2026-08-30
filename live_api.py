@@ -519,6 +519,15 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             }
             self._send(HTTPStatus.OK, health)
             return
+        if parsed.path == "/api/capital-flow-daily":
+            # This endpoint deliberately exposes only completed, regular-session
+            # market aggregates.  It never returns the live tape, owner token,
+            # holdings, broker instructions or an unfinished trading day.
+            self._send(
+                HTTPStatus.OK,
+                {"ok": True, **self.large_buy_service.flow.closed_daily_snapshots()},
+            )
+            return
         if parsed.path not in {
             "/api/live", "/api/large-buy-alerts", "/api/push/config",
             "/api/trading/status", "/api/trading/preview"

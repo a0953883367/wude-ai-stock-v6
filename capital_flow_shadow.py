@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, time as datetime_time, timedelta, timezone
 import json
 import math
 from pathlib import Path
@@ -18,12 +18,18 @@ import re
 import threading
 import time
 from typing import Any, Callable, Iterable
+from zoneinfo import ZoneInfo
 
 
 WINDOWS = {"1m": 60, "5m": 300, "15m": 900, "60m": 3600}
 MARKETS = ("TW", "US")
 BUCKET_SECONDS = 30
 NON_DIRECTIONAL_CONDITIONS = frozenset({"4", "7", "B", "M", "P", "Q", "U", "W", "Z"})
+DAILY_RETENTION_DAYS = 10
+MARKET_CLOCKS = {
+    "TW": (ZoneInfo("Asia/Taipei"), datetime_time(9, 0), datetime_time(13, 30)),
+    "US": (ZoneInfo("America/New_York"), datetime_time(9, 30), datetime_time(16, 0)),
+}
 
 
 def normalize_theme(value: Any) -> str:
@@ -57,6 +63,7 @@ def is_directional_trade_conditions(value: Any) -> bool:
 @dataclass
 class FlowBucket:
     started_at: int
+    ended_at: int | None = None
     buy_value: float = 0.0
     sell_value: float = 0.0
     neutral_value: float = 0.0
@@ -118,6 +125,7 @@ class FlowBucket:
 class FlowContribution:
     symbol: str
     bucket_at: int
+    session_date: str | None
     side: int
     value: float
     volume: float
@@ -151,6 +159,7 @@ class CapitalFlowShadow:
         self.state_path = state_path
         self.clock = clock
         self._buckets: dict[str, dict[int, FlowBucket]] = defaultdict(dict)
+        self._daily: dict[str, dict[str, FlowBucket]] = defaultdict(dict)
         self._quotes: dict[str, tuple[float | None, float | None, float]] = {}
         self._last_price: dict[str, float] = {}
         self._last_side: dict[str, int] = {}
@@ -163,6 +172,15 @@ class CapitalFlowShadow:
         self._dirty = False
         self._lock = threading.RLock()
         self._load()
+
+    @staticmethod
+    def _regular_session(market: str, at: float) -> tuple[str, bool]:
+        zone, opened, closed = MARKET_CLOCKS[market]
+        local = datetime.fromtimestamp(at, zone)
+        in_regular_hours = (
+            local.weekday() < 5 and opened <= local.time().replace(tzinfo=None) <= closed
+        )
+        return local.date().isoformat(), in_regular_hours
 
     def update_quote(
         self,
@@ -245,12 +263,24 @@ class CapitalFlowShadow:
             bucket = self._buckets[symbol].setdefault(bucket_at, FlowBucket(bucket_at))
             value = trade_price * trade_size
             bucket.add(side=side, value=value, volume=trade_size, price=trade_price, eligible=eligible)
+            session_date, in_regular_hours = self._regular_session(market, at)
+            if in_regular_hours:
+                daily = self._daily[session_date].setdefault(
+                    symbol, FlowBucket(int(at))
+                )
+                daily.started_at = min(daily.started_at, int(at))
+                daily.ended_at = max(daily.ended_at or int(at), int(at))
+                daily.add(
+                    side=side, value=value, volume=trade_size,
+                    price=trade_price, eligible=eligible,
+                )
             self._market_counts[market] += 1
             self._market_last_at[market] = at
             if key:
                 self._trade_ids[key] = FlowContribution(
                     symbol=symbol,
                     bucket_at=bucket_at,
+                    session_date=session_date if in_regular_hours else None,
                     side=side,
                     value=value,
                     volume=trade_size,
@@ -287,6 +317,15 @@ class CapitalFlowShadow:
                     volume=contribution.volume,
                     eligible=contribution.eligible,
                 )
+            if contribution.session_date:
+                daily = self._daily.get(contribution.session_date, {}).get(symbol)
+                if daily is not None:
+                    daily.subtract(
+                        side=contribution.side,
+                        value=contribution.value,
+                        volume=contribution.volume,
+                        eligible=contribution.eligible,
+                    )
             self._dirty = True
             return True
 
@@ -323,6 +362,12 @@ class CapitalFlowShadow:
                     del buckets[started_at]
             if not buckets:
                 del self._buckets[symbol]
+        oldest = (datetime.fromtimestamp(at, timezone.utc).date() - timedelta(
+            days=DAILY_RETENTION_DAYS + 2
+        )).isoformat()
+        for session_date in list(self._daily):
+            if session_date < oldest:
+                del self._daily[session_date]
 
     def _symbol_row(self, symbol: str, buckets: Iterable[FlowBucket]) -> dict[str, Any] | None:
         selected = list(buckets)
@@ -386,19 +431,7 @@ class CapitalFlowShadow:
             "estimated_only": True,
         }
 
-    def _window_snapshot(self, market: str, seconds: int, at: float) -> dict[str, Any]:
-        cutoff = at - seconds
-        rows: list[dict[str, Any]] = []
-        for symbol, baseline in self.baselines.items():
-            if str(getattr(baseline, "market", "")) != market:
-                continue
-            buckets = [
-                row for started_at, row in sorted(self._buckets.get(symbol, {}).items())
-                if started_at + BUCKET_SECONDS >= cutoff and started_at <= at
-            ]
-            result = self._symbol_row(symbol, buckets)
-            if result and result["trade_count"]:
-                rows.append(result)
+    def _summarize_rows(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         buy = sum(row["buy_value"] for row in rows)
         sell = sum(row["sell_value"] for row in rows)
         neutral = sum(row["neutral_value"] for row in rows)
@@ -482,7 +515,6 @@ class CapitalFlowShadow:
                 if group_buy + group_sell else 0.0,
             }
         return {
-            "seconds": seconds,
             "direction": direction_label,
             "buy_value": round(buy, 2),
             "sell_value": round(sell, 2),
@@ -494,13 +526,109 @@ class CapitalFlowShadow:
             "active_symbols": len(rows),
             "positive_breadth_pct": round(breadth, 2),
             "trade_count": sum(row["trade_count"] for row in rows),
+            "eligible_trade_count": sum(row["eligible_trade_count"] for row in rows),
             "filtered_trade_count": sum(row["filtered_trade_count"] for row in rows),
             "asset_groups": asset_groups,
+            "themes": sorted(themes, key=lambda row: row["theme"]),
             "top_inflows": inflows,
             "top_outflows": outflows,
             "theme_inflows": theme_inflows,
             "theme_outflows": theme_outflows,
         }
+
+    def _window_snapshot(self, market: str, seconds: int, at: float) -> dict[str, Any]:
+        cutoff = at - seconds
+        rows: list[dict[str, Any]] = []
+        for symbol, baseline in self.baselines.items():
+            if str(getattr(baseline, "market", "")) != market:
+                continue
+            buckets = [
+                row for started_at, row in sorted(self._buckets.get(symbol, {}).items())
+                if started_at + BUCKET_SECONDS >= cutoff and started_at <= at
+            ]
+            result = self._symbol_row(symbol, buckets)
+            if result and result["trade_count"]:
+                rows.append(result)
+        return {"seconds": seconds, **self._summarize_rows(rows)}
+
+    def _daily_snapshot(self, market: str, session_date: str, at: float) -> dict[str, Any] | None:
+        zone, opened, closed = MARKET_CLOCKS[market]
+        try:
+            day = datetime.fromisoformat(session_date).date()
+        except ValueError:
+            return None
+        close_at = datetime.combine(day, closed, zone).timestamp()
+        if at < close_at:
+            return None
+        rows: list[dict[str, Any]] = []
+        first_at: int | None = None
+        last_at: int | None = None
+        for symbol, bucket in self._daily.get(session_date, {}).items():
+            baseline = self.baselines.get(symbol)
+            if baseline is None or str(getattr(baseline, "market", "")) != market:
+                continue
+            result = self._symbol_row(symbol, [bucket])
+            if result and result["trade_count"]:
+                rows.append(result)
+                first_at = bucket.started_at if first_at is None else min(first_at, bucket.started_at)
+                ended_at = bucket.ended_at or bucket.started_at
+                last_at = ended_at if last_at is None else max(last_at, ended_at)
+        summary = self._summarize_rows(rows)
+        opened_at = datetime.combine(day, opened, zone).timestamp()
+        coverage_open = first_at is not None and first_at <= opened_at + 30 * 60
+        coverage_close = last_at is not None and last_at >= close_at - 30 * 60
+        complete = bool(
+            coverage_open and coverage_close
+            and summary["positive_symbols"] + summary["negative_symbols"] >= 10
+            and summary["eligible_trade_count"] > 0
+        )
+        return {
+            "market": market,
+            "session_date": session_date,
+            "source": "Fubon Neo" if market == "TW" else "Alpaca SIP",
+            "session_scope": "regular_hours_only",
+            "closed": True,
+            "complete": complete,
+            "quality": {
+                "opening_coverage": coverage_open,
+                "closing_coverage": coverage_close,
+                "minimum_active_symbols": 10,
+            },
+            "first_trade_at": (
+                datetime.fromtimestamp(first_at, timezone.utc).isoformat(timespec="seconds")
+                if first_at is not None else None
+            ),
+            "last_trade_at": (
+                datetime.fromtimestamp(last_at, timezone.utc).isoformat(timespec="seconds")
+                if last_at is not None else None
+            ),
+            **summary,
+        }
+
+    def closed_daily_snapshots(self, *, now: float | None = None) -> dict[str, Any]:
+        """Return only completed regular sessions; safe for daily report linkage."""
+        at = self.clock() if now is None else float(now)
+        with self._lock:
+            sessions = {market: [] for market in MARKETS}
+            for session_date in sorted(self._daily, reverse=True):
+                for market in MARKETS:
+                    result = self._daily_snapshot(market, session_date, at)
+                    if result is not None and result["trade_count"]:
+                        sessions[market].append(result)
+                        sessions[market] = sessions[market][:DAILY_RETENTION_DAYS]
+            return {
+                "version": 1,
+                "mode": "closed_session_shadow_only",
+                "updated_at": datetime.fromtimestamp(at, timezone.utc).isoformat(timespec="seconds"),
+                "policy": {
+                    "intraday_exposed": False,
+                    "regular_hours_only": True,
+                    "markets_separate": True,
+                    "formal_ranking_locked": True,
+                    "places_orders": False,
+                },
+                "markets": sessions,
+            }
 
     def snapshot(self, *, now: float | None = None) -> dict[str, Any]:
         at = self.clock() if now is None else float(now)
@@ -567,6 +695,16 @@ class CapitalFlowShadow:
                 ] for started, bucket in buckets.items()]
                 for symbol, buckets in self._buckets.items()
             },
+            "daily": {
+                session_date: {
+                    symbol: {
+                        field: getattr(bucket, field)
+                        for field in FlowBucket.__dataclass_fields__
+                    }
+                    for symbol, bucket in symbols.items()
+                }
+                for session_date, symbols in self._daily.items()
+            },
         }
         try:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -593,6 +731,15 @@ class CapitalFlowShadow:
         now = self.clock()
         cutoff = now - self.config.retention_seconds
         try:
+            allowed = set(FlowBucket.__dataclass_fields__)
+            for session_date, symbols in (payload.get("daily") or {}).items():
+                if not isinstance(symbols, dict):
+                    continue
+                for symbol, values in symbols.items():
+                    if symbol not in self.baselines or not isinstance(values, dict):
+                        continue
+                    clean = {key: value for key, value in values.items() if key in allowed}
+                    self._daily[str(session_date)][symbol] = FlowBucket(**clean)
             for symbol, rows in (payload.get("buckets") or {}).items():
                 if symbol not in self.baselines or not isinstance(rows, (dict, list)):
                     continue
@@ -605,7 +752,6 @@ class CapitalFlowShadow:
                     if started + BUCKET_SECONDS < cutoff:
                         continue
                     if isinstance(values, dict):
-                        allowed = {field.name for field in FlowBucket.__dataclass_fields__.values()}
                         clean = {key: value for key, value in values.items() if key in allowed}
                         bucket = FlowBucket(**clean)
                     else:

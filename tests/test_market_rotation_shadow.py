@@ -119,6 +119,61 @@ def test_tw_and_us_use_different_market_specific_evidence():
     assert empty_state()["policy"]["market_isolation"].startswith("台股使用法人")
 
 
+def _daily_flow(market="TW", session_date="2026-08-27", buy_ratio=90):
+    return {
+        "mode": "closed_session_shadow_only",
+        "policy": {"intraday_exposed": False, "markets_separate": True},
+        "markets": {
+            market: [{
+                "market": market,
+                "session_date": session_date,
+                "source": "Fubon Neo" if market == "TW" else "Alpaca SIP",
+                "session_scope": "regular_hours_only",
+                "closed": True,
+                "complete": True,
+                "themes": [{
+                    "theme": "點火族", "member_count": 10,
+                    "positive_symbols": 9, "negative_symbols": 1,
+                    "buy_ratio_pct": buy_ratio,
+                }],
+            }],
+        },
+    }
+
+
+def test_completed_daily_flow_links_only_to_same_market_and_session():
+    rows = _rows()
+    plain = build_market_snapshot(rows, "TW")
+    linked = build_market_snapshot(rows, "TW", daily_flow=_daily_flow())
+    plain_sector = next(item for item in plain["sectors"] if item["industry"] == "點火族")
+    linked_sector = next(item for item in linked["sectors"] if item["industry"] == "點火族")
+    assert linked["daily_flow"]["status"] == "linked"
+    assert linked["daily_flow"]["intraday_used"] is False
+    assert linked_sector["daily_flow_status"] == "linked"
+    assert linked_sector["rotation_score"] != plain_sector["rotation_score"]
+    assert select_picks(rows, "TW", linked, rotation_overlay=False) == select_picks(
+        rows, "TW", plain, rotation_overlay=False
+    )
+
+    stale = build_market_snapshot(
+        rows, "TW", daily_flow=_daily_flow(session_date="2026-08-26")
+    )
+    stale_sector = next(item for item in stale["sectors"] if item["industry"] == "點火族")
+    assert stale["daily_flow"]["status"] == "not_available"
+    assert stale_sector["rotation_score"] == plain_sector["rotation_score"]
+
+
+def test_incomplete_daily_flow_never_penalizes_rotation_score():
+    payload = _daily_flow(buy_ratio=0)
+    payload["markets"]["TW"][0]["complete"] = False
+    plain = build_market_snapshot(_rows(), "TW")
+    incomplete = build_market_snapshot(_rows(), "TW", daily_flow=payload)
+    plain_scores = {row["industry"]: row["rotation_score"] for row in plain["sectors"]}
+    incomplete_scores = {row["industry"]: row["rotation_score"] for row in incomplete["sectors"]}
+    assert incomplete["daily_flow"]["status"] == "not_available"
+    assert incomplete_scores == plain_scores
+
+
 def test_forward_ab_does_not_settle_on_same_session(tmp_path):
     first_rows = _rows()
     state = update_market_rotation_shadow(

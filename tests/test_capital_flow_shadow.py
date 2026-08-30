@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from capital_flow_shadow import CapitalFlowConfig, CapitalFlowShadow
 from large_buy_monitor import StockBaseline, load_stock_baselines
@@ -126,3 +128,47 @@ def test_baseline_loader_keeps_theme_and_asset_type(tmp_path):
     result = load_stock_baselines(report)["0050.TW"]
     assert result.theme == "大盤ETF"
     assert result.asset_type == "ETF"
+
+
+def test_daily_flow_is_hidden_until_close_and_requires_full_session_coverage():
+    rows = {
+        f"{2000 + index}.TW": StockBaseline(
+            f"{2000 + index}.TW", f"測試{index}", "TW", 100, 10_000,
+            "測試族群", "個股",
+        )
+        for index in range(10)
+    }
+    zone = ZoneInfo("Asia/Taipei")
+    opened = datetime(2026, 8, 31, 9, 5, tzinfo=zone).timestamp()
+    late = datetime(2026, 8, 31, 13, 10, tzinfo=zone).timestamp()
+    closed = datetime(2026, 8, 31, 13, 31, tzinfo=zone).timestamp()
+    flow = CapitalFlowShadow(rows, clock=lambda: closed)
+    for index, symbol in enumerate(rows):
+        flow.process_trade(symbol, price=100, size=100, ask=100, timestamp=opened + index)
+    flow.process_trade(next(iter(rows)), price=101, size=100, ask=101, timestamp=late)
+
+    assert flow.closed_daily_snapshots(now=late)["markets"]["TW"] == []
+    daily = flow.closed_daily_snapshots(now=closed)["markets"]["TW"][0]
+    assert daily["session_date"] == "2026-08-31"
+    assert daily["complete"] is True
+    assert daily["quality"]["opening_coverage"] is True
+    assert daily["quality"]["closing_coverage"] is True
+    assert daily["active_symbols"] == 10
+    assert daily["session_scope"] == "regular_hours_only"
+
+
+def test_daily_flow_survives_restart_without_exposing_intraday(tmp_path):
+    state = tmp_path / "capital-flow.json"
+    zone = ZoneInfo("America/New_York")
+    trade_at = datetime(2026, 8, 31, 10, 0, tzinfo=zone).timestamp()
+    close_at = datetime(2026, 8, 31, 16, 1, tzinfo=zone).timestamp()
+    config = CapitalFlowConfig(persist_interval_seconds=0)
+    first = CapitalFlowShadow(baselines(), state_path=state, config=config, clock=lambda: close_at)
+    first.process_trade("NVDA", price=200, size=100, ask=200, timestamp=trade_at)
+    first.snapshot(now=close_at)
+
+    restored = CapitalFlowShadow(baselines(), state_path=state, config=config, clock=lambda: close_at)
+    payload = restored.closed_daily_snapshots(now=close_at)
+    assert payload["policy"]["intraday_exposed"] is False
+    assert payload["markets"]["US"][0]["trade_count"] == 1
+    assert payload["markets"]["US"][0]["complete"] is False
