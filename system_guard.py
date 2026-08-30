@@ -279,12 +279,31 @@ def build_guard(
     official_prices = int(data_status.get("tw_official_price_count") or 0)
     institutions = int(data_status.get("institutional_count") or data_status.get("tw_official_institution_count") or 0)
     credit = int(data_status.get("credit_count") or data_status.get("tw_official_credit_count") or 0)
-    if expected_tw and min(official_prices, institutions, credit) == 0:
+
+    # A non-trading-day report deliberately does not query the official Taiwan
+    # endpoints again.  The completed-session rows still carry the validated
+    # official close, institution and credit snapshot, so treating the current
+    # fetch count of zero as missing core data creates a false red alert on
+    # weekends and holidays.  Count the usable carried snapshot as coverage;
+    # market-session consistency above separately rejects mixed or missing dates.
+    tw_rows = [row for row in analysis_rows if str(row.get("market") or "").upper() == "TW"]
+    carried_prices = sum(
+        bool(row.get("official_session_date"))
+        and float(row.get("official_close_price") or 0) > 0
+        for row in tw_rows
+    )
+    carried_institutions = sum(bool(row.get("institution_available")) for row in tw_rows)
+    carried_credit = sum(float(row.get("credit_available") or 0) > 0 for row in tw_rows)
+    usable_prices = max(official_prices, carried_prices)
+    usable_institutions = max(institutions, carried_institutions)
+    usable_credit = max(credit, carried_credit)
+    carried_note = "（沿用最近完整收盤）" if official_prices == 0 and carried_prices else ""
+    if expected_tw and min(usable_prices, usable_institutions, usable_credit) == 0:
         checks.append(_check("tw_core_data", "台股核心資料", "critical", f"預期 {expected_tw} 檔，但價格／法人／信用資料至少一項為0", "檢查 FinMind、官方資料源與當日市場狀態"))
-    elif expected_tw and min(official_prices, institutions, credit) < expected_tw * 0.8:
-        checks.append(_check("tw_core_data", "台股核心資料", "warning", f"價格 {official_prices}、法人 {institutions}、信用 {credit}；預期 {expected_tw}", "缺資料股票不得取得完整買進資格"))
+    elif expected_tw and min(usable_prices, usable_institutions, usable_credit) < expected_tw * 0.8:
+        checks.append(_check("tw_core_data", "台股核心資料", "warning", f"價格 {usable_prices}、法人 {usable_institutions}、信用 {usable_credit}；預期 {expected_tw}{carried_note}", "缺資料股票不得取得完整買進資格"))
     else:
-        checks.append(_check("tw_core_data", "台股核心資料", "ok", f"價格 {official_prices}、法人 {institutions}、信用 {credit}"))
+        checks.append(_check("tw_core_data", "台股核心資料", "ok", f"價格 {usable_prices}、法人 {usable_institutions}、信用 {usable_credit}{carried_note}"))
 
     broker = int(data_status.get("broker_count") or 0)
     if broker <= 0:
