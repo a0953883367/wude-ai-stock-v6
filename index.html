@@ -568,7 +568,7 @@ function millionMarketHtml(market){
   var pending=market.pending||{},pendingStrategies=pending.strategies||{};
   var waitingForPrices=pending.settlement_status==='waiting_for_official_prices';
   var pendingHtml=market.status==='complete'
-    ?'<div class="million-empty">'+esc(market.target_trading_days||6)+'個交易日已完成，不再新增部位。</div>'
+    ?'<div class="million-empty">'+esc(market.target_trading_days||60)+'個有效交易日已完成，停止新增並等待人工審查。</div>'
     :'<div class="million-note">'+(waitingForPrices?'<b>尚未結算：</b>目前取得 '+esc(pending.available_positions||0)+' / '+esc(pending.required_positions||20)+' 筆官方開收盤價；缺少 '+esc((pending.missing_symbols||[]).join('、')||'大盤基準')+'。每組未達至少9檔前不計損益、不增加完成日。<br>':'')+'下一次使用 '+esc(pending.signal_session_date||'等待中')+' 完成排名；快照編號 '+esc(pending.snapshot_id||'等待建立')+'。排名組照前10名測試；嚴格組只買達標且可成交者，其餘留現金。</div><div class="million-strategies">'+millionPendingStrategy('綜合排名前10名',pendingStrategies.overall)+millionPendingStrategy('短線排名前10名',pendingStrategies.short)+'</div>';
   var invalidHtml=invalidDays.length?'<div class="million-note"><b>資料不足隔離 '+esc(invalidDays.length)+' 日（不列成績）：</b>'+invalidDays.map(function(item){return esc(item.session_date||'未知日期')+'｜取得 '+esc(item.available_positions||0)+' / '+esc(item.required_positions||20)+'｜缺 '+esc((item.missing_symbols||[]).join('、')||'官方基準資料');}).join('<br>')+'</div>':'';
   var compare='<div class="holding-summary"><div class="item"><div class="label">排名組淨損益</div><div class="value">'+esc(millionMoney(market.cumulative_net_profit_twd))+'</div></div><div class="item"><div class="label">嚴格達標組</div><div class="value">'+esc(millionMoney(market.cumulative_strict_net_profit_twd))+'</div></div><div class="item"><div class="label">大盤基準</div><div class="value">'+esc(millionMoney(market.cumulative_benchmark_net_profit_twd))+'</div></div></div>';
@@ -576,7 +576,7 @@ function millionMarketHtml(market){
 }
 function showMillionSimulation(){
   STATE.view='MILLION';setActive('#marketButtons button','data-view','MILLION');clearOtherNav('#marketButtons button');
-  document.getElementById('title').textContent='💰 台股＋美股各100萬元｜台股6日／美股6日自動試走';
+  document.getElementById('title').textContent='💰 台股＋美股各100萬元｜60日自動前向試走';
   var simulation=STATE.millionSimulation;
   if(!simulation||!simulation.markets){
     document.getElementById('status').textContent='模擬帳本會在下一次完成報告後自動建立';
@@ -584,7 +584,7 @@ function showMillionSimulation(){
   }
   var policy=simulation.policy||{};
   document.getElementById('status').textContent='開始日 '+esc(policy.start_date||'2026-08-24')+'｜帳本更新 '+esc(simulation.updated_at||'等待中')+'｜純網頁影子交易';
-  var policyHtml='<div class="million-policy"><b>三方正式比較：</b>排名前10組、嚴格達標才買組、相同100萬元大盤基準（台股0050／美股VOO）。每組原選10檔，至少9檔取得同一交易日官方開收盤價且大盤基準完整即可結算；缺少標的資金保留現金、不轉配。任一組少於9檔時等待補抓，仍不足則隔離且不列成績。未成交不再顯示為0元。人工暫時交易不列入正式成績。<br><b>成本口徑：</b>台股來回0.685%，美股來回0.20%；保留毛損益，美股匯率另列；全程不送券商訂單。</div>';
+  var policyHtml='<div class="million-policy"><b>三方正式比較：</b>排名前10組、嚴格達標才買組、相同100萬元大盤基準（台股0050／美股VOO）。每組原選10檔，至少9檔取得同一交易日官方開收盤價且大盤基準完整即可結算；缺少標的資金保留現金、不轉配。任一組少於9檔時等待補抓，仍不足則隔離且不列成績。未成交不再顯示為0元。人工暫時交易不列入正式成績。<br><b>60日自動收集：</b>第6日只做首週完整檢查，第20日做初步比較，第60日才停止新增並交由人工審查；不自動修改正式排名、權重或下單。<br><b>成本口徑：</b>台股來回0.685%，美股來回0.20%；保留毛損益，美股匯率另列；全程不送券商訂單。</div>';
   document.getElementById('results').innerHTML=policyHtml+'<div class="million-grid">'+millionMarketHtml(simulation.markets.TW)+millionMarketHtml(simulation.markets.US)+'</div>';
 }
 function weightPendingHtml(model){
@@ -797,8 +797,8 @@ function showTrainingCenter(){
   var automation=accuracy.automation||{},promotion=automation.promotion_gate||{},quality=accuracy.data_quality||{},errors=accuracy.error_cases||{},ab=accuracy.ab_testing||{};
   var snapshotDays=Number(calibration.trading_days_collected||archive.session_count||0),minimumDays=Number(calibration.minimum_trading_days||60);
   var million=STATE.millionSimulation||{},millionMarkets=million.markets||{},twMillion=millionMarkets.TW||{},usMillion=millionMarkets.US||{};
-  var fiveDayDone=Number(twMillion.completed_days||0)+Number(usMillion.completed_days||0);
-  var twMillionTarget=Number(twMillion.target_trading_days||6),usMillionTarget=Number(usMillion.target_trading_days||5),millionTarget=twMillionTarget+usMillionTarget;
+  var millionDone=Number(twMillion.completed_days||0)+Number(usMillion.completed_days||0);
+  var twMillionTarget=Number(twMillion.target_trading_days||60),usMillionTarget=Number(usMillion.target_trading_days||60),millionTarget=twMillionTarget+usMillionTarget;
   var exits=STATE.exitHorizonForward||{},exitMarkets=exits.markets||{},exitDone=0;
   ['TW','US'].forEach(function(market){var horizons=(exitMarkets[market]||{}).horizons||{};['1','2','3','5'].forEach(function(day){if((horizons[day]||{}).status==='complete')exitDone+=1;});});
   var weights=STATE.weightExperiment||{},weightModels=weights.models||{},baseWeight=weightModels.base_0||{},weightDone=Number(baseWeight.completed_days||0);
@@ -811,7 +811,7 @@ function showTrainingCenter(){
   var cards=[
     trainingStageHtml({title:'① 歷史資料代理驗證',status:historical.status==='complete'?'已完成':'持續補資料',state:historical.status==='complete'?'ready':'',done:loaded,total:expected||Number(historical.configured_universe_count||0),progressLabel:'可下載歷史行情',detail:'用歷史日線檢查方向、成本與多頭／空頭／盤整差異；不冒充完整 V6 回測。',metrics:[['設定股票池',number(historical.configured_universe_count||expected,0)+' 檔'],['更新時間',historical.generated_at||'等待排程']],target:'HISTORY'}),
     trainingStageHtml({title:'② 每日收盤自動凍結快照',status:ready?'候選審查門檻已開':snapshotDays>=20?'可初步檢查':'累積乾淨結果',state:ready?'ready':'blocked',done:snapshotDays,total:minimumDays,progressLabel:'正式前向交易日',detail:'台股晚報與美股早報在各自完成收盤後固定當時資料、排名與市場狀態；舊預測不可事後覆寫。',metrics:[['雜湊驗證',number(integrity.verified||0,0)+' 份'],['快照異常隔離',number(integrity.mismatch||0,0)+' 份']],target:'ACCURACY'}),
-    trainingStageHtml({title:'③ 5 日前向影子試走',status:fiveDayDone>=millionTarget?'兩市場完成':'自動試走中',state:fiveDayDone>=millionTarget?'ready':'',done:fiveDayDone,total:millionTarget,progressLabel:'台股'+twMillionTarget+'日＋美股'+usMillionTarget+'日',detail:'排名組、嚴格達標組與大盤基準使用相同資金與成本口徑，檢查模型是否真的勝過直接買大盤。',metrics:[['台股完成',number(twMillion.completed_days||0,0)+' / '+twMillionTarget+' 日'],['美股完成',number(usMillion.completed_days||0,0)+' / '+usMillionTarget+' 日']],target:'MILLION'}),
+    trainingStageHtml({title:'③ 60 日前向百萬試走',status:millionDone>=millionTarget?'兩市場完成、待人工審查':millionDone>=40?'20日初步比較中':millionDone>=12?'首週檢查完成、持續收集':'自動試走中',state:millionDone>=millionTarget?'ready':'',done:millionDone,total:millionTarget,progressLabel:'台股'+twMillionTarget+'日＋美股'+usMillionTarget+'日',detail:'排名組、嚴格達標組與大盤基準使用相同資金與成本口徑；第6日只檢查程式，第20日初步比較，第60日才停止新增。',metrics:[['台股完成',number(twMillion.completed_days||0,0)+' / '+twMillionTarget+' 日'],['美股完成',number(usMillion.completed_days||0,0)+' / '+usMillionTarget+' 日']],target:'MILLION'}),
     trainingStageHtml({title:'④ 1／2／3／5 日出場比較',status:exitDone>=8?'全部結算':'等待前向結算',state:exitDone>=8?'ready':'',done:exitDone,total:8,progressLabel:'台美股各4種出場',detail:'同一排名與同一進場價拆成四個獨立帳本，比較哪個持有天數較合理，不把本金重複相加。',metrics:[['台股狀態',(exitMarkets.TW||{}).status||'等待'],['美股狀態',(exitMarkets.US||{}).status||'等待']],target:'HISTORY'}),
     trainingStageHtml({title:'⑤ 自動 A/B 測試＋法人權重校準',status:(ab.candidates||[]).length?'發現候選、待人工審查':weightDone>=5?'持續公平比較':'固定權重試跑',state:ready?'ready':'',done:weightDone,total:5,progressLabel:'100/0、90/10、80/20公平比較',detail:'A組正式共識與B組前10名共識自動比較勝率、平均報酬及最大回撤；法人三組使用相同日期、資金與成本。',metrics:[['候選升級',number((ab.candidates||[]).length,0)+' 組'],['目前權重勝出',weights.winner_model||'尚未決定']],target:'ACCURACY'}),
     trainingStageHtml({title:'⑥ 中期45天＋長期6個月',status:holdingStarted>=3?'持倉追蹤中':'等待建立持倉',state:holdingStarted>=3?'ready':'',done:holdingStarted,total:3,progressLabel:'台股中期／美股中期／台美長期',detail:'中期每市場前5名，長期台美股各1檔；與0050、VOO同期比較，帳本完全獨立。',metrics:[['台股中期',(medium.TW||{}).status||'等待'],['美股中期',(medium.US||{}).status||'等待'],['長期帳本',longBook.status||'等待'],['最後更新',holding.updated_at||'等待排程']],target:'HOLDING'}),

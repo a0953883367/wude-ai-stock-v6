@@ -18,6 +18,9 @@ def test_validation_counts_only_real_forward_days(tmp_path):
     assert payload["remaining_trading_days"] == 55
     assert payload["ready_for_model_selection"] is False
     assert payload["rules"]["future_data_forbidden"] is True
+    assert payload["tracks"]["million_forward_60d"]["TW"] == {
+        "completed_days": 5, "target_days": 60,
+    }
     assert (tmp_path / "validation_60d.json").exists()
 
 

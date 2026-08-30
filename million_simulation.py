@@ -23,7 +23,7 @@ CAPITAL_PER_MARKET = 1_000_000
 ALLOCATION_PER_PICK = 50_000
 PICKS_PER_STRATEGY = 10
 MIN_POSITIONS_PER_STRATEGY = PICKS_PER_STRATEGY - 1
-TARGET_TRADING_DAYS_BY_MARKET = {"TW": 6, "US": 6}
+TARGET_TRADING_DAYS_BY_MARKET = {"TW": 60, "US": 60}
 START_DATE = "2026-08-24"
 STRATEGIES = ("overall", "short")
 MARKETS = ("TW", "US")
@@ -814,6 +814,11 @@ def update_state(
         "缺價只可由該交易日歷史日線補抓，日期不符即拒絕入帳；跨至下一交易日仍不足則隔離"
     )
     state["policy"]["manual_trades"] = "使用者暫時人工交易不列入正式模型成績"
+    state["policy"]["review_milestones"] = {
+        "6": "首週完整檢查，只確認程式、日期與資料完整度",
+        "20": "初步比較勝率、報酬、回撤與大盤差異，不改正式模型",
+        "60": "完成候選審查；仍須人工決策，不自動改權重或下單",
+    }
     for market in MARKETS:
         market_state = state["markets"].setdefault(market, _empty_market(market))
         target_days = TARGET_TRADING_DAYS_BY_MARKET[market]
