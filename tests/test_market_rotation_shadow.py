@@ -156,12 +156,51 @@ def test_wrong_period_cannot_freeze_market(tmp_path):
     assert state["markets"]["US"]["snapshots"] == []
 
 
+def test_delayed_formal_morning_report_still_freezes_us_market(tmp_path):
+    state = update_market_rotation_shadow(
+        tmp_path, _rows("US", "2026-08-27"), period="morning",
+        updated_at="2026-08-28 12:32:07",
+    )
+    assert state["markets"]["US"]["snapshots"][0]["session_date"] == "2026-08-27"
+    assert state["markets"]["US"]["pending"]["signal_session_date"] == "2026-08-27"
+
+
+def test_us_snapshot_uses_nineteen_current_rows_and_excludes_stale_stock():
+    rows = _rows("US", "2026-08-28")[:20]
+    rows[-1]["official_session_date"] = "2026-08-27"
+    snapshot = build_market_snapshot(rows, "US")
+    assert snapshot is not None
+    assert snapshot["stock_count"] == 19
+    picks = select_picks(rows, "US", snapshot, rotation_overlay=False)
+    assert len(picks) == 10
+    assert rows[-1]["symbol"] not in {pick["symbol"] for pick in picks}
+
+
+def test_one_missing_pick_settles_with_nine_of_ten_and_keeps_cash(tmp_path):
+    update_market_rotation_shadow(
+        tmp_path, _rows(), period="evening", updated_at="2026-08-27 20:00:00",
+    )
+    next_rows = _rows(session_date="2026-08-28", second=True)
+    next_rows[10]["official_open_price"] = None
+    state = update_market_rotation_shadow(
+        tmp_path, next_rows, period="evening", updated_at="2026-08-28 20:00:00",
+    )
+    outcome = state["markets"]["TW"]["outcomes"][0]
+    baseline = outcome["models"]["baseline"]
+    assert outcome["status"] == "valid"
+    assert baseline["executed_positions"] == 9
+    assert baseline["idle_twd"] == 100_000
+    assert baseline["nine_of_ten_settlement"] is True
+    assert baseline["missing_symbols"] == [next_rows[10]["symbol"]]
+
+
 def test_missing_next_session_is_never_replaced_by_later_prices(tmp_path):
     update_market_rotation_shadow(
         tmp_path, _rows(), period="evening", updated_at="2026-08-27 20:00:00",
     )
     missing = _rows(session_date="2026-08-28", second=True)
     missing[10]["official_open_price"] = None
+    missing[11]["official_open_price"] = None
     update_market_rotation_shadow(
         tmp_path, missing, period="evening", updated_at="2026-08-28 20:00:00",
     )
