@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 from tw_financial_official import (
     aggregate_official_financial_rows,
@@ -48,3 +49,32 @@ def test_fetch_preserves_cached_symbol_when_one_endpoint_fails(tmp_path):
     payload = json.loads(cache.read_text())
     assert payload["endpoint_error_count"] > 0
     assert payload["available_count"] == 2
+
+
+def test_same_day_cache_keeps_missing_official_statement_non_blocking(tmp_path):
+    cache = tmp_path / "cache.json"
+    cache.write_text(json.dumps({
+        "updated_at": date.today().isoformat(),
+        "requested_count": 3,
+        "requested_symbols": ["2330", "7415", "7815"],
+        "available_count": 1,
+        "missing_symbols": ["7415", "7815"],
+        "symbols": {
+            "2330": {
+                "financial_report_date": "2026-06-30",
+                "financial_quality_official": True,
+            },
+        },
+    }), encoding="utf-8")
+
+    def must_not_refetch(_url):
+        raise AssertionError("complete same-day request metadata should use the cache")
+
+    result = fetch_tw_official_financials(
+        {"2330", "7415", "7815"}, cache_path=cache, fetcher=must_not_refetch,
+    )
+
+    assert set(result) == {"2330"}
+    assert result["2330"]["financial_quality_official"] is True
+    assert "7415" not in result
+    assert "7815" not in result

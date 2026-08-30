@@ -204,7 +204,17 @@ def fetch_tw_official_financials(
             or int(cached_payload.get("requested_count") or 0) == len(stock_ids)
         )
     ):
-        return {sid: dict(cached_rows[sid]) for sid in stock_ids}
+        # A requested symbol can legitimately have no published quarterly
+        # statement yet (for example, a newly listed company).  The cache
+        # records that symbol in ``requested_symbols`` and ``missing_symbols``
+        # but cannot include it in ``symbols``.  Missing one optional financial
+        # row must lower only that stock's data coverage; it must never abort
+        # the complete report on later runs made on the same day.
+        return {
+            sid: dict(cached_rows[sid])
+            for sid in stock_ids
+            if isinstance(cached_rows.get(sid), dict)
+        }
 
     def get_rows(url: str) -> list[dict[str, Any]]:
         if fetcher is not None:
