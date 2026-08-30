@@ -10,6 +10,8 @@ const html = fs.readFileSync('index.html', 'utf8');
   'reports/holding_simulation.json',
   'function showHoldingSimulation()',
   '中期45天',
+  '45個有效交易日',
+  '60日只作候選升級門檻',
   '長期6個月',
   '前5名每檔20萬元',
   '台股第1名與美股第1名，各50萬元',
