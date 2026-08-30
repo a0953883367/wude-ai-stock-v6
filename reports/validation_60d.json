@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-30 20:07:35",
+  "updated_at": "2026-08-30 12:04:15",
   "mode": "forward_validation_only",
   "status": "collecting",
   "trading_days_collected": 5,
@@ -27,14 +27,28 @@
     },
     "medium_45d": {
       "TW": {
-        "status": "active"
+        "status": "active",
+        "completed_days": 4,
+        "target_days": 45
       },
       "US": {
-        "status": "active"
+        "status": "active",
+        "completed_days": 5,
+        "target_days": 45
       }
     },
     "long_6m": {
-      "status": "active"
+      "status": "active",
+      "validation": {
+        "TW": {
+          "completed_days": 5,
+          "target_days": 60
+        },
+        "US": {
+          "completed_days": 5,
+          "target_days": 60
+        }
+      }
     },
     "valuation": {
       "TW": {
@@ -59,6 +73,7 @@
     "historical_proxy_separate": true,
     "automatic_weight_changes": false,
     "automatic_orders": false,
+    "holding_horizons_unchanged": true,
     "note": "60日機制已完整啟用；實際結果只會隨完成交易日自然累積，不用歷史代理冒充。"
   }
 }

@@ -48,6 +48,14 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
         market: int((valuation.get("validation", {}).get(market) or {}).get("effective_sessions") or 0)
         for market in ("TW", "US")
     }
+    medium_days = {
+        market: int((holding.get("medium", {}).get(market) or {}).get("completed_trading_days") or 0)
+        for market in ("TW", "US")
+    }
+    long_days = {
+        market: int((holding.get("long", {}).get("validation_completed_days") or {}).get(market) or 0)
+        for market in ("TW", "US")
+    }
     ready = bool(
         days >= TARGET_DAYS
         and eligible_samples >= int(calibration.get("minimum_consensus_samples") or 200)
@@ -72,10 +80,20 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
                 for market in market_days
             },
             "medium_45d": {
-                market: {"status": (holding.get("medium", {}).get(market) or {}).get("status", "missing")}
+                market: {
+                    "status": (holding.get("medium", {}).get(market) or {}).get("status", "missing"),
+                    "completed_days": medium_days[market],
+                    "target_days": 45,
+                }
                 for market in ("TW", "US")
             },
-            "long_6m": {"status": (holding.get("long") or {}).get("status", "missing")},
+            "long_6m": {
+                "status": (holding.get("long") or {}).get("status", "missing"),
+                "validation": {
+                    market: {"completed_days": long_days[market], "target_days": TARGET_DAYS}
+                    for market in ("TW", "US")
+                },
+            },
             "valuation": {market: {"effective_sessions": valuation_sessions[market]} for market in valuation_sessions},
             "rotation": {market: {"completed_sessions": rotation_days[market]} for market in rotation_days},
         },
@@ -85,6 +103,7 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
             "historical_proxy_separate": True,
             "automatic_weight_changes": False,
             "automatic_orders": False,
+            "holding_horizons_unchanged": True,
             "note": "60日機制已完整啟用；實際結果只會隨完成交易日自然累積，不用歷史代理冒充。",
         },
     }

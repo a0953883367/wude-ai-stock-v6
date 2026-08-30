@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from holding_simulation import (
     LONG_ALLOCATION_TWD,
     MEDIUM_ALLOCATION_TWD,
@@ -74,8 +76,9 @@ def test_next_session_open_enters_medium_and_long_as_separate_accounts():
 
     assert len(state["medium"]["TW"]["positions"]) == 5
     assert len(state["medium"]["US"]["positions"]) == 5
-    assert state["medium"]["TW"]["target_exit_date"] == "2026-10-08"
-    assert state["medium"]["US"]["target_exit_date"] == "2026-10-08"
+    assert state["medium"]["TW"]["target_exit_date"] is None
+    assert state["medium"]["US"]["target_exit_date"] is None
+    assert state["medium"]["TW"]["completed_trading_days"] == 1
     assert len(state["long"]["positions"]) == 2
     assert len(state["medium"]["TW"]["benchmark_positions"]) == 1
     assert state["medium"]["TW"]["benchmark_positions"][0]["symbol"] == "0050.TW"
@@ -121,15 +124,17 @@ def test_legacy_partial_medium_positions_are_quarantined_and_reset():
     assert portfolio["invalid_entries"][-1]["available_positions"] == 2
 
 
-def test_medium_exits_after_45_days_while_long_remains_active():
+def test_medium_exits_after_45_valid_sessions_while_long_remains_active():
     state = start_state()
     monday = universe("2026-08-24", close_offset=1)
     update_state(state, monday, period="evening", updated_at="2026-08-24 20:00:00")
     update_state(state, monday, period="morning", updated_at="2026-08-25 06:00:00")
 
-    maturity = universe("2026-10-08", close_offset=10)
-    update_state(state, maturity, period="evening", updated_at="2026-10-08 20:00:00")
-    update_state(state, maturity, period="morning", updated_at="2026-10-09 06:00:00")
+    for index in range(1, 45):
+        session = (date(2026, 8, 24) + timedelta(days=index)).isoformat()
+        maturity = universe(session, close_offset=10)
+        update_state(state, maturity, period="evening", updated_at=session)
+        update_state(state, maturity, period="morning", updated_at=session)
 
     assert state["medium"]["TW"]["status"] == "complete"
     assert state["medium"]["US"]["status"] == "complete"
@@ -141,6 +146,37 @@ def test_medium_exits_after_45_days_while_long_remains_active():
     assert state["medium"]["TW"]["benchmark_net_profit_twd"] != 0
     assert state["long"]["status"] == "active"
     assert state["long"]["realized"] is False
+
+
+def test_medium_missing_close_does_not_count_as_a_valid_session():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=1)
+    update_state(state, entry, period="evening", updated_at="entry")
+    portfolio = state["medium"]["TW"]
+    assert portfolio["completed_trading_days"] == 1
+
+    missing = portfolio["positions"][0]["symbol"]
+    partial = [item for item in universe("2026-08-25", close_offset=2) if item["symbol"] != missing]
+    update_state(state, partial, period="evening", updated_at="missing")
+    assert portfolio["completed_trading_days"] == 1
+    assert portfolio["remaining_trading_days"] == 44
+
+    update_state(state, universe("2026-08-26", close_offset=3), period="evening", updated_at="complete")
+    assert portfolio["completed_trading_days"] == 2
+    assert portfolio["valuation_sessions"] == ["2026-08-24", "2026-08-26"]
+
+
+def test_sixty_day_validation_does_not_change_long_six_month_exit():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=1)
+    update_state(state, entry, period="morning", updated_at="entry")
+    for index in range(1, 61):
+        session = (date(2026, 8, 24) + timedelta(days=index)).isoformat()
+        update_state(state, universe(session, close_offset=2), period="morning", updated_at=session)
+    long = state["long"]
+    assert long["validation_completed_days"]["US"] == 60
+    assert long["status"] == "active"
+    assert next(position for position in long["positions"] if position["market"] == "US")["target_exit_date"] == "2027-02-24"
 
 
 def test_long_exits_at_six_month_target_and_intraday_never_changes_state():
