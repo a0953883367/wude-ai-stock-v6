@@ -324,7 +324,7 @@ def test_legacy_day_with_only_eight_in_one_strategy_is_quarantined():
     assert market["invalid_days"][-1]["reason"].startswith("舊版結算未達")
 
 
-def test_taiwan_experiment_stops_after_six_completed_sessions():
+def test_taiwan_experiment_continues_after_six_toward_sixty():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="evening", updated_at="start")
     for day in range(24, 30):
@@ -336,12 +336,12 @@ def test_taiwan_experiment_stops_after_six_completed_sessions():
         )
     market = state["markets"]["TW"]
     assert market["completed_days"] == 6
-    assert market["target_trading_days"] == 6
-    assert market["status"] == "complete"
-    assert market["pending"] is None
+    assert market["target_trading_days"] == 60
+    assert market["status"] == "running"
+    assert market["pending"] is not None
 
 
-def test_us_experiment_stops_after_six_completed_sessions():
+def test_us_experiment_continues_after_six_toward_sixty():
     state = empty_state()
     update_state(state, universe("2026-08-21"), period="morning", updated_at="start")
     for day in range(24, 30):
@@ -353,9 +353,9 @@ def test_us_experiment_stops_after_six_completed_sessions():
         )
     market = state["markets"]["US"]
     assert market["completed_days"] == 6
-    assert market["target_trading_days"] == 6
-    assert market["status"] == "complete"
-    assert market["pending"] is None
+    assert market["target_trading_days"] == 60
+    assert market["status"] == "running"
+    assert market["pending"] is not None
 
 
 def test_legacy_us_five_day_completion_reopens_and_freezes_day_six():
@@ -381,3 +381,20 @@ def test_legacy_us_five_day_completion_reopens_and_freezes_day_six():
     assert market["pending"]["signal_session_date"] == "2026-08-28"
     assert len(market["pending"]["strategies"]["overall"]) == 10
     assert len(market["pending"]["strategies"]["short"]) == 10
+
+
+def test_both_markets_stop_only_after_sixty_valid_sessions():
+    dates = [day.strftime("%Y-%m-%d") for day in pd.bdate_range("2026-08-24", periods=60)]
+    for market_name, period in (("TW", "evening"), ("US", "morning")):
+        state = empty_state()
+        update_state(state, universe("2026-08-21"), period=period, updated_at="start")
+        for session_date in dates:
+            update_state(
+                state, universe(session_date), period=period,
+                updated_at=f"{session_date} 20:00:00",
+            )
+        market = state["markets"][market_name]
+        assert market["completed_days"] == 60
+        assert market["target_trading_days"] == 60
+        assert market["status"] == "complete"
+        assert market["pending"] is None

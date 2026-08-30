@@ -67,7 +67,10 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
         "ready_for_model_selection": ready,
         "tracks": {
             "short_1_5d": {"status": "complete" if days >= TARGET_DAYS else "collecting", "days": days},
-            "five_day_portfolios": {market: {"completed_days": market_days[market]} for market in market_days},
+            "million_forward_60d": {
+                market: {"completed_days": market_days[market], "target_days": TARGET_DAYS}
+                for market in market_days
+            },
             "medium_45d": {
                 market: {"status": (holding.get("medium", {}).get(market) or {}).get("status", "missing")}
                 for market in ("TW", "US")

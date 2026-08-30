@@ -22,7 +22,9 @@ const required = [
   '缺少標的資金保留現金、不轉配',
   '資料不足隔離',
   '2026-08-24',
-  '全程不送券商訂單'
+  '全程不送券商訂單',
+  '60日自動收集',
+  '第6日只做首週完整檢查'
 ];
 required.forEach((text) => assert.ok(html.includes(text), `missing UI contract: ${text}`));
 
@@ -36,11 +38,11 @@ const state = JSON.parse(fs.readFileSync('reports/million_simulation.json', 'utf
 assert.strictEqual(state.mode, 'web_shadow_only');
 assert.strictEqual(state.policy.start_date, '2026-08-24');
 assert.strictEqual(state.policy.capital_per_market_twd, 1000000);
-assert.deepStrictEqual(state.policy.target_trading_days_by_market, {TW: 6, US: 6});
+assert.deepStrictEqual(state.policy.target_trading_days_by_market, {TW: 60, US: 60});
 assert.strictEqual(state.markets.TW.completed_days, 5);
-assert.strictEqual(state.markets.TW.target_trading_days, 6);
+assert.strictEqual(state.markets.TW.target_trading_days, 60);
 assert.strictEqual(state.markets.US.completed_days, 5);
-assert.strictEqual(state.markets.US.target_trading_days, 6);
+assert.strictEqual(state.markets.US.target_trading_days, 60);
 for (const market of ['TW', 'US']) {
   const pending = state.markets[market].pending;
   if (pending) {
