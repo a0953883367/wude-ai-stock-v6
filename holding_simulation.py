@@ -863,8 +863,8 @@ def update_state(
     )
     state["policy"]["valuation_coverage"] = (
         "同一市場全部持股與同期基準都取得同一交易日收盤價後才整組更新；"
-        "美股主來源缺收盤時可用StockQ同日收盤備援並標示來源；"
-        "StockQ不建立新持倉，不足時保留前一完整估值"
+        "本人版美股主來源缺收盤時可依序用Tiingo、StockQ同日收盤備援並標示來源；"
+        "備援不建立新持倉，不足時保留前一完整估值"
     )
     state["policy"]["medium"] = {
         "capital_per_market_twd": MEDIUM_CAPITAL_TWD,
@@ -918,10 +918,16 @@ def update_holding_simulation(
     period: str,
     updated_at: str,
     intraday: bool = False,
+    filename: str = "holding_simulation.json",
+    seed_filename: str | None = None,
 ) -> Path:
-    path = reports_dir / "holding_simulation.json"
-    state = update_state(_load(path, updated_at), rows, period=period, updated_at=updated_at, intraday=intraday)
-    tmp = reports_dir / "holding_simulation.tmp"
+    path = reports_dir / filename
+    seed_path = reports_dir / seed_filename if seed_filename and not path.exists() else path
+    state = update_state(
+        _load(seed_path, updated_at), rows,
+        period=period, updated_at=updated_at, intraday=intraday,
+    )
+    tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tmp.replace(path)
     return path
