@@ -118,3 +118,16 @@ def test_batch_formatter_keeps_sell_direction():
     assert "3–5筆大賣" in text
     assert "US$900K" in text
     assert "賣88%" in text
+
+
+def test_batch_formatter_marks_single_block_trade_without_duplicate_message():
+    row = alert(4, "NVDA", "US")
+    row.update({
+        "is_block_trade": True,
+        "block_trade_label": "單筆巨額大買",
+        "buy_value": 250_000,
+    })
+    text = format_live_telegram_batch([row])
+    assert text.count("NVDA") == 1
+    assert "單筆巨額大買" in text
+    assert "單筆大買｜" not in text
