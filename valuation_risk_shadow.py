@@ -73,17 +73,25 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
     market = str(row.get("market") or "").upper()
     price = _positive(row.get("official_close_price")) or _positive(row.get("price"))
     report_date = str(row.get("financial_report_date") or "")
+    statement_unit = str(row.get("financial_statement_unit") or "")
+    statement_multiplier = 1000.0 if statement_unit == "TWD_thousands_as_reported" else 1.0
 
     revenue = _positive(row.get("total_revenue_ttm"))
     revenue_source = "TTM"
     if revenue is None:
-        revenue = _annualize_ytd(_positive(row.get("statement_revenue_ytd")), report_date)
+        statement_revenue = _positive(row.get("statement_revenue_ytd"))
+        if statement_revenue is not None:
+            statement_revenue *= statement_multiplier
+        revenue = _annualize_ytd(statement_revenue, report_date)
         revenue_source = "annualized_ytd" if revenue is not None else "unavailable"
 
     net_income = _finite(row.get("net_income_ttm"))
     net_income_source = "TTM"
     if net_income is None:
-        net_income = _annualize_ytd(_finite(row.get("statement_net_income_ytd")), report_date)
+        statement_net_income = _finite(row.get("statement_net_income_ytd"))
+        if statement_net_income is not None:
+            statement_net_income *= statement_multiplier
+        net_income = _annualize_ytd(statement_net_income, report_date)
         net_income_source = "annualized_ytd" if net_income is not None else "unavailable"
 
     shares = _positive(row.get("shares_outstanding"))
@@ -91,7 +99,7 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
         statement_income = _finite(row.get("statement_net_income_ytd"))
         eps = _finite(row.get("eps"))
         if statement_income is not None and eps not in (None, 0) and statement_income * eps > 0:
-            shares = abs(statement_income / eps)
+            shares = abs(statement_income * statement_multiplier / eps)
 
     market_cap = _positive(row.get("market_cap"))
     market_cap_source = "reported"
@@ -103,6 +111,8 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
 
     total_cash = _finite(row.get("total_cash"))
     total_debt = _finite(row.get("total_debt"))
+    if total_debt is not None and statement_multiplier != 1.0:
+        total_debt *= statement_multiplier
     enterprise_value = _positive(row.get("enterprise_value"))
     enterprise_value_source = "reported"
     if enterprise_value is None and market_cap is not None and total_debt is not None and total_cash is not None:
@@ -152,6 +162,7 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
         "price": price,
         "market_cap": market_cap,
         "market_cap_source": market_cap_source,
+        "financial_statement_unit": "TWD" if statement_multiplier != 1.0 else statement_unit or None,
         "enterprise_value": enterprise_value,
         "enterprise_value_source": enterprise_value_source,
         "revenue_annualized": revenue,

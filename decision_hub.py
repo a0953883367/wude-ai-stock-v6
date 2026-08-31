@@ -191,6 +191,33 @@ def _rotation_index(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     return result
 
 
+def _inverse_indexes(
+    database: dict[str, Any] | None,
+    shadow: dict[str, Any] | None,
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    mappings = {
+        str(row.get("symbol") or "").upper(): row
+        for row in (database or {}).get("mappings", [])
+        if isinstance(row, dict) and row.get("symbol")
+    }
+    candidates: dict[str, dict[str, Any]] = {}
+    for market, market_row in (shadow or {}).get("markets", {}).items():
+        if not isinstance(market_row, dict):
+            continue
+        for row in market_row.get("current_candidates", []):
+            if isinstance(row, dict) and row.get("group"):
+                candidates[f"{market}:{row['group']}"] = row
+    return mappings, candidates
+
+
+def _inverse_market_ready(report: dict[str, Any] | None, market: str) -> bool:
+    summary = (((report or {}).get("markets") or {}).get(market) or {}).get("summary") or {}
+    return bool(summary) and all(
+        isinstance(row, dict) and int(row.get("samples") or 0) >= 20
+        for row in summary.values()
+    )
+
+
 def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any]:
     accuracy = reports.get("accuracy") or {}
     calibration = accuracy.get("calibration", {})
@@ -301,6 +328,9 @@ def _build_decision(
     *,
     valuation: dict[str, Any] | None,
     rotation: dict[str, Any] | None,
+    inverse_mapping: dict[str, Any] | None,
+    inverse_candidate: dict[str, Any] | None,
+    inverse_ready: bool,
     updated_at: str,
 ) -> dict[str, Any]:
     symbol = str(row.get("symbol") or "")
@@ -352,11 +382,35 @@ def _build_decision(
         long_parts.extend(_bounded(item) for item in (financial, growth, fundamental) if item is not None)
     long_score = round(sum(long_parts) / len(long_parts), 1)
     long_conf = medium_conf
-    valuation_ready = bool(valuation and valuation.get("status") == "ready")
+    valuation_unit_valid = not bool(
+        valuation
+        and str(row.get("market") or "").upper() == "TW"
+        and str(valuation.get("market_cap_source") or "").startswith("price_times_inferred_shares")
+        and valuation.get("financial_statement_unit") != "TWD"
+    )
+    valuation_ready = bool(
+        valuation and valuation.get("status") == "ready" and valuation_unit_valid
+    )
     valuation_pressure = _number((valuation or {}).get("valuation_pressure_score"))
     if valuation_ready and valuation_pressure is not None:
         # Risk-only deduction in this downstream decision; formal rank is untouched.
         long_score = round(max(0.0, long_score - max(0.0, valuation_pressure - 55) * 0.20), 1)
+
+    inverse_bear_score = _number((inverse_candidate or {}).get("bear_score"))
+    inverse_active = bool(inverse_ready and inverse_bear_score is not None and inverse_bear_score >= 60)
+    if inverse_active:
+        # This changes only the downstream central view after the isolated
+        # inverse model passes its own forward gate.  Formal V6 scores/ranks
+        # remain untouched.
+        inverse_penalty = min(5.0, max(0.0, inverse_bear_score - 60.0) * 0.125)
+        short_score = round(max(0.0, short_score - inverse_penalty), 1)
+        medium_score = round(max(0.0, medium_score - inverse_penalty), 1)
+        short_code = _recommendation(
+            short_score, bool(row.get("short_term_eligible")), data_block
+        )
+        medium_code = _recommendation(
+            medium_score, bool(row.get("mid_long_eligible")), data_block
+        )
     long_code = _recommendation(
         long_score,
         bool(row.get("mid_long_eligible")) and (
@@ -395,9 +449,14 @@ def _build_decision(
             "shadow_only", str(valuation.get("valuation_pressure_label") or valuation.get("reason") or "估值資料可用"),
         ))
     elif not is_etf:
+        valuation_reason = (
+            "台股市值／財報單位尚未完成一致化，暫停影響中央判斷"
+            if not valuation_unit_valid
+            else str((valuation or {}).get("reason") or "估值核心資料不足")
+        )
         evidence.append(_evidence(
             "valuation_shadow", "估值風險雷達", "risk", "missing", 0, 0, updated_at,
-            "insufficient", str((valuation or {}).get("reason") or "估值核心資料不足"),
+            "unit_guard" if not valuation_unit_valid else "insufficient", valuation_reason,
             affects_decision=False,
         ))
         data_missing.append("valuation_risk")
@@ -405,6 +464,28 @@ def _build_decision(
         evidence.append(_evidence(
             "valuation_shadow", "估值風險雷達", "risk", "neutral", 0, 100,
             updated_at, "not_applicable", "ETF 不套用營運公司估值模型",
+            affects_decision=False,
+        ))
+    if inverse_mapping and inverse_candidate:
+        inverse_status = str(inverse_candidate.get("status") or "waiting")
+        inverse_symbol = str(inverse_mapping.get("inverse_symbol") or "—")
+        inverse_name = str(inverse_mapping.get("inverse_name") or inverse_symbol)
+        mapping_status = str(inverse_mapping.get("mapping_data_status") or "waiting")
+        evidence.append(_evidence(
+            "inverse_etf_shadow", "反向 ETF 影子", "risk",
+            "oppose" if (inverse_bear_score or 0) >= 60 else "neutral",
+            inverse_bear_score or 0,
+            70 if inverse_ready else 30,
+            str((inverse_candidate.get("evidence") or {}).get("session_date") or updated_at),
+            "validated_shadow" if inverse_ready else "collecting_only",
+            f"{inverse_name}（{inverse_symbol}）對應；空方壓力 {inverse_bear_score or 0:.1f}；"
+            f"狀態 {inverse_status}；配對 {mapping_status}",
+            affects_decision=inverse_active,
+        ))
+    else:
+        evidence.append(_evidence(
+            "inverse_etf_shadow", "反向 ETF 影子", "risk", "missing", 0, 0,
+            updated_at, "insufficient", "沒有可對齊的反向 ETF 映射或市場候選",
             affects_decision=False,
         ))
     if rotation:
@@ -486,6 +567,17 @@ def _build_decision(
         })
         if long_code == "can_scale":
             long_code = "wait_pullback"
+    if inverse_active and (inverse_bear_score or 0) >= 75 and short_code in ("can_scale", "wait_pullback"):
+        conflicts.append({
+            "code": "positive_signal_vs_validated_inverse_risk",
+            "severity": "medium",
+            "sources": ["short_plan", "inverse_etf_shadow"],
+            "reason": "正向個股訊號與已通過驗證的反向 ETF 空方壓力衝突",
+            "resolution_rule": "只降低中央影子分數並等待確認，不回寫正式排名",
+            "resolution": "wait_for_confirmation",
+        })
+        if short_code == "can_scale":
+            short_code = "wait_pullback"
     if short_code in ("can_scale", "wait_pullback") and long_code in ("avoid", "data_insufficient"):
         conflicts.append({
             "code": "horizon_disagreement",
@@ -592,6 +684,18 @@ def _build_decision(
         "formal_rank": row.get("overall_rank") or row.get("rank"),
         "formal_score": _number(row.get("overall_ranking_score") or row.get("score")),
         "formal_ranking_unchanged": True,
+        "inverse_shadow": {
+            "group": (inverse_mapping or {}).get("group"),
+            "inverse_symbol": (inverse_mapping or {}).get("inverse_symbol"),
+            "inverse_name": (inverse_mapping or {}).get("inverse_name"),
+            "mapping_strength": (inverse_mapping or {}).get("mapping_strength"),
+            "mapping_quality_score": (inverse_mapping or {}).get("mapping_quality_score"),
+            "bear_score": inverse_bear_score,
+            "status": (inverse_candidate or {}).get("status"),
+            "validated_for_decision": inverse_ready,
+            "affects_central_decision": inverse_active,
+            "affects_formal_ranking": False,
+        },
         "horizons": horizons,
         "evidence": evidence,
         "conflicts": conflicts,
@@ -632,6 +736,7 @@ def update_decision_hub(
         "valuation": _read_json(reports_dir / "valuation_risk_shadow.json"),
         "rotation": _read_json(reports_dir / "market_rotation_shadow.json"),
         "inverse": _read_json(reports_dir / "inverse_etf_shadow.json"),
+        "inverse_database": _read_json(reports_dir / "inverse_etf_database.json"),
         "accuracy": _read_json(reports_dir / "accuracy.json"),
         "holding": _read_json(reports_dir / "holding_simulation.json"),
         "million": _read_json(reports_dir / "million_simulation.json"),
@@ -649,6 +754,9 @@ def update_decision_hub(
     )
     valuation_by_symbol = _valuation_index(source_reports["valuation"])
     rotation_by_sector = _rotation_index(source_reports["rotation"])
+    inverse_by_symbol, inverse_by_group = _inverse_indexes(
+        source_reports["inverse_database"], source_reports["inverse"]
+    )
     decisions = []
     for row in frozen_rows:
         if not isinstance(row, dict) or not row.get("symbol"):
@@ -657,10 +765,17 @@ def update_decision_hub(
         cached_news = news_by_symbol.get(str(row.get("symbol") or ""))
         if isinstance(cached_news, dict):
             decision_row.update(cached_news)
+        symbol_key = str(row.get("symbol") or "").upper()
+        inverse_mapping = inverse_by_symbol.get(symbol_key)
+        inverse_group = (inverse_mapping or {}).get("group")
+        market = str(row.get("market") or "")
         decisions.append(_build_decision(
             decision_row,
-            valuation=valuation_by_symbol.get(str(row.get("symbol") or "").upper()),
+            valuation=valuation_by_symbol.get(symbol_key),
             rotation=rotation_by_sector.get(f"{row.get('market')}:{row.get('industry')}"),
+            inverse_mapping=inverse_mapping,
+            inverse_candidate=inverse_by_group.get(f"{market}:{inverse_group}"),
+            inverse_ready=_inverse_market_ready(source_reports["inverse"], market),
             updated_at=updated_at,
         ))
     decisions.sort(key=lambda item: (
@@ -712,6 +827,13 @@ def update_decision_hub(
         "risk_blocked_count": sum(1 for item in decisions if item["risk_blocks"]),
         "news_coverage_count": sum(
             1 for item in decisions if "verified_news" not in item["data_missing"]
+        ),
+        "inverse_linked_count": sum(
+            1 for item in decisions if (item.get("inverse_shadow") or {}).get("group")
+        ),
+        "inverse_validated_count": sum(
+            1 for item in decisions
+            if (item.get("inverse_shadow") or {}).get("validated_for_decision")
         ),
         "by_recommendation": {
             code: sum(1 for item in decisions if item["final"]["recommendation"] == code)

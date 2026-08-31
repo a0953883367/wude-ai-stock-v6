@@ -109,6 +109,28 @@ def test_official_statement_eps_and_book_value_fill_missing_per_pbr(tmp_path):
     assert item["pbr_source"] == "price_divided_by_official_book_value_per_share"
 
 
+def test_tw_official_thousand_unit_is_normalized_before_market_value_display(tmp_path):
+    row = {
+        "symbol": "3653.TW", "name": "健策", "market": "TW", "type": "個股",
+        "industry": "電子", "official_session_date": "2026-08-28",
+        "official_close_price": 5785, "financial_report_date": "2026-06-30",
+        "financial_statement_unit": "TWD_thousands_as_reported",
+        "statement_revenue_ytd": 12_579_732,
+        "statement_net_income_ytd": 3_716_689,
+        "eps": 25.33, "book_value_per_share": 160.69,
+    }
+    report = update_valuation_risk_shadow(
+        tmp_path, [row], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=True,
+    )
+    item = report["data"][0]
+    inferred_shares = 3_716_689_000 / 25.33
+    assert item["market_cap"] == 5785 * inferred_shares
+    assert item["market_cap"] > 800_000_000_000
+    assert item["revenue_annualized"] == 25_159_464_000
+    assert item["financial_statement_unit"] == "TWD"
+
+
 def test_shadow_does_not_mutate_official_rows_or_weights(tmp_path):
     rows = _peer_rows()
     before = json.loads(json.dumps(rows))
