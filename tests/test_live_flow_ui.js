@@ -52,6 +52,15 @@ test('closed streams and zero-flow sessions use neutral Chinese labels', () => {
   assert.match(script, /directional>0\?\(flow\.direction\|\|'多空拉鋸'\):'暫無資金方向'/);
 });
 
+test('US premarket status and saved summary are visible and separated', () => {
+  assert.match(html, /美股自盤前開始監控/);
+  assert.match(script, /premarket_connected.*盤前監控中/);
+  assert.match(script, /connected.*正式盤監控中/);
+  assert.match(script, /premarket_summary/);
+  assert.match(script, /盤前摘要/);
+  assert.match(script, /美股.*盤前/);
+});
+
 test('capital flow keeps buy and sell analysis', () => {
   assert.match(html, /買進與賣出都計算/);
   assert.match(script, /theme_inflows/);

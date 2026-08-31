@@ -182,3 +182,41 @@ def test_daily_flow_survives_restart_without_exposing_intraday(tmp_path):
     assert payload["policy"]["intraday_exposed"] is False
     assert payload["markets"]["US"][0]["trade_count"] == 1
     assert payload["markets"]["US"][0]["complete"] is False
+
+
+def test_us_regular_open_resets_rolling_windows_and_preserves_premarket_summary():
+    zone = ZoneInfo("America/New_York")
+    premarket = datetime(2026, 8, 31, 9, 20, tzinfo=zone).timestamp()
+    regular = datetime(2026, 8, 31, 9, 30, tzinfo=zone).timestamp()
+    flow = CapitalFlowShadow(baselines(), clock=lambda: regular)
+
+    flow.transition_market_phase("US", "premarket", now=premarket)
+    flow.process_trade("NVDA", price=200, size=1_000, ask=200, timestamp=premarket)
+    before = flow.snapshot(now=premarket)["markets"]["US"]
+    assert before["session_phase"] == "premarket"
+    assert before["windows"]["60m"]["buy_value"] == 200_000
+
+    flow.transition_market_phase("US", "regular", now=regular)
+    after = flow.snapshot(now=regular)["markets"]["US"]
+    assert after["session_phase"] == "regular"
+    assert after["windows"]["60m"]["trade_count"] == 0
+    assert after["premarket_summary"]["closed"] is True
+    assert after["premarket_summary"]["windows"]["60m"]["buy_value"] == 200_000
+
+    flow.process_trade("NVDA", price=201, size=100, ask=201, timestamp=regular + 1)
+    regular_window = flow.snapshot(now=regular + 1)["markets"]["US"]["windows"]["1m"]
+    assert regular_window["buy_value"] == 20_100
+
+    next_day = datetime(2026, 9, 1, 4, 0, tzinfo=zone).timestamp()
+    flow.transition_market_phase("US", "closed", now=regular + 60)
+    flow.transition_market_phase("US", "premarket", now=next_day)
+    assert flow.snapshot(now=next_day)["markets"]["US"]["premarket_summary"] is None
+
+
+def test_sixty_minute_flow_keeps_only_rolling_buckets():
+    flow = CapitalFlowShadow(baselines(), clock=lambda: 4_001)
+    flow.process_trade("NVDA", price=200, size=100, ask=200, timestamp=100)
+    flow.process_trade("NVDA", price=201, size=100, ask=201, timestamp=4_000)
+    window = flow.snapshot(now=4_001)["markets"]["US"]["windows"]["60m"]
+    assert window["trade_count"] == 1
+    assert window["buy_value"] == 20_100

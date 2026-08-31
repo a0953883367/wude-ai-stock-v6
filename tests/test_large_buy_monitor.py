@@ -152,6 +152,11 @@ def test_service_stores_and_notifies_without_broker_actions(tmp_path: Path):
     assert snapshot["capital_flow"]["markets"]["US"]["windows"]["1m"]["trade_count"] == 0
     assert snapshot["inverse_etf_live_shadow"]["policy"]["formal_ranking_locked"] is True
     assert snapshot["inverse_etf_live_shadow"]["policy"]["broker_orders"] is False
+    resources = snapshot["policy"]["resource_policy"]
+    assert resources["alpaca_shared_websocket"] is True
+    assert resources["raw_trade_window_seconds"] == 10
+    assert resources["aggregate_retention_minutes"] == 60
+    assert resources["alerts_keep_summary_only"] is True
 
 
 def test_notifications_cover_every_stock_without_selected_symbol_filter(tmp_path: Path):
@@ -196,6 +201,56 @@ def test_telegram_formats_large_sell_alert():
     assert "大量主動賣出" in text
     assert "賣出占比 91.0%" in text
     assert "不代表主力身分或交易建議" in text
+
+
+def test_telegram_identifies_us_premarket_alert():
+    text = format_large_buy_telegram({
+        "alert_side": "buy", "trigger_label": "單筆大買", "name": "NVIDIA",
+        "symbol": "NVDA", "market": "US", "price": 200, "trade_count": 1,
+        "buy_value": 250_000, "aggressive_buy_ratio_pct": 100,
+        "session_phase": "premarket", "detected_at": "now",
+    })
+    assert "交易時段｜盤前" in text
+
+
+def test_us_premarket_notifies_but_never_updates_formal_weight(tmp_path: Path):
+    class WeightShadow:
+        calendar = None
+
+        def __init__(self):
+            self.observed = []
+            self.alerts = []
+
+        def observe_trade(self, *args, **kwargs):
+            self.observed.append((args, kwargs))
+
+        def record_alert(self, alert):
+            self.alerts.append(alert)
+
+    received = []
+    zone = __import__("zoneinfo").ZoneInfo("America/New_York")
+    premarket = __import__("datetime").datetime(2026, 8, 31, 8, 0, tzinfo=zone).timestamp()
+    regular = __import__("datetime").datetime(2026, 8, 31, 9, 30, tzinfo=zone).timestamp()
+    service = object.__new__(LargeBuyAlertService)
+    service.config = config()
+    service.baselines = baselines()
+    service.detector = LargeBuyDetector(service.baselines, config=service.config)
+    service.flow = CapitalFlowShadow(service.baselines, clock=lambda: regular)
+    service.weight_shadow = WeightShadow()
+    service.store = JsonAlertStore(tmp_path / "alerts.json")
+    service.notifier = None
+    service.alert_notifier = received.append
+    service._session_phases = {"TW": "closed", "US": "closed"}
+
+    alert = service.process_trade("NVDA", price=200, size=500, ask=200, timestamp=premarket)
+    assert alert["session_phase"] == "premarket"
+    assert received[0]["symbol"] == "NVDA"
+    assert service.weight_shadow.observed == []
+    assert service.weight_shadow.alerts == []
+
+    service.process_trade("NVDA", price=200, size=500, ask=200, timestamp=regular)
+    assert len(service.weight_shadow.observed) == 1
+    assert len(service.weight_shadow.alerts) == 1
 
 
 def test_railway_image_keeps_the_full_large_buy_universe(tmp_path: Path):

@@ -30,6 +30,24 @@ MARKET_CLOCKS = {
     "TW": (ZoneInfo("Asia/Taipei"), datetime_time(9, 0), datetime_time(13, 30)),
     "US": (ZoneInfo("America/New_York"), datetime_time(9, 30), datetime_time(16, 0)),
 }
+US_PREMARKET_OPEN = datetime_time(4, 0)
+
+
+def market_session_phase(market: str, at: float) -> str:
+    """Return closed, premarket, or regular using each exchange's local clock."""
+    market = str(market or "").upper()
+    if market not in MARKET_CLOCKS:
+        return "closed"
+    zone, opened, closed = MARKET_CLOCKS[market]
+    local = datetime.fromtimestamp(float(at), zone)
+    clock = local.time().replace(tzinfo=None)
+    if local.weekday() >= 5:
+        return "closed"
+    if market == "US" and US_PREMARKET_OPEN <= clock < opened:
+        return "premarket"
+    if opened <= clock < closed:
+        return "regular"
+    return "closed"
 
 
 def normalize_theme(value: Any) -> str:
@@ -134,7 +152,8 @@ class FlowContribution:
 
 @dataclass(frozen=True)
 class CapitalFlowConfig:
-    retention_seconds: int = 3900
+    # One hour of aggregate 30-second buckets plus one in-progress bucket.
+    retention_seconds: int = 3630
     quote_max_age_seconds: float = 3.0
     trade_id_limit: int = 20_000
     persist_interval_seconds: float = 60.0
@@ -166,6 +185,8 @@ class CapitalFlowShadow:
         self._trade_ids: OrderedDict[str, FlowContribution] = OrderedDict()
         self._market_counts = {market: 0 for market in MARKETS}
         self._market_last_at: dict[str, float | None] = {market: None for market in MARKETS}
+        self._market_phases = {market: "closed" for market in MARKETS}
+        self._phase_summaries: dict[str, dict[str, Any]] = {}
         self._started_at = self.clock()
         self._last_persisted_at = 0.0
         self._last_pruned_at = 0.0
@@ -175,12 +196,50 @@ class CapitalFlowShadow:
 
     @staticmethod
     def _regular_session(market: str, at: float) -> tuple[str, bool]:
-        zone, opened, closed = MARKET_CLOCKS[market]
+        zone, _opened, _closed = MARKET_CLOCKS[market]
         local = datetime.fromtimestamp(at, zone)
-        in_regular_hours = (
-            local.weekday() < 5 and opened <= local.time().replace(tzinfo=None) <= closed
-        )
+        in_regular_hours = market_session_phase(market, at) == "regular"
         return local.date().isoformat(), in_regular_hours
+
+    def transition_market_phase(self, market: str, phase: str, *, now: float | None = None) -> None:
+        """Separate US premarket from regular rolling windows without losing its summary."""
+        market = str(market or "").upper()
+        phase = str(phase or "closed").lower()
+        if market not in MARKETS or phase not in {"closed", "premarket", "regular"}:
+            return
+        at = self.clock() if now is None else float(now)
+        with self._lock:
+            previous = self._market_phases.get(market, "closed")
+            if previous == phase:
+                return
+            if market == "US" and phase == "premarket":
+                self._phase_summaries.pop(market, None)
+            if market == "US" and previous == "premarket" and phase == "regular":
+                local = datetime.fromtimestamp(at, MARKET_CLOCKS[market][0])
+                self._phase_summaries[market] = {
+                    "phase": "premarket",
+                    "session_date": local.date().isoformat(),
+                    "closed": True,
+                    "ended_at": datetime.fromtimestamp(at, timezone.utc).isoformat(timespec="seconds"),
+                    "windows": {
+                        label: self._window_snapshot(market, seconds, at)
+                        for label, seconds in WINDOWS.items()
+                    },
+                }
+                market_symbols = {
+                    symbol for symbol, baseline in self.baselines.items()
+                    if str(getattr(baseline, "market", "")) == market
+                }
+                for symbol in market_symbols:
+                    self._buckets.pop(symbol, None)
+                    self._quotes.pop(symbol, None)
+                    self._last_price.pop(symbol, None)
+                    self._last_side.pop(symbol, None)
+                for key, contribution in list(self._trade_ids.items()):
+                    if contribution.symbol in market_symbols:
+                        del self._trade_ids[key]
+                self._dirty = True
+            self._market_phases[market] = phase
 
     def update_quote(
         self,
@@ -642,6 +701,8 @@ class CapitalFlowShadow:
                     "market": market,
                     "currency": "TWD" if market == "TW" else "USD",
                     "source": "Fubon Neo" if market == "TW" else "Alpaca SIP",
+                    "session_phase": self._market_phases.get(market) or market_session_phase(market, at),
+                    "premarket_summary": self._phase_summaries.get(market),
                     "trades_processed": self._market_counts[market],
                     "last_trade_at": (
                         datetime.fromtimestamp(self._market_last_at[market], timezone.utc).isoformat(timespec="seconds")
@@ -664,6 +725,8 @@ class CapitalFlowShadow:
                 "policy": {
                     "markets_separate": True,
                     "windows": list(WINDOWS),
+                    "aggregate_bucket_seconds": BUCKET_SECONDS,
+                    "aggregate_retention_minutes": 60,
                     "classification": "quote_then_tick_rule",
                     "identity_known": False,
                     "changes_rankings": False,
@@ -684,6 +747,8 @@ class CapitalFlowShadow:
             "started_at": self._started_at,
             "market_counts": self._market_counts,
             "market_last_at": self._market_last_at,
+            "market_phases": self._market_phases,
+            "phase_summaries": self._phase_summaries,
             "last_price": self._last_price,
             "last_side": self._last_side,
             "buckets": {
@@ -771,6 +836,15 @@ class CapitalFlowShadow:
                 self._market_counts[market] = int((payload.get("market_counts") or {}).get(market) or 0)
                 last = _finite((payload.get("market_last_at") or {}).get(market))
                 self._market_last_at[market] = last
+                saved_phase = str((payload.get("market_phases") or {}).get(market) or "closed")
+                if saved_phase in {"closed", "premarket", "regular"}:
+                    self._market_phases[market] = saved_phase
+            summaries = payload.get("phase_summaries")
+            if isinstance(summaries, dict):
+                self._phase_summaries = {
+                    market: row for market, row in summaries.items()
+                    if market in MARKETS and isinstance(row, dict)
+                }
             self._last_price.update({
                 symbol: float(value) for symbol, value in (payload.get("last_price") or {}).items()
                 if symbol in self.baselines and _finite(value) is not None
