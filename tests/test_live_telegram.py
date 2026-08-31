@@ -55,6 +55,22 @@ def test_batcher_groups_same_window_into_one_message():
     assert "NVDA" in sent[0]
     assert "武得" not in sent[0]
     assert "不改排名、不自動下單" in sent[0]
+    status = batcher.status()
+    assert status["last_attempt_at"]
+    assert status["last_success_at"] == status["last_attempt_at"]
+    assert status["last_error"] is None
+    assert status["pending_count"] == 0
+
+
+def test_batcher_records_delivery_failure_without_raising():
+    batcher = LiveTelegramBatcher(lambda _text: False, timer_factory=ManualTimer)
+    batcher.enqueue(alert(1, "2330.TW"))
+
+    assert batcher.flush() is False
+    status = batcher.status()
+    assert status["last_attempt_at"]
+    assert status["last_success_at"] is None
+    assert status["last_error"] == "send_returned_false"
 
 
 def test_live_destination_never_falls_back_to_report_chat():

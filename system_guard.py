@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections import Counter
 from copy import deepcopy
 from datetime import datetime
@@ -15,10 +16,14 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import requests
+
 
 TAIPEI = ZoneInfo("Asia/Taipei")
 LEVEL_ORDER = {"ok": 0, "info": 0, "warning": 1, "critical": 2}
 LEVEL_LABEL = {"ok": "正常", "info": "資訊", "warning": "注意", "critical": "異常"}
+DEFAULT_PRIMARY_APP_URL = "https://a0953883367.github.io/wude-ai-stock-v6/"
+DEFAULT_LIVE_HEALTH_URL = "https://wude-ai-stock-v6-production.up.railway.app/health"
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -51,6 +56,33 @@ def _check(code: str, title: str, level: str, detail: str, action: str = "") -> 
     }
 
 
+def _http_probe(url: str, *, expect_json: bool = False, timeout: float = 10.0) -> dict[str, Any]:
+    """Probe a public runtime endpoint without sending credentials."""
+    checked_url = str(url or "").strip()
+    if not checked_url:
+        return {"probe_ok": False, "error": "網址未設定", "url": ""}
+    try:
+        response = requests.get(checked_url, timeout=timeout)
+        response.raise_for_status()
+        result: dict[str, Any] = {
+            "probe_ok": True,
+            "status_code": response.status_code,
+            "url": checked_url,
+        }
+        if expect_json:
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("回傳內容不是 JSON 物件")
+            result["payload"] = payload
+        return result
+    except (requests.RequestException, ValueError, TypeError) as exc:
+        return {
+            "probe_ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "url": checked_url,
+        }
+
+
 def _publish_check(name: str, outcome: str, previous: dict[str, Any]) -> dict[str, Any]:
     value = str(outcome or "unknown").strip().lower()
     code = f"publish_{name}"
@@ -76,10 +108,16 @@ def _publish_check(name: str, outcome: str, previous: dict[str, Any]) -> dict[st
         return _check(code, title, "ok", "最近一次發布已成功")
     if value == "skipped":
         return _check(code, title, "warning", "最近一次發布步驟被略過", "檢查網站網址與發布授權是否已設定")
-    return _check(code, title, "critical", f"最近一次發布結果：{value}", "檢查發布網站狀態與授權，修復後重新執行報告")
+    return _check(
+        code, title, "warning", f"最近一次發布結果：{value}；主 App 與正式報表維持獨立",
+        "檢查朋友版發布狀態與授權；不要把主 App、Railway 或正式排名一起判成失敗",
+    )
 
 
-def _primary_app_check(reports_dir: Path) -> dict[str, Any]:
+def _primary_app_check(
+    reports_dir: Path,
+    runtime_probe: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Check the primary PWA without conflating a single device's grant."""
     root = reports_dir.parent
     required = (
@@ -95,16 +133,178 @@ def _primary_app_check(reports_dir: Path) -> dict[str, Any]:
         return _check(
             "primary_app_output",
             "主畫面 App",
-            "critical",
+            "warning",
             "缺少主 App 檔案：" + "、".join(missing),
-            "修復 GitHub Pages App 檔案後重新部署；正式排名維持不變",
+            "修復 GitHub Pages App 檔案後重新部署；Railway、Telegram 與正式排名維持獨立",
+        )
+    if runtime_probe is not None and not runtime_probe.get("probe_ok"):
+        return _check(
+            "primary_app_output",
+            "主畫面 App",
+            "warning",
+            f"主 App 檔案完整，但公開網址無法開啟：{runtime_probe.get('error') or '未知錯誤'}",
+            "檢查 GitHub Pages 發布；不要把手機授權或 Railway 後端一起判成故障",
         )
     return _check(
         "primary_app_output",
         "主畫面 App",
         "ok",
-        "五個功能頁與共用導覽檔完整；手機授權及 Railway 串流分開判斷",
+        "主 App 公開網址可開啟，五個功能頁與共用導覽檔完整"
+        if runtime_probe is not None
+        else "五個功能頁與共用導覽檔完整；本次未執行公開網址探測",
     )
+
+
+def _live_runtime_checks(
+    runtime_probe: dict[str, Any] | None,
+    previous: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Keep Railway, each stream, Telegram and device pairing independent."""
+    titles = {"TW": "台股即時串流", "US": "美股即時串流"}
+    if runtime_probe is None:
+        return [
+            _check("live_backend", "Railway 即時後端", "info", "本次未執行 Railway 健康探測"),
+            *[
+                _check(f"stream_{market.lower()}", title, "info", "本次未取得即時串流狀態")
+                for market, title in titles.items()
+            ],
+            _check("telegram_delivery", "Telegram 即時通知", "info", "本次未取得通知送達狀態"),
+            _check("device_authorization", "手機唯讀授權", "info", "本次未取得手機授權服務狀態"),
+        ]
+
+    if not runtime_probe.get("probe_ok"):
+        error = str(runtime_probe.get("error") or "未知錯誤")
+        old = next(
+            (
+                item for item in (previous or {}).get("checks", [])
+                if item.get("code") == "live_backend"
+            ),
+            {},
+        )
+        consecutive = int(old.get("consecutive_failures") or 0) + 1
+        backend_level = "critical" if consecutive >= 3 else "warning"
+        backend = _check(
+            "live_backend", "Railway 即時後端", backend_level,
+            f"Railway 健康網址連續 {consecutive} 次無法連線：{error}",
+            "檢查 Railway 服務、部署紀錄與公開網域；正式收盤報表仍由 GitHub Actions 分開判斷",
+        )
+        backend["consecutive_failures"] = consecutive
+        return [
+            backend,
+            *[
+                _check(
+                    f"stream_{market.lower()}", title, "info",
+                    "因 Railway 無法連線，本次不能判定串流；不誤標成個別行情來源故障",
+                )
+                for market, title in titles.items()
+            ],
+            _check(
+                "telegram_delivery", "Telegram 即時通知", "info",
+                "因 Railway 無法連線，本次不能判定 Telegram；不影響正式報表保存",
+            ),
+            _check(
+                "device_authorization", "手機唯讀授權", "info",
+                "因 Railway 無法連線，本次不能判定授權服務；不代表正式排名失敗",
+            ),
+        ]
+
+    payload = runtime_probe.get("payload")
+    if not isinstance(payload, dict) or not payload.get("ok"):
+        return [
+            _check(
+                "live_backend", "Railway 即時後端", "critical",
+                "Railway 有回應，但健康內容無效",
+                "檢查 Railway /health 回傳；不要用手機畫面狀態代替後端健康狀態",
+            ),
+            *[
+                _check(f"stream_{market.lower()}", title, "info", "後端健康內容無效，暫不判定串流")
+                for market, title in titles.items()
+            ],
+            _check("telegram_delivery", "Telegram 即時通知", "info", "後端健康內容無效，暫不判定送達"),
+            _check("device_authorization", "手機唯讀授權", "info", "後端健康內容無效，暫不判定授權服務"),
+        ]
+
+    backend = _check(
+        "live_backend", "Railway 即時後端", "ok",
+        f"{payload.get('service') or '即時服務'} 正常回應；與 App 畫面及手機授權分開判斷",
+    )
+    backend["consecutive_failures"] = 0
+    checks = [backend]
+    monitor = payload.get("large_buy_monitor") if isinstance(payload.get("large_buy_monitor"), dict) else {}
+    streams = monitor.get("streams") if isinstance(monitor.get("streams"), dict) else {}
+    enabled = bool(monitor.get("enabled", True))
+    for market, title in titles.items():
+        row = streams.get(market) if isinstance(streams.get(market), dict) else {}
+        state = str(row.get("state") or "unknown")
+        subscribed = int(row.get("subscribed") or 0)
+        error = str(row.get("error") or "")
+        if not enabled or state == "disabled":
+            checks.append(_check(
+                f"stream_{market.lower()}", title, "warning",
+                "即時大量買賣監控已停用",
+                "檢查 LARGE_BUY_MONITOR_ENABLED；不修改正式排名或收盤報表",
+            ))
+        elif state in {"connected", "premarket_connected"} and subscribed > 0:
+            phase = "盤前" if state == "premarket_connected" else "正式盤"
+            checks.append(_check(
+                f"stream_{market.lower()}", title, "ok",
+                f"{phase}已連線，訂閱 {subscribed} 檔",
+            ))
+        elif state == "waiting_market_open":
+            checks.append(_check(
+                f"stream_{market.lower()}", title, "info",
+                "市場未開盤，串流正在等待；不視為更新或故障",
+            ))
+        else:
+            detail = f"串流狀態：{state}"
+            if error:
+                detail += f"；{error}"
+            checks.append(_check(
+                f"stream_{market.lower()}", title, "warning", detail,
+                "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
+            ))
+
+    telegram = monitor.get("telegram_delivery") if isinstance(monitor.get("telegram_delivery"), dict) else {}
+    configured = bool(telegram.get("configured", monitor.get("telegram_configured", False)))
+    telegram_state = str(telegram.get("state") or "")
+    last_success = str(telegram.get("last_success_at") or "")
+    last_error = str(telegram.get("last_error") or "")
+    if not configured:
+        checks.append(_check(
+            "telegram_delivery", "Telegram 即時通知", "warning",
+            "即時通知尚未設定；網站訊號與後端統計仍繼續",
+            "在 Railway 設定專用 Telegram Bot，勿把 Token 寫入 GitHub 或 App",
+        ))
+    elif telegram_state == "delivery_failed" or last_error:
+        checks.append(_check(
+            "telegram_delivery", "Telegram 即時通知", "warning",
+            f"最近一次通知未送達：{last_error or '未知錯誤'}；後端與串流未停止",
+            "檢查專用 Bot 對話與 Railway Telegram 設定",
+        ))
+    elif telegram_state == "delivered" or last_success:
+        checks.append(_check(
+            "telegram_delivery", "Telegram 即時通知", "ok",
+            f"最近一次已送達：{last_success or '時間未提供'}",
+        ))
+    else:
+        checks.append(_check(
+            "telegram_delivery", "Telegram 即時通知", "warning",
+            "已設定，但尚未取得成功送達紀錄；後端與串流未停止",
+            "確認專用 Bot 已按 /start，等待連線確認訊息",
+        ))
+
+    if payload.get("device_pairing_configured"):
+        checks.append(_check(
+            "device_authorization", "手機唯讀授權", "ok",
+            "手機驗證服務已設定；單支手機權杖失效只影響該裝置",
+        ))
+    else:
+        checks.append(_check(
+            "device_authorization", "手機唯讀授權", "info",
+            "手機驗證服務尚未完整設定；不影響 Railway、串流、正式報表或排名",
+            "需要手機即時頁時再完成唯讀授權設定",
+        ))
+    return checks
 
 
 def _cohort_name(row: dict[str, Any]) -> str:
@@ -250,6 +450,8 @@ def build_guard(
     now: datetime | None = None,
     friend_publish: str = "unknown",
     owner_publish: str = "unknown",
+    primary_app_probe: dict[str, Any] | None = None,
+    live_runtime_probe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = now.astimezone(TAIPEI) if now and now.tzinfo else (now.replace(tzinfo=TAIPEI) if now else datetime.now(TAIPEI))
     previous = _load(reports_dir / "system_guard.json")
@@ -526,7 +728,8 @@ def build_guard(
             "等待下一次完整股票報告建立中央中樞健康紀錄",
         ))
 
-    checks.append(_primary_app_check(reports_dir))
+    checks.append(_primary_app_check(reports_dir, primary_app_probe))
+    checks.extend(_live_runtime_checks(live_runtime_probe, previous))
     checks.append(_publish_check("friend", friend_publish, previous))
     checks.append(_publish_check("owner", owner_publish, previous))
     severity = max((LEVEL_ORDER.get(item["level"], 0) for item in checks), default=0)
@@ -574,16 +777,32 @@ def main() -> int:
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--friend-publish", default="unknown")
     parser.add_argument("--owner-publish", default="unknown")
+    parser.add_argument(
+        "--primary-app-url",
+        default=os.getenv("PRIMARY_APP_URL", DEFAULT_PRIMARY_APP_URL),
+    )
+    parser.add_argument(
+        "--live-health-url",
+        default=os.getenv("LIVE_HEALTH_URL", DEFAULT_LIVE_HEALTH_URL),
+    )
+    parser.add_argument("--skip-runtime-probes", action="store_true")
     parser.add_argument("--state-change-only", action="store_true")
     args = parser.parse_args()
     reports_dir = Path(args.reports_dir)
     reports_dir.mkdir(parents=True, exist_ok=True)
     output = reports_dir / "system_guard.json"
     previous = _load(output)
+    primary_app_probe = None
+    live_runtime_probe = None
+    if not args.skip_runtime_probes:
+        primary_app_probe = _http_probe(args.primary_app_url)
+        live_runtime_probe = _http_probe(args.live_health_url, expect_json=True)
     guard = build_guard(
         reports_dir,
         friend_publish=args.friend_publish,
         owner_publish=args.owner_publish,
+        primary_app_probe=primary_app_probe,
+        live_runtime_probe=live_runtime_probe,
     )
     if args.state_change_only and previous and _semantic(previous) == _semantic(guard):
         print(f"System guard unchanged: {guard['status_label']}")

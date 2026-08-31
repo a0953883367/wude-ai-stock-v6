@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Any, Protocol
 
 
@@ -89,6 +90,9 @@ class LiveTelegramBatcher:
         self._pending: list[dict[str, Any]] = []
         self._timer: TimerLike | None = None
         self._lock = threading.Lock()
+        self._last_attempt_at: str | None = None
+        self._last_success_at: str | None = None
+        self._last_error: str | None = None
 
     def enqueue(self, alert: dict[str, Any]) -> None:
         with self._lock:
@@ -104,11 +108,33 @@ class LiveTelegramBatcher:
             self._timer = None
         if not alerts:
             return False
+        attempted_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         try:
-            return bool(self.sender(format_live_telegram_batch(alerts)))
-        except Exception:
+            delivered = bool(self.sender(format_live_telegram_batch(alerts)))
+            with self._lock:
+                self._last_attempt_at = attempted_at
+                if delivered:
+                    self._last_success_at = attempted_at
+                    self._last_error = None
+                else:
+                    self._last_error = "send_returned_false"
+            return delivered
+        except Exception as exc:
+            with self._lock:
+                self._last_attempt_at = attempted_at
+                self._last_error = type(exc).__name__
             LOG.exception("Failed to send live Telegram alert batch")
             return False
+
+    def status(self) -> dict[str, Any]:
+        """Expose delivery health without exposing bot or chat credentials."""
+        with self._lock:
+            return {
+                "last_attempt_at": self._last_attempt_at,
+                "last_success_at": self._last_success_at,
+                "last_error": self._last_error,
+                "pending_count": len(self._pending),
+            }
 
 
 def fanout_alert(*callbacks: Callable[[dict[str, Any]], Any]) -> Callable[[dict[str, Any]], None]:
