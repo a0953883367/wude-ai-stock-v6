@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-31T17:31:41+08:00",
+  "checked_at": "2026-08-31T19:26:56+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-08-31 12:04:29",
-  "report_age_minutes": 327.2,
+  "report_age_minutes": 442.5,
   "counts": {
     "ok": 15,
-    "info": 2,
+    "info": 3,
     "warning": 3,
     "critical": 0
   },
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "warning",
       "label": "注意",
-      "detail": "最近更新距今 5.5 小時",
+      "detail": "最近更新距今 7.4 小時",
       "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
@@ -158,6 +158,14 @@
       "action": ""
     },
     {
+      "code": "primary_app_output",
+      "title": "主畫面 App",
+      "level": "ok",
+      "label": "正常",
+      "detail": "五個功能頁與共用導覽檔完整；手機授權及 Railway 串流分開判斷",
+      "action": ""
+    },
+    {
       "code": "publish_friend",
       "title": "朋友版同步",
       "level": "ok",
@@ -167,10 +175,10 @@
     },
     {
       "code": "publish_owner",
-      "title": "本人版同步",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近一次發布已成功",
+      "title": "舊本人版同步（非主 App）",
+      "level": "info",
+      "label": "資訊",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     }
   ],
@@ -185,5 +193,11 @@
     "deletes_data": false,
     "automatic_fix": false,
     "note": "只監控、診斷與通報；不改模型、不下單、不刪除資料。"
+  },
+  "monitoring_boundaries": {
+    "primary_app": "GitHub Pages 主畫面 App 與五個功能頁",
+    "live_backend": "Railway 台股／美股串流與 Telegram 通知",
+    "device_authorization": "單一手機唯讀授權；失效只影響該裝置",
+    "legacy_owner_site": "舊 ChatGPT Sites 備援；失敗不影響整體"
   }
 }

@@ -54,7 +54,19 @@ def _check(code: str, title: str, level: str, detail: str, action: str = "") -> 
 def _publish_check(name: str, outcome: str, previous: dict[str, Any]) -> dict[str, Any]:
     value = str(outcome or "unknown").strip().lower()
     code = f"publish_{name}"
-    title = "朋友版同步" if name == "friend" else "本人版同步"
+    title = "朋友版同步" if name == "friend" else "舊本人版同步（非主 App）"
+    # The owner's primary entry is now the GitHub Pages home-screen App. The
+    # former ChatGPT Sites owner snapshot remains only as a legacy backup, so a
+    # missing device grant or failed legacy publish must never turn the report
+    # pipeline, Railway stream or formal ranking red.
+    if name == "owner":
+        if value == "success":
+            detail = "舊入口最近一次同步成功；主 App 狀態另行判斷"
+        elif value in {"unknown", ""}:
+            detail = "本次未檢查舊入口；不影響主 App、Railway、報表或排名"
+        else:
+            detail = f"舊入口同步結果：{value}；已與主 App 及正式計算隔離"
+        return _check(code, title, "info", detail)
     if value in {"unknown", ""}:
         old = next((item for item in previous.get("checks", []) if item.get("code") == code), None)
         if old:
@@ -65,6 +77,34 @@ def _publish_check(name: str, outcome: str, previous: dict[str, Any]) -> dict[st
     if value == "skipped":
         return _check(code, title, "warning", "最近一次發布步驟被略過", "檢查網站網址與發布授權是否已設定")
     return _check(code, title, "critical", f"最近一次發布結果：{value}", "檢查發布網站狀態與授權，修復後重新執行報告")
+
+
+def _primary_app_check(reports_dir: Path) -> dict[str, Any]:
+    """Check the primary PWA without conflating a single device's grant."""
+    root = reports_dir.parent
+    required = (
+        "index.html",
+        "live-flow.html",
+        "decision-hub.html",
+        "inverse-etf-shadow.html",
+        "valuation-risk-shadow.html",
+        "app_shell.js",
+    )
+    missing = [name for name in required if not (root / name).is_file()]
+    if missing:
+        return _check(
+            "primary_app_output",
+            "主畫面 App",
+            "critical",
+            "缺少主 App 檔案：" + "、".join(missing),
+            "修復 GitHub Pages App 檔案後重新部署；正式排名維持不變",
+        )
+    return _check(
+        "primary_app_output",
+        "主畫面 App",
+        "ok",
+        "五個功能頁與共用導覽檔完整；手機授權及 Railway 串流分開判斷",
+    )
 
 
 def _cohort_name(row: dict[str, Any]) -> str:
@@ -486,6 +526,7 @@ def build_guard(
             "等待下一次完整股票報告建立中央中樞健康紀錄",
         ))
 
+    checks.append(_primary_app_check(reports_dir))
     checks.append(_publish_check("friend", friend_publish, previous))
     checks.append(_publish_check("owner", owner_publish, previous))
     severity = max((LEVEL_ORDER.get(item["level"], 0) for item in checks), default=0)
@@ -508,6 +549,12 @@ def build_guard(
             "deletes_data": False,
             "automatic_fix": False,
             "note": "只監控、診斷與通報；不改模型、不下單、不刪除資料。",
+        },
+        "monitoring_boundaries": {
+            "primary_app": "GitHub Pages 主畫面 App 與五個功能頁",
+            "live_backend": "Railway 台股／美股串流與 Telegram 通知",
+            "device_authorization": "單一手機唯讀授權；失效只影響該裝置",
+            "legacy_owner_site": "舊 ChatGPT Sites 備援；失敗不影響整體",
         },
     }
 

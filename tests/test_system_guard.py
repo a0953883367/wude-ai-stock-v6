@@ -13,6 +13,11 @@ def _write(path: Path, value: dict) -> None:
 
 
 def _healthy_reports(tmp_path: Path) -> None:
+    for name in (
+        "index.html", "live-flow.html", "decision-hub.html",
+        "inverse-etf-shadow.html", "valuation-risk-shadow.html", "app_shell.js",
+    ):
+        (tmp_path.parent / name).write_text("ok", encoding="utf-8")
     timestamp = "2026-08-24 16:00:00"
     status = {
         "expected_tw_count": 67,
@@ -95,6 +100,34 @@ def test_healthy_guard_is_green(tmp_path: Path) -> None:
     sec = next(item for item in guard["checks"] if item["code"] == "us_sec_fundamentals")
     assert sec["level"] == "ok"
     assert "實際補值 3 檔" in sec["detail"]
+
+
+def test_legacy_owner_publish_failure_does_not_turn_primary_app_red(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="failure")
+
+    owner = next(item for item in guard["checks"] if item["code"] == "publish_owner")
+    app = next(item for item in guard["checks"] if item["code"] == "primary_app_output")
+    assert guard["status"] == "ok"
+    assert owner["level"] == "info"
+    assert "已與主 App" in owner["detail"]
+    assert app["level"] == "ok"
+    assert guard["monitoring_boundaries"]["device_authorization"].startswith("單一手機")
+
+
+def test_missing_primary_app_file_is_red_but_does_not_change_rankings(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    (tmp_path.parent / "live-flow.html").unlink()
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+
+    app = next(item for item in guard["checks"] if item["code"] == "primary_app_output")
+    assert guard["status"] == "critical"
+    assert app["level"] == "critical"
+    assert guard["safety"]["changes_rankings"] is False
 
 
 def test_stale_and_inconsistent_reports_are_red(tmp_path: Path) -> None:
