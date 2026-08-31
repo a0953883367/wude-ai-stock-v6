@@ -47,6 +47,12 @@ DEFAULT_SITE_LIVE_TOKEN_SHA256 = "0cf3e46b11bb22461985200095067592e354335fa026c4
 DEFAULT_VERCEL_APP_TOKEN_SHA256 = "80beb3c0100e5a4365a767019ac3e4dcb0f7d162915cf1efdf5570b4b577e638"
 
 
+def market_closed_label(market: str) -> str:
+    if str(market or "").upper() == "TW":
+        return "台股尚未到 09:00 開盤時間"
+    return "美股尚未到盤前連線時間（夏令16:00／冬令17:00）"
+
+
 def _trading_state_path() -> Path:
     configured = os.getenv("TRADE_STATE_PATH", "").strip()
     if configured:
@@ -95,7 +101,7 @@ def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
     message = (
         "✅ AI 大量買賣即時警報已連線\n\n"
         f"台股 {int(universe.get('TW') or 0)} 檔｜美股 {int(universe.get('US') or 0)} 檔\n"
-        "開盤後依10秒大量成交條件通知；與原本報告對話完全分開。"
+        "美股盤前與正式盤均依10秒大量成交條件通知；與原本報告對話完全分開。"
     )
     if not send_live_telegram(message):
         return False
@@ -703,7 +709,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             return
         market = query.get("market", [""])[0].strip().upper()
         if not market_live_window(market):
-            label = "台股尚未到 09:00 開盤時間" if market == "TW" else "美股尚未到台灣時間 21:30 開盤時間"
+            label = market_closed_label(market)
             self._send(HTTPStatus.TOO_EARLY, {"ok": False, "error": label, "code": "MARKET_CLOSED"})
             return
         try:

@@ -14,6 +14,7 @@ from live_api import (
     MinuteRateLimiter,
     configure_fubon_certificate,
     _login_fubon_stream,
+    market_closed_label,
     normalize_symbol,
     _open_market_sessions,
 )
@@ -33,6 +34,14 @@ def test_normalize_symbol_by_market():
     assert normalize_symbol("nvda", "us") == ("NVDA", "US")
     with pytest.raises(ValueError):
         normalize_symbol("NVDA/../../", "US")
+
+
+def test_closed_market_message_uses_premarket_start_times():
+    assert market_closed_label("TW") == "台股尚未到 09:00 開盤時間"
+    us = market_closed_label("US")
+    assert "夏令16:00" in us
+    assert "冬令17:00" in us
+    assert "21:30" not in us
 
 
 def test_cloud_certificate_is_written_with_private_permissions(tmp_path, monkeypatch):
