@@ -54,11 +54,16 @@ def format_live_telegram_batch(alerts: list[dict[str, Any]]) -> str:
         is_sell = alert.get("alert_side") == "sell"
         side = "賣" if is_sell else "買"
         icon = "🔻" if is_sell else "🟢"
+        label = (
+            alert.get("block_trade_label")
+            if alert.get("is_block_trade")
+            else alert.get("trigger_label")
+        )
         value = float(alert.get("sell_value" if is_sell else "buy_value") or alert.get("value") or 0)
         ratio = float(alert.get("aggressive_sell_ratio_pct" if is_sell else "aggressive_buy_ratio_pct") or 0)
         lines.append(
             f"{icon} {alert.get('name') or alert.get('symbol')}・{alert.get('symbol')}｜"
-            f"{alert.get('trigger_label') or f'大量{side}進'}｜{_amount(value, market)}｜"
+            f"{label or f'大量{side}進'}｜{_amount(value, market)}｜"
             f"{side}{ratio:.0f}%｜價 {float(alert.get('price') or 0):,.2f}"
         )
     lines.extend([
