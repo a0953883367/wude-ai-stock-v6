@@ -154,6 +154,29 @@ def test_service_stores_and_notifies_without_broker_actions(tmp_path: Path):
     assert snapshot["inverse_etf_live_shadow"]["policy"]["broker_orders"] is False
 
 
+def test_notifications_cover_every_stock_without_selected_symbol_filter(tmp_path: Path):
+    received = []
+    service = object.__new__(LargeBuyAlertService)
+    service.config = config()
+    service.baselines = baselines()
+    service.detector = LargeBuyDetector(service.baselines, config=service.config)
+    service.flow = CapitalFlowShadow(service.baselines, clock=lambda: 100)
+    service.store = JsonAlertStore(tmp_path / "alerts.json")
+    service.notifier = None
+    service.alert_notifier = received.append
+    service._status = {market: {"state": "waiting", "subscribed": 0, "error": None} for market in ("TW", "US")}
+    import threading
+    service._lock = threading.RLock()
+
+    service.process_trade("2330.TW", price=1000, size=3000, ask=1000, timestamp=100)
+    service.process_trade("NVDA", price=200, size=500, ask=200, timestamp=101)
+
+    assert [row["symbol"] for row in received] == ["2330.TW", "NVDA"]
+    snapshot = service.snapshot()
+    assert snapshot["policy"]["notification_scope"] == "all_site_stocks"
+    assert snapshot["policy"]["selected_symbol_filter"] is False
+
+
 def test_telegram_text_states_information_only():
     text = format_large_buy_telegram({
         "trigger_label": "3筆連續大買", "name": "台積電", "symbol": "2330.TW",
