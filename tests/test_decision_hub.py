@@ -99,6 +99,44 @@ def test_report_locks_formal_rank_and_explains_horizon_conflict(tmp_path):
     assert stockq["affects_formal_ranking"] is False
 
 
+def test_inverse_etf_mapping_is_linked_as_visible_shadow_evidence(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "inverse_etf_database.json", {
+        "updated_at": "2026-08-29 20:00:00",
+        "mappings": [{
+            "symbol": "TEST.TW", "market": "TW", "group": "tw_broad",
+            "mapping_strength": "broad", "mapping_quality_score": None,
+            "mapping_data_status": "waiting_for_aligned_history",
+            "inverse_symbol": "00632R.TW", "inverse_name": "元大台灣50反1",
+        }],
+    })
+    _write(tmp_path / "inverse_etf_shadow.json", {
+        "updated_at": "2026-08-29 20:00:00",
+        "markets": {
+            "TW": {
+                "cohorts": [],
+                "current_candidates": [{
+                    "group": "tw_broad", "bear_score": 82,
+                    "status": "confirmed", "evidence": {},
+                }],
+                "summary": {"1": {"samples": 0}},
+            },
+            "US": {"cohorts": [], "current_candidates": [], "summary": {}},
+        },
+    })
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    inverse = next(row for row in item["evidence"] if row["source_id"] == "inverse_etf_shadow")
+    assert inverse["direction"] == "oppose"
+    assert inverse["status"] == "collecting_only"
+    assert inverse["affects_decision"] is False
+    assert item["inverse_shadow"]["group"] == "tw_broad"
+    assert item["inverse_shadow"]["affects_formal_ranking"] is False
+
+
 def test_invalid_market_contract_is_hard_block(tmp_path):
     _reports(tmp_path, valuation_score=30)
     report = update_decision_hub(
