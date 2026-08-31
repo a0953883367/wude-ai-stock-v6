@@ -69,6 +69,14 @@ test('capital flow keeps buy and sell analysis', () => {
   assert.match(script, /top_outflows/);
 });
 
+test('single-trade thresholds and block labels stay linked to the API policy', () => {
+  assert.match(html, /id="alertPolicy"/);
+  assert.match(script, /general_single_thresholds/);
+  assert.match(script, /block_single_thresholds/);
+  assert.match(script, /美股不啟用/);
+  assert.match(script, /row\.is_block_trade&&row\.block_trade_label/);
+});
+
 test('five-day flow weight experiment is isolated and visible', () => {
   assert.match(html, /資金流影子權重 V1/);
   assert.match(html, /總調整上限 ±3 點/);
