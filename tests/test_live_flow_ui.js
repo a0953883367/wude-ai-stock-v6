@@ -16,7 +16,7 @@ test('public report links to a standalone capital-flow page', () => {
 
 test('report and capital-flow pages share the arrow app icon', () => {
   for (const page of [index, html]) {
-    assert.match(page, /manifest\.webmanifest\?v=2/);
+    assert.match(page, /manifest\.webmanifest\?v=3/);
     assert.match(page, /trend-arrow-icon-v2\.svg/);
     assert.match(page, /trend-arrow-apple-v2\.png/);
   }

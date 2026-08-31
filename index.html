@@ -2,14 +2,15 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
-<link rel="manifest" href="manifest.webmanifest?v=2">
+<link rel="manifest" href="manifest.webmanifest?v=3">
 <link rel="icon" type="image/svg+xml" href="trend-arrow-icon-v2.svg">
 <link rel="shortcut icon" href="trend-arrow-icon-v2.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="trend-arrow-apple-v2.png">
+<link rel="stylesheet" href="app_shell.css?v=1">
 <title>武得 AI 股票助理 V6.32-LIVE</title>
 <style>
 :root{--bg:#07111f;--panel:#111c2e;--card:#111827;--soft:#172033;--line:#263244;--muted:#94a3b8;--blue:#2563eb;--green:#22c55e;--yellow:#facc15;--red:#fb7185;--white:#f8fafc}
@@ -1168,5 +1169,6 @@ document.getElementById('searchButton').addEventListener('click',searchStock);
 document.getElementById('ticker').addEventListener('keydown',function(e){if(e.key==='Enter')searchStock();});
 loadAll();
 </script>
+<script src="app_shell.js?v=1"></script>
 </body>
 </html>

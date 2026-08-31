@@ -15,8 +15,10 @@ const evidence=unified.evidence_files.flatMap(path=>JSON.parse(fs.readFileSync('
   '1～5 日','45 日','6 個月','有衝突','資料不足','查看全部證據與日期'
 ].forEach(text=>assert(ui.includes(text),`missing UI copy: ${text}`));
 assert(html.includes('decision_hub.js'));
-assert(html.includes('live-flow.html'));
-assert(html.includes('inverse-etf-shadow.html'));
+assert(html.includes('app_shell.js'));
+const appShell=fs.readFileSync('app_shell.js','utf8');
+assert(appShell.includes('live-flow.html'));
+assert(appShell.includes('inverse-etf-shadow.html'));
 assert(js.includes("fetchJSON('decision_hub.json'"));
 assert(js.includes('decision_hub_user_choices_v1'));
 assert(js.includes('localStorage.setItem'));
