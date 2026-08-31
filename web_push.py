@@ -115,13 +115,19 @@ class WebPushService:
         value = float(alert.get(value_key) or 0)
         ratio = float(alert.get(ratio_key) or 0)
         price = float(alert.get("price") or 0)
+        is_block_trade = bool(alert.get("is_block_trade"))
+        label = (
+            alert.get("block_trade_label")
+            if is_block_trade
+            else alert.get("trigger_label")
+        )
         return {
-            "title": f"{'🔻' if side == 'sell' else '🚨'} {alert.get('name') or symbol}・{symbol}",
+            "title": f"{'💥' if is_block_trade else ('🔻' if side == 'sell' else '🚨')} {alert.get('name') or symbol}・{symbol}",
             "body": (
-                f"{alert.get('trigger_label')}｜{currency}{value:,.0f}｜"
+                f"{label}｜{currency}{value:,.0f}｜"
                 f"成交 {price:,.2f}｜{side_text}占比 {ratio:.1f}%"
             ),
-            "tag": f"large-{side}-{symbol}",
+            "tag": f"{'block' if is_block_trade else 'large'}-{side}-{symbol}",
             "url": f"/live?symbol={quote(symbol)}&market={market}",
         }
 

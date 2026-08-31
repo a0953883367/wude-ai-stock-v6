@@ -38,6 +38,24 @@ def test_one_large_aggressive_buy_triggers_immediately():
     assert alert["trigger_type"] == "single"
     assert alert["trade_count"] == 1
     assert alert["buy_value"] == 3_000_000
+    assert alert["is_block_trade"] is False
+
+
+def test_single_block_trade_is_flagged_without_replacing_existing_alerts():
+    detector = LargeBuyDetector(baselines(), config=config())
+    tw = detector.process_trade(
+        "2330.TW", price=1000, size=5000, bid=999, ask=1000, timestamp=100
+    )
+    us = detector.process_trade(
+        "NVDA", price=200, size=1250, bid=199.9, ask=200, timestamp=101
+    )
+    assert tw["trigger_type"] == "single"
+    assert tw["is_block_trade"] is True
+    assert tw["block_trade_threshold"] == 5_000_000
+    assert tw["block_trade_label"] == "單筆巨額大買"
+    assert us["trigger_type"] == "single"
+    assert us["is_block_trade"] is True
+    assert us["block_trade_threshold"] == 250_000
 
 
 def test_three_to_five_aggressive_buys_trigger_inside_ten_seconds():

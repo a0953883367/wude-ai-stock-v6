@@ -55,3 +55,16 @@ def test_push_payload_supports_large_sell(tmp_path: Path):
     assert "NT$6,000,000" in payload["body"]
     assert "賣出占比 91.0%" in payload["body"]
     assert payload["tag"] == "large-sell-2303.TW"
+
+
+def test_push_payload_marks_single_block_trade(tmp_path: Path):
+    service = WebPushService(tmp_path / "subscriptions.json", tmp_path / "private.pem")
+    payload = service.payload({
+        "name": "NVIDIA", "symbol": "NVDA", "market": "US",
+        "alert_side": "buy", "trigger_label": "單筆大買",
+        "is_block_trade": True, "block_trade_label": "單筆巨額大買",
+        "buy_value": 250_000, "price": 200, "aggressive_buy_ratio_pct": 91,
+    })
+    assert payload["title"].startswith("💥")
+    assert "單筆巨額大買" in payload["body"]
+    assert payload["tag"] == "block-buy-NVDA"

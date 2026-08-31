@@ -45,6 +45,8 @@ class LargeBuyConfig:
     single_min_usd: float = 100_000.0
     cluster_min_twd: float = 5_000_000.0
     cluster_min_usd: float = 250_000.0
+    block_single_min_twd: float = 5_000_000.0
+    block_single_min_usd: float = 250_000.0
     single_daily_value_ratio: float = 0.0002
     cluster_daily_value_ratio: float = 0.0005
     alert_history_limit: int = 300
@@ -205,6 +207,12 @@ class LargeBuyDetector:
             aggressive_buy_value = sum(item.value for item in window if item.is_aggressive_buy)
             aggressive_sell_value = sum(item.value for item in window if not item.is_aggressive_buy)
             alert_value = sum(item.value for item in selected)
+            block_single_threshold = (
+                self.config.block_single_min_twd
+                if baseline.market == "TW"
+                else self.config.block_single_min_usd
+            )
+            is_block_trade = trigger_type == "single" and trade.value >= block_single_threshold
             self._last_alert_at[cooldown_key] = at
             side = "buy" if is_buy else "sell"
             side_text = "大買" if is_buy else "大賣"
@@ -233,6 +241,9 @@ class LargeBuyDetector:
                 ) if total_window_value else 0.0,
                 "single_threshold": round(single_threshold, 2),
                 "cluster_threshold": round(cluster_threshold, 2),
+                "is_block_trade": is_block_trade,
+                "block_trade_threshold": round(block_single_threshold, 2),
+                "block_trade_label": f"單筆巨額{side_text}" if is_block_trade else None,
                 "classification": classification,
                 "detected_at": datetime.fromtimestamp(at, timezone.utc).isoformat(timespec="milliseconds"),
                 "detected_at_epoch": at,
@@ -327,8 +338,10 @@ def format_large_buy_telegram(alert: dict[str, Any]) -> str:
     ratio_key = "aggressive_sell_ratio_pct" if side == "sell" else "aggressive_buy_ratio_pct"
     value = float(alert.get(value_key) or 0)
     ratio = float(alert.get(ratio_key) or 0)
+    is_block_trade = bool(alert.get("is_block_trade"))
+    label = alert.get("block_trade_label") if is_block_trade else alert.get("trigger_label")
     return "\n".join([
-        f"{'🔻' if side == 'sell' else '🚨'} 10秒大量主動{side_text}｜{alert.get('trigger_label')}",
+        f"{'💥' if is_block_trade else ('🔻' if side == 'sell' else '🚨')} 10秒大量主動{side_text}｜{label}",
         f"{alert.get('name')} {alert.get('symbol')}｜{alert.get('market')}",
         f"成交價 {float(alert.get('price') or 0):,.2f}｜{int(alert.get('trade_count') or 0)} 筆",
         f"主動{side_text}金額 {currency} {value:,.0f}｜{side_text}占比 {ratio:.1f}%",
@@ -472,6 +485,10 @@ class LargeBuyAlertService:
                 "window_seconds": self.config.window_seconds,
                 "single_or_cluster": True,
                 "cluster_trade_count": [self.config.cluster_min_trades, self.config.cluster_max_trades],
+                "block_single_thresholds": {
+                    "TW": self.config.block_single_min_twd,
+                    "US": self.config.block_single_min_usd,
+                },
                 "broker_orders": False,
             },
             "universe": {
