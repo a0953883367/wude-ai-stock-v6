@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-08-31T20:31:46+08:00",
+  "checked_at": "2026-08-31T23:31:48+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-08-31 20:04:44",
-  "report_age_minutes": 27.0,
+  "report_age_minutes": 207.1,
   "counts": {
-    "ok": 17,
-    "info": 2,
+    "ok": 21,
+    "info": 3,
     "warning": 2,
     "critical": 0
   },
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 27 分鐘",
+      "detail": "最近更新距今 207 分鐘",
       "action": ""
     },
     {
@@ -162,7 +162,48 @@
       "title": "主畫面 App",
       "level": "ok",
       "label": "正常",
-      "detail": "五個功能頁與共用導覽檔完整；手機授權及 Railway 串流分開判斷",
+      "detail": "主 App 公開網址可開啟，五個功能頁與共用導覽檔完整",
+      "action": ""
+    },
+    {
+      "code": "live_backend",
+      "title": "Railway 即時後端",
+      "level": "ok",
+      "label": "正常",
+      "detail": "wude-live-api 正常回應；與 App 畫面及手機授權分開判斷",
+      "action": "",
+      "consecutive_failures": 0
+    },
+    {
+      "code": "stream_tw",
+      "title": "台股即時串流",
+      "level": "info",
+      "label": "資訊",
+      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "action": ""
+    },
+    {
+      "code": "stream_us",
+      "title": "美股即時串流",
+      "level": "ok",
+      "label": "正常",
+      "detail": "正式盤已連線，訂閱 186 檔",
+      "action": ""
+    },
+    {
+      "code": "telegram_delivery",
+      "title": "Telegram 即時通知",
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近一次已送達：2026-08-31T15:31:35+00:00",
+      "action": ""
+    },
+    {
+      "code": "device_authorization",
+      "title": "手機唯讀授權",
+      "level": "ok",
+      "label": "正常",
+      "detail": "手機驗證服務已設定；單支手機權杖失效只影響該裝置",
       "action": ""
     },
     {
