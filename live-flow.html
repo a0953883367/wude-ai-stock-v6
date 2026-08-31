@@ -32,6 +32,7 @@
     <p class="eyebrow">全市場監控狀態</p>
     <div class="streams" id="streams"><div class="stream"><span>台股・富邦</span><b>等待連線</b></div><div class="stream"><span>美股・Alpaca SIP</span><b>等待連線</b></div></div>
     <div class="status-line"><span class="badge" id="syncStatus">正在準備資料…</span><span class="badge">不讀取個別股票即時股價</span><span class="badge">不修改排名・不下單</span></div>
+    <div class="shadow-policy" id="alertPolicy" style="margin-top:12px">正在讀取大量買賣警報門檻…</div>
     <div id="errorBox"></div>
     <div class="pairing" id="pairingBox" hidden>
       <h3>🔐 這支手機一次授權</h3>
@@ -67,7 +68,7 @@
   <section class="panel"><p class="eyebrow">最近50筆</p><h2>↕️ 大量主動買賣</h2><div class="alerts" id="alerts"><div class="empty">符合門檻的大買或大賣訊號會顯示在這裡。</div></div></section>
 </main>
 <script src="live_config.js?v=636"></script>
-<script src="live_flow.js?v=643"></script>
+<script src="live_flow.js?v=644"></script>
 <script src="app_shell.js?v=1"></script>
 </body>
 </html>
