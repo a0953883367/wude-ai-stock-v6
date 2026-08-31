@@ -9,11 +9,30 @@ import threading
 import time
 from datetime import datetime
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from large_buy_monitor import LargeBuyAlertService
 
 
 LOG = logging.getLogger(__name__)
+TAIPEI = ZoneInfo("Asia/Taipei")
+
+
+def market_live_window(market: str, now: datetime | None = None) -> bool:
+    """Allow provider connections only during the owner's Taipei-time windows."""
+    current = now or datetime.now(tz=TAIPEI)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=TAIPEI)
+    local = current.astimezone(TAIPEI)
+    minutes = local.hour * 60 + local.minute
+    if market == "TW":
+        return local.weekday() < 5 and 9 * 60 <= minutes < 13 * 60 + 30
+    if market == "US":
+        if minutes >= 21 * 60 + 30:
+            return local.weekday() < 5
+        if minutes < 4 * 60:
+            return (local.weekday() - 1) % 7 < 5
+    return False
 
 
 def _epoch(value: Any) -> float:
@@ -70,6 +89,10 @@ class FubonLargeBuyStream:
     def _run_chunk(self, index: int, symbols: list[str]) -> None:
         delay = 3.0
         while not self.stop.is_set():
+            if not market_live_window("TW"):
+                self.service.set_stream_status("TW", "waiting_market_open", subscribed=0, error=None)
+                self.stop.wait(30.0)
+                continue
             disconnected = threading.Event()
             stock = None
             try:
@@ -113,7 +136,11 @@ class FubonLargeBuyStream:
                     "TW", "connected", subscribed=len(self._aliases), error=None
                 )
                 delay = 3.0
-                while not self.stop.wait(1.0) and not disconnected.is_set():
+                while (
+                    not self.stop.wait(1.0)
+                    and not disconnected.is_set()
+                    and market_live_window("TW")
+                ):
                     pass
             except Exception as exc:
                 LOG.warning("Fubon large-buy stream %d failed: %s", index + 1, exc)
@@ -157,6 +184,10 @@ class AlpacaLargeBuyStream:
         url = f"wss://stream.data.alpaca.markets/v2/{feed}"
         delay = 3.0
         while not self.stop.is_set():
+            if not market_live_window("US"):
+                self.service.set_stream_status("US", "waiting_market_open", subscribed=0, error=None)
+                self.stop.wait(30.0)
+                continue
             authenticated = False
 
             def on_open(ws: Any) -> None:
@@ -245,6 +276,13 @@ class AlpacaLargeBuyStream:
                 on_error=on_error,
                 on_close=on_close,
             )
+            closer = threading.Thread(
+                target=self._close_after_us_session,
+                args=(self._socket,),
+                name="large-buy-alpaca-session-guard",
+                daemon=True,
+            )
+            closer.start()
             try:
                 self._socket.run_forever(ping_interval=20, ping_timeout=10)
             except Exception as exc:
@@ -254,6 +292,15 @@ class AlpacaLargeBuyStream:
             if self.stop.wait(delay):
                 break
             delay = min(delay * 2, 60.0)
+
+    def _close_after_us_session(self, socket: Any) -> None:
+        while not self.stop.wait(1.0):
+            if socket is not self._socket or not market_live_window("US"):
+                try:
+                    socket.close()
+                except Exception:
+                    pass
+                return
 
     def close(self) -> None:
         try:
