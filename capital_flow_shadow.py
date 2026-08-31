@@ -441,7 +441,9 @@ class CapitalFlowShadow:
         active = positive + negative
         breadth = positive / active * 100 if active else 0.0
         buy_ratio = buy / directional * 100 if directional else 0.0
-        if buy_ratio >= 58 and breadth >= 55:
+        if directional <= 0:
+            direction_label = "暫無資金方向"
+        elif buy_ratio >= 58 and breadth >= 55:
             direction_label = "資金偏多"
         elif buy_ratio <= 42 and breadth <= 45:
             direction_label = "資金偏空"

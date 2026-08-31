@@ -73,7 +73,17 @@ def test_special_sip_print_is_counted_but_not_used_as_directional_flow():
     assert window["trade_count"] == 1
     assert window["filtered_trade_count"] == 1
     assert window["net_flow"] == 0
+    assert window["direction"] == "暫無資金方向"
     assert not window["top_inflows"]
+
+
+def test_empty_window_never_claims_bearish_flow():
+    flow = CapitalFlowShadow(baselines(), clock=lambda: 3_500)
+    window = flow.snapshot(now=3_500)["markets"]["TW"]["windows"]["15m"]
+
+    assert window["trade_count"] == 0
+    assert window["net_flow"] == 0
+    assert window["direction"] == "暫無資金方向"
 
 
 def test_trade_correction_reverses_original_contribution():

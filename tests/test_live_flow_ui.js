@@ -45,6 +45,11 @@ test('polling is throttled and pauses in the background', () => {
   assert.doesNotMatch(script, /setInterval/);
 });
 
+test('closed streams and zero-flow sessions use neutral Chinese labels', () => {
+  assert.match(script, /waiting_market_open.*等待下次開盤/);
+  assert.doesNotMatch(script, /waiting_market_open.*資金偏空/);
+});
+
 test('capital flow keeps buy and sell analysis', () => {
   assert.match(html, /買進與賣出都計算/);
   assert.match(script, /theme_inflows/);
