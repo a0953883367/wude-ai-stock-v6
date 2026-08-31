@@ -8,6 +8,13 @@ from zoneinfo import ZoneInfo
 from system_guard import build_guard
 
 
+def test_system_guard_workflow_installs_http_dependency_before_running() -> None:
+    workflow = Path(".github/workflows/system-guard.yml").read_text(encoding="utf-8")
+    install = workflow.index('python -m pip install "requests>=2.32,<3"')
+    inspect = workflow.index("python system_guard.py --state-change-only")
+    assert install < inspect
+
+
 def _write(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
 
