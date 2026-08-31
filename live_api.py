@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 from fubon_runner import _login_fubon, parse_fubon_quote
 from fubon_broker import FubonTradingSession
 from large_buy_monitor import LargeBuyAlertService
-from large_buy_streams import LargeBuyStreams
+from large_buy_streams import LargeBuyStreams, market_live_window
 from live_trade_engine import LiveTradingEngine
 from live_telegram import LiveTelegramBatcher, fanout_alert
 from notifier import live_telegram_configured, send_live_telegram
@@ -572,6 +572,11 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     "web_push_subscriptions": self.web_push.subscription_count,
                 },
             })
+            return
+        market = query.get("market", [""])[0].strip().upper()
+        if not market_live_window(market):
+            label = "台股尚未到 09:00 開盤時間" if market == "TW" else "美股尚未到台灣時間 21:30 開盤時間"
+            self._send(HTTPStatus.TOO_EARLY, {"ok": False, "error": label, "code": "MARKET_CLOSED"})
             return
         try:
             result = self.service.fetch(
