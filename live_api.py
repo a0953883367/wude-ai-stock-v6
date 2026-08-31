@@ -95,7 +95,7 @@ def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
         stored = json.loads(marker.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         stored = {}
-    if stored.get("token_sha256") == fingerprint:
+    if stored.get("token_sha256") == fingerprint and stored.get("sent_at"):
         return False
     universe = handler.large_buy_service.snapshot().get("universe", {})
     message = (
@@ -107,10 +107,51 @@ def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
         return False
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(
-        json.dumps({"token_sha256": fingerprint}, ensure_ascii=False),
+        json.dumps({
+            "token_sha256": fingerprint,
+            "sent_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }, ensure_ascii=False),
         encoding="utf-8",
     )
     return True
+
+
+def _live_telegram_delivery_health(handler: type["LiveRequestHandler"]) -> dict[str, Any]:
+    """Report delivery state without returning any Telegram credential."""
+    configured = live_telegram_configured()
+    delivery = handler.live_telegram.status()
+    try:
+        marker = json.loads(_live_telegram_ready_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        marker = {}
+    if not isinstance(marker, dict):
+        marker = {}
+    token = os.getenv("TELEGRAM_LIVE_BOT_TOKEN", "").strip()
+    fingerprint = hashlib.sha256(token.encode("utf-8")).hexdigest() if token else ""
+    marker_success = (
+        str(marker.get("sent_at") or "")
+        if fingerprint and marker.get("token_sha256") == fingerprint
+        else ""
+    )
+    last_attempt = str(delivery.get("last_attempt_at") or "")
+    last_success = str(delivery.get("last_success_at") or marker_success or "")
+    last_error = str(delivery.get("last_error") or "")
+    if not configured:
+        state = "not_configured"
+    elif last_error and (not last_success or not last_attempt or last_attempt >= last_success):
+        state = "delivery_failed"
+    elif last_success:
+        state = "delivered"
+    else:
+        state = "waiting_confirmation"
+    return {
+        "configured": configured,
+        "state": state,
+        "last_attempt_at": last_attempt or None,
+        "last_success_at": last_success or None,
+        "last_error": last_error or None,
+        "pending_count": int(delivery.get("pending_count") or 0),
+    }
 
 
 def _web_push_paths() -> tuple[Path, Path]:
@@ -602,11 +643,13 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
             weight_shadow = monitor.get("flow_weight_shadow") or {}
             inverse_live = monitor.get("inverse_etf_live_shadow") or {}
+            telegram_delivery = _live_telegram_delivery_health(type(self))
             health["large_buy_monitor"] = {
                 "enabled": _truthy(os.getenv("LARGE_BUY_MONITOR_ENABLED", "1")),
                 "universe": monitor["universe"],
                 "streams": monitor["streams"],
                 "telegram_configured": live_telegram_configured(),
+                "telegram_delivery": telegram_delivery,
                 "web_push_subscriptions": self.web_push.subscription_count,
                 "capital_flow_shadow": {
                     market: {

@@ -91,10 +91,43 @@ def _healthy_reports(tmp_path: Path) -> None:
     })
 
 
+def _healthy_live_probe() -> dict:
+    return {
+        "probe_ok": True,
+        "status_code": 200,
+        "payload": {
+            "ok": True,
+            "service": "wude-live-api",
+            "device_pairing_configured": True,
+            "large_buy_monitor": {
+                "enabled": True,
+                "streams": {
+                    "TW": {"state": "waiting_market_open", "subscribed": 0, "error": None},
+                    "US": {"state": "premarket_connected", "subscribed": 186, "error": None},
+                },
+                "telegram_configured": True,
+                "telegram_delivery": {
+                    "configured": True,
+                    "state": "delivered",
+                    "last_success_at": "2026-08-24T08:01:00+00:00",
+                    "last_error": None,
+                },
+            },
+        },
+    }
+
+
 def test_healthy_guard_is_green(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
-    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+    guard = build_guard(
+        tmp_path,
+        now=now,
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=_healthy_live_probe(),
+    )
     assert guard["status"] == "ok"
     assert guard["safety"]["places_orders"] is False
     sec = next(item for item in guard["checks"] if item["code"] == "us_sec_fundamentals")
@@ -117,7 +150,7 @@ def test_legacy_owner_publish_failure_does_not_turn_primary_app_red(tmp_path: Pa
     assert guard["monitoring_boundaries"]["device_authorization"].startswith("單一手機")
 
 
-def test_missing_primary_app_file_is_red_but_does_not_change_rankings(tmp_path: Path) -> None:
+def test_missing_primary_app_file_is_warning_but_does_not_change_rankings(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     (tmp_path.parent / "live-flow.html").unlink()
     now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
@@ -125,8 +158,104 @@ def test_missing_primary_app_file_is_red_but_does_not_change_rankings(tmp_path: 
     guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
 
     app = next(item for item in guard["checks"] if item["code"] == "primary_app_output")
+    assert guard["status"] == "warning"
+    assert app["level"] == "warning"
+    assert guard["safety"]["changes_rankings"] is False
+
+
+def test_runtime_components_are_reported_independently(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(
+        tmp_path,
+        now=now,
+        friend_publish="success",
+        owner_publish="failure",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=_healthy_live_probe(),
+    )
+
+    checks = {item["code"]: item for item in guard["checks"]}
+    assert checks["primary_app_output"]["level"] == "ok"
+    assert checks["live_backend"]["level"] == "ok"
+    assert checks["stream_tw"]["level"] == "info"
+    assert "未開盤" in checks["stream_tw"]["detail"]
+    assert checks["stream_us"]["level"] == "ok"
+    assert checks["telegram_delivery"]["level"] == "ok"
+    assert checks["device_authorization"]["level"] == "ok"
+    assert checks["publish_owner"]["level"] == "info"
+    assert guard["status"] == "ok"
+
+
+def test_railway_failure_is_red_without_guessing_subcomponent_failures(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "system_guard.json", {
+        "checks": [{"code": "live_backend", "level": "warning", "consecutive_failures": 2}],
+    })
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(
+        tmp_path,
+        now=now,
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe={"probe_ok": False, "error": "Timeout"},
+    )
+
+    checks = {item["code"]: item for item in guard["checks"]}
     assert guard["status"] == "critical"
-    assert app["level"] == "critical"
+    assert checks["live_backend"]["level"] == "critical"
+    assert checks["stream_tw"]["level"] == "info"
+    assert checks["stream_us"]["level"] == "info"
+    assert checks["telegram_delivery"]["level"] == "info"
+    assert checks["device_authorization"]["level"] == "info"
+
+
+def test_first_railway_probe_timeout_is_warning_not_false_red(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(
+        tmp_path,
+        now=now,
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe={"probe_ok": False, "error": "Timeout"},
+    )
+
+    backend = next(item for item in guard["checks"] if item["code"] == "live_backend")
+    assert guard["status"] == "warning"
+    assert backend["level"] == "warning"
+    assert backend["consecutive_failures"] == 1
+
+
+def test_telegram_failure_and_phone_setup_do_not_stop_backend_or_rankings(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    probe = _healthy_live_probe()
+    monitor = probe["payload"]["large_buy_monitor"]
+    monitor["telegram_delivery"] = {
+        "configured": True,
+        "state": "delivery_failed",
+        "last_success_at": "2026-08-23T08:01:00+00:00",
+        "last_error": "HTTPError",
+    }
+    probe["payload"]["device_pairing_configured"] = False
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(
+        tmp_path,
+        now=now,
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=probe,
+    )
+
+    checks = {item["code"]: item for item in guard["checks"]}
+    assert guard["status"] == "warning"
+    assert checks["live_backend"]["level"] == "ok"
+    assert checks["stream_us"]["level"] == "ok"
+    assert checks["telegram_delivery"]["level"] == "warning"
+    assert checks["device_authorization"]["level"] == "info"
     assert guard["safety"]["changes_rankings"] is False
 
 
@@ -141,7 +270,7 @@ def test_stale_and_inconsistent_reports_are_red(tmp_path: Path) -> None:
     codes = {item["code"]: item["level"] for item in guard["checks"]}
     assert codes["report_freshness"] == "critical"
     assert codes["report_consistency"] == "critical"
-    assert codes["publish_friend"] == "critical"
+    assert codes["publish_friend"] == "warning"
 
 
 def test_missing_broker_is_warning_not_critical(tmp_path: Path) -> None:

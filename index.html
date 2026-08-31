@@ -849,16 +849,27 @@ function showHistoricalLab(){
   var limitations=(report.limitations||[]).map(function(note){return '<li>'+esc(note)+'</li>';}).join('');
   document.getElementById('results').innerHTML=notice+archiveHtml+forwardExitHtml()+(cards?'<div class="million-grid">'+cards+'</div>':'<div class="empty">已建立獨立頁面，等待全股票首輪資料下載完成。</div>')+'<div class="million-note"><b>資料與判讀限制</b><ul>'+limitations+'</ul></div>';
 }
+function currentSystemGuard(guard){
+  var checks=Array.isArray(guard.checks)?guard.checks.slice():[],workflow=STATE.guardWorkflow||{},runs=Array.isArray(workflow.workflow_runs)?workflow.workflow_runs:[],run=runs[0]||{},updated=Date.parse(run.updated_at||run.run_started_at||''),age=Number.isFinite(updated)?(Date.now()-updated)/60000:Infinity,conclusion=String(run.conclusion||''),runStatus=String(run.status||'');
+  checks=checks.filter(function(item){return item.code!=='guard_heartbeat';});
+  if(!runs.length){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'info',label:'資訊',detail:'目前無法取得 GitHub Actions 即時狀態；保留上一份巡檢結果，不誤判為停止',action:''});}
+  else if(runStatus==='completed'&&conclusion!=='success'){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'critical',label:'異常',detail:'最近一次值班巡檢結束狀態：'+(conclusion||'未知'),action:'檢查 AI 系統值班員 workflow 的失敗步驟；不要把手機授權當成原因'});}
+  else if(age>180){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'critical',label:'異常',detail:'已 '+Math.floor(age/60)+' 小時沒有新的 GitHub Actions 巡檢',action:'檢查 AI 系統值班員 workflow 是否停用或積壓；不要把手機授權當成原因'});}
+  else{checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'ok',label:'正常',detail:runStatus==='in_progress'||runStatus==='queued'?'目前正在執行':'最近一次成功巡檢在 '+Math.max(0,Math.round(age))+' 分鐘前',action:''});}
+  var counts={ok:0,info:0,warning:0,critical:0};checks.forEach(function(item){var level=String(item.level||'info');counts[level]=(counts[level]||0)+1;});
+  var status=counts.critical?'critical':counts.warning?'warning':'ok';
+  return {checks:checks,counts:counts,status:status,statusLabel:status==='critical'?'🔴 需要處理':status==='warning'?'🟡 需要注意':'🟢 系統正常'};
+}
 function showSystemGuard(){
   STATE.view='GUARD';setActive('#marketButtons button','data-view','GUARD');clearOtherNav('#marketButtons button');
   var guard=STATE.systemGuard;
   document.getElementById('title').textContent='🛡️ 武得 AI 系統值班員 V1';
   if(!guard){document.getElementById('status').textContent='等待第一份健康檢查報告';document.getElementById('results').innerHTML='<div class="empty">下一次股票報告或每小時獨立巡檢完成後，會在這裡顯示系統健康狀態。</div>';return;}
-  var status=String(guard.status||'warning'),counts=guard.counts||{},checks=Array.isArray(guard.checks)?guard.checks:[];
+  var runtime=currentSystemGuard(guard),status=runtime.status,counts=runtime.counts,checks=runtime.checks;
   document.getElementById('status').textContent='巡檢 '+esc(guard.checked_at||'—')+'｜股票資料 '+esc(guard.report_updated_at||'—')+'｜紅燈 '+Number(counts.critical||0)+'｜黃燈 '+Number(counts.warning||0);
   var cards=checks.map(function(item){var level=String(item.level||'info'),icon=level==='critical'?'🔴':level==='warning'?'🟡':level==='ok'?'🟢':'⚪';return '<section class="guard-card '+esc(level)+'"><div class="guard-head"><span>'+icon+' '+esc(item.title||item.code)+'</span><span>'+esc(item.label||level)+'</span></div><div class="guard-detail">'+esc(item.detail||'—')+'</div>'+(item.action?'<div class="guard-action">處理方式：'+esc(item.action)+'</div>':'')+'</section>';}).join('');
   var safety=guard.safety||{};
-  var hero='<div class="guard-hero '+esc(status)+'"><div class="guard-title">'+esc(guard.status_label||'系統狀態待確認')+'</div><div>值班員只監控資料更新、檔案一致性、資料涵蓋與網站同步，不會更動任何股票分數。</div></div>';
+  var hero='<div class="guard-hero '+esc(status)+'"><div class="guard-title">'+esc(runtime.statusLabel)+'</div><div>App、Railway、台／美股串流、Telegram、手機授權與正式報表分開判斷；值班員不會更動任何股票分數。</div></div>';
   var safetyHtml='<div class="guard-safety">🔒 '+esc(safety.note||'只監控與診斷')+'<br>自動改排名：關閉｜自動下單：關閉｜自動刪除：關閉｜自動修復：關閉</div>';
   document.getElementById('results').innerHTML=hero+'<div class="guard-grid">'+cards+'</div>'+safetyHtml;
 }
@@ -1057,10 +1068,11 @@ async function loadAll(){
       fetchJSON('reports/accuracy.json').catch(function(){return null;}),
       fetchJSON('reports/inverse_experiment.json').catch(function(){return null;}),
       fetchJSON('reports/missed_strength_validation.json').catch(function(){return null;}),
-      fetchJSON('reports/system_guard.json').catch(function(){return null;})
+      fetchJSON('reports/system_guard.json').catch(function(){return null;}),
+      fetch('https://api.github.com/repos/a0953883367/wude-ai-stock-v6/actions/workflows/system-guard.yml/runs?per_page=1&t='+Date.now(),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error('GitHub Actions HTTP '+response.status);return response.json();}).catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.rotationShadow=pair[9];STATE.holdingSimulation=pair[10];STATE.historicalLab=pair[11];STATE.exitHorizonForward=pair[12];STATE.accuracy=pair[13];STATE.inverseExperiment=pair[14];STATE.missedStrengthValidation=pair[15];STATE.systemGuard=pair[16];STATE.fubonQuotes={};
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.rotationShadow=pair[9];STATE.holdingSimulation=pair[10];STATE.historicalLab=pair[11];STATE.exitHorizonForward=pair[12];STATE.accuracy=pair[13];STATE.inverseExperiment=pair[14];STATE.missedStrengthValidation=pair[15];STATE.systemGuard=pair[16];STATE.guardWorkflow=pair[17];STATE.fubonQuotes={};
     if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
     if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);

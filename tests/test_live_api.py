@@ -1,11 +1,13 @@
 import base64
 import hashlib
+import json
 import re
 from datetime import datetime, timezone
 from email.message import Message
 from types import SimpleNamespace
 
 import pytest
+import live_api
 
 from live_api import (
     DevicePairingService,
@@ -14,10 +16,60 @@ from live_api import (
     MinuteRateLimiter,
     configure_fubon_certificate,
     _login_fubon_stream,
+    _live_telegram_delivery_health,
     market_closed_label,
     normalize_symbol,
     _open_market_sessions,
 )
+
+
+def test_live_telegram_health_uses_confirmed_delivery_marker(tmp_path, monkeypatch):
+    marker = tmp_path / "telegram-ready.json"
+    token = "dedicated-live-bot-token"
+    marker.write_text(json.dumps({
+        "token_sha256": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "sent_at": "2026-08-24T08:01:00+00:00",
+    }), encoding="utf-8")
+    monkeypatch.setenv("TELEGRAM_LIVE_BOT_TOKEN", token)
+    monkeypatch.setattr(live_api, "_live_telegram_ready_path", lambda: marker)
+    monkeypatch.setattr(live_api, "live_telegram_configured", lambda: True)
+    handler = SimpleNamespace(live_telegram=SimpleNamespace(status=lambda: {
+        "last_attempt_at": None,
+        "last_success_at": None,
+        "last_error": None,
+        "pending_count": 0,
+    }))
+
+    health = _live_telegram_delivery_health(handler)
+
+    assert health["configured"] is True
+    assert health["state"] == "delivered"
+    assert health["last_success_at"] == "2026-08-24T08:01:00+00:00"
+    assert "token" not in health
+
+
+def test_live_telegram_health_marks_a_newer_failed_attempt(tmp_path, monkeypatch):
+    marker = tmp_path / "telegram-ready.json"
+    token = "dedicated-live-bot-token"
+    marker.write_text(json.dumps({
+        "token_sha256": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "sent_at": "2026-08-24T08:01:00+00:00",
+    }), encoding="utf-8")
+    monkeypatch.setenv("TELEGRAM_LIVE_BOT_TOKEN", token)
+    monkeypatch.setattr(live_api, "_live_telegram_ready_path", lambda: marker)
+    monkeypatch.setattr(live_api, "live_telegram_configured", lambda: True)
+    handler = SimpleNamespace(live_telegram=SimpleNamespace(status=lambda: {
+        "last_attempt_at": "2026-08-24T09:01:00+00:00",
+        "last_success_at": None,
+        "last_error": "HTTPError",
+        "pending_count": 0,
+    }))
+
+    health = _live_telegram_delivery_health(handler)
+
+    assert health["state"] == "delivery_failed"
+    assert health["last_success_at"] == "2026-08-24T08:01:00+00:00"
+    assert health["last_error"] == "HTTPError"
 
 
 def _handler_with_headers(**headers):

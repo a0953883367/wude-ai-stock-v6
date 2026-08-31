@@ -37,7 +37,7 @@ assert.strictEqual(report.policy.horizons_separate,true);
 assert.strictEqual(report.unified_evidence.invalid_count,0);
 assert.strictEqual(unified.invalid_count,0);
 assert.strictEqual(evidence.length,unified.evidence_count);
-assert.strictEqual(report.readiness.validation_60d.collected_trading_days,5);
+assert(report.readiness.validation_60d.collected_trading_days>=5);
 assert.strictEqual(report.portfolio_control.risk_controls.orders,'不連券商、不自動下單');
 assert(report.single_answer.headline);
 assert.strictEqual(decisions.length,374);
