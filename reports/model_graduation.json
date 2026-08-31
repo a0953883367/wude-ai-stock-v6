@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-31 20:04:44",
+  "updated_at": "2026-09-01 06:02:17",
   "status": "ready",
   "summary": {
-    "collecting": 5,
-    "review_required": 0,
+    "collecting": 4,
+    "review_required": 1,
     "eligible_for_manual_graduation": 0
   },
   "models": [
@@ -22,10 +22,10 @@
     {
       "model_id": "valuation_risk",
       "label": "估值風險雷達",
-      "status": "collecting",
-      "current": 0,
+      "status": "review_required",
+      "current": 151,
       "target": 100,
-      "reason": "有效進度 0/100，尚未達畢業門檻；有效交易日最少 0/10",
+      "reason": "樣本已達 151/100，但品質或績效條件尚未全部通過；有效交易日最少 0/10",
       "automatic_promotion": false,
       "changes_formal_weights": false,
       "places_orders": false
@@ -34,9 +34,9 @@
       "model_id": "market_rotation",
       "label": "族群輪動影子模型",
       "status": "collecting",
-      "current": 2,
+      "current": 3,
       "target": 60,
-      "reason": "有效進度 2/60，尚未達畢業門檻",
+      "reason": "有效進度 3/60，尚未達畢業門檻",
       "automatic_promotion": false,
       "changes_formal_weights": false,
       "places_orders": false
@@ -56,9 +56,9 @@
       "model_id": "inverse_etf",
       "label": "反向ETF影子模型",
       "status": "collecting",
-      "current": 0,
+      "current": 2,
       "target": 20,
-      "reason": "有效進度 0/20，尚未達畢業門檻",
+      "reason": "有效進度 2/20，尚未達畢業門檻",
       "automatic_promotion": false,
       "changes_formal_weights": false,
       "places_orders": false
