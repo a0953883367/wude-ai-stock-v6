@@ -2,11 +2,52 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'live-flow.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'live_flow.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+function loadRenderRow() {
+  const element = () => ({
+    addEventListener() {},
+    classList: { toggle() {} },
+    focus() {},
+    querySelectorAll() { return []; },
+    hidden: false,
+    innerHTML: '',
+    style: {},
+    textContent: '',
+    value: '',
+  });
+  const elements = new Map();
+  const context = {
+    clearTimeout() {},
+    document: {
+      addEventListener() {},
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, element());
+        return elements.get(id);
+      },
+      visibilityState: 'hidden',
+    },
+    history: { replaceState() {} },
+    localStorage: {
+      getItem() { return ''; },
+      removeItem() {},
+      setItem() {},
+    },
+    location: { hash: '', pathname: '/', search: '' },
+    navigator: {},
+    setTimeout() { return 0; },
+    URLSearchParams,
+    window: { addEventListener() {}, WUDE_LIVE_API_BASE: '' },
+  };
+  const exposed = script.replace(/\}\)\(\);\s*$/, 'globalThis.__testRenderRow=renderRow;})();');
+  vm.runInNewContext(exposed, context);
+  return context.__testRenderRow;
+}
 
 test('public report links to a standalone capital-flow page', () => {
   assert.match(index, /href="live-flow\.html"/);
@@ -67,6 +108,29 @@ test('capital flow keeps buy and sell analysis', () => {
   assert.match(script, /theme_outflows/);
   assert.match(script, /top_inflows/);
   assert.match(script, /top_outflows/);
+});
+
+test('theme outflows keep theme labels and never render raw undefined names', () => {
+  assert.match(script, /function renderRow\(row,index,market,rowType,direction\)/);
+  assert.match(script, /theme_outflows\|\|\[\],state\.market,'theme','out'/);
+  assert.match(script, /top_outflows\|\|\[\],state\.market,'stock','out'/);
+  assert.match(script, /row\.theme\|\|'未分類族群'/);
+  assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
+  assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
+  assert.match(html, /live_flow\.js\?v=645/);
+
+  const renderRow = loadRenderRow();
+  const output = renderRow({
+    theme: '公用電力 / 電網',
+    net_flow: -3046000,
+    buy_ratio_pct: 31.3,
+    negative_symbols: 2,
+    member_count: 2,
+  }, 0, 'US', 'theme', 'out');
+  assert.match(output, /公用電力 \/ 電網/);
+  assert.match(output, /賣出68\.7%/);
+  assert.doesNotMatch(output, /undefined/);
+  assert.match(renderRow({}, 0, 'US', 'theme', 'out'), /未分類族群/);
 });
 
 test('single-trade thresholds and block labels stay linked to the API policy', () => {
