@@ -17,6 +17,11 @@ assert.ok(html.includes('法人額外效益'));
   '實際TOP20捕捉',
   '每組原選10檔，至少9檔取得同一交易日官方開收盤價即可結算',
   '缺少標的資金保留現金、不轉配',
+  '每累積5個有效交易日凍結一個區塊',
+  '完成後自動開下一區塊',
+  'current_cycle_completed_days',
+  '區塊紀錄',
+  '20日才初步比較',
   '不會自動把勝出權重套回正式排名'
 ].forEach((text) => assert.ok(html.includes(text), `missing weight UI contract: ${text}`));
 

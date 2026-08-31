@@ -1,4 +1,4 @@
-"""Five-session TW institutional-weight shadow comparison.
+"""Continuous five-session-cycle TW institutional-weight shadow comparison.
 
 The three portfolios use the same completed-session universe, safety tier,
 capital, entry and exit prices.  Only the accumulation weight differs.  This
@@ -20,6 +20,7 @@ import pandas as pd
 VERSION = 1
 START_DATE = "2026-08-24"
 TARGET_DAYS = 5
+CYCLE_DAYS = TARGET_DAYS
 CAPITAL_TWD = 1_000_000
 PICKS = 10
 MIN_POSITIONS = PICKS - 1
@@ -79,13 +80,15 @@ def _pending_readiness(
         )
         for pick in picks
     }
-    eligible_dates = [
+    observed_dates = [
         session_date
-        for session_date, open_price, close_price in observations.values()
+        for session_date, _, _ in observations.values()
         if session_date >= START_DATE and session_date > signal_date
-        and open_price > 0 and close_price > 0
     ]
-    target_session = Counter(eligible_dates).most_common(1)[0][0] if eligible_dates else ""
+    candidate_session = (
+        Counter(observed_dates).most_common(1)[0][0] if observed_dates else ""
+    )
+    target_session = str(pending.get("execution_session_date") or candidate_session)
     missing_symbols = [
         symbol for symbol, (session_date, open_price, close_price) in observations.items()
         if not target_session or session_date != target_session
@@ -103,11 +106,11 @@ def _pending_readiness(
         len(picks) == required
         and target_session
         and available >= MIN_POSITIONS
-        and len(set(eligible_dates)) == 1
     )
     return {
         "settlement_status": "ready" if complete else "waiting_for_official_prices",
         "session_date": target_session if complete else None,
+        "execution_session_date": target_session or None,
         "available_positions": available if len(picks) == required else 0,
         "required_positions": required,
         "minimum_required_positions": MIN_POSITIONS,
@@ -205,10 +208,15 @@ def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
             invalid_keys.add(invalid_key)
     for index, day in enumerate(valid_days, 1):
         day["day"] = index
+        day["cycle"] = (index - 1) // CYCLE_DAYS + 1
+        day["cycle_day"] = (index - 1) % CYCLE_DAYS + 1
     model["days"] = valid_days
     model["completed_days"] = len(valid_days)
-    if model.get("status") == "complete" and len(valid_days) < TARGET_DAYS:
-        model["status"] = "running"
+    model["completed_cycles"] = len(valid_days) // CYCLE_DAYS
+    model["current_cycle"] = len(valid_days) // CYCLE_DAYS + 1
+    model["current_cycle_completed_days"] = len(valid_days) % CYCLE_DAYS
+    if model.get("status") == "complete":
+        model["status"] = "collecting"
 
 
 def _historical_ohlc(
@@ -437,6 +445,9 @@ def _empty_model(key: str) -> dict[str, Any]:
         **config,
         "capital_twd": CAPITAL_TWD,
         "completed_days": 0,
+        "completed_cycles": 0,
+        "current_cycle": 1,
+        "current_cycle_completed_days": 0,
         "status": "waiting",
         "days": [],
         "invalid_days": [],
@@ -469,6 +480,8 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
         "policy": {
             "start_date": START_DATE,
             "target_trading_days": TARGET_DAYS,
+            "cycle_trading_days": CYCLE_DAYS,
+            "collection_mode": "每5個有效交易日形成一個凍結區塊，完成後自動續跑下一區塊",
             "capital_per_model_twd": CAPITAL_TWD,
             "picks_per_model": PICKS,
             "minimum_positions_per_model": MIN_POSITIONS,
@@ -480,7 +493,7 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "orders": "純網頁影子試走，不連接券商、不送單",
             "selection": "安全資格分層優先；每組前10名等權",
             "valid_session_rule": "每組原選10檔；至少9檔取得同一個較晚交易日的官方開盤與收盤價即可結算",
-            "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔才等待補抓，既有不合格日移入無效樣本",
+            "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔於正式收盤報告隔離並繼續下一交易日",
             "decision_rule": "5日只做第一次檢查，不自動改權重；20日樣本後再決定正式調整",
         },
         "models": {key: _empty_model(key) for key in MODELS},
@@ -598,6 +611,8 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
     )
     day = {
         "day": len(model.get("days") or []) + 1,
+        "cycle": len(model.get("days") or []) // CYCLE_DAYS + 1,
+        "cycle_day": len(model.get("days") or []) % CYCLE_DAYS + 1,
         "signal_session_date": signal_date,
         "session_date": session_date,
         "rank_turnover_pct": pending.get("rank_turnover_pct"),
@@ -621,7 +636,62 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
     model["last_pick_symbols"] = [str(pick.get("symbol") or "") for pick in pending.get("picks") or []]
     model["pending"] = None
     model["completed_days"] = len(model["days"])
+    model["completed_cycles"] = len(model["days"]) // CYCLE_DAYS
+    model["current_cycle"] = len(model["days"]) // CYCLE_DAYS + 1
+    model["current_cycle_completed_days"] = len(model["days"]) % CYCLE_DAYS
     return True
+
+
+def _expire_incomplete_pending(model: dict[str, Any], updated_at: str) -> bool:
+    """Quarantine a formal-session snapshot below 9/10 so collection can continue."""
+    pending = model.get("pending")
+    if not pending or not pending.get("execution_session_date"):
+        return False
+    if pending.get("settlement_status") != "waiting_for_official_prices":
+        return False
+    snapshot_id = str(pending.get("snapshot_id") or "")
+    invalid_days = model.setdefault("invalid_days", [])
+    if not any(str(day.get("ranking_snapshot_id") or "") == snapshot_id for day in invalid_days):
+        invalid_days.append({
+            "signal_session_date": pending.get("signal_session_date"),
+            "session_date": pending.get("execution_session_date"),
+            "ranking_snapshot_id": snapshot_id,
+            "status": "data_incomplete",
+            "available_positions": int(pending.get("available_positions") or 0),
+            "required_positions": PICKS,
+            "minimum_required_positions": MIN_POSITIONS,
+            "missing_symbols": list(pending.get("missing_symbols") or []),
+            "invalid_reason": "正式收盤後未達至少9/10檔同日官方開盤與收盤價",
+            "invalidated_at": updated_at,
+            "picks": list(pending.get("picks") or []),
+        })
+    model["pending"] = None
+    return True
+
+
+def _cycle_summaries(model: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return immutable-looking five-session views without rewriting day records."""
+    summaries = []
+    days = model.get("days") or []
+    for offset in range(0, len(days), CYCLE_DAYS):
+        cycle_days = days[offset:offset + CYCLE_DAYS]
+        if not cycle_days:
+            continue
+        net_profit = sum(_finite(day.get("net_profit_twd")) for day in cycle_days)
+        summaries.append({
+            "cycle": offset // CYCLE_DAYS + 1,
+            "completed_days": len(cycle_days),
+            "target_days": CYCLE_DAYS,
+            "status": "complete" if len(cycle_days) == CYCLE_DAYS else "collecting",
+            "start_session_date": cycle_days[0].get("session_date"),
+            "end_session_date": cycle_days[-1].get("session_date"),
+            "partial_nine_of_ten_days": sum(
+                bool(day.get("nine_of_ten_settlement")) for day in cycle_days
+            ),
+            "net_profit_twd": round(net_profit, 2),
+            "net_return_pct": round(net_profit / CAPITAL_TWD * 100, 4),
+        })
+    return summaries
 
 
 def _refresh_metrics(model: dict[str, Any]) -> None:
@@ -677,6 +747,7 @@ def _refresh_metrics(model: dict[str, Any]) -> None:
         "rank_order_evaluated_days": len(rank_correlations),
         "capture_evaluated_days": len(top20_capture),
     }
+    model["cycles"] = _cycle_summaries(model)
 
 
 def _overlap(left: set[str], right: set[str]) -> dict[str, Any]:
@@ -758,25 +829,28 @@ def update_state(
         return state
     state["updated_at"] = updated_at
     state.setdefault("policy", {}).update({
+        "cycle_trading_days": CYCLE_DAYS,
+        "collection_mode": "每5個有效交易日形成一個凍結區塊，完成後自動續跑下一區塊",
         "minimum_positions_per_model": MIN_POSITIONS,
         "valid_session_rule": "每組原選10檔；至少9檔取得同一個較晚交易日的官方開盤與收盤價即可結算",
-        "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔才等待補抓，既有不合格日移入無效樣本",
+        "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔於正式收盤報告隔離並繼續下一交易日",
     })
     settle_only = period == "morning"
     for key, model in state["models"].items():
         _repair_incomplete_days(model, price_history)
         _sanitize_existing_days(model, updated_at)
-        if model.get("status") == "complete":
-            continue
-        _settle_pending(model, rows)
+        settled = _settle_pending(model, rows)
+        if not settled and period == "evening":
+            _expire_incomplete_pending(model, updated_at)
         _refresh_metrics(model)
-        if model.get("completed_days", 0) >= TARGET_DAYS:
-            model["status"] = "complete"
-            model["pending"] = None
-        elif not settle_only and model.get("pending") is None:
+        if not settle_only and model.get("pending") is None:
             model["pending"] = _new_pending(rows, model, updated_at)
             if model["pending"]:
-                model["status"] = "running"
+                model["status"] = "collecting"
+            else:
+                model["status"] = "waiting_for_signal"
+        elif model.get("pending"):
+            model["status"] = "collecting"
     base_metrics = state["models"].get("base_0", {}).get("metrics", {})
     base_profit = _finite(base_metrics.get("net_profit_twd"))
     base_return = _finite(base_metrics.get("net_return_pct"))
@@ -787,10 +861,17 @@ def update_state(
             "incremental_net_return_pct": round(_finite(metrics.get("net_return_pct")) - base_return, 4),
             "interpretation": "原模型基準" if key == "base_0" else "法人權重相較原模型的額外效益",
         }
-    completed = all(model.get("status") == "complete" for model in state["models"].values())
-    state["status"] = "complete" if completed else "running"
+    completed_days = min(
+        (int(model.get("completed_days") or 0) for model in state["models"].values()),
+        default=0,
+    )
+    state["completed_days"] = completed_days
+    state["completed_cycles"] = completed_days // CYCLE_DAYS
+    state["current_cycle"] = completed_days // CYCLE_DAYS + 1
+    state["current_cycle_completed_days"] = completed_days % CYCLE_DAYS
+    state["status"] = "collecting"
     state["winner_model"] = None
-    if completed:
+    if completed_days >= CYCLE_DAYS:
         state["winner_model"] = max(
             state["models"],
             key=lambda name: _finite(state["models"][name].get("metrics", {}).get("net_return_pct")),

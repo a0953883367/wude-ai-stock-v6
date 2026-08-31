@@ -109,7 +109,7 @@ def test_one_missing_stock_per_model_settles_and_holds_allocation_as_cash():
         assert len(day["missing_symbols"]) == 1
 
 
-def test_only_eight_available_stocks_wait_without_counting_a_day():
+def test_only_eight_available_stocks_are_quarantined_without_blocking_future_days():
     state = empty_state()
     update_state(state, universe(), period="evening", updated_at="start")
     mixed = universe("2026-08-24")
@@ -128,8 +128,16 @@ def test_only_eight_available_stocks_wait_without_counting_a_day():
     for model in state["models"].values():
         assert model["completed_days"] == 0
         assert model["days"] == []
-        assert model["pending"]["settlement_status"] == "waiting_for_official_prices"
-        assert model["pending"]["available_positions"] == 8
+        assert model["invalid_days"][0]["status"] == "data_incomplete"
+        assert model["invalid_days"][0]["available_positions"] == 8
+        assert model["invalid_days"][0]["session_date"] == "2026-08-24"
+        assert model["invalid_days"][0]["invalid_reason"] == "正式收盤後未達至少9/10檔同日官方開盤與收盤價"
+
+    update_state(state, universe("2026-08-25"), period="evening", updated_at="next close")
+    for model in state["models"].values():
+        assert model["completed_days"] == 0
+        assert model["invalid_days"][0]["session_date"] == "2026-08-24"
+        assert model["pending"]["signal_session_date"] == "2026-08-25"
 
 
 def test_legacy_nine_of_ten_day_remains_valid_and_holds_cash():
@@ -190,7 +198,7 @@ def test_diagnostics_explain_equal_weight_overlap_and_rank_quality():
         assert "avg_top20_capture_rate_pct" in model["metrics"]
 
 
-def test_intraday_does_nothing_and_evening_stops_all_models_after_five_days():
+def test_intraday_does_nothing_and_evening_starts_next_cycle_after_five_days():
     state = empty_state()
     update_state(state, universe(), period="evening", updated_at="start", intraday=True)
     assert all(model["pending"] is None for model in state["models"].values())
@@ -201,10 +209,62 @@ def test_intraday_does_nothing_and_evening_stops_all_models_after_five_days():
             state, universe(f"2026-08-{day}"), period="evening",
             updated_at=f"2026-08-{day} 20:00:00",
         )
-    assert state["status"] == "complete"
+    assert state["status"] == "collecting"
     assert state["winner_model"] in state["models"]
+    assert state["completed_cycles"] == 1
+    assert state["current_cycle"] == 2
+    assert state["current_cycle_completed_days"] == 0
     assert all(model["completed_days"] == 5 for model in state["models"].values())
-    assert all(model["pending"] is None for model in state["models"].values())
+    assert all(model["completed_cycles"] == 1 for model in state["models"].values())
+    assert all(model["current_cycle"] == 2 for model in state["models"].values())
+    assert all(model["current_cycle_completed_days"] == 0 for model in state["models"].values())
+    assert all(model["pending"]["signal_session_date"] == "2026-08-28" for model in state["models"].values())
+    assert all(model["days"][-1]["cycle"] == 1 for model in state["models"].values())
+    assert all(model["days"][-1]["cycle_day"] == 5 for model in state["models"].values())
+
+    update_state(
+        state, universe("2026-08-31"), period="evening",
+        updated_at="2026-08-31 20:00:00",
+    )
+    assert state["completed_days"] == 6
+    assert state["current_cycle"] == 2
+    assert state["current_cycle_completed_days"] == 1
+    for model in state["models"].values():
+        assert model["completed_days"] == 6
+        assert model["days"][-1]["cycle"] == 2
+        assert model["days"][-1]["cycle_day"] == 1
+        assert model["cycles"][0]["status"] == "complete"
+        assert model["cycles"][1]["status"] == "collecting"
+        assert model["pending"]["signal_session_date"] == "2026-08-31"
+
+
+def test_legacy_complete_state_reopens_collection_without_inventing_missed_day():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    for day in range(24, 29):
+        update_state(
+            state, universe(f"2026-08-{day}"), period="evening",
+            updated_at=f"2026-08-{day} 20:00:00",
+        )
+    for model in state["models"].values():
+        model["status"] = "complete"
+        model["pending"] = None
+    state["status"] = "complete"
+
+    update_state(
+        state, universe("2026-08-31"), period="evening",
+        updated_at="2026-08-31 21:00:00",
+    )
+
+    assert state["status"] == "collecting"
+    assert state["completed_days"] == 5
+    assert state["current_cycle"] == 2
+    assert state["current_cycle_completed_days"] == 0
+    for model in state["models"].values():
+        assert [day["session_date"] for day in model["days"]] == [
+            "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28",
+        ]
+        assert model["pending"]["signal_session_date"] == "2026-08-31"
 
 
 def test_morning_settles_existing_pending_but_never_creates_new_snapshot():
