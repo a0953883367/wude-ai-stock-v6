@@ -64,6 +64,20 @@
     symbol = normalize(symbol);
     return load().some(function (item) { return normalize(item.symbol) === symbol; });
   }
+  function pickerRows(candidates, query, selectedRows) {
+    var selectedSymbols = new Set((Array.isArray(selectedRows) ? selectedRows : []).map(function (row) {
+      return normalize(row.symbol);
+    }));
+    var needle = String(query || '').trim().toUpperCase();
+    return (Array.isArray(candidates) ? candidates : []).filter(function (row) {
+      if (!needle) return true;
+      return String((row.symbol || '')+' '+(row.name || '')).toUpperCase().indexOf(needle) >= 0;
+    }).map(function (row, index) {
+      return {row:row,index:index,selected:selectedSymbols.has(normalize(row.symbol))};
+    }).sort(function (left, right) {
+      return Number(right.selected)-Number(left.selected) || left.index-right.index;
+    }).map(function (item) { return item.row; });
+  }
   function refreshButtons() {
     var rows = load();
     root.document.querySelectorAll('[data-trade-symbol]').forEach(function (button) {
@@ -161,5 +175,5 @@
     refreshButtons();
   }
   if (root.document) root.document.addEventListener('DOMContentLoaded', init);
-  return {HARD_CAP:HARD_CAP,MAX_SELECTIONS:MAX_SELECTIONS,normalize:normalize,load:load,toggle:toggle,allocation:allocation,selected:selected};
+  return {HARD_CAP:HARD_CAP,MAX_SELECTIONS:MAX_SELECTIONS,normalize:normalize,load:load,toggle:toggle,allocation:allocation,selected:selected,pickerRows:pickerRows};
 }));

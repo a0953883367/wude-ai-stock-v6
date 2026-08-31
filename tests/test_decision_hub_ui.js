@@ -21,6 +21,7 @@ assert(appShell.includes('live-flow.html'));
 assert(appShell.includes('inverse-etf-shadow.html'));
 assert(html.includes('id="liveLink"'));
 assert(html.includes('live_config.js'));
+assert(js.includes('前往大量買賣頁完成一次性手機授權'));
 assert(js.includes('/api/large-buy-alerts?after=0&limit=100'));
 assert(js.includes('inverse_etf_live_shadow'));
 assert(js.includes('即時影子：大買支持'));

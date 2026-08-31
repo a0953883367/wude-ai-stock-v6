@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import tempfile
 import threading
 import time
@@ -346,7 +347,11 @@ class LiveDataService:
         return {
             "ok": True,
             "service": "wude-live-api",
-            "auth_version": 2,
+            "auth_version": 3,
+            "device_pairing_configured": bool(
+                len(os.getenv("LIVE_ACCESS_TOKEN", "").strip().encode("utf-8")) >= 32
+                and live_telegram_configured()
+            ),
             "us_sip_configured": bool(os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY")),
             "us_opra_configured": bool(os.getenv("ALPACA_OPTION_FEED")),
             "tw_fubon_configured": bool(
@@ -376,6 +381,122 @@ class MinuteRateLimiter:
             return True
 
 
+class DevicePairingService:
+    """Issue revocable read-only device tokens after a Telegram code check."""
+
+    TOKEN_PREFIX = "wude-device-v1"
+
+    def __init__(
+        self,
+        sender: Callable[[str], bool],
+        *,
+        clock: Callable[[], float] = time.time,
+        code_ttl_seconds: int = 600,
+        device_ttl_seconds: int = 180 * 24 * 60 * 60,
+        request_cooldown_seconds: int = 30,
+    ) -> None:
+        self.sender = sender
+        self.clock = clock
+        self.code_ttl_seconds = max(60, int(code_ttl_seconds))
+        self.device_ttl_seconds = max(3600, int(device_ttl_seconds))
+        self.request_cooldown_seconds = max(5, int(request_cooldown_seconds))
+        self.requests: dict[str, dict[str, Any]] = {}
+        self.last_request_at = float("-inf")
+        self.lock = threading.Lock()
+
+    @staticmethod
+    def _secret() -> bytes:
+        value = os.getenv("LIVE_ACCESS_TOKEN", "").strip()
+        return value.encode("utf-8")
+
+    @staticmethod
+    def _code_digest(request_id: str, code: str) -> str:
+        return hashlib.sha256(f"{request_id}:{code}".encode("utf-8")).hexdigest()
+
+    def request_code(self) -> dict[str, Any]:
+        now = self.clock()
+        with self.lock:
+            if now - self.last_request_at < self.request_cooldown_seconds:
+                raise RuntimeError("驗證碼剛已傳送，請稍候再試")
+            self.last_request_at = now
+            self.requests = {
+                key: value for key, value in self.requests.items()
+                if float(value.get("expires_at") or 0) > now
+            }
+            request_id = secrets.token_urlsafe(18)
+            code = f"{secrets.randbelow(1_000_000):06d}"
+            expires_at = int(now + self.code_ttl_seconds)
+            self.requests[request_id] = {
+                "digest": self._code_digest(request_id, code),
+                "expires_at": expires_at,
+                "attempts": 0,
+            }
+        message = (
+            "🔐 武得股票 App 手機授權\n\n"
+            f"一次性驗證碼：{code}\n"
+            "10分鐘內有效；請只輸入在武得股票 App 的大量買賣頁。\n"
+            "完成後這支手機可唯讀連線180天，不能下單。"
+        )
+        try:
+            delivered = bool(self.sender(message))
+        except Exception:
+            delivered = False
+            LOG.exception("Failed to send device pairing code")
+        if not delivered:
+            with self.lock:
+                self.requests.pop(request_id, None)
+                self.last_request_at = float("-inf")
+            raise RuntimeError("即時警報 Telegram 尚未連線，驗證碼無法送達")
+        return {"request_id": request_id, "expires_at": expires_at}
+
+    def _issue_device_token(self) -> tuple[str, int]:
+        secret = self._secret()
+        if len(secret) < 32:
+            raise RuntimeError("伺服器授權尚未完成設定")
+        expires_at = int(self.clock() + self.device_ttl_seconds)
+        nonce = secrets.token_urlsafe(18)
+        body = f"{self.TOKEN_PREFIX}.{expires_at}.{nonce}"
+        signature = hmac.new(secret, body.encode("utf-8"), hashlib.sha256).hexdigest()
+        return f"{body}.{signature}", expires_at
+
+    def verify_code(self, request_id: str, code: str) -> dict[str, Any]:
+        request_id = str(request_id or "").strip()
+        code = re.sub(r"\D", "", str(code or ""))
+        now = self.clock()
+        with self.lock:
+            row = self.requests.get(request_id)
+            if not row or float(row.get("expires_at") or 0) <= now:
+                self.requests.pop(request_id, None)
+                raise ValueError("驗證碼已失效，請重新傳送")
+            row["attempts"] = int(row.get("attempts") or 0) + 1
+            if row["attempts"] > 5:
+                self.requests.pop(request_id, None)
+                raise ValueError("驗證次數過多，請重新傳送")
+            supplied = self._code_digest(request_id, code)
+            if len(code) != 6 or not hmac.compare_digest(supplied, str(row.get("digest") or "")):
+                raise ValueError("驗證碼不正確")
+            self.requests.pop(request_id, None)
+        token, expires_at = self._issue_device_token()
+        return {"device_token": token, "expires_at": expires_at}
+
+    def token_valid(self, token: str) -> bool:
+        secret = self._secret()
+        if len(secret) < 32:
+            return False
+        parts = str(token or "").strip().split(".")
+        if len(parts) != 4 or parts[0] != self.TOKEN_PREFIX:
+            return False
+        try:
+            expires_at = int(parts[1])
+        except ValueError:
+            return False
+        if expires_at <= int(self.clock()):
+            return False
+        body = ".".join(parts[:3])
+        expected = hmac.new(secret, body.encode("utf-8"), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(parts[3], expected)
+
+
 class LiveRequestHandler(BaseHTTPRequestHandler):
     service = LiveDataService()
     trading_engine = _trading_engine(service)
@@ -397,6 +518,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         alert_notifier=fanout_alert(web_push.send_alert, live_telegram.enqueue),
     )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
+    device_pairing = DevicePairingService(send_live_telegram)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         LOG.info("%s - %s", self.address_string(), fmt % args)
@@ -434,7 +556,13 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         return any(hmac.compare_digest(digest, expected) for expected in expected_hashes)
 
     def _authorized(self) -> bool:
-        return self._owner_authorized() or self._site_read_authorized() or _truthy(os.getenv("LIVE_PUBLIC_READ"))
+        supplied = self.headers.get("X-Live-Token", "").strip()
+        return (
+            self._owner_authorized()
+            or self._site_read_authorized()
+            or self.device_pairing.token_valid(supplied)
+            or _truthy(os.getenv("LIVE_PUBLIC_READ"))
+        )
 
     def _send(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -609,8 +737,33 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path not in {"/api/push/subscribe", "/api/trading/config", "/api/trading/run"}:
+        if parsed.path not in {
+            "/api/device-auth/request", "/api/device-auth/verify",
+            "/api/push/subscribe", "/api/trading/config", "/api/trading/run"
+        }:
             self._send(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
+            return
+        if parsed.path.startswith("/api/device-auth/"):
+            if not self._origin():
+                self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": "device authorization origin denied"})
+                return
+            if not self.rate_limiter.allow():
+                self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "request limit reached"})
+                return
+            try:
+                payload = self._read_json()
+                if parsed.path == "/api/device-auth/request":
+                    result = self.device_pairing.request_code()
+                    self._send(HTTPStatus.OK, {"ok": True, **result})
+                else:
+                    result = self.device_pairing.verify_code(
+                        payload.get("request_id", ""), payload.get("code", "")
+                    )
+                    self._send(HTTPStatus.OK, {"ok": True, **result})
+            except ValueError as exc:
+                self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+            except RuntimeError as exc:
+                self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": str(exc)})
             return
         requires_owner = parsed.path.startswith("/api/trading/")
         if not (self._owner_authorized() if requires_owner else self._authorized()):
