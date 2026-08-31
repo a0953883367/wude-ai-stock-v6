@@ -67,7 +67,8 @@ secret store，公開 GitHub Pages 只接收計算結果。服務未部署或暫
   `FUBON_CERT_BASE64`，以及官方 Fubon Neo SDK。
 - 美股：`ALPACA_API_KEY_ID`、`ALPACA_API_SECRET_KEY`；有 OPRA 權限時再設定
   `ALPACA_OPTION_FEED=opra`。
-- 存取保護：`LIVE_ACCESS_TOKEN` 或由私人網站／存取閘道注入
+- 存取保護：`LIVE_ACCESS_TOKEN`，並可由 Telegram 一次性驗證碼簽發
+  180 天唯讀手機權杖；也可由私人網站／存取閘道注入
   `LIVE_TRUSTED_AUTH_HEADER`。除非已確認行情授權與流量限制，禁止設定
   `LIVE_PUBLIC_READ=1`。
 
@@ -94,15 +95,11 @@ Railway Variables／Secrets 必須設定：
 - `LIVE_PUBLIC_READ=0`
 - `LIVE_MAX_REQUESTS_PER_MINUTE=120`
 
-部署後建立一次性私人網址：
-
-```text
-https://a0953883367.github.io/wude-ai-stock-v6/#live_token=<LIVE_ACCESS_TOKEN>
-```
-
-手機第一次開啟會把 token 留在該裝置，隨即從網址列移除；往後不必重新輸入。
-Token 不會寫入 GitHub、`live_config.js` 或報告檔。若手機遺失，立即更換
-`LIVE_ACCESS_TOKEN` 即可讓舊連結失效。
+部署後在 GitHub Pages 的「大量買賣」頁按「傳送驗證碼」。6 位數驗證碼只會
+傳到獨立的即時警報 Telegram；輸入一次後，瀏覽器會保存 180 天唯讀權杖，
+往後可自動重連。權杖不能使用任何下單 API，也不會寫入 GitHub、
+`live_config.js` 或報告檔。若手機遺失，立即更換 `LIVE_ACCESS_TOKEN` 即可讓
+所有舊手機權杖失效。舊的 `#live_token=` 私人網址仍相容，但不再是建議流程。
 
 瀏覽器請求使用 `X-Live-Token` 標頭；不要改成 `Authorization: Bearer`，
 因為 Railway 的擁有者驗證會先攔截該標頭。

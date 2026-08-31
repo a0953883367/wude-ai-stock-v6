@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import re
 from datetime import datetime, timezone
 from email.message import Message
 from types import SimpleNamespace
@@ -7,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from live_api import (
+    DevicePairingService,
     LiveDataService,
     LiveRequestHandler,
     MinuteRateLimiter,
@@ -180,6 +182,89 @@ def test_rate_limiter_resets_after_one_minute():
     assert limiter.allow() is False
     now[0] += 60
     assert limiter.allow() is True
+
+
+def test_device_pairing_sends_telegram_code_and_issues_read_only_token(monkeypatch):
+    now = [1_000.0]
+    messages = []
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-secret-that-is-longer-than-32-bytes")
+    service = DevicePairingService(
+        lambda message: messages.append(message) or True,
+        clock=lambda: now[0],
+        request_cooldown_seconds=5,
+    )
+
+    request = service.request_code()
+    code = re.search(r"一次性驗證碼：(\d{6})", messages[0]).group(1)
+    result = service.verify_code(request["request_id"], code)
+
+    assert service.token_valid(result["device_token"]) is True
+    assert result["expires_at"] == int(now[0] + 180 * 24 * 60 * 60)
+    with pytest.raises(ValueError, match="已失效"):
+        service.verify_code(request["request_id"], code)
+
+
+def test_device_pairing_rejects_wrong_expired_and_forged_tokens(monkeypatch):
+    now = [2_000.0]
+    messages = []
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-secret-that-is-longer-than-32-bytes")
+    service = DevicePairingService(
+        lambda message: messages.append(message) or True,
+        clock=lambda: now[0],
+        code_ttl_seconds=60,
+        device_ttl_seconds=3_600,
+        request_cooldown_seconds=5,
+    )
+
+    request = service.request_code()
+    code = re.search(r"一次性驗證碼：(\d{6})", messages[0]).group(1)
+    wrong_code = "000000" if code != "000000" else "111111"
+    with pytest.raises(ValueError, match="不正確"):
+        service.verify_code(request["request_id"], wrong_code)
+    result = service.verify_code(request["request_id"], code)
+    assert service.token_valid(result["device_token"] + "tampered") is False
+    now[0] += 3_601
+    assert service.token_valid(result["device_token"]) is False
+
+    now[0] += 5
+    expired_request = service.request_code()
+    expired_code = re.search(r"一次性驗證碼：(\d{6})", messages[-1]).group(1)
+    now[0] += 61
+    with pytest.raises(ValueError, match="已失效"):
+        service.verify_code(expired_request["request_id"], expired_code)
+
+
+def test_device_pairing_can_retry_immediately_when_telegram_was_not_ready(monkeypatch):
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-secret-that-is-longer-than-32-bytes")
+    deliveries = [False, True]
+    service = DevicePairingService(
+        lambda _message: deliveries.pop(0),
+        clock=lambda: 0,
+        request_cooldown_seconds=30,
+    )
+
+    with pytest.raises(RuntimeError, match="Telegram 尚未連線"):
+        service.request_code()
+    assert service.request_code()["request_id"]
+
+
+def test_device_token_can_read_but_never_counts_as_owner(monkeypatch):
+    now = [3_000.0]
+    messages = []
+    monkeypatch.setenv("LIVE_ACCESS_TOKEN", "owner-secret-that-is-longer-than-32-bytes")
+    service = DevicePairingService(
+        lambda message: messages.append(message) or True,
+        clock=lambda: now[0],
+        request_cooldown_seconds=5,
+    )
+    request = service.request_code()
+    code = re.search(r"一次性驗證碼：(\d{6})", messages[0]).group(1)
+    device_token = service.verify_code(request["request_id"], code)["device_token"]
+    handler = _handler_with_headers(X_Live_Token=device_token)
+    handler.device_pairing = service
+
+    assert handler._authorized() is True
+    assert handler._owner_authorized() is False
 
 
 def test_market_sessions_are_separated():

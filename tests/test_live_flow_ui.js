@@ -28,6 +28,16 @@ test('standalone page reads only the aggregate alert endpoint', () => {
   assert.match(script, /X-Live-Token/);
 });
 
+test('phone authorization uses a one-time Telegram code and stores only a read token', () => {
+  assert.match(html, /id="pairingBox"/);
+  assert.match(html, /autocomplete="one-time-code"/);
+  assert.match(html, /180天/);
+  assert.match(script, /\/api\/device-auth\/request/);
+  assert.match(script, /\/api\/device-auth\/verify/);
+  assert.match(script, /localStorage\.setItem\('wude-live-access-token'/);
+  assert.doesNotMatch(script, /\/api\/trading\//);
+});
+
 test('polling is throttled and pauses in the background', () => {
   assert.match(script, /success\?10000:30000/);
   assert.match(script, /document\.visibilityState/);
