@@ -11,12 +11,12 @@ from datetime import datetime
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from capital_flow_shadow import market_session_phase
 from large_buy_monitor import LargeBuyAlertService
 
 
 LOG = logging.getLogger(__name__)
 TAIPEI = ZoneInfo("Asia/Taipei")
-NEW_YORK = ZoneInfo("America/New_York")
 
 
 def market_live_window(market: str, now: datetime | None = None) -> bool:
@@ -24,13 +24,7 @@ def market_live_window(market: str, now: datetime | None = None) -> bool:
     current = now or datetime.now(tz=TAIPEI)
     if current.tzinfo is None:
         current = current.replace(tzinfo=TAIPEI)
-    local = current.astimezone(TAIPEI if market == "TW" else NEW_YORK)
-    minutes = local.hour * 60 + local.minute
-    if market == "TW":
-        return local.weekday() < 5 and 9 * 60 <= minutes < 13 * 60 + 30
-    if market == "US":
-        return local.weekday() < 5 and 9 * 60 + 30 <= minutes < 16 * 60
-    return False
+    return market_session_phase(market, current.timestamp()) in {"premarket", "regular"}
 
 
 def _epoch(value: Any) -> float:
@@ -182,7 +176,8 @@ class AlpacaLargeBuyStream:
         url = f"wss://stream.data.alpaca.markets/v2/{feed}"
         delay = 3.0
         while not self.stop.is_set():
-            if not market_live_window("US"):
+            phase = self.service.transition_market_phase("US")
+            if phase == "closed":
                 self.service.set_stream_status("US", "waiting_market_open", subscribed=0, error=None)
                 self.stop.wait(30.0)
                 continue
@@ -214,7 +209,9 @@ class AlpacaLargeBuyStream:
                             }))
                         elif kind == "subscription":
                             subscribed = len(row.get("trades") or [])
-                            self.service.set_stream_status("US", "connected", subscribed=subscribed)
+                            current_phase = self.service.transition_market_phase("US")
+                            state = "premarket_connected" if current_phase == "premarket" else "connected"
+                            self.service.set_stream_status("US", state, subscribed=subscribed)
                             delay = 3.0
                         elif kind == "q":
                             self.service.update_quote(
@@ -275,7 +272,7 @@ class AlpacaLargeBuyStream:
                 on_close=on_close,
             )
             closer = threading.Thread(
-                target=self._close_after_us_session,
+                target=self._guard_us_session,
                 args=(self._socket,),
                 name="large-buy-alpaca-session-guard",
                 daemon=True,
@@ -291,14 +288,20 @@ class AlpacaLargeBuyStream:
                 break
             delay = min(delay * 2, 60.0)
 
-    def _close_after_us_session(self, socket: Any) -> None:
+    def _guard_us_session(self, socket: Any) -> None:
+        previous = self.service.transition_market_phase("US")
         while not self.stop.wait(1.0):
-            if socket is not self._socket or not market_live_window("US"):
+            phase = self.service.transition_market_phase("US")
+            if socket is not self._socket or phase == "closed":
                 try:
                     socket.close()
                 except Exception:
                     pass
                 return
+            if phase != previous:
+                state = "premarket_connected" if phase == "premarket" else "connected"
+                self.service.set_stream_status("US", state, subscribed=len(self.symbols), error=None)
+                previous = phase
 
     def close(self) -> None:
         try:

@@ -400,6 +400,36 @@ class OfficialMarketCalendar:
                 "fallback_policy": "verified_cache_or_quarantine_never_guess",
             }
 
+    def session_status(self, market: str, session_date: str) -> dict[str, Any]:
+        """Return whether a date is an official session and its verified close time."""
+        market = str(market or "").upper()
+        try:
+            parsed = _parse_date(session_date)
+        except (TypeError, ValueError):
+            return {"available": False, "is_session": False, "status": "invalid_date"}
+        if market not in MARKETS:
+            return {"available": False, "is_session": False, "status": "invalid_market"}
+        with self._lock:
+            row = ((self._state["markets"][market].get("years") or {}).get(str(parsed.year)) or {})
+            sessions = row.get("sessions") if isinstance(row, dict) else None
+            if not isinstance(sessions, list) or not sessions:
+                if self.allow_network:
+                    self.refresh_async([parsed.year])
+                return {
+                    "available": False,
+                    "is_session": False,
+                    "status": "loading_official_calendar" if self._refreshing else "official_calendar_unavailable",
+                }
+            details = ((row.get("session_details") or {}).get(session_date) or {})
+            return {
+                "available": True,
+                "is_session": session_date in sessions,
+                "status": str(row.get("status") or "cached"),
+                "open": details.get("open"),
+                "close": details.get("close"),
+                "early_close": bool(details.get("early_close")),
+            }
+
     def session_complete(self, market: str, session_date: str, *, at_epoch: float | None = None) -> bool:
         """Confirm the official close time has passed, including US early closes."""
         market = str(market or "").upper()

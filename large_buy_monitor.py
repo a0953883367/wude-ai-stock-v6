@@ -18,7 +18,12 @@ import threading
 import time
 from typing import Any, Callable
 
-from capital_flow_shadow import CapitalFlowShadow, is_directional_trade_conditions
+from capital_flow_shadow import (
+    MARKET_CLOCKS,
+    CapitalFlowShadow,
+    is_directional_trade_conditions,
+    market_session_phase,
+)
 from flow_weight_shadow import FlowWeightShadow
 from inverse_etf_shadow import build_live_overlay
 
@@ -98,6 +103,23 @@ class LargeBuyDetector:
     def update_quote(self, symbol: str, *, bid: Any = None, ask: Any = None) -> None:
         with self._lock:
             self._quotes[symbol] = (_finite(bid), _finite(ask))
+
+    def reset_market(self, market: str) -> None:
+        """Drop raw short-window prints and quote state at a session boundary."""
+        market = str(market or "").upper()
+        symbols = {
+            symbol for symbol, baseline in self.baselines.items()
+            if baseline.market == market
+        }
+        with self._lock:
+            for symbol in symbols:
+                self._windows.pop(symbol, None)
+                self._quotes.pop(symbol, None)
+                self._last_price.pop(symbol, None)
+                self._last_side.pop(symbol, None)
+            for key in list(self._last_alert_at):
+                if key[0] in symbols:
+                    del self._last_alert_at[key]
 
     def _thresholds(self, baseline: StockBaseline) -> tuple[float, float]:
         daily_value = baseline.average_daily_value
@@ -340,8 +362,11 @@ def format_large_buy_telegram(alert: dict[str, Any]) -> str:
     ratio = float(alert.get(ratio_key) or 0)
     is_block_trade = bool(alert.get("is_block_trade"))
     label = alert.get("block_trade_label") if is_block_trade else alert.get("trigger_label")
+    phase = str(alert.get("session_phase") or "")
+    phase_text = "盤前" if phase == "premarket" else "正式盤" if phase == "regular" else ""
     return "\n".join([
         f"{'💥' if is_block_trade else ('🔻' if side == 'sell' else '🚨')} 10秒大量主動{side_text}｜{label}",
+        *([f"交易時段｜{phase_text}"] if phase_text else []),
         f"{alert.get('name')} {alert.get('symbol')}｜{alert.get('market')}",
         f"成交價 {float(alert.get('price') or 0):,.2f}｜{int(alert.get('trade_count') or 0)} 筆",
         f"主動{side_text}金額 {currency} {value:,.0f}｜{side_text}占比 {ratio:.1f}%",
@@ -380,10 +405,48 @@ class LargeBuyAlertService:
             market: {"state": "waiting", "subscribed": 0, "error": None}
             for market in MARKETS
         }
+        self._session_phases = {market: "closed" for market in MARKETS}
         self._lock = threading.RLock()
 
     def symbols(self, market: str) -> list[str]:
         return [row.symbol for row in self.baselines.values() if row.market == market]
+
+    def market_phase(self, market: str, *, timestamp: float | None = None) -> str:
+        """Use exchange-local time and the verified calendar when it is available."""
+        at = time.time() if timestamp is None else float(timestamp)
+        market = str(market or "").upper()
+        phase = market_session_phase(market, at)
+        if phase == "closed" or market not in MARKETS:
+            return "closed"
+        zone = MARKET_CLOCKS[market][0]
+        local = datetime.fromtimestamp(at, zone)
+        calendar = getattr(getattr(self, "weight_shadow", None), "calendar", None)
+        if calendar is not None and hasattr(calendar, "session_status"):
+            status = calendar.session_status(market, local.date().isoformat())
+            if status.get("available") and not status.get("is_session"):
+                return "closed"
+            if market == "US" and phase == "regular" and status.get("available"):
+                close_text = str(status.get("close") or "")
+                if len(close_text) >= 5 and local.strftime("%H:%M") >= close_text[:5]:
+                    return "closed"
+        return phase
+
+    def transition_market_phase(self, market: str, *, timestamp: float | None = None) -> str:
+        at = time.time() if timestamp is None else float(timestamp)
+        phase = self.market_phase(market, timestamp=at)
+        phases = getattr(self, "_session_phases", None)
+        if not isinstance(phases, dict):
+            phases = {item: "closed" for item in MARKETS}
+            self._session_phases = phases
+        previous = phases.get(market, "closed")
+        if previous != phase:
+            self.flow.transition_market_phase(market, phase, now=at)
+            if market == "US" and previous == "premarket" and phase == "regular":
+                self.detector.reset_market(market)
+            elif phase == "closed":
+                self.detector.reset_market(market)
+            phases[market] = phase
+        return phase
 
     def set_stream_status(self, market: str, state: str, *, subscribed: int = 0, error: str | None = None) -> None:
         with self._lock:
@@ -406,9 +469,17 @@ class LargeBuyAlertService:
         self.flow.update_quote(symbol, bid=bid, ask=ask, timestamp=timestamp)
 
     def process_trade(self, symbol: str, **trade: Any) -> dict[str, Any] | None:
-        self.flow.process_trade(symbol, **trade)
         baseline = self.baselines.get(symbol)
-        if baseline is not None and getattr(self, "weight_shadow", None) is not None:
+        parsed_at = _finite(trade.get("timestamp"))
+        at = time.time() if parsed_at is None else parsed_at
+        phase = self.transition_market_phase(
+            baseline.market if baseline is not None else "", timestamp=at
+        )
+        self.flow.process_trade(symbol, **trade)
+        if (
+            phase == "regular" and baseline is not None
+            and getattr(self, "weight_shadow", None) is not None
+        ):
             self.weight_shadow.observe_trade(
                 symbol,
                 baseline.market,
@@ -418,8 +489,9 @@ class LargeBuyAlertService:
         alert = self.detector.process_trade(symbol, **trade)
         if alert is None:
             return None
+        alert["session_phase"] = phase
         stored = self.store.append(alert)
-        if getattr(self, "weight_shadow", None) is not None:
+        if phase == "regular" and getattr(self, "weight_shadow", None) is not None:
             self.weight_shadow.record_alert(stored)
         if self.notifier is not None:
             try:
@@ -492,6 +564,22 @@ class LargeBuyAlertService:
                     "US": self.config.block_single_min_usd,
                 },
                 "broker_orders": False,
+                "us_session_policy": {
+                    "premarket_open_new_york": "04:00",
+                    "regular_open_new_york": "09:30",
+                    "regular_close_new_york": "16:00",
+                    "daylight_saving_taipei": ["16:00", "21:30", "04:00+1"],
+                    "standard_time_taipei": ["17:00", "22:30", "05:00+1"],
+                    "premarket_excluded_from_shadow_weight": True,
+                },
+                "resource_policy": {
+                    "alpaca_shared_websocket": True,
+                    "raw_trade_window_seconds": self.config.window_seconds,
+                    "aggregate_retention_minutes": 60,
+                    "alerts_keep_summary_only": True,
+                    "same_symbol_direction_cooldown_seconds": self.config.cooldown_seconds,
+                    "browser_background_polling": False,
+                },
             },
             "universe": {
                 "TW": len(self.symbols("TW")),

@@ -90,3 +90,31 @@ def test_us_early_close_controls_completion_time(tmp_path: Path):
     after = datetime(2026, 11, 27, 18, 1, tzinfo=timezone.utc).timestamp()
     assert calendar.session_complete("US", "2026-11-27", at_epoch=before) is False
     assert calendar.session_complete("US", "2026-11-27", at_epoch=after) is True
+
+
+def test_session_status_reports_holidays_and_verified_early_close(tmp_path: Path):
+    state = tmp_path / "calendar.json"
+    state.write_text(json.dumps({
+        "version": 1,
+        "markets": {
+            "TW": {"years": {}},
+            "US": {"years": {"2026": {
+                "status": "verified_alpaca",
+                "sources": ["Alpaca Market Calendar"],
+                "sessions": ["2026-11-27"],
+                "session_details": {
+                    "2026-11-27": {"open": "09:30", "close": "13:00", "early_close": True}
+                },
+            }}},
+        },
+    }), encoding="utf-8")
+    calendar = OfficialMarketCalendar(state, auto_refresh=False)
+
+    session = calendar.session_status("US", "2026-11-27")
+    assert session["available"] is True
+    assert session["is_session"] is True
+    assert session["close"] == "13:00"
+    assert session["early_close"] is True
+    holiday = calendar.session_status("US", "2026-11-26")
+    assert holiday["available"] is True
+    assert holiday["is_session"] is False
