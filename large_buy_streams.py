@@ -16,6 +16,7 @@ from large_buy_monitor import LargeBuyAlertService
 
 LOG = logging.getLogger(__name__)
 TAIPEI = ZoneInfo("Asia/Taipei")
+NEW_YORK = ZoneInfo("America/New_York")
 
 
 def market_live_window(market: str, now: datetime | None = None) -> bool:
@@ -23,15 +24,12 @@ def market_live_window(market: str, now: datetime | None = None) -> bool:
     current = now or datetime.now(tz=TAIPEI)
     if current.tzinfo is None:
         current = current.replace(tzinfo=TAIPEI)
-    local = current.astimezone(TAIPEI)
+    local = current.astimezone(TAIPEI if market == "TW" else NEW_YORK)
     minutes = local.hour * 60 + local.minute
     if market == "TW":
         return local.weekday() < 5 and 9 * 60 <= minutes < 13 * 60 + 30
     if market == "US":
-        if minutes >= 21 * 60 + 30:
-            return local.weekday() < 5
-        if minutes < 4 * 60:
-            return (local.weekday() - 1) % 7 < 5
+        return local.weekday() < 5 and 9 * 60 + 30 <= minutes < 16 * 60
     return False
 
 
