@@ -22,8 +22,10 @@ def config():
     return LargeBuyConfig(
         single_min_twd=3_000_000,
         cluster_min_twd=5_000_000,
-        single_min_usd=100_000,
+        single_min_usd=None,
         cluster_min_usd=250_000,
+        block_single_min_twd=10_000_000,
+        block_single_min_usd=1_000_000,
         single_daily_value_ratio=0,
         cluster_daily_value_ratio=0,
         cooldown_seconds=180,
@@ -44,18 +46,45 @@ def test_one_large_aggressive_buy_triggers_immediately():
 def test_single_block_trade_is_flagged_without_replacing_existing_alerts():
     detector = LargeBuyDetector(baselines(), config=config())
     tw = detector.process_trade(
-        "2330.TW", price=1000, size=5000, bid=999, ask=1000, timestamp=100
+        "2330.TW", price=1000, size=10_000, bid=999, ask=1000, timestamp=100
     )
     us = detector.process_trade(
-        "NVDA", price=200, size=1250, bid=199.9, ask=200, timestamp=101
+        "NVDA", price=200, size=5000, bid=199.9, ask=200, timestamp=101
     )
     assert tw["trigger_type"] == "single"
     assert tw["is_block_trade"] is True
-    assert tw["block_trade_threshold"] == 5_000_000
+    assert tw["block_trade_threshold"] == 10_000_000
     assert tw["block_trade_label"] == "單筆巨額大買"
     assert us["trigger_type"] == "single"
     assert us["is_block_trade"] is True
-    assert us["block_trade_threshold"] == 250_000
+    assert us["block_trade_threshold"] == 1_000_000
+
+
+def test_us_general_single_100k_is_removed_but_one_million_block_remains():
+    detector = LargeBuyDetector(baselines(), config=config())
+    assert detector.process_trade(
+        "NVDA", price=200, size=500, ask=200, timestamp=100
+    ) is None
+    assert detector.process_trade(
+        "NVDA", price=200, size=4999, ask=200, timestamp=120
+    ) is None
+    alert = detector.process_trade(
+        "NVDA", price=200, size=5000, ask=200, timestamp=140
+    )
+    assert alert["trigger_type"] == "single"
+    assert alert["is_block_trade"] is True
+    assert alert["general_single_threshold"] is None
+    assert alert["block_trade_threshold"] == 1_000_000
+
+
+def test_us_three_trade_cluster_rule_is_unchanged():
+    detector = LargeBuyDetector(baselines(), config=config())
+    assert detector.process_trade("NVDA", price=200, size=450, ask=200, timestamp=100) is None
+    assert detector.process_trade("NVDA", price=200, size=450, ask=200, timestamp=103) is None
+    alert = detector.process_trade("NVDA", price=200, size=450, ask=200, timestamp=108)
+    assert alert["trigger_type"] == "cluster"
+    assert alert["trade_count"] == 3
+    assert alert["buy_value"] == 270_000
 
 
 def test_three_to_five_aggressive_buys_trigger_inside_ten_seconds():
@@ -79,10 +108,10 @@ def test_cluster_requires_seventy_percent_aggressive_buy_value():
 
 def test_old_prints_expire_and_cooldown_prevents_duplicate_alerts():
     detector = LargeBuyDetector(baselines(), config=config())
-    first = detector.process_trade("NVDA", price=200, size=500, ask=200, timestamp=100)
+    first = detector.process_trade("NVDA", price=200, size=5000, ask=200, timestamp=100)
     assert first["trigger_type"] == "single"
-    assert detector.process_trade("NVDA", price=200, size=500, ask=200, timestamp=105) is None
-    again = detector.process_trade("NVDA", price=200, size=500, ask=200, timestamp=281)
+    assert detector.process_trade("NVDA", price=200, size=5000, ask=200, timestamp=105) is None
+    again = detector.process_trade("NVDA", price=200, size=5000, ask=200, timestamp=281)
     assert again["trigger_type"] == "single"
 
 
@@ -174,12 +203,14 @@ def test_notifications_cover_every_stock_without_selected_symbol_filter(tmp_path
     service._lock = threading.RLock()
 
     service.process_trade("2330.TW", price=1000, size=3000, ask=1000, timestamp=100)
-    service.process_trade("NVDA", price=200, size=500, ask=200, timestamp=101)
+    service.process_trade("NVDA", price=200, size=5000, ask=200, timestamp=101)
 
     assert [row["symbol"] for row in received] == ["2330.TW", "NVDA"]
     snapshot = service.snapshot()
     assert snapshot["policy"]["notification_scope"] == "all_site_stocks"
     assert snapshot["policy"]["selected_symbol_filter"] is False
+    assert snapshot["policy"]["general_single_thresholds"] == {"TW": 3_000_000, "US": None}
+    assert snapshot["policy"]["block_single_thresholds"] == {"TW": 10_000_000, "US": 1_000_000}
 
 
 def test_telegram_text_states_information_only():
@@ -242,13 +273,13 @@ def test_us_premarket_notifies_but_never_updates_formal_weight(tmp_path: Path):
     service.alert_notifier = received.append
     service._session_phases = {"TW": "closed", "US": "closed"}
 
-    alert = service.process_trade("NVDA", price=200, size=500, ask=200, timestamp=premarket)
+    alert = service.process_trade("NVDA", price=200, size=5000, ask=200, timestamp=premarket)
     assert alert["session_phase"] == "premarket"
     assert received[0]["symbol"] == "NVDA"
     assert service.weight_shadow.observed == []
     assert service.weight_shadow.alerts == []
 
-    service.process_trade("NVDA", price=200, size=500, ask=200, timestamp=regular)
+    service.process_trade("NVDA", price=200, size=5000, ask=200, timestamp=regular)
     assert len(service.weight_shadow.observed) == 1
     assert len(service.weight_shadow.alerts) == 1
 
