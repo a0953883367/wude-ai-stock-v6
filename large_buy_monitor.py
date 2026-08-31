@@ -482,6 +482,8 @@ class LargeBuyAlertService:
             "version": 1,
             "policy": {
                 "scope": "all_site_stocks",
+                "notification_scope": "all_site_stocks",
+                "selected_symbol_filter": False,
                 "window_seconds": self.config.window_seconds,
                 "single_or_cluster": True,
                 "cluster_trade_count": [self.config.cluster_min_trades, self.config.cluster_max_trades],
