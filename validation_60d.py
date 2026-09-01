@@ -32,6 +32,7 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
     holding = _read(reports_dir / "holding_simulation.json")
     valuation = _read(reports_dir / "valuation_risk_shadow.json")
     rotation = _read(reports_dir / "market_rotation_shadow.json")
+    comprehensive = _read(reports_dir / "comprehensive_shadow_history.json")
     calibration = accuracy.get("calibration") or {}
     days = min(TARGET_DAYS, int(calibration.get("trading_days_collected") or 0))
     eligible_samples = int(calibration.get("eligible_one_day_samples") or 0)
@@ -54,6 +55,10 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
     }
     long_days = {
         market: int((holding.get("long", {}).get("validation_completed_days") or {}).get(market) or 0)
+        for market in ("TW", "US")
+    }
+    comprehensive_days = {
+        market: int((comprehensive.get("valid_trading_days") or {}).get(market) or 0)
         for market in ("TW", "US")
     }
     ready = bool(
@@ -96,6 +101,16 @@ def update_validation_60d(reports_dir: Path, *, updated_at: str) -> dict[str, An
             },
             "valuation": {market: {"effective_sessions": valuation_sessions[market]} for market in valuation_sessions},
             "rotation": {market: {"completed_sessions": rotation_days[market]} for market in rotation_days},
+            "comprehensive_shadow": {
+                market: {
+                    "status": "complete" if comprehensive_days[market] >= TARGET_DAYS else "collecting",
+                    "completed_days": comprehensive_days[market],
+                    "initial_review_days": 20,
+                    "target_days": TARGET_DAYS,
+                    "formal_ranking_unchanged": True,
+                }
+                for market in ("TW", "US")
+            },
         },
         "rules": {
             "future_data_forbidden": True,

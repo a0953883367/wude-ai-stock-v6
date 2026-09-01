@@ -10,7 +10,8 @@ const evidence=unified.evidence_files.flatMap(path=>JSON.parse(fs.readFileSync('
 
 [
   '中央 AI 決策中樞','正式排名鎖定','不自動改權重','不連券商下單',
-  '中央唯一答案','台股官方財報','台股法人連動','統一證據','模型畢業','部位控制',
+  '中央唯一答案','台股官方財報','台股法人連動','綜合影子試走','統一證據','模型畢業','部位控制',
+  '中央決策','綜合影子排名','正式／影子比較','20日初評','60日後才可人工決定是否整合',
   '價格到買進區','高於買進區','停損／獲利出場','可進場','等進場價','不進場／退出','買進區','停損','目標一','目標二','進出場規則',
   '1～5 日','45 日','6 個月','有衝突','資料不足','查看全部證據與日期'
 ].forEach(text=>assert(ui.includes(text),`missing UI copy: ${text}`));
@@ -29,7 +30,12 @@ assert(js.includes('institutional_snapshot'));
 assert(js.includes('institutional_link'));
 assert(js.includes('官方法人已連動中央 AI'));
 assert(js.includes("item.market!=='TW'"));
-assert(html.includes('decision_hub.js?v=3'));
+assert(js.includes("fetchJSON('comprehensive_shadow_ranking.json'"));
+assert(js.includes('ranking_files'));
+assert(js.includes('loadShadowSelection'));
+assert(js.includes("state.mode==='compare'"));
+assert(js.includes('影子覆蓋'));
+assert(html.includes('decision_hub.js?v=4'));
 assert(js.includes("fetchJSON('decision_hub.json'"));
 assert(js.includes('decision_hub_user_choices_v1'));
 assert(js.includes('localStorage.setItem'));

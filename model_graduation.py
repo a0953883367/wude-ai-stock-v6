@@ -50,6 +50,7 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
     rotation = _read(reports_dir / "market_rotation_shadow.json")
     weights = _read(reports_dir / "tw_weight_experiment.json")
     inverse = _read(reports_dir / "inverse_etf_shadow.json")
+    comprehensive = _read(reports_dir / "comprehensive_shadow_history.json")
     days = int(validation.get("trading_days_collected") or 0)
     models = [
         _conclusion(
@@ -97,6 +98,17 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
         "inverse_etf", "反向ETF影子模型", inverse_samples, 20,
         quality_ready=inverse_samples >= 20,
     ))
+    comprehensive_days = comprehensive.get("valid_trading_days") or {}
+    for market, label in (("TW", "台股"), ("US", "美股")):
+        current = int(comprehensive_days.get(market) or 0)
+        models.append(_conclusion(
+            f"comprehensive_shadow_{market.lower()}",
+            f"{label}綜合影子排名",
+            current,
+            60,
+            quality_ready=current >= 60,
+            extra="20個交易日先初評，60日後才可人工決定是否整合",
+        ))
     summary = {
         status: sum(model["status"] == status for model in models)
         for status in ("collecting", "review_required", "eligible_for_manual_graduation")

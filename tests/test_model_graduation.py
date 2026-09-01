@@ -19,3 +19,17 @@ def test_graduation_conclusions_are_automatic_but_promotion_is_manual(tmp_path):
     weight = next(model for model in payload["models"] if model["model_id"] == "tw_institution_weight")
     assert weight["current"] == 5
     assert weight["status"] == "collecting"
+
+
+def test_comprehensive_shadow_has_separate_tw_us_graduation_tracks(tmp_path):
+    _write(tmp_path / "validation_60d.json", {})
+    _write(tmp_path / "comprehensive_shadow_history.json", {
+        "valid_trading_days": {"TW": 20, "US": 7}
+    })
+    payload = update_model_graduation(tmp_path, updated_at="now")
+    by_id = {row["model_id"]: row for row in payload["models"]}
+    assert by_id["comprehensive_shadow_tw"]["current"] == 20
+    assert by_id["comprehensive_shadow_us"]["current"] == 7
+    assert by_id["comprehensive_shadow_tw"]["target"] == 60
+    assert "20個交易日先初評" in by_id["comprehensive_shadow_tw"]["reason"]
+    assert all(row["automatic_promotion"] is False for row in by_id.values())

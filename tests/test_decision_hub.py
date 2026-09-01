@@ -97,6 +97,13 @@ def test_report_locks_formal_rank_and_explains_horizon_conflict(tmp_path):
     assert item["horizons"]["short"]["recommendation"] == "can_scale"
     assert item["horizons"]["long"]["recommendation"] != "can_scale"
     assert item["formal_ranking_unchanged"] is True
+    assert item["shadow_baseline"]["short"]["score"] == 82
+    assert report["comprehensive_shadow"]["report"] == "comprehensive_shadow_ranking.json"
+    shadow = json.loads((tmp_path / "comprehensive_shadow_ranking.json").read_text())
+    chunk = json.loads((tmp_path / shadow["ranking_files"]["TW"]["short"]).read_text())
+    shadow_item = chunk["rankings"][0]
+    assert shadow_item["formal_ranking_unchanged"] is True
+    assert shadow_item["places_orders"] is False
     stockq = report["readiness"]["stockq_market_context"]
     assert stockq["status"] == "ok"
     assert stockq["indicator_count"] == 16
