@@ -18,8 +18,8 @@ from evidence_contract import build_unified_evidence_report, make_evidence
 from portfolio_control import build_portfolio_control
 
 
-SCHEMA_VERSION = 3
-MODEL_VERSION = "CENTRAL-DECISION-HUB-V3"
+SCHEMA_VERSION = 4
+MODEL_VERSION = "CENTRAL-DECISION-HUB-V4"
 CHUNK_SIZE = 50
 EVIDENCE_CHUNK_SIZE = 400
 CAPITAL_FLOW_MIN_CONFIDENCE = 60.0
@@ -33,6 +33,9 @@ POLICY = {
     "automatic_orders": False,
     "horizons_separate": True,
     "user_final_decision_required": True,
+    "markets_separate": True,
+    "tw_institution_never_applied_to_us": True,
+    "page_views_do_not_change_calculation": True,
 }
 
 
@@ -81,6 +84,7 @@ def _evidence(
     reason: str,
     *,
     affects_decision: bool = True,
+    provenance: str | None = None,
 ) -> dict[str, Any]:
     return {
         "source_id": source_id,
@@ -93,6 +97,7 @@ def _evidence(
         "status": status,
         "reason": reason,
         "affects_decision": bool(affects_decision),
+        "provenance": provenance or source_id,
     }
 
 
@@ -170,6 +175,60 @@ def _quality_confidence(row: dict[str, Any], base: Any) -> float:
     if coverage is not None and total and total > 0:
         confidence = min(confidence, coverage / total * 100)
     return _bounded(confidence)
+
+
+def _institution_link(
+    row: dict[str, Any], updated_at: str, *, coverage_eligible: bool
+) -> dict[str, Any]:
+    """Expose verified TW institutional evidence without double-counting it."""
+    market = str(row.get("market") or "").upper()
+    if market != "TW":
+        return {
+            "applicable": False,
+            "available": False,
+            "status": "not_applicable",
+            "direction": "missing",
+            "reason": "美股使用美股資金流證據，不套用台灣法人資料",
+            "affects_central_decision": False,
+            "already_counted_in_formal_v6": False,
+            "additional_central_adjustment_points": 0.0,
+        }
+    available = bool(row.get("institution_available"))
+    session_date = str(row.get("institution_date") or "")
+    source = str(row.get("institution_source") or "")
+    total = _number(row.get("institution_net"), _number(row.get("institution_1d")))
+    foreign = _number(row.get("foreign_net"))
+    trust = _number(row.get("trust_net"))
+    dealer = _number(row.get("dealer_net"))
+    verified = bool(
+        coverage_eligible and available and session_date and source
+        and total is not None
+    )
+    direction = "support" if verified and total > 0 else "oppose" if verified and total < 0 else "neutral" if verified else "missing"
+    return {
+        "applicable": True,
+        "available": verified,
+        "status": "linked_formal_once" if verified else "coverage_blocked_or_missing",
+        "direction": direction,
+        "session_date": session_date or None,
+        "source": source or None,
+        "total_net_shares": total if verified else None,
+        "foreign_net_shares": foreign if verified else None,
+        "trust_net_shares": trust if verified else None,
+        "dealer_net_shares": dealer if verified else None,
+        "reason": (
+            "官方法人證據已在正式 V6 單次計入；中央只讀取並顯示，不重複加分"
+            if verified else "官方法人資料未通過覆蓋率或日期驗證，中央不使用也不補 0"
+        ),
+        "affects_central_decision": verified,
+        "already_counted_in_formal_v6": verified,
+        "additional_central_adjustment_points": 0.0,
+    }
+
+
+def _share_text(value: Any) -> str:
+    number = _number(value)
+    return "—" if number is None else f"{number:+,.0f} 股"
 
 
 def _valuation_index(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
@@ -270,7 +329,10 @@ def _inverse_market_ready(report: dict[str, Any] | None, market: str) -> bool:
     )
 
 
-def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any]:
+def _model_readiness(
+    reports: dict[str, dict[str, Any] | None],
+    institution_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     accuracy = reports.get("accuracy") or {}
     calibration = accuracy.get("calibration", {})
     valuation = reports.get("valuation") or {}
@@ -284,6 +346,7 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
     graduation = reports.get("graduation") or {}
     tw_financial = reports.get("tw_financial") or {}
     capital_flow = reports.get("capital_flow") or {}
+    institution_status = institution_status or {}
     valuation_coverage = valuation.get("coverage", {})
     inverse_samples = sum(
         len((inverse.get("markets", {}).get(market) or {}).get("cohorts", []))
@@ -373,6 +436,24 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
             "coverage_pct": tw_financial.get("coverage_pct"),
             "missing": tw_financial.get("missing_symbols", []),
         },
+        "tw_institutional": {
+            "status": (
+                "ready" if institution_status.get("ranking_eligible")
+                else str(institution_status.get("reason") or "missing")
+            ),
+            "available": bool(institution_status.get("ranking_eligible")),
+            "ai_eligible": bool(institution_status.get("ai_eligible")),
+            "session_date": institution_status.get("session_date"),
+            "returned_count": int(institution_status.get("returned_count") or 0),
+            "expected_count": int(institution_status.get("expected_count") or 0),
+            "coverage_pct": _number(institution_status.get("coverage_pct")),
+            "minimum_coverage_pct": _number(
+                institution_status.get("minimum_coverage_pct"), 95.0
+            ),
+            "markets_separate": True,
+            "applies_to": "TW",
+            "never_applies_to": "US",
+        },
         "capital_flow": {
             "status": "ready" if capital_flow else "missing",
             "closed_complete_sessions": sum(
@@ -390,6 +471,52 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
     }
 
 
+def _resolved_institution_status(
+    rows: list[dict[str, Any]],
+    institution_status: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Keep standalone hub refreshes from dropping valid TW coverage metadata."""
+    if isinstance(institution_status, dict) and institution_status:
+        return dict(institution_status)
+    tw_rows = [row for row in rows if str(row.get("market") or "") == "TW"]
+    expected_dates = sorted({
+        str(row.get("official_session_date")) for row in tw_rows
+        if row.get("official_session_date")
+    })
+    candidate_dates = sorted({
+        str(row.get("institution_date")) for row in tw_rows
+        if row.get("institution_date")
+    })
+    target_date = expected_dates[-1] if expected_dates else (
+        candidate_dates[-1] if candidate_dates else None
+    )
+    available = [
+        row for row in tw_rows
+        if row.get("institution_available")
+        and str(row.get("institution_date") or "") == str(target_date or "")
+        and row.get("institution_source")
+        and row.get("institution_net") is not None
+    ]
+    expected_count = len(tw_rows)
+    returned_count = len(available)
+    coverage_pct = (
+        round(returned_count / expected_count * 100, 2)
+        if expected_count else None
+    )
+    eligible = bool(expected_count and coverage_pct is not None and coverage_pct >= 95.0)
+    return {
+        "ranking_eligible": eligible,
+        "ai_eligible": eligible,
+        "session_date": target_date,
+        "returned_count": returned_count,
+        "expected_count": expected_count,
+        "coverage_pct": coverage_pct,
+        "minimum_coverage_pct": 95.0,
+        "reason": "derived_from_analysis_rows" if available else "missing",
+        "provenance": "all_analysis_rows_fallback",
+    }
+
+
 def _build_decision(
     row: dict[str, Any],
     *,
@@ -399,6 +526,7 @@ def _build_decision(
     inverse_candidate: dict[str, Any] | None,
     inverse_ready: bool,
     capital_flow: dict[str, Any] | None,
+    institution_eligible: bool,
     updated_at: str,
 ) -> dict[str, Any]:
     symbol = str(row.get("symbol") or "")
@@ -415,6 +543,11 @@ def _build_decision(
         data_missing.append("current_price")
     if not market_valid:
         data_missing.append("market_contract")
+    institutional_link = _institution_link(
+        row, updated_at, coverage_eligible=institution_eligible
+    )
+    if institutional_link["applicable"] and not institutional_link["available"]:
+        data_missing.append("tw_official_institution")
 
     short_score = _bounded(row.get("short_term_score"))
     short_confidence = _quality_confidence(row, row.get("short_term_confidence"))
@@ -538,6 +671,36 @@ def _build_decision(
         long_conf, session_date, "derived_from_existing_fields",
         "沿用中長線計畫，另以財務品質、成長與估值風險形成6個月觀察，不回寫正式分數",
     ))
+    if institutional_link["available"]:
+        institution_strength = _number(row.get("institution_score"), 50.0)
+        evidence.append(_evidence(
+            "tw_official_institution", "台股官方法人", "market",
+            institutional_link["direction"], institution_strength,
+            _quality_confidence(row, row.get("overall_confidence", 70)),
+            str(institutional_link.get("session_date") or updated_at),
+            "linked_formal_once",
+            "三大法人 " + _share_text(institutional_link.get("total_net_shares"))
+            + "；外資 " + _share_text(institutional_link.get("foreign_net_shares"))
+            + "；投信 " + _share_text(institutional_link.get("trust_net_shares"))
+            + "；自營商 " + _share_text(institutional_link.get("dealer_net_shares"))
+            + "。已在正式 V6 單次計入，中央不重複加分。",
+            affects_decision=True,
+            provenance=str(institutional_link.get("source") or "TWSE/TPEx"),
+        ))
+    elif institutional_link["applicable"]:
+        evidence.append(_evidence(
+            "tw_official_institution", "台股官方法人", "market", "missing", 0, 0,
+            str(institutional_link.get("session_date") or updated_at),
+            "coverage_blocked_or_missing", institutional_link["reason"],
+            affects_decision=False,
+            provenance=str(institutional_link.get("source") or "TWSE/TPEx"),
+        ))
+    else:
+        evidence.append(_evidence(
+            "tw_official_institution", "台股官方法人", "market", "missing", 0, 100,
+            updated_at, "not_applicable", institutional_link["reason"],
+            affects_decision=False, provenance="market_separation_rule",
+        ))
     if valuation_ready:
         evidence.append(_evidence(
             "valuation_shadow", "估值風險雷達", "risk",
@@ -649,7 +812,7 @@ def _build_decision(
             affects_decision=item["affects_decision"],
             symbol=symbol,
             market=str(row.get("market") or ""),
-            provenance=item["source_id"],
+            provenance=item.get("provenance") or item["source_id"],
         )
         for item in evidence
     ]
@@ -801,6 +964,7 @@ def _build_decision(
         "formal_rank": row.get("overall_rank") or row.get("rank"),
         "formal_score": _number(row.get("overall_ranking_score") or row.get("score")),
         "formal_ranking_unchanged": True,
+        "institutional_link": institutional_link,
         "inverse_shadow": {
             "group": (inverse_mapping or {}).get("group"),
             "inverse_symbol": (inverse_mapping or {}).get("inverse_symbol"),
@@ -856,10 +1020,14 @@ def update_decision_hub(
     period: str,
     updated_at: str,
     intraday: bool,
+    institution_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Generate the hub without mutating ``rows`` or formal report files."""
     reports_dir = Path(reports_dir)
     frozen_rows = copy.deepcopy(rows)
+    institution_status = _resolved_institution_status(
+        frozen_rows, institution_status
+    )
     source_reports = {
         "valuation": _read_json(reports_dir / "valuation_risk_shadow.json"),
         "rotation": _read_json(reports_dir / "market_rotation_shadow.json"),
@@ -911,6 +1079,10 @@ def update_decision_hub(
                 str(row.get("official_session_date") or ""),
                 symbol_key,
             )),
+            institution_eligible=bool(
+                institution_status.get("ranking_eligible")
+                and institution_status.get("ai_eligible")
+            ),
             updated_at=updated_at,
         ))
     decisions.sort(key=lambda item: (
@@ -978,6 +1150,18 @@ def update_decision_hub(
             1 for item in decisions
             if (item.get("capital_flow_shadow") or {}).get("validated_for_decision")
         ),
+        "institution_linked_count": sum(
+            1 for item in decisions
+            if (item.get("institutional_link") or {}).get("available")
+        ),
+        "institution_linked_by_market": {
+            market: sum(
+                1 for item in decisions
+                if item.get("market") == market
+                and (item.get("institutional_link") or {}).get("available")
+            )
+            for market in ("TW", "US")
+        },
         "by_recommendation": {
             code: sum(1 for item in decisions if item["final"]["recommendation"] == code)
             for code in ("can_scale", "wait_pullback", "watch", "avoid", "data_insufficient")
@@ -1026,6 +1210,7 @@ def update_decision_hub(
             "資料契約與重大風險優先，缺資料不推測",
             "1～5日、45日、6個月分開判斷，不以多數決互相覆蓋",
             "未完成向前驗證的影子模型只能提供證據，不能提高正式排名",
+            "台股官方法人覆蓋達95%才連動；已在正式V6單次計入，中央不重複加分，美股永不套用台股法人",
             "大量買賣依原訊號品質連動；淨流金額只顯示，完整收盤且品質達標才以最多±3點影響短線中央判斷",
             "同來源、同標的、同時段、同交易日證據只計一次；族群輪動中的資金流不再重複加權",
             "短線強但估值過高時，保留短線觀察並降低6個月判斷",
@@ -1041,6 +1226,17 @@ def update_decision_hub(
                 "updated_at": news_cache.get("updated_at"),
                 "symbols": len(news_by_symbol),
             },
+            "tw_institutional_official": {
+                "available": bool((institution_status or {}).get("ranking_eligible")),
+                "updated_at": (institution_status or {}).get("session_date"),
+                "coverage_pct": _number((institution_status or {}).get("coverage_pct")),
+                "minimum_coverage_pct": _number(
+                    (institution_status or {}).get("minimum_coverage_pct"), 95.0
+                ),
+                "ai_eligible": bool((institution_status or {}).get("ai_eligible")),
+                "applies_to": "TW",
+                "never_applies_to": "US",
+            },
             **{
             name: {
                 "available": report is not None,
@@ -1050,7 +1246,7 @@ def update_decision_hub(
             },
         },
         "missing_sources": missing_sources,
-        "readiness": _model_readiness(source_reports),
+        "readiness": _model_readiness(source_reports, institution_status),
         "single_answer": single_answer,
         "portfolio_control": {
             key: value for key, value in portfolio.items() if key != "by_symbol"
@@ -1101,6 +1297,10 @@ def main() -> int:
         period=str(analysis.get("period") or "evening"),
         updated_at=str(analysis.get("updated_at") or ""),
         intraday=analysis.get("run_mode") == "intraday_refresh",
+        institution_status=(
+            analysis.get("institution_status")
+            if isinstance(analysis.get("institution_status"), dict) else None
+        ),
     )
     print(
         f"Decision hub: {payload['summary']['decision_count']} rows, "

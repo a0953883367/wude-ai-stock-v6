@@ -64,6 +64,10 @@ def _row(**overrides):
         "mid_long_stop": 85, "mid_long_target1": 115, "mid_long_target2": 130,
         "technical_score": 80, "positioning_score": 75, "financial_quality_score": 72,
         "growth_score": 70, "fundamental_score": 71,
+        "institution_available": True, "institution_date": "2026-08-29",
+        "institution_source": "TWSE T86", "institution_score": 82,
+        "institution_net": 3_700_000, "foreign_net": 3_000_000,
+        "trust_net": 500_000, "dealer_net": 200_000,
         "news_data_available": True, "news_verified": False, "news_penalty": 0,
         "news_summary": "沒有已驗證重大風險",
     }
@@ -135,6 +139,93 @@ def test_inverse_etf_mapping_is_linked_as_visible_shadow_evidence(tmp_path):
     assert inverse["affects_decision"] is False
     assert item["inverse_shadow"]["group"] == "tw_broad"
     assert item["inverse_shadow"]["affects_formal_ranking"] is False
+
+
+def test_tw_official_institution_is_visible_once_in_central_evidence(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    status = {
+        "ranking_eligible": True, "ai_eligible": True,
+        "session_date": "2026-08-29", "returned_count": 187,
+        "expected_count": 188, "coverage_pct": 99.5,
+        "minimum_coverage_pct": 95,
+    }
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+        institution_status=status,
+    )
+    item = report["decisions"][0]
+    evidence = next(
+        row for row in item["evidence"]
+        if row["source_id"] == "tw_official_institution"
+    )
+    assert evidence["direction"] == "support"
+    assert evidence["status"] == "linked_formal_once"
+    assert evidence["affects_decision"] is True
+    assert evidence["provenance"] == "TWSE T86"
+    assert "中央不重複加分" in evidence["reason"]
+    assert item["institutional_link"]["total_net_shares"] == 3_700_000
+    assert item["institutional_link"]["additional_central_adjustment_points"] == 0
+    assert report["summary"]["institution_linked_count"] == 1
+    readiness = report["readiness"]["tw_institutional"]
+    assert readiness["available"] is True
+    assert readiness["coverage_pct"] == 99.5
+
+
+def test_standalone_refresh_derives_tw_institution_coverage_from_rows(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    readiness = report["readiness"]["tw_institutional"]
+    source = report["source_status"]["tw_institutional_official"]
+    assert readiness["available"] is True
+    assert readiness["coverage_pct"] == 100.0
+    assert readiness["returned_count"] == 1
+    assert source["available"] is True
+
+
+def test_tw_institution_is_isolated_when_whole_market_coverage_is_too_low(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    rows = [
+        _row(symbol="READY.TW"),
+        _row(
+            symbol="MISSING.TW", institution_available=False,
+            institution_date=None, institution_source=None,
+            institution_net=None,
+        ),
+    ]
+    report = update_decision_hub(
+        tmp_path, rows, period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    ready = next(item for item in report["decisions"] if item["symbol"] == "READY.TW")
+    assert report["readiness"]["tw_institutional"]["coverage_pct"] == 50.0
+    assert report["readiness"]["tw_institutional"]["available"] is False
+    assert ready["institutional_link"]["available"] is False
+    assert report["summary"]["institution_linked_count"] == 0
+
+
+def test_us_decision_never_uses_tw_institution_evidence(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    report = update_decision_hub(
+        tmp_path,
+        [_row(symbol="TEST", market="US", institution_available=True)],
+        period="evening", updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    link = item["institutional_link"]
+    evidence = next(
+        row for row in item["evidence"]
+        if row["source_id"] == "tw_official_institution"
+    )
+    assert link["applicable"] is False
+    assert link["available"] is False
+    assert evidence["status"] == "not_applicable"
+    assert evidence["affects_decision"] is False
+    assert "tw_official_institution" not in item["data_missing"]
+    assert report["summary"]["institution_linked_by_market"] == {"TW": 0, "US": 0}
 
 
 def test_invalid_market_contract_is_hard_block(tmp_path):
