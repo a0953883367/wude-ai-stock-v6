@@ -20,7 +20,8 @@ def baselines():
 
 def config():
     return LargeBuyConfig(
-        single_min_twd=3_000_000,
+        single_min_twd=500_000,
+        major_single_min_twd=3_000_000,
         cluster_min_twd=5_000_000,
         single_min_usd=None,
         cluster_min_usd=250_000,
@@ -41,6 +42,40 @@ def test_one_large_aggressive_buy_triggers_immediately():
     assert alert["trade_count"] == 1
     assert alert["buy_value"] == 3_000_000
     assert alert["is_block_trade"] is False
+    assert alert["threshold_level"] == "major"
+    assert alert["trigger_label"] == "300萬級單筆大買"
+
+
+def test_tw_500k_single_trade_is_the_fixed_general_floor():
+    detector = LargeBuyDetector(baselines(), config=config())
+    assert detector.process_trade(
+        "2330.TW", price=1000, size=499, bid=999, ask=1000, timestamp=100
+    ) is None
+    alert = detector.process_trade(
+        "2330.TW", price=1000, size=500, bid=999, ask=1000, timestamp=101
+    )
+    assert alert["buy_value"] == 500_000
+    assert alert["threshold_level"] == "general"
+    assert alert["threshold_level_label"] == "50萬級"
+
+
+def test_higher_tw_tier_bypasses_lower_tier_cooldown_without_duplicate_spam():
+    detector = LargeBuyDetector(baselines(), config=config())
+    general = detector.process_trade(
+        "2330.TW", price=1000, size=500, ask=1000, timestamp=100
+    )
+    assert general["threshold_level"] == "general"
+    assert detector.process_trade(
+        "2330.TW", price=1000, size=600, ask=1000, timestamp=105
+    ) is None
+    major = detector.process_trade(
+        "2330.TW", price=1000, size=3000, ask=1000, timestamp=110
+    )
+    assert major["threshold_level"] == "major"
+    block = detector.process_trade(
+        "2330.TW", price=1000, size=10_000, ask=1000, timestamp=115
+    )
+    assert block["threshold_level"] == "block"
 
 
 def test_single_block_trade_is_flagged_without_replacing_existing_alerts():
@@ -54,7 +89,7 @@ def test_single_block_trade_is_flagged_without_replacing_existing_alerts():
     assert tw["trigger_type"] == "single"
     assert tw["is_block_trade"] is True
     assert tw["block_trade_threshold"] == 10_000_000
-    assert tw["block_trade_label"] == "單筆巨額大買"
+    assert tw["block_trade_label"] == "1,000萬級單筆巨額大買"
     assert us["trigger_type"] == "single"
     assert us["is_block_trade"] is True
     assert us["block_trade_threshold"] == 1_000_000
@@ -89,7 +124,8 @@ def test_us_three_trade_cluster_rule_is_unchanged():
 
 def test_three_to_five_aggressive_buys_trigger_inside_ten_seconds():
     detector = LargeBuyDetector(baselines(), config=config())
-    assert detector.process_trade("2330.TW", price=1000, size=1800, ask=1000, timestamp=100) is None
+    first = detector.process_trade("2330.TW", price=1000, size=1800, ask=1000, timestamp=100)
+    assert first["threshold_level"] == "general"
     assert detector.process_trade("2330.TW", price=1000, size=1800, ask=1000, timestamp=103) is None
     alert = detector.process_trade("2330.TW", price=1000, size=1800, ask=1000, timestamp=108)
     assert alert["trigger_type"] == "cluster"
@@ -121,7 +157,7 @@ def test_trade_at_bid_is_not_mislabelled_as_buy():
         "2330.TW", price=999, size=10_000, bid=999, ask=1000, timestamp=100
     )
     assert alert["alert_side"] == "sell"
-    assert alert["trigger_label"] == "單筆大賣"
+    assert alert["trigger_label"] == "300萬級單筆大賣"
     assert alert["sell_value"] == 9_990_000
     assert alert["aggressive_sell_ratio_pct"] == 100
 
@@ -209,8 +245,13 @@ def test_notifications_cover_every_stock_without_selected_symbol_filter(tmp_path
     snapshot = service.snapshot()
     assert snapshot["policy"]["notification_scope"] == "all_site_stocks"
     assert snapshot["policy"]["selected_symbol_filter"] is False
-    assert snapshot["policy"]["general_single_thresholds"] == {"TW": 3_000_000, "US": None}
+    assert snapshot["policy"]["general_single_thresholds"] == {"TW": 500_000, "US": None}
+    assert snapshot["policy"]["major_single_thresholds"] == {"TW": 3_000_000, "US": None}
     assert snapshot["policy"]["block_single_thresholds"] == {"TW": 10_000_000, "US": 1_000_000}
+    assert snapshot["policy"]["single_threshold_tiers"] == {
+        "TW": [500_000, 3_000_000, 10_000_000],
+        "US": [1_000_000],
+    }
 
 
 def test_telegram_text_states_information_only():
