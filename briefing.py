@@ -275,6 +275,7 @@ def _update_decision_hub_safely(
     period: str,
     updated_at: str,
     intraday: bool,
+    institution_status: dict | None = None,
 ) -> bool:
     """Keep the downstream decision hub isolated from formal rankings."""
     health_path = reports_dir / "decision_hub_health.json"
@@ -293,6 +294,7 @@ def _update_decision_hub_safely(
             period=period,
             updated_at=updated_at,
             intraday=intraday,
+            institution_status=institution_status,
         )
     except Exception as exc:  # noqa: BLE001 - deliberate downstream isolation
         logging.exception("中央決策中樞失敗；正式排名與報表繼續")
@@ -1641,6 +1643,7 @@ def main() -> int:
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
+        institution_status=institution_status,
     )
     ranking_payload = {
         "updated_at": report["updated_at"],

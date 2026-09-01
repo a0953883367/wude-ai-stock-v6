@@ -171,6 +171,8 @@ test('official institution ranks are separate and coverage-gated', () => {
   assert.match(script, /不完整法人資料送進 AI 決策/);
   assert.match(script, /panel\.hidden=!isTw/);
   assert.match(script, /if\(!isTw\)return/);
+  assert.match(html, /覆蓋達標後連動中央 AI/);
+  assert.match(html, /href="decision-hub\.html"/);
 });
 
 test('market tabs keep Taiwan and US alert views separate', () => {
