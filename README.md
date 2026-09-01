@@ -101,6 +101,12 @@ Railway Variables／Secrets 必須設定：
 `live_config.js` 或報告檔。若手機遺失，立即更換 `LIVE_ACCESS_TOKEN` 即可讓
 所有舊手機權杖失效。舊的 `#live_token=` 私人網址仍相容，但不再是建議流程。
 
+朋友版使用另一個私人 Telegram 頻道。把同一支即時警報機器人加入頻道後，
+只授予「發布訊息」權限；後端會依 `TELEGRAM_FRIEND_ALERT_CHANNEL_TITLE` 精確
+比對頻道名稱與機器人的管理員狀態，並將數字 chat ID 保存於 Railway `/data`。
+朋友版只接收大量買賣批次，手機驗證碼、連線異常、值班狀態與內部診斷仍只送
+擁有者私人聊天室。朋友頻道傳送失敗也不會中斷擁有者通知或行情處理。
+
 瀏覽器請求使用 `X-Live-Token` 標頭；不要改成 `Authorization: Bearer`，
 因為 Railway 的擁有者驗證會先攔截該標頭。
 

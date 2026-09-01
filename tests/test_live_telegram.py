@@ -1,8 +1,14 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 from live_telegram import LiveTelegramBatcher, fanout_alert, format_live_telegram_batch
 import notifier
-from notifier import _live_telegram_credentials, live_telegram_configured
+from notifier import (
+    _live_friend_telegram_credentials,
+    _live_telegram_credentials,
+    live_telegram_configured,
+    send_live_alert_telegram,
+)
 
 
 def alert(sequence: int, symbol: str, market: str = "TW") -> dict:
@@ -109,6 +115,82 @@ def test_live_chat_can_be_discovered_from_first_private_start(monkeypatch):
         "separate-live-token",
         "24680",
     )
+
+
+def test_friend_channel_discovery_requires_exact_channel_and_admin(tmp_path, monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"result": [
+                {"channel_post": {"chat": {
+                    "id": -1, "type": "channel", "title": "別的頻道",
+                }}},
+                {"my_chat_member": {
+                    "chat": {"id": -2, "type": "channel", "title": "AI 大量買賣朋友版"},
+                    "new_chat_member": {"status": "member"},
+                }},
+                {"my_chat_member": {
+                    "chat": {"id": -10024680, "type": "channel", "title": "AI 大量買賣朋友版"},
+                    "new_chat_member": {"status": "administrator"},
+                }},
+            ]}
+
+    state_path = tmp_path / "friend-chat.json"
+    settings = SimpleNamespace(
+        telegram_live_bot_token="separate-live-token",
+        telegram_friend_alert_chat_id="",
+        telegram_friend_alert_channel_title="AI 大量買賣朋友版",
+    )
+    monkeypatch.setattr(notifier.requests, "get", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(notifier, "_LIVE_DISCOVERED_FRIEND_CHAT_ID", "")
+
+    assert _live_friend_telegram_credentials(
+        settings, discover_chat=True, state_path=state_path
+    ) == ("separate-live-token", "-10024680")
+    assert state_path.exists()
+    monkeypatch.setattr(notifier, "_LIVE_DISCOVERED_FRIEND_CHAT_ID", "")
+    assert _live_friend_telegram_credentials(settings, state_path=state_path) == (
+        "separate-live-token", "-10024680",
+    )
+
+
+def test_large_trade_delivery_fans_out_but_friend_failure_does_not_break_owner(monkeypatch):
+    sent = []
+    monkeypatch.setattr(notifier, "send_live_telegram", lambda text: sent.append(("owner", text)) or True)
+
+    def broken_friend(_text, *, state_path=None):
+        sent.append(("friend", str(state_path)))
+        raise RuntimeError("friend unavailable")
+
+    monkeypatch.setattr(notifier, "send_live_friend_telegram", broken_friend)
+
+    state_path = Path("/data/friend.json")
+    assert send_live_alert_telegram("large trade", friend_state_path=state_path) is True
+    assert sent == [("owner", "large trade"), ("friend", str(state_path))]
+
+
+def test_owner_failure_does_not_prevent_friend_attempt(monkeypatch):
+    sent = []
+
+    def broken_owner(_text):
+        raise RuntimeError("owner unavailable")
+
+    monkeypatch.setattr(notifier, "send_live_telegram", broken_owner)
+    monkeypatch.setattr(
+        notifier,
+        "send_live_friend_telegram",
+        lambda text, *, state_path=None: sent.append(text) or True,
+    )
+
+    try:
+        send_live_alert_telegram("large trade")
+    except RuntimeError as exc:
+        assert str(exc) == "owner unavailable"
+    else:
+        raise AssertionError("owner failure must remain visible to delivery health")
+    assert sent == ["large trade"]
 
 
 def test_fanout_keeps_other_sink_when_one_fails():
