@@ -116,7 +116,7 @@ test('owner page shows the current regular-session buy and sell ranking', () => 
   assert.match(script, /window:'session'/);
   assert.match(script, /state\.window==='session'\?marketData\.session/);
   assert.match(script, /今日正式盤/);
-  assert.match(html, /live_flow\.js\?v=651/);
+  assert.match(html, /live_flow\.js\?v=652/);
 });
 
 test('theme outflows keep theme labels and never render raw undefined names', () => {
@@ -126,7 +126,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=651/);
+  assert.match(html, /live_flow\.js\?v=652/);
   assert.match(script, /族群流入排名（綜合訊號品質）/);
   assert.match(script, /個股流出排名（綜合訊號品質）/);
   assert.match(script, /flow\.theme_inflows\|\|\[\]/);
@@ -159,6 +159,7 @@ test('single-trade thresholds and block labels stay linked to the API policy', (
 });
 
 test('official institution ranks are separate and coverage-gated', () => {
+  assert.match(html, /id="institutionPanel"/);
   assert.match(html, /三大法人買賣超/);
   assert.match(html, /data-institution-group="foreign"/);
   assert.match(html, /data-institution-group="trust"/);
@@ -168,6 +169,16 @@ test('official institution ranks are separate and coverage-gated', () => {
   assert.match(script, /root\.ranking_eligible/);
   assert.match(script, /覆蓋不足・停止排行/);
   assert.match(script, /不完整法人資料送進 AI 決策/);
+  assert.match(script, /panel\.hidden=!isTw/);
+  assert.match(script, /if\(!isTw\)return/);
+});
+
+test('market tabs keep Taiwan and US alert views separate', () => {
+  assert.match(html, /id="alertsMarketLabel"/);
+  assert.match(html, /id="alertsHeading"/);
+  assert.match(script, /state\.alerts\.filter/);
+  assert.match(script, /row\.market===state\.market/);
+  assert.match(script, /marketName\+'獨立顯示'/);
 });
 
 test('five-day flow weight experiment is isolated and visible', () => {

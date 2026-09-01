@@ -55,7 +55,7 @@
     <p class="note">「今日」只累積正式盤有效逐筆成交，收盤後保留當日結果。依成交價相對委買賣與 tick rule 推估，無法識別真實帳戶、外資或主力身分；ETF、集合競價及特殊成交會分開或排除。</p>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="institutionPanel">
     <p class="eyebrow">收盤後官方資料・與盤中推估分開</p><h2>🏛️ 三大法人買賣超</h2>
     <div class="status-line" id="institutionStatus"><span class="badge">等待官方收盤資料</span></div>
     <div class="tabs" id="institutionTabs"><button class="active" data-institution-group="total">三大法人</button><button data-institution-group="foreign">外資</button><button data-institution-group="trust">投信</button><button data-institution-group="dealer">自營商</button></div>
@@ -73,10 +73,10 @@
     <p class="note">交易日只依官方 TWSE／TPEx 與 Alpaca 市場日曆判定；提早收盤依官方時間等待完成。若中間報表漏抓，缺少的第1／3／5交易日會隔離，不會拿下一日遞補。缺價資料也不列入有效成績；滿60日及200筆訊號後仍只標記人工審查候選。</p>
   </section>
 
-  <section class="panel"><p class="eyebrow">最近50筆</p><h2>↕️ 大量主動買賣</h2><div class="alerts" id="alerts"><div class="empty">符合門檻的大買或大賣訊號會顯示在這裡。</div></div></section>
+  <section class="panel"><p class="eyebrow" id="alertsMarketLabel">台股獨立顯示</p><h2 id="alertsHeading">↕️ 台股大量主動買賣</h2><div class="alerts" id="alerts"><div class="empty">符合門檻的大買或大賣訊號會顯示在這裡。</div></div></section>
 </main>
 <script src="live_config.js?v=636"></script>
-<script src="live_flow.js?v=651"></script>
+<script src="live_flow.js?v=652"></script>
 <script src="app_shell.js?v=1"></script>
 </body>
 </html>
