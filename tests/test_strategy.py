@@ -281,6 +281,26 @@ def test_build_features_never_turns_missing_multiday_institution_history_into_ze
     assert result["institution_multiday_available"] is False
 
 
+def test_build_features_keeps_unavailable_institution_values_null():
+    dates = pd.date_range("2026-05-01", periods=65, freq="B")
+    daily = pd.DataFrame({
+        "close": [100.0] * 65, "open": [99.0] * 65,
+        "high": [101.0] * 65, "low": [98.0] * 65,
+        "volume": [1_000_000] * 65,
+    }, index=dates)
+    result = build_features(
+        {"symbol": "2330.TW", "market": "TW", "name": "測試", "type": "個股"},
+        daily, None, None,
+    )
+    assert result is not None
+    assert result["institution_available"] is False
+    assert result["foreign_net"] is None
+    assert result["trust_net"] is None
+    assert result["dealer_net"] is None
+    assert result["institution_net"] is None
+    assert result["institution_1d"] is None
+
+
 def test_candidate_scoring_has_prices_and_ranking():
     dates = pd.date_range("2026-01-01", periods=65, freq="B")
     daily = pd.DataFrame({

@@ -730,7 +730,8 @@ def build_features(
     resistance1 = _finite(high.tail(5).max(), price)
     resistance2 = _finite(high.tail(20).max(), resistance1)
     atr14 = _finite((high - low).tail(14).mean(), price * 0.02)
-    inst = institution or {"foreign": 0.0, "trust": 0.0, "dealer": 0.0}
+    inst = institution or {}
+    institution_available = bool(_finite(inst.get("available")))
     inst_net = sum(_finite(inst.get(k)) for k in ("foreign", "trust", "dealer"))
     return {
         **item,
@@ -767,12 +768,18 @@ def build_features(
         "resistance1": round(resistance1, 2),
         "resistance2": round(resistance2, 2),
         "atr14": round(atr14, 2),
-        "foreign_net": int(_finite(inst.get("foreign"))),
-        "trust_net": int(_finite(inst.get("trust"))),
-        "dealer_net": int(_finite(inst.get("dealer"))),
-        "institution_net": int(inst_net),
-        "institution_available": bool(_finite(inst.get("available"))),
-        "institution_1d": int(_finite(inst.get("institution_1d", inst_net))),
+        # Missing official rows are unknown, never a verified zero.  Score
+        # consumers already gate on institution_available; keeping null here
+        # prevents the UI and exports from claiming that no buying occurred.
+        "foreign_net": int(_finite(inst.get("foreign"))) if institution_available else None,
+        "trust_net": int(_finite(inst.get("trust"))) if institution_available else None,
+        "dealer_net": int(_finite(inst.get("dealer"))) if institution_available else None,
+        "institution_net": int(inst_net) if institution_available else None,
+        "institution_available": institution_available,
+        "institution_1d": (
+            int(_finite(inst.get("institution_1d", inst_net)))
+            if institution_available else None
+        ),
         "institution_3d": None if inst.get("institution_3d") is None else int(_finite(inst.get("institution_3d"))),
         "institution_5d": None if inst.get("institution_5d") is None else int(_finite(inst.get("institution_5d"))),
         "institution_10d": None if inst.get("institution_10d") is None else int(_finite(inst.get("institution_10d"))),

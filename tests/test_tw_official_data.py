@@ -44,6 +44,9 @@ def test_twse_parser_preserves_official_units_and_negative_flows(monkeypatch):
                 "主旨 ": "公告董事會決議事項",
             }]
         if url == official.TWSE_T86:
+            assert params == {
+                "selectType": "ALLBUT0999", "response": "json",
+            }
             return {
                 "stat": "OK", "date": "20260821",
                 "fields": [
@@ -264,3 +267,23 @@ def test_stale_cache_never_reuses_daily_price_or_flow(monkeypatch, tmp_path: Pat
     assert result["credit"] == {}
     assert result["announcements"] == {}
     assert result["fundamentals"]["2330"]["per"] == 20
+
+
+def test_institution_status_requires_both_markets_and_minimum_coverage():
+    ready = official._institution_source_status(
+        {"2330", "2317"}, {"6488"},
+        {
+            "2330": {"institution_date": "2026-09-01"},
+            "2317": {"institution_date": "2026-09-01"},
+        },
+        {"6488": {"institution_date": "2026-09-01"}},
+    )
+    assert ready["ranking_eligible"] is True
+    assert ready["coverage_pct"] == 100
+
+    blocked = official._institution_source_status(
+        {"2330", "2317"}, {"6488"},
+        {"2330": {"institution_date": "2026-09-01"}}, {},
+    )
+    assert blocked["ranking_eligible"] is False
+    assert blocked["reason"] == "official_source_unavailable"

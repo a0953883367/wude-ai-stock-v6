@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,9 @@ LOG = logging.getLogger(__name__)
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TWSE_T86 = "https://www.twse.com.tw/rwd/zh/fund/T86"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
+TWSE_T86_SELECT_TYPE = "ALLBUT0999"
+OFFICIAL_REQUEST_RETRY_DELAYS = (0.0, 1.0, 3.0)
+MIN_INSTITUTION_COVERAGE_PCT = 95.0
 
 
 def _number(value: Any) -> float | None:
@@ -52,18 +56,39 @@ def _iso_date(value: Any) -> str | None:
 
 
 def _get_json(url: str, *, params: dict[str, str] | None = None) -> Any:
-    response = requests.get(
-        url,
-        params=params,
-        headers={"User-Agent": "WudeAIStock/1.0 official-market-data"},
-        timeout=min(15, SETTINGS.request_timeout),
-    )
-    response.raise_for_status()
-    return response.json()
+    last_error: Exception | None = None
+    for attempt, delay in enumerate(OFFICIAL_REQUEST_RETRY_DELAYS, 1):
+        if delay:
+            time.sleep(delay)
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                headers={"User-Agent": "WudeAIStock/1.0 official-market-data"},
+                timeout=min(15, SETTINGS.request_timeout),
+            )
+            response.raise_for_status()
+            return response.json()
+        except (requests.RequestException, ValueError) as exc:
+            last_error = exc
+            if attempt < len(OFFICIAL_REQUEST_RETRY_DELAYS):
+                LOG.warning(
+                    "Official Taiwan request attempt %s/%s failed (%s): %s",
+                    attempt,
+                    len(OFFICIAL_REQUEST_RETRY_DELAYS),
+                    url,
+                    exc,
+                )
+    raise RuntimeError(f"official Taiwan request failed after retries: {url}") from last_error
 
 
 def _twse_t86_rows() -> list[dict[str, Any]]:
-    payload = _get_json(TWSE_T86, params={"selectType": "ALL", "response": "json"})
+    # ALLBUT0999 is the full listed-security view used by TWSE's own T86 page.
+    # The older ALL selector can return a partial/category-dependent response.
+    payload = _get_json(
+        TWSE_T86,
+        params={"selectType": TWSE_T86_SELECT_TYPE, "response": "json"},
+    )
     if not isinstance(payload, dict) or payload.get("stat") != "OK":
         return []
     fields = payload.get("fields") or []
@@ -92,6 +117,61 @@ def _safe_twse_t86_rows() -> list[dict[str, Any]]:
     except Exception as exc:
         LOG.warning("TWSE T86 unavailable: %s", exc)
         return []
+
+
+def _institution_source_status(
+    twse_ids: set[str],
+    tpex_ids: set[str],
+    twse_rows: dict[str, dict[str, Any]],
+    tpex_rows: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Describe official full-market coverage without turning absence into zero."""
+    expected = len(twse_ids) + len(tpex_ids)
+    returned = len(twse_rows) + len(tpex_rows)
+    dates = sorted({
+        str(item.get("institution_date"))
+        for item in (*twse_rows.values(), *tpex_rows.values())
+        if item.get("institution_date")
+    })
+    coverage = returned / expected * 100 if expected else 100.0
+    twse_ready = not twse_ids or bool(twse_rows)
+    tpex_ready = not tpex_ids or bool(tpex_rows)
+    same_session = len(dates) <= 1
+    ready = bool(
+        expected
+        and twse_ready
+        and tpex_ready
+        and same_session
+        and coverage >= MIN_INSTITUTION_COVERAGE_PCT
+    )
+    if ready:
+        reason = "official_full_market_ready"
+    elif not twse_ready or not tpex_ready:
+        reason = "official_source_unavailable"
+    elif not same_session:
+        reason = "official_session_mismatch"
+    else:
+        reason = "official_coverage_insufficient"
+    return {
+        "available": ready,
+        "ranking_eligible": ready,
+        "reason": reason,
+        "session_date": dates[-1] if dates else None,
+        "expected_count": expected,
+        "returned_count": returned,
+        "coverage_pct": round(coverage, 1),
+        "minimum_coverage_pct": MIN_INSTITUTION_COVERAGE_PCT,
+        "twse": {
+            "available": twse_ready,
+            "expected_count": len(twse_ids),
+            "returned_count": len(twse_rows),
+        },
+        "tpex": {
+            "available": tpex_ready,
+            "expected_count": len(tpex_ids),
+            "returned_count": len(tpex_rows),
+        },
+    }
 
 
 def _field(row: dict[str, Any], *candidates: str) -> Any:
@@ -578,6 +658,16 @@ def fetch_taiwan_official_data(
     empty = {
         "prices": {}, "institutions": {}, "credit": {},
         "fundamentals": {}, "announcements": {},
+        "institution_status": {
+            "available": False,
+            "ranking_eligible": False,
+            "reason": "official_source_unavailable",
+            "session_date": None,
+            "expected_count": len(twse_ids) + len(tpex_ids),
+            "returned_count": 0,
+            "coverage_pct": 0.0,
+            "minimum_coverage_pct": MIN_INSTITUTION_COVERAGE_PCT,
+        },
     }
     try:
         cached_payload = json.loads(cache_path.read_text(encoding="utf-8"))
@@ -593,6 +683,9 @@ def fetch_taiwan_official_data(
                 ("prices", "institutions", "credit", "fundamentals", "announcements")
             )
         }
+        result["institution_status"] = _institution_source_status(
+            twse_ids, tpex_ids, twse[1], tpex[1]
+        )
         # Individual OpenAPI datasets can fail independently.  Preserve only
         # slowly changing, date-labelled fundamentals from the last successful
         # response; never carry daily price, flow or announcements forward.
@@ -604,7 +697,9 @@ def fetch_taiwan_official_data(
                 **old_item,
                 **result["fundamentals"].get(sid, {}),
             }
-        if not any(result.values()):
+        if not any(result[name] for name in (
+            "prices", "institutions", "credit", "fundamentals", "announcements"
+        )):
             raise RuntimeError("official Taiwan endpoints returned no maintained symbols")
         payload = {
             "updated_at": datetime.now(TAIPEI).isoformat(timespec="seconds"),
@@ -625,6 +720,7 @@ def fetch_taiwan_official_data(
                 "credit": {},
                 "fundamentals": dict(cached.get("fundamentals") or {}),
                 "announcements": {},
+                "institution_status": dict(empty["institution_status"]),
             }
         except (OSError, ValueError, TypeError):
             return empty

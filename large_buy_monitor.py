@@ -408,6 +408,87 @@ def load_stock_baselines(path: Path) -> dict[str, StockBaseline]:
     return output
 
 
+def load_institutional_snapshot(path: Path | None) -> dict[str, Any]:
+    """Return completed-session TW institutional ranks with a coverage gate."""
+    try:
+        if not isinstance(path, Path):
+            raise OSError("institution report path unavailable")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        payload = {}
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    tw_rows = [
+        row for row in (rows or [])
+        if isinstance(row, dict) and str(row.get("market") or "").upper() == "TW"
+    ]
+    dated = [
+        row for row in tw_rows
+        if row.get("institution_available") and row.get("institution_date")
+    ]
+    date_counts: dict[str, int] = defaultdict(int)
+    for row in dated:
+        date_counts[str(row.get("institution_date"))] += 1
+    session_date = (
+        max(date_counts, key=lambda value: (date_counts[value], value))
+        if date_counts else None
+    )
+    current = [
+        row for row in dated if str(row.get("institution_date")) == session_date
+    ]
+    expected = len(tw_rows)
+    coverage = len(current) / expected * 100 if expected else 0.0
+    report_status = payload.get("institution_status") or {}
+    minimum = _finite(report_status.get("minimum_coverage_pct")) or 95.0
+    eligible = bool(
+        session_date
+        and coverage >= minimum
+        and report_status.get("ranking_eligible", True)
+    )
+
+    def rank(field: str, direction: str) -> list[dict[str, Any]]:
+        candidates = [row for row in current if _finite(row.get(field)) is not None]
+        reverse = direction == "buy"
+        candidates.sort(key=lambda row: _finite(row.get(field)) or 0.0, reverse=reverse)
+        if direction == "buy":
+            candidates = [row for row in candidates if (_finite(row.get(field)) or 0) > 0]
+        else:
+            candidates = [row for row in candidates if (_finite(row.get(field)) or 0) < 0]
+        return [{
+            "symbol": row.get("symbol"),
+            "name": row.get("name"),
+            "type": row.get("type"),
+            "theme": row.get("theme"),
+            "shares": int(_finite(row.get(field)) or 0),
+            "institution_date": row.get("institution_date"),
+            "institution_source": row.get("institution_source"),
+        } for row in candidates[:5]]
+
+    groups = {}
+    if eligible:
+        for key, field in (
+            ("total", "institution_net"),
+            ("foreign", "foreign_net"),
+            ("trust", "trust_net"),
+            ("dealer", "dealer_net"),
+        ):
+            groups[key] = {"buys": rank(field, "buy"), "sells": rank(field, "sell")}
+    return {
+        "available": eligible,
+        "ranking_eligible": eligible,
+        "reason": (
+            "verified_completed_session_snapshot"
+            if eligible else "institution_coverage_insufficient"
+        ),
+        "session_date": session_date,
+        "expected_count": expected,
+        "returned_count": len(current),
+        "coverage_pct": round(coverage, 1),
+        "minimum_coverage_pct": minimum,
+        "groups": groups,
+        "informational_only": True,
+    }
+
+
 def format_large_buy_telegram(alert: dict[str, Any]) -> str:
     currency = "TWD" if alert.get("market") == "TW" else "USD"
     side = "sell" if alert.get("alert_side") == "sell" else "buy"
@@ -674,6 +755,9 @@ class LargeBuyAlertService:
             "latest_sequence": self.store.latest_sequence,
             "alerts": self.store.list_after(after, limit=limit),
             "capital_flow": capital_flow,
+            "institutional_snapshot": load_institutional_snapshot(
+                getattr(self, "report_path", None)
+            ),
             "flow_weight_shadow": weight_shadow,
             "inverse_etf_live_shadow": inverse_live_shadow,
         }

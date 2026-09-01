@@ -56,6 +56,14 @@
   </section>
 
   <section class="panel">
+    <p class="eyebrow">收盤後官方資料・與盤中推估分開</p><h2>🏛️ 三大法人買賣超</h2>
+    <div class="status-line" id="institutionStatus"><span class="badge">等待官方收盤資料</span></div>
+    <div class="tabs" id="institutionTabs"><button class="active" data-institution-group="total">三大法人</button><button data-institution-group="foreign">外資</button><button data-institution-group="trust">投信</button><button data-institution-group="dealer">自營商</button></div>
+    <div class="lists" id="institutionLists"><div class="empty">正在驗證上市與上櫃資料覆蓋率…</div></div>
+    <p class="note">依 TWSE／TPEx 收盤買賣超股數排名，包含股票與 ETF。這裡回答「哪一檔被官方法人買超或賣超」；上方盤中逐筆成交只能推估方向，不能辨識帳戶身分。覆蓋不足時本區停止排行，也不送入 AI 決策。</p>
+  </section>
+
+  <section class="panel">
     <p class="eyebrow">5日短線前向驗證・不寫回正式排名</p><h2>🧪 資金流影子權重 V1</h2>
     <div class="shadow-policy">單筆大量成交 ±1 點、3–5筆群聚 ±2 點；15分鐘資金持續且價格同向再 ±1 點，總調整上限 ±3 點。台股／美股分開，45日與6個月模型完全不變。</div>
     <div id="shadowSummary" class="status-line"></div>
@@ -68,7 +76,7 @@
   <section class="panel"><p class="eyebrow">最近50筆</p><h2>↕️ 大量主動買賣</h2><div class="alerts" id="alerts"><div class="empty">符合門檻的大買或大賣訊號會顯示在這裡。</div></div></section>
 </main>
 <script src="live_config.js?v=636"></script>
-<script src="live_flow.js?v=650"></script>
+<script src="live_flow.js?v=651"></script>
 <script src="app_shell.js?v=1"></script>
 </body>
 </html>
