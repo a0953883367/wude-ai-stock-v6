@@ -117,6 +117,40 @@ def test_live_chat_can_be_discovered_from_first_private_start(monkeypatch):
     )
 
 
+def test_live_chat_is_persisted_and_reused_after_restart(tmp_path, monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"result": [
+                {"message": {"text": "/start", "chat": {"id": 13579, "type": "private"}}},
+            ]}
+
+    state_path = tmp_path / "owner-chat.json"
+    settings = SimpleNamespace(
+        telegram_live_bot_token="separate-live-token",
+        telegram_live_chat_id="",
+    )
+    monkeypatch.setattr(notifier.requests, "get", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(notifier, "_LIVE_DISCOVERED_CHAT_ID", "")
+
+    assert _live_telegram_credentials(
+        settings, discover_chat=True, state_path=state_path
+    ) == ("separate-live-token", "13579")
+    assert state_path.exists()
+
+    monkeypatch.setattr(notifier, "_LIVE_DISCOVERED_CHAT_ID", "")
+    monkeypatch.setattr(
+        notifier.requests,
+        "get",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("must not rediscover")),
+    )
+    assert _live_telegram_credentials(settings, state_path=state_path) == (
+        "separate-live-token", "13579"
+    )
+
+
 def test_friend_channel_discovery_requires_exact_channel_and_admin(tmp_path, monkeypatch):
     class Response:
         def raise_for_status(self):
@@ -158,7 +192,11 @@ def test_friend_channel_discovery_requires_exact_channel_and_admin(tmp_path, mon
 
 def test_large_trade_delivery_fans_out_but_friend_failure_does_not_break_owner(monkeypatch):
     sent = []
-    monkeypatch.setattr(notifier, "send_live_telegram", lambda text: sent.append(("owner", text)) or True)
+    monkeypatch.setattr(
+        notifier,
+        "send_live_telegram",
+        lambda text, *, state_path=None: sent.append(("owner", text, state_path)) or True,
+    )
 
     def broken_friend(_text, *, state_path=None):
         sent.append(("friend", str(state_path)))
@@ -167,14 +205,20 @@ def test_large_trade_delivery_fans_out_but_friend_failure_does_not_break_owner(m
     monkeypatch.setattr(notifier, "send_live_friend_telegram", broken_friend)
 
     state_path = Path("/data/friend.json")
-    assert send_live_alert_telegram("large trade", friend_state_path=state_path) is True
-    assert sent == [("owner", "large trade"), ("friend", str(state_path))]
+    owner_state_path = Path("/data/owner.json")
+    assert send_live_alert_telegram(
+        "large trade", owner_state_path=owner_state_path, friend_state_path=state_path
+    ) is True
+    assert sent == [
+        ("owner", "large trade", owner_state_path),
+        ("friend", str(state_path)),
+    ]
 
 
 def test_owner_failure_does_not_prevent_friend_attempt(monkeypatch):
     sent = []
 
-    def broken_owner(_text):
+    def broken_owner(_text, *, state_path=None):
         raise RuntimeError("owner unavailable")
 
     monkeypatch.setattr(notifier, "send_live_telegram", broken_owner)

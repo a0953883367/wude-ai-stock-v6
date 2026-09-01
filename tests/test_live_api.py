@@ -94,10 +94,44 @@ def test_telegram_ready_notice_waits_for_persistent_storage(tmp_path, monkeypatc
     sent = []
     monkeypatch.setenv("LIVE_PERSISTENT_DATA_DIR", str(missing))
     monkeypatch.setenv("TELEGRAM_LIVE_BOT_TOKEN", "dedicated-live-bot-token")
-    monkeypatch.setattr(live_api, "send_live_telegram", lambda message: sent.append(message) or True)
+    monkeypatch.setattr(
+        live_api,
+        "send_live_telegram",
+        lambda message, *, state_path=None: sent.append((message, state_path)) or True,
+    )
 
     assert live_api._send_live_telegram_ready_once(SimpleNamespace()) is False
     assert sent == []
+
+
+def test_telegram_ready_notice_repairs_missing_persisted_owner_destination(tmp_path, monkeypatch):
+    volume = tmp_path / "railway-volume"
+    volume.mkdir()
+    (volume / "live_telegram_ready.json").write_text(
+        json.dumps({
+            "token_sha256": hashlib.sha256(
+                b"dedicated-live-bot-token"
+            ).hexdigest(),
+            "sent_at": "2026-09-01T00:00:00+00:00",
+        }),
+        encoding="utf-8",
+    )
+    sent = []
+    monkeypatch.setenv("LIVE_PERSISTENT_DATA_DIR", str(volume))
+    monkeypatch.setenv("TELEGRAM_LIVE_BOT_TOKEN", "dedicated-live-bot-token")
+
+    def send(message, *, state_path=None):
+        sent.append((message, state_path))
+        state_path.write_text(json.dumps({"chat_id": "24680"}), encoding="utf-8")
+        return True
+
+    monkeypatch.setattr(live_api, "send_live_telegram", send)
+
+    assert live_api._send_live_telegram_ready_once(SimpleNamespace(
+        large_buy_service=SimpleNamespace(snapshot=lambda: {"universe": {"TW": 188, "US": 186}})
+    )) is True
+    assert sent[0][1] == volume / "telegram_live_owner_chat.json"
+    assert live_api._live_telegram_owner_destination_persisted() is True
 
 
 def test_friend_ready_notice_is_non_sensitive_and_sent_only_once(tmp_path, monkeypatch):

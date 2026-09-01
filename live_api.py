@@ -125,6 +125,25 @@ def _live_telegram_ready_path() -> Path:
     return _runtime_state_path("live_telegram_ready.json")
 
 
+def _live_telegram_owner_state_path() -> Path:
+    configured = os.getenv("TELEGRAM_LIVE_OWNER_STATE_PATH", "").strip()
+    if configured:
+        return Path(configured)
+    return _runtime_state_path("telegram_live_owner_chat.json")
+
+
+def _live_telegram_owner_destination_persisted() -> bool:
+    if os.getenv("TELEGRAM_LIVE_CHAT_ID", "").strip():
+        return True
+    try:
+        stored = json.loads(
+            _live_telegram_owner_state_path().read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError, TypeError):
+        return False
+    return isinstance(stored, dict) and bool(str(stored.get("chat_id") or "").strip())
+
+
 def _live_telegram_friend_state_path() -> Path:
     configured = os.getenv("TELEGRAM_FRIEND_ALERT_STATE_PATH", "").strip()
     if configured:
@@ -150,7 +169,11 @@ def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
         stored = json.loads(marker.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         stored = {}
-    if stored.get("token_sha256") == fingerprint and stored.get("sent_at"):
+    if (
+        stored.get("token_sha256") == fingerprint
+        and stored.get("sent_at")
+        and _live_telegram_owner_destination_persisted()
+    ):
         return False
     universe = handler.large_buy_service.snapshot().get("universe", {})
     message = (
@@ -158,7 +181,7 @@ def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
         f"台股 {int(universe.get('TW') or 0)} 檔｜美股 {int(universe.get('US') or 0)} 檔\n"
         "美股盤前與正式盤均依10秒大量成交條件通知；與原本報告對話完全分開。"
     )
-    if not send_live_telegram(message):
+    if not send_live_telegram(message, state_path=_live_telegram_owner_state_path()):
         return False
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(
@@ -232,6 +255,7 @@ def _live_telegram_delivery_health(handler: type["LiveRequestHandler"]) -> dict[
         state = "waiting_confirmation"
     return {
         "configured": configured,
+        "destination_persisted": _live_telegram_owner_destination_persisted(),
         "state": state,
         "last_attempt_at": last_attempt or None,
         "last_success_at": last_success or None,
@@ -645,7 +669,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
     )
     live_telegram = LiveTelegramBatcher(
         lambda message: send_live_alert_telegram(
-            message, friend_state_path=_live_telegram_friend_state_path()
+            message,
+            owner_state_path=_live_telegram_owner_state_path(),
+            friend_state_path=_live_telegram_friend_state_path(),
         ),
         window_seconds=float(os.getenv("TELEGRAM_LIVE_BATCH_SECONDS", "10")),
     )
@@ -658,7 +684,11 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         alert_notifier=fanout_alert(web_push.send_alert, live_telegram.enqueue),
     )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
-    device_pairing = DevicePairingService(send_live_telegram)
+    device_pairing = DevicePairingService(
+        lambda message: send_live_telegram(
+            message, state_path=_live_telegram_owner_state_path()
+        )
+    )
 
     def log_message(self, fmt: str, *args: Any) -> None:
         LOG.info("%s - %s", self.address_string(), fmt % args)

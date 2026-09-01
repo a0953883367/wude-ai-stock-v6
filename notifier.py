@@ -259,7 +259,7 @@ def send_telegram(markdown: str) -> bool:
 
 
 def _discover_live_chat_id(token: str) -> str:
-    """Resolve the first private /start conversation for this dedicated bot."""
+    """Resolve the latest private /start conversation for this dedicated bot."""
     response = requests.get(
         f"https://api.telegram.org/bot{token}/getUpdates",
         params={"limit": 100, "timeout": 0},
@@ -268,7 +268,7 @@ def _discover_live_chat_id(token: str) -> str:
     response.raise_for_status()
     payload = response.json()
     updates = payload.get("result", []) if isinstance(payload, dict) else []
-    for update in updates:
+    for update in reversed(updates):
         message = update.get("message") if isinstance(update, dict) else None
         if not isinstance(message, dict):
             continue
@@ -282,6 +282,28 @@ def _discover_live_chat_id(token: str) -> str:
         ):
             return str(chat["id"])
     return ""
+
+
+def _stored_live_chat_id(state_path: Path | None) -> str:
+    if state_path is None:
+        return ""
+    try:
+        stored = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return ""
+    if not isinstance(stored, dict):
+        return ""
+    return str(stored.get("chat_id") or "").strip()
+
+
+def _save_live_chat_id(state_path: Path | None, chat_id: str) -> None:
+    if state_path is None or not chat_id:
+        return
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps({"chat_id": chat_id}, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
 def _friend_channel_from_update(update: Any, expected_title: str) -> str:
@@ -352,17 +374,23 @@ def _live_telegram_credentials(
     settings: Any = SETTINGS,
     *,
     discover_chat: bool = False,
+    state_path: Path | None = None,
 ) -> tuple[str, str]:
     """Return only the dedicated live-alert bot and its private conversation."""
     global _LIVE_DISCOVERED_CHAT_ID
     token = settings.telegram_live_bot_token
     if not token:
         return "", ""
-    chat_id = settings.telegram_live_chat_id or _LIVE_DISCOVERED_CHAT_ID
+    chat_id = (
+        settings.telegram_live_chat_id
+        or _LIVE_DISCOVERED_CHAT_ID
+        or _stored_live_chat_id(state_path)
+    )
     if token and not chat_id and discover_chat:
         with _LIVE_CHAT_LOCK:
             if not _LIVE_DISCOVERED_CHAT_ID:
                 _LIVE_DISCOVERED_CHAT_ID = _discover_live_chat_id(token)
+                _save_live_chat_id(state_path, _LIVE_DISCOVERED_CHAT_ID)
             chat_id = _LIVE_DISCOVERED_CHAT_ID
     return token, chat_id
 
@@ -414,9 +442,11 @@ def _send_live_to_chat(token: str, chat_id: str, markdown: str) -> bool:
     return True
 
 
-def send_live_telegram(markdown: str) -> bool:
+def send_live_telegram(markdown: str, *, state_path: Path | None = None) -> bool:
     """Send only to the explicitly configured real-time alert conversation."""
-    token, chat_id = _live_telegram_credentials(discover_chat=True)
+    token, chat_id = _live_telegram_credentials(
+        discover_chat=True, state_path=state_path
+    )
     if not token or not chat_id:
         LOG.info("Live Telegram destination not set; alert kept in the website only")
         return False
@@ -434,12 +464,17 @@ def send_live_friend_telegram(markdown: str, *, state_path: Path | None = None) 
     return _send_live_to_chat(token, chat_id, markdown)
 
 
-def send_live_alert_telegram(markdown: str, *, friend_state_path: Path | None = None) -> bool:
+def send_live_alert_telegram(
+    markdown: str,
+    *,
+    owner_state_path: Path | None = None,
+    friend_state_path: Path | None = None,
+) -> bool:
     """Deliver large-trade alerts to owner and friends as independent sinks."""
     owner_error: Exception | None = None
     owner_delivered = False
     try:
-        owner_delivered = send_live_telegram(markdown)
+        owner_delivered = send_live_telegram(markdown, state_path=owner_state_path)
     except Exception as exc:
         owner_error = exc
     try:
