@@ -129,6 +129,26 @@ def test_shadow_state_survives_service_restart(tmp_path):
     assert window["asset_groups"]["ETF"]["net_flow"] == 10_000
 
 
+def test_legacy_tw_unit_state_is_ignored_but_us_state_is_preserved(tmp_path):
+    state = tmp_path / "capital-flow.json"
+    config = CapitalFlowConfig(persist_interval_seconds=0)
+    first = CapitalFlowShadow(baselines(), state_path=state, config=config, clock=lambda: 6_000)
+    first.process_trade("0050.TW", price=100, size=100, ask=100, timestamp=5_999)
+    first.process_trade("NVDA", price=200, size=100, ask=200, timestamp=5_999)
+    first.snapshot(now=6_000)
+
+    payload = json.loads(state.read_text(encoding="utf-8"))
+    payload.pop("tw_value_unit_version")
+    state.write_text(json.dumps(payload), encoding="utf-8")
+
+    restored = CapitalFlowShadow(baselines(), state_path=state, config=config, clock=lambda: 6_001)
+    snapshot = restored.snapshot(now=6_001)
+    assert snapshot["markets"]["TW"]["trades_processed"] == 0
+    assert snapshot["markets"]["TW"]["windows"]["1m"]["trade_count"] == 0
+    assert snapshot["markets"]["US"]["trades_processed"] == 1
+    assert snapshot["markets"]["US"]["windows"]["1m"]["buy_value"] == 20_000
+
+
 def test_baseline_loader_keeps_theme_and_asset_type(tmp_path):
     report = tmp_path / "all_analysis.json"
     report.write_text(json.dumps({"data": [{
