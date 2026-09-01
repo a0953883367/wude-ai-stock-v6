@@ -252,6 +252,8 @@ def test_notifications_cover_every_stock_without_selected_symbol_filter(tmp_path
         "TW": [500_000, 3_000_000, 10_000_000],
         "US": [1_000_000],
     }
+    assert snapshot["policy"]["tw_trade_size_unit"] == "shares_normalized_from_fubon_board_lots"
+    assert snapshot["policy"]["tw_board_lot_multiplier"] == 1_000
 
 
 def test_telegram_text_states_information_only():

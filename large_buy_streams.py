@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import threading
 import time
@@ -17,6 +18,18 @@ from large_buy_monitor import LargeBuyAlertService
 
 LOG = logging.getLogger(__name__)
 TAIPEI = ZoneInfo("Asia/Taipei")
+TW_BOARD_LOT_SHARES = 1_000
+
+
+def fubon_board_lot_size_to_shares(value: Any) -> float | None:
+    """Convert Fubon regular-lot trade size (lots) into shares."""
+    try:
+        lots = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(lots) or lots <= 0:
+        return None
+    return lots * TW_BOARD_LOT_SHARES
 
 
 def market_live_window(market: str, now: datetime | None = None) -> bool:
@@ -106,13 +119,15 @@ class FubonLargeBuyStream:
                         self.service.process_trade(
                             canonical,
                             price=data.get("price"),
-                            size=data.get("size"),
+                            size=fubon_board_lot_size_to_shares(data.get("size")),
                             bid=data.get("bid"),
                             ask=data.get("ask"),
                             timestamp=_epoch(data.get("time")),
                             trade_id=data.get("serial") or data.get("id"),
                             conditions=data.get("conditions"),
                             exchange=data.get("exchange"),
+                            source_size=data.get("size"),
+                            source_size_unit="board_lot",
                         )
                     except Exception:
                         LOG.exception("Fubon large-buy message handling failed")

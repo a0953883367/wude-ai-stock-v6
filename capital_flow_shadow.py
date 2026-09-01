@@ -26,6 +26,7 @@ MARKETS = ("TW", "US")
 BUCKET_SECONDS = 30
 NON_DIRECTIONAL_CONDITIONS = frozenset({"4", "7", "B", "M", "P", "Q", "U", "W", "Z"})
 DAILY_RETENTION_DAYS = 10
+TW_VALUE_UNIT_VERSION = 2
 MARKET_CLOCKS = {
     "TW": (ZoneInfo("Asia/Taipei"), datetime_time(9, 0), datetime_time(13, 30)),
     "US": (ZoneInfo("America/New_York"), datetime_time(9, 30), datetime_time(16, 0)),
@@ -728,6 +729,8 @@ class CapitalFlowShadow:
                     "aggregate_bucket_seconds": BUCKET_SECONDS,
                     "aggregate_retention_minutes": 60,
                     "classification": "quote_then_tick_rule",
+                    "tw_value_unit_version": TW_VALUE_UNIT_VERSION,
+                    "tw_trade_size_unit": "shares_normalized_from_fubon_board_lots",
                     "identity_known": False,
                     "changes_rankings": False,
                     "places_orders": False,
@@ -743,6 +746,7 @@ class CapitalFlowShadow:
             return
         payload = {
             "version": 1,
+            "tw_value_unit_version": TW_VALUE_UNIT_VERSION,
             "saved_at": at,
             "started_at": self._started_at,
             "market_counts": self._market_counts,
@@ -798,17 +802,33 @@ class CapitalFlowShadow:
         now = self.clock()
         cutoff = now - self.config.retention_seconds
         try:
+            tw_value_unit_valid = (
+                int(payload.get("tw_value_unit_version") or 0) >= TW_VALUE_UNIT_VERSION
+            )
+        except (TypeError, ValueError):
+            tw_value_unit_valid = False
+
+        def compatible_symbol(symbol: str) -> bool:
+            baseline = self.baselines.get(symbol)
+            if baseline is None:
+                return False
+            return not (
+                str(getattr(baseline, "market", "")) == "TW"
+                and not tw_value_unit_valid
+            )
+
+        try:
             allowed = set(FlowBucket.__dataclass_fields__)
             for session_date, symbols in (payload.get("daily") or {}).items():
                 if not isinstance(symbols, dict):
                     continue
                 for symbol, values in symbols.items():
-                    if symbol not in self.baselines or not isinstance(values, dict):
+                    if not compatible_symbol(symbol) or not isinstance(values, dict):
                         continue
                     clean = {key: value for key, value in values.items() if key in allowed}
                     self._daily[str(session_date)][symbol] = FlowBucket(**clean)
             for symbol, rows in (payload.get("buckets") or {}).items():
-                if symbol not in self.baselines or not isinstance(rows, (dict, list)):
+                if not compatible_symbol(symbol) or not isinstance(rows, (dict, list)):
                     continue
                 if isinstance(rows, dict):
                     iterator = rows.items()
@@ -833,6 +853,8 @@ class CapitalFlowShadow:
                     self._buckets[symbol][started] = bucket
             self._started_at = float(payload.get("started_at") or now)
             for market in MARKETS:
+                if market == "TW" and not tw_value_unit_valid:
+                    continue
                 self._market_counts[market] = int((payload.get("market_counts") or {}).get(market) or 0)
                 last = _finite((payload.get("market_last_at") or {}).get(market))
                 self._market_last_at[market] = last
@@ -844,14 +866,17 @@ class CapitalFlowShadow:
                 self._phase_summaries = {
                     market: row for market, row in summaries.items()
                     if market in MARKETS and isinstance(row, dict)
+                    and not (market == "TW" and not tw_value_unit_valid)
                 }
             self._last_price.update({
                 symbol: float(value) for symbol, value in (payload.get("last_price") or {}).items()
-                if symbol in self.baselines and _finite(value) is not None
+                if compatible_symbol(symbol) and _finite(value) is not None
             })
             self._last_side.update({
                 symbol: int(value) for symbol, value in (payload.get("last_side") or {}).items()
-                if symbol in self.baselines and value in (-1, 1)
+                if compatible_symbol(symbol) and value in (-1, 1)
             })
+            if not tw_value_unit_valid:
+                self._dirty = True
         except (TypeError, ValueError):
             self._buckets.clear()

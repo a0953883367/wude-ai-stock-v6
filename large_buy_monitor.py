@@ -638,6 +638,8 @@ class LargeBuyAlertService:
                     ],
                     "US": [self.config.block_single_min_usd],
                 },
+                "tw_trade_size_unit": "shares_normalized_from_fubon_board_lots",
+                "tw_board_lot_multiplier": 1_000,
                 "broker_orders": False,
                 "us_session_policy": {
                     "premarket_open_new_york": "04:00",

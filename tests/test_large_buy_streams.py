@@ -1,7 +1,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from large_buy_streams import market_live_window
+from large_buy_streams import fubon_board_lot_size_to_shares, market_live_window
 
 
 TAIPEI = ZoneInfo("Asia/Taipei")
@@ -9,6 +9,13 @@ TAIPEI = ZoneInfo("Asia/Taipei")
 
 def at(value: str) -> datetime:
     return datetime.fromisoformat(value).replace(tzinfo=TAIPEI)
+
+
+def test_fubon_regular_trade_size_is_converted_from_board_lots_to_shares():
+    assert fubon_board_lot_size_to_shares(100) == 100_000
+    assert fubon_board_lot_size_to_shares("1.5") == 1_500
+    assert fubon_board_lot_size_to_shares(None) is None
+    assert fubon_board_lot_size_to_shares(0) is None
 
 
 def test_tw_connection_window_starts_at_0900_and_stops_at_1330():
