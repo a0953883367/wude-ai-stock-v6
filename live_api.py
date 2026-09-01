@@ -35,7 +35,12 @@ from large_buy_monitor import LargeBuyAlertService
 from large_buy_streams import LargeBuyStreams, market_live_window
 from live_trade_engine import LiveTradingEngine
 from live_telegram import LiveTelegramBatcher, fanout_alert
-from notifier import live_telegram_configured, send_live_telegram
+from notifier import (
+    live_telegram_configured,
+    send_live_alert_telegram,
+    send_live_friend_telegram,
+    send_live_telegram,
+)
 from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
 from web_push import WebPushService
@@ -120,6 +125,17 @@ def _live_telegram_ready_path() -> Path:
     return _runtime_state_path("live_telegram_ready.json")
 
 
+def _live_telegram_friend_state_path() -> Path:
+    configured = os.getenv("TELEGRAM_FRIEND_ALERT_STATE_PATH", "").strip()
+    if configured:
+        return Path(configured)
+    return _runtime_state_path("telegram_friend_alert_chat.json")
+
+
+def _live_telegram_friend_ready_path() -> Path:
+    return _runtime_state_path("telegram_friend_alert_ready.json")
+
+
 def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
     """Confirm a newly configured live bot once without storing its token."""
     token = os.getenv("TELEGRAM_LIVE_BOT_TOKEN", "").strip()
@@ -148,6 +164,37 @@ def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
     marker.write_text(
         json.dumps({
             "token_sha256": fingerprint,
+            "sent_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return True
+
+
+def _send_live_friend_ready_once() -> bool:
+    """Pair the named private channel and send one non-sensitive confirmation."""
+    token = os.getenv("TELEGRAM_LIVE_BOT_TOKEN", "").strip()
+    title = os.getenv("TELEGRAM_FRIEND_ALERT_CHANNEL_TITLE", "AI 大量買賣朋友版").strip()
+    if not token or not title or not _runtime_storage_health()["persistent"]:
+        return False
+    fingerprint = hashlib.sha256(f"{token}\0{title}".encode("utf-8")).hexdigest()
+    marker = _live_telegram_friend_ready_path()
+    try:
+        stored = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        stored = {}
+    if isinstance(stored, dict) and stored.get("pair_sha256") == fingerprint and stored.get("sent_at"):
+        return False
+    message = (
+        "✅ AI 大量買賣朋友版已連線\n\n"
+        "本頻道只接收大量買賣警報；不會傳送手機驗證碼、系統異常、影子資料或內部診斷。"
+    )
+    if not send_live_friend_telegram(message, state_path=_live_telegram_friend_state_path()):
+        return False
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        json.dumps({
+            "pair_sha256": fingerprint,
             "sent_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }, ensure_ascii=False),
         encoding="utf-8",
@@ -597,7 +644,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         subject=os.getenv("WEB_PUSH_SUBJECT", "mailto:a0953883367@gmail.com"),
     )
     live_telegram = LiveTelegramBatcher(
-        send_live_telegram,
+        lambda message: send_live_alert_telegram(
+            message, friend_state_path=_live_telegram_friend_state_path()
+        ),
         window_seconds=float(os.getenv("TELEGRAM_LIVE_BATCH_SECONDS", "10")),
     )
     large_buy_service = LargeBuyAlertService(
@@ -953,6 +1002,10 @@ def main() -> None:
         _send_live_telegram_ready_once(LiveRequestHandler)
     except Exception:
         LOG.exception("Live Telegram connection confirmation failed")
+    try:
+        _send_live_friend_ready_once()
+    except Exception:
+        LOG.exception("Friends Telegram channel confirmation failed")
     LOG.info("Wude live API listening on %s:%s", host, port)
     try:
         server.serve_forever()

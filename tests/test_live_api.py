@@ -100,6 +100,28 @@ def test_telegram_ready_notice_waits_for_persistent_storage(tmp_path, monkeypatc
     assert sent == []
 
 
+def test_friend_ready_notice_is_non_sensitive_and_sent_only_once(tmp_path, monkeypatch):
+    volume = tmp_path / "railway-volume"
+    volume.mkdir()
+    sent = []
+    monkeypatch.setenv("LIVE_PERSISTENT_DATA_DIR", str(volume))
+    monkeypatch.setenv("TELEGRAM_LIVE_BOT_TOKEN", "dedicated-live-bot-token")
+    monkeypatch.setenv("TELEGRAM_FRIEND_ALERT_CHANNEL_TITLE", "AI 大量買賣朋友版")
+    monkeypatch.setattr(
+        live_api,
+        "send_live_friend_telegram",
+        lambda message, *, state_path=None: sent.append((message, state_path)) or True,
+    )
+
+    assert live_api._send_live_friend_ready_once() is True
+    assert live_api._send_live_friend_ready_once() is False
+    assert len(sent) == 1
+    assert "朋友版已連線" in sent[0][0]
+    assert "驗證碼" in sent[0][0]
+    assert "dedicated-live-bot-token" not in sent[0][0]
+    assert sent[0][1] == volume / "telegram_friend_alert_chat.json"
+
+
 def _handler_with_headers(**headers):
     handler = object.__new__(LiveRequestHandler)
     handler.headers = Message()
