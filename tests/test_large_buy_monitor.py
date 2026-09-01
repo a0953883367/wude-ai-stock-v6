@@ -46,6 +46,18 @@ def test_one_large_aggressive_buy_triggers_immediately():
     assert alert["trigger_label"] == "300萬級單筆大買"
 
 
+def test_default_production_config_does_not_emit_tw_500k_tier():
+    detector = LargeBuyDetector(baselines())
+    assert detector.process_trade(
+        "2330.TW", price=1000, size=500, bid=999, ask=1000, timestamp=100
+    ) is None
+    alert = detector.process_trade(
+        "2330.TW", price=1000, size=3000, bid=999, ask=1000, timestamp=101
+    )
+    assert alert["threshold_level"] == "major"
+    assert alert["threshold_level_label"] == "300萬級"
+
+
 def test_tw_500k_single_trade_is_the_fixed_general_floor():
     detector = LargeBuyDetector(baselines(), config=config())
     assert detector.process_trade(

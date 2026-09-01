@@ -46,7 +46,10 @@ class LargeBuyConfig:
     cluster_max_trades: int = 5
     cluster_buy_ratio_min: float = 0.70
     cooldown_seconds: float = 180.0
-    single_min_twd: float = 500_000.0
+    # Production Taiwan single-print alerts start at TWD 3 million.  The
+    # former TWD 500,000 tier generated excessive notifications after Fubon
+    # board-lot sizes were normalized to shares.
+    single_min_twd: float = 3_000_000.0
     major_single_min_twd: float = 3_000_000.0
     # US single prints only use the separate block threshold below.  Keeping
     # this as None prevents the former USD 100,000 general alert from firing.
@@ -631,11 +634,11 @@ class LargeBuyAlertService:
                     "US": self.config.block_single_min_usd,
                 },
                 "single_threshold_tiers": {
-                    "TW": [
+                    "TW": sorted(set([
                         self.config.single_min_twd,
                         self.config.major_single_min_twd,
                         self.config.block_single_min_twd,
-                    ],
+                    ])),
                     "US": [self.config.block_single_min_usd],
                 },
                 "tw_trade_size_unit": "shares_normalized_from_fubon_board_lots",
