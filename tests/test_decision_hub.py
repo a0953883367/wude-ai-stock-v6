@@ -214,6 +214,69 @@ def test_missing_shadow_sources_are_explicit_and_not_imputed(tmp_path):
     assert report["policy"]["missing_data_never_imputed"] is True
 
 
+def test_completed_quality_flow_links_to_short_decision_without_using_amount(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "capital_flow_daily.json", {
+        "updated_at": "2026-08-29T06:00:00+00:00",
+        "mode": "closed_session_shadow_only",
+        "policy": {"intraday_exposed": False},
+        "markets": {"TW": [{
+            "market": "TW", "session_date": "2026-08-29", "closed": True,
+            "complete": True, "session_scope": "regular_hours_only",
+            "source": "Fubon Neo", "ranking_basis": "signal_quality",
+            "top_inflows": [{
+                "symbol": "TEST.TW", "net_flow": 99_000_000,
+                "confidence": 80, "persistence_pct": 70,
+                "buy_ratio_pct": 75,
+            }],
+            "top_outflows": [],
+        }], "US": []},
+    })
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    link = item["capital_flow_shadow"]
+    evidence = next(
+        row for row in item["evidence"]
+        if row["source_id"] == "capital_flow_shadow"
+    )
+    assert link["linked"] is True
+    assert link["validated_for_decision"] is True
+    assert link["short_adjustment_points"] == 1.5
+    assert link["amount_affects_decision"] is False
+    assert item["horizons"]["short"]["score"] == 83.5
+    assert evidence["affects_decision"] is True
+    assert "金額只顯示、不參與加分" in evidence["reason"]
+    assert report["summary"]["capital_flow_active_count"] == 1
+
+
+def test_low_quality_or_wrong_session_flow_never_changes_decision(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "capital_flow_daily.json", {
+        "mode": "closed_session_shadow_only",
+        "policy": {"intraday_exposed": False},
+        "markets": {"TW": [{
+            "session_date": "2026-08-29", "closed": True, "complete": True,
+            "session_scope": "regular_hours_only", "ranking_basis": "signal_quality",
+            "top_inflows": [],
+            "top_outflows": [{
+                "symbol": "TEST.TW", "net_flow": -900_000_000,
+                "confidence": 35, "persistence_pct": 100,
+            }],
+        }], "US": []},
+    })
+    item = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )["decisions"][0]
+    assert item["capital_flow_shadow"]["linked"] is True
+    assert item["capital_flow_shadow"]["validated_for_decision"] is False
+    assert item["capital_flow_shadow"]["short_adjustment_points"] == 0
+    assert item["horizons"]["short"]["score"] == 82
+
+
 def test_verified_material_news_overrides_positive_models(tmp_path):
     _reports(tmp_path, valuation_score=30)
     item = update_decision_hub(

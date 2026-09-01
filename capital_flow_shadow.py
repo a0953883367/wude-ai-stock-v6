@@ -611,7 +611,7 @@ class CapitalFlowShadow:
             "eligible_trade_count": sum(row["eligible_trade_count"] for row in rows),
             "filtered_trade_count": sum(row["filtered_trade_count"] for row in rows),
             "ranking_basis": "signal_quality",
-            "display_ranking_basis": "net_flow_amount",
+            "display_ranking_basis": "signal_quality",
             "asset_groups": asset_groups,
             "themes": sorted(themes, key=lambda row: row["theme"]),
             "top_inflows": inflows,

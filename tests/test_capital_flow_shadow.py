@@ -34,7 +34,7 @@ def test_taiwan_and_us_are_reported_independently():
     assert all(row["market"] == "US" for row in us["top_inflows"] + us["top_outflows"])
 
 
-def test_stock_and_theme_rankings_use_net_flow_amount_before_signal_quality():
+def test_signal_quality_rankings_stay_primary_while_amount_lists_remain_available():
     flow = CapitalFlowShadow(baselines(), clock=lambda: 1_000)
 
     def row(symbol, theme, buy, sell, confidence):
@@ -63,7 +63,7 @@ def test_stock_and_theme_rankings_use_net_flow_amount_before_signal_quality():
     ])
 
     assert summary["ranking_basis"] == "signal_quality"
-    assert summary["display_ranking_basis"] == "net_flow_amount"
+    assert summary["display_ranking_basis"] == "signal_quality"
     assert [item["symbol"] for item in summary["amount_top_inflows"][:2]] == ["LARGE_IN", "SMALL_IN"]
     assert [item["symbol"] for item in summary["amount_top_outflows"][:2]] == ["LARGE_OUT", "SMALL_OUT"]
     assert [item["theme"] for item in summary["amount_theme_inflows"][:2]] == ["低比例大流入", "高比例小流入"]
