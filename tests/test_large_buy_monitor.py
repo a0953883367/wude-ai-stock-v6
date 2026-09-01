@@ -7,6 +7,7 @@ from large_buy_monitor import (
     LargeBuyDetector,
     StockBaseline,
     format_large_buy_telegram,
+    load_institutional_snapshot,
 )
 from capital_flow_shadow import CapitalFlowShadow
 
@@ -31,6 +32,51 @@ def config():
         cluster_daily_value_ratio=0,
         cooldown_seconds=180,
     )
+
+
+def test_completed_institution_snapshot_ranks_etf_and_stocks(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    report.write_text(__import__("json").dumps({
+        "institution_status": {
+            "ranking_eligible": True, "minimum_coverage_pct": 95,
+        },
+        "data": [
+            {
+                "symbol": "00403A.TW", "name": "主動統一升級50",
+                "market": "TW", "type": "ETF", "theme": "主動ETF",
+                "institution_available": True, "institution_date": "2026-09-01",
+                "institution_source": "TWSE T86", "institution_net": 372_887_558,
+                "foreign_net": 270_939_051, "trust_net": 0, "dealer_net": 101_948_507,
+            },
+            {
+                "symbol": "2330.TW", "name": "台積電", "market": "TW",
+                "type": "個股", "theme": "半導體", "institution_available": True,
+                "institution_date": "2026-09-01", "institution_source": "TWSE T86",
+                "institution_net": -2_000_000, "foreign_net": -1_900_000,
+                "trust_net": -100_000, "dealer_net": 0,
+            },
+        ],
+    }, ensure_ascii=False), encoding="utf-8")
+    snapshot = load_institutional_snapshot(report)
+    assert snapshot["ranking_eligible"] is True
+    assert snapshot["coverage_pct"] == 100
+    assert snapshot["groups"]["total"]["buys"][0]["symbol"] == "00403A.TW"
+    assert snapshot["groups"]["total"]["sells"][0]["symbol"] == "2330.TW"
+
+
+def test_institution_snapshot_stops_ranking_below_coverage_gate(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    rows = [{
+        "symbol": f"{index:04d}.TW", "name": str(index), "market": "TW",
+        "institution_available": index < 9,
+        "institution_date": "2026-09-01" if index < 9 else None,
+        "institution_net": index,
+    } for index in range(10)]
+    report.write_text(__import__("json").dumps({"data": rows}), encoding="utf-8")
+    snapshot = load_institutional_snapshot(report)
+    assert snapshot["coverage_pct"] == 90
+    assert snapshot["ranking_eligible"] is False
+    assert snapshot["groups"] == {}
 
 
 def test_one_large_aggressive_buy_triggers_immediately():

@@ -755,10 +755,23 @@ def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict
         if row.get("market") != "TW":
             continue
         sid = symbol.split(".")[0]
-        institutions[sid] = {
+        institution_snapshot = {
             key: value for key, value in row.items()
             if key == "available" or key.startswith(("foreign", "trust", "dealer", "institution_"))
         }
+        # Serialized analysis rows use *_net and institution_available while
+        # build_features consumes the provider-shaped keys. Reconstruct that
+        # contract explicitly so a morning/noon refresh cannot silently turn
+        # yesterday's verified institutional snapshot into missing/zero data.
+        institution_snapshot.update({
+            "available": 1.0 if row.get(
+                "institution_available", row.get("available")
+            ) else 0.0,
+            "foreign": row.get("foreign_net", row.get("foreign")),
+            "trust": row.get("trust_net", row.get("trust")),
+            "dealer": row.get("dealer_net", row.get("dealer")),
+        })
+        institutions[sid] = institution_snapshot
         credit[sid] = {
             key: value for key, value in row.items()
             if key.startswith(("credit_", "margin_", "short_", "sbl_"))
@@ -777,6 +790,50 @@ def _tw_intraday_enrichment(previous: dict[str, dict]) -> tuple[dict, dict, dict
         if broker_snapshot.get("broker_available") and broker_snapshot.get("broker_date"):
             brokers[sid] = broker_snapshot
     return institutions, credit, fundamentals, brokers
+
+
+def _institution_coverage_status(
+    universe: list[dict],
+    institutions: dict[str, dict],
+    official_status: dict | None = None,
+) -> dict:
+    """Build a completed-session coverage gate for rankings and AI inputs."""
+    tw_ids = {
+        str(item.get("symbol") or "").split(".")[0]
+        for item in universe
+        if item.get("market") == "TW"
+    }
+    dated = [
+        item for sid, item in institutions.items()
+        if sid in tw_ids and item.get("available") and item.get("institution_date")
+    ]
+    date_counts = Counter(str(item.get("institution_date")) for item in dated)
+    session_date = date_counts.most_common(1)[0][0] if date_counts else None
+    covered = sum(
+        1 for item in dated if str(item.get("institution_date")) == session_date
+    )
+    expected = len(tw_ids)
+    coverage = covered / expected * 100 if expected else 0.0
+    minimum = float((official_status or {}).get("minimum_coverage_pct") or 95.0)
+    eligible = bool(session_date and coverage >= minimum)
+    if eligible:
+        reason = "verified_completed_session_snapshot"
+    elif not session_date:
+        reason = "institution_source_unavailable"
+    else:
+        reason = "institution_coverage_insufficient"
+    return {
+        "available": eligible,
+        "ranking_eligible": eligible,
+        "ai_eligible": eligible,
+        "reason": reason,
+        "session_date": session_date,
+        "expected_count": expected,
+        "returned_count": covered,
+        "coverage_pct": round(coverage, 1),
+        "minimum_coverage_pct": minimum,
+        "official": dict(official_status or {}),
+    }
 
 
 def sort_by_score(rows: list[dict]) -> list[dict]:
@@ -974,6 +1031,18 @@ def main() -> int:
     institutions = merge_official_with_fallback(
         institutions, tw_official.get("institutions", {}), kind="institution"
     )
+    institution_status = _institution_coverage_status(
+        universe, institutions, tw_official.get("institution_status")
+    )
+    institutions_for_scoring = (
+        institutions if institution_status.get("ai_eligible") else {}
+    )
+    if institutions and not institution_status.get("ai_eligible"):
+        logging.warning(
+            "台股法人覆蓋不足（%s/%s）；本次不產出法人排行且不送入 AI 評分",
+            institution_status.get("returned_count"),
+            institution_status.get("expected_count"),
+        )
     credit_flows = merge_official_with_fallback(
         credit_flows, tw_official.get("credit", {}), kind="credit"
     )
@@ -1028,7 +1097,10 @@ def main() -> int:
         if daily is None:
             continue
         stock_id = symbol.split(".")[0]
-        institution = institutions.get(stock_id) if item.get("market") == "TW" else None
+        institution = (
+            institutions_for_scoring.get(stock_id)
+            if item.get("market") == "TW" else None
+        )
         row = build_features(item, daily, intraday.get(symbol), institution)
         if row:
             row.update(etf_metadata.get(symbol, {}))
@@ -1303,6 +1375,7 @@ def main() -> int:
             "fundamental_count": len(fundamentals),
             "tw_official_price_count": len(tw_official.get("prices", {})),
             "tw_official_institution_count": len(tw_official.get("institutions", {})),
+            "tw_institution_status": institution_status,
             "tw_official_credit_count": len(tw_official.get("credit", {})),
             "tw_official_fundamental_count": len(tw_official.get("fundamentals", {})),
             "tw_official_announcement_count": len(tw_official.get("announcements", {})),
@@ -1591,6 +1664,7 @@ def main() -> int:
         "candidate_count": len(universe),
         "analyzed_count": len(ranked),
         "unavailable_count": max(0, len(universe) - len(ranked)),
+        "institution_status": institution_status,
         "data": ranked,
     }
     all_analysis_path = SETTINGS.reports_dir / "all_analysis.json"

@@ -7,6 +7,7 @@ from briefing import (
     _report_session_issues,
     _simulation_input_rows,
     _freeze_tw_prices_until_close,
+    _institution_coverage_status,
     _tw_intraday_enrichment,
 )
 
@@ -151,6 +152,48 @@ def test_intraday_snapshot_reuses_enrichment_without_stale_price_fields():
     assert "price" not in institutions["6116"]
     assert "rsi" not in institutions["6116"]
     assert "AAPL" not in institutions
+
+
+def test_intraday_snapshot_reconstructs_serialized_institution_contract():
+    institutions, _, _, _ = _tw_intraday_enrichment({
+        "00403A.TW": {
+            "symbol": "00403A.TW", "market": "TW",
+            "institution_available": True,
+            "institution_date": "2026-09-01",
+            "institution_source": "TWSE T86",
+            "foreign_net": 270_939_051,
+            "trust_net": 0,
+            "dealer_net": 101_948_507,
+            "institution_1d": 372_887_558,
+        },
+    })
+    row = institutions["00403A"]
+    assert row["available"] == 1.0
+    assert row["foreign"] == 270_939_051
+    assert row["trust"] == 0
+    assert row["dealer"] == 101_948_507
+
+
+def test_institution_coverage_gate_requires_95_percent_same_session():
+    universe = [
+        {"symbol": f"{index:04d}.TW", "market": "TW"}
+        for index in range(20)
+    ]
+    institutions = {
+        f"{index:04d}": {
+            "available": 1.0, "institution_date": "2026-09-01",
+        }
+        for index in range(19)
+    }
+    ready = _institution_coverage_status(universe, institutions)
+    assert ready["coverage_pct"] == 95
+    assert ready["ai_eligible"] is True
+
+    institutions.pop("0018")
+    blocked = _institution_coverage_status(universe, institutions)
+    assert blocked["coverage_pct"] == 90
+    assert blocked["ranking_eligible"] is False
+    assert blocked["ai_eligible"] is False
 
 
 def test_noon_and_intraday_defer_taiwan_price_fetch_until_close():
