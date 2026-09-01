@@ -83,10 +83,12 @@ class FlowWeightShadow:
         *,
         clock: Callable[[], float] = time.time,
         calendar: OfficialMarketCalendar | None = None,
+        validation_enabled: bool = True,
     ) -> None:
         self.report_path = report_path
         self.state_path = state_path
         self.clock = clock
+        self.validation_enabled = bool(validation_enabled)
         self.calendar = calendar or OfficialMarketCalendar(
             state_path.with_name("official_market_calendar.json"),
             clock=clock,
@@ -584,11 +586,15 @@ class FlowWeightShadow:
 
     def _summary(self, market: str) -> dict[str, Any]:
         market_state = self._state["markets"][market]
-        valid = [row for row in market_state["outcomes"] if row.get("status") == "valid"]
+        valid = (
+            [row for row in market_state["outcomes"] if row.get("status") == "valid"]
+            if self.validation_enabled else []
+        )
         baseline = sum(_number(((row.get("models") or {}).get("baseline") or {}).get("net_profit")) for row in valid)
         shadow = sum(_number(((row.get("models") or {}).get("flow_shadow") or {}).get("net_profit")) for row in valid)
         signal_count = sum(int(row.get("valid_signal_count") or 0) for row in market_state["sessions"])
         days = len(valid)
+        signal_count = signal_count if self.validation_enabled else 0
         gate_ready = days >= MIN_REVIEW_DAYS and signal_count >= MIN_REVIEW_SIGNALS
         return {
             "valid_trading_days": days,
@@ -598,7 +604,12 @@ class FlowWeightShadow:
             "baseline_net_profit": round(baseline, 2),
             "flow_shadow_net_profit": round(shadow, 2),
             "incremental_net_profit": round(shadow - baseline, 2),
-            "review_status": "candidate_review_only" if gate_ready else "collecting_only",
+            "review_status": (
+                "candidate_review_only" if gate_ready else
+                "collecting_only" if self.validation_enabled else
+                "storage_not_persistent"
+            ),
+            "validation_eligible": self.validation_enabled,
             "formal_ranking_locked": True,
         }
 
@@ -611,10 +622,11 @@ class FlowWeightShadow:
             markets: dict[str, Any] = {}
             for market in MARKETS:
                 official_date = self._official_date(market)
-                changed = self._settle(market, official_date) or changed
-                changed = self._reconcile_signal_horizons(market, official_date) or changed
-                if period == CLOSED_PERIOD[market]:
-                    changed = self._freeze(market, official_date, flow) or changed
+                if self.validation_enabled:
+                    changed = self._settle(market, official_date) or changed
+                    changed = self._reconcile_signal_horizons(market, official_date) or changed
+                    if period == CLOSED_PERIOD[market]:
+                        changed = self._freeze(market, official_date, flow) or changed
                 today = _session_date(self.clock(), market)
                 signal_dates = sorted((self._state["markets"][market]["signals"] or {}).keys())
                 preview_date = today if today in signal_dates else (signal_dates[-1] if signal_dates else official_date)
@@ -624,7 +636,11 @@ class FlowWeightShadow:
                     "market": market,
                     "preview_session_date": preview_date,
                     "official_session_date": official_date,
-                    "status": "active_preview" if points else "waiting_for_valid_large_trade_signal",
+                    "status": (
+                        "storage_not_persistent" if not self.validation_enabled else
+                        "active_preview" if points else
+                        "waiting_for_valid_large_trade_signal"
+                    ),
                     "baseline_top10": self._select(market, points, adjusted=False),
                     "shadow_top10": self._select(market, points, adjusted=True),
                     "signals": list((market_state["signals"].get(preview_date) or {}).values()),
@@ -651,6 +667,9 @@ class FlowWeightShadow:
                     "medium_45_day_unchanged": True,
                     "long_6_month_unchanged": True,
                     "automatic_promotion": False,
+                    "storage_persistent": self.validation_enabled,
+                    "validation_eligible": self.validation_enabled,
+                    "ephemeral_samples": "diagnostic_only_not_counted" if not self.validation_enabled else False,
                     "broker_orders": False,
                     "review_gate": {"trading_days": MIN_REVIEW_DAYS, "valid_signals": MIN_REVIEW_SIGNALS},
                     "missing_prices": "quarantine_not_score",

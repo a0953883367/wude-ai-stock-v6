@@ -398,6 +398,7 @@ class LargeBuyAlertService:
         *,
         flow_state_path: Path | None = None,
         weight_shadow_state_path: Path | None = None,
+        weight_shadow_validation_enabled: bool = True,
         config: LargeBuyConfig | None = None,
         notifier: Callable[[str], Any] | None = None,
         alert_notifier: Callable[[dict[str, Any]], Any] | None = None,
@@ -414,6 +415,7 @@ class LargeBuyAlertService:
         self.weight_shadow = FlowWeightShadow(
             report_path,
             weight_shadow_state_path or state_path.with_name("flow_weight_shadow.json"),
+            validation_enabled=weight_shadow_validation_enabled,
         )
         self.notifier = notifier
         self.alert_notifier = alert_notifier

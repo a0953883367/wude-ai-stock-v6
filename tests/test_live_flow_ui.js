@@ -117,7 +117,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=645/);
+  assert.match(html, /live_flow\.js\?v=646/);
 
   const renderRow = loadRenderRow();
   const output = renderRow({
@@ -148,6 +148,7 @@ test('five-day flow weight experiment is isolated and visible', () => {
   assert.match(html, /滿60日及200筆訊號/);
   assert.match(script, /flow_weight_shadow/);
   assert.match(script, /正式排名鎖定/);
+  assert.match(script, /儲存未持久化・本次不計入驗證/);
   assert.match(script, /flow-alert-sound/);
   assert.match(html, /訊號後實際方向驗證/);
   assert.match(script, /訊號後5分鐘/);
