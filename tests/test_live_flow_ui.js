@@ -117,7 +117,11 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=647/);
+  assert.match(html, /live_flow\.js\?v=648/);
+  assert.match(script, /族群流入排名（按淨流金額）/);
+  assert.match(script, /個股流出排名（按淨流金額）/);
+  assert.match(script, /amount_theme_inflows\|\|flow\.theme_inflows/);
+  assert.match(script, /amount_top_outflows\|\|flow\.top_outflows/);
 
   const renderRow = loadRenderRow();
   const output = renderRow({

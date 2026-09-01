@@ -34,6 +34,44 @@ def test_taiwan_and_us_are_reported_independently():
     assert all(row["market"] == "US" for row in us["top_inflows"] + us["top_outflows"])
 
 
+def test_stock_and_theme_rankings_use_net_flow_amount_before_signal_quality():
+    flow = CapitalFlowShadow(baselines(), clock=lambda: 1_000)
+
+    def row(symbol, theme, buy, sell, confidence):
+        return {
+            "symbol": symbol,
+            "theme": theme,
+            "asset_type": "個股",
+            "buy_value": buy,
+            "sell_value": sell,
+            "neutral_value": 0,
+            "net_flow": buy - sell,
+            "buy_ratio_pct": buy / (buy + sell) * 100,
+            "confidence": confidence,
+            "persistence_pct": confidence,
+            "net_to_average_daily_value_pct": confidence,
+            "trade_count": 1,
+            "eligible_trade_count": 1,
+            "filtered_trade_count": 0,
+        }
+
+    summary = flow._summarize_rows([
+        row("SMALL_IN", "高比例小流入", 190, 90, 99),
+        row("LARGE_IN", "低比例大流入", 600, 400, 10),
+        row("SMALL_OUT", "高比例小流出", 10, 160, 99),
+        row("LARGE_OUT", "低比例大流出", 400, 700, 10),
+    ])
+
+    assert summary["ranking_basis"] == "signal_quality"
+    assert summary["display_ranking_basis"] == "net_flow_amount"
+    assert [item["symbol"] for item in summary["amount_top_inflows"][:2]] == ["LARGE_IN", "SMALL_IN"]
+    assert [item["symbol"] for item in summary["amount_top_outflows"][:2]] == ["LARGE_OUT", "SMALL_OUT"]
+    assert [item["theme"] for item in summary["amount_theme_inflows"][:2]] == ["低比例大流入", "高比例小流入"]
+    assert [item["theme"] for item in summary["amount_theme_outflows"][:2]] == ["低比例大流出", "高比例小流出"]
+    assert [item["symbol"] for item in summary["top_inflows"][:2]] == ["SMALL_IN", "LARGE_IN"]
+    assert [item["symbol"] for item in summary["top_outflows"][:2]] == ["SMALL_OUT", "LARGE_OUT"]
+
+
 def test_three_symbol_theme_resonance_requires_real_breadth():
     flow = CapitalFlowShadow(baselines(), clock=lambda: 2_000)
     for index, symbol in enumerate(("2330.TW", "2303.TW", "2344.TW")):
