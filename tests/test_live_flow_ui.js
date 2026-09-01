@@ -142,7 +142,8 @@ test('single-trade thresholds and block labels stay linked to the API policy', (
   assert.match(script, /general_single_thresholds/);
   assert.match(script, /major_single_thresholds/);
   assert.match(script, /block_single_thresholds/);
-  assert.match(script, /美股巨額單筆/);
+  assert.match(script, /美股單筆/);
+  assert.match(script, /thresholdMoney\(general\.US,'US'\)/);
   assert.match(script, /row\.is_block_trade&&row\.block_trade_label/);
 });
 
