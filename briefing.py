@@ -194,6 +194,22 @@ def _fetch_closed_daily_flow(*, intraday: bool) -> dict:
     return payload
 
 
+def _persist_closed_daily_flow(reports_dir, payload: dict) -> bool:
+    """Atomically cache sanitized completed sessions for linked page evidence."""
+    if not isinstance(payload, dict) or payload.get("mode") != "closed_session_shadow_only":
+        return False
+    if (payload.get("policy") or {}).get("intraday_exposed") is not False:
+        return False
+    path = reports_dir / "capital_flow_daily.json"
+    temporary = reports_dir / "capital_flow_daily.tmp"
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    temporary.replace(path)
+    return True
+
+
 def _update_valuation_risk_shadow_safely(
     reports_dir,
     rows,
@@ -1509,13 +1525,16 @@ def main() -> int:
     )
     # Research-only market-rule and sector-rotation A/B.  It reads the frozen
     # V6 order but cannot write scores, ranks or broker instructions.
+    closed_daily_flow = _fetch_closed_daily_flow(intraday=args.intraday)
+    if closed_daily_flow:
+        _persist_closed_daily_flow(SETTINGS.reports_dir, closed_daily_flow)
     _update_market_rotation_shadow_safely(
         SETTINGS.reports_dir,
         simulation_rows,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
-        daily_flow=_fetch_closed_daily_flow(intraday=args.intraday),
+        daily_flow=closed_daily_flow,
     )
     valuation_rows = []
     for source_row in ranked:

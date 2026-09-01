@@ -73,20 +73,46 @@ def validate_evidence(item: dict[str, Any]) -> list[str]:
 def build_unified_evidence_report(
     decisions: list[dict[str, Any]], *, updated_at: str
 ) -> dict[str, Any]:
-    rows = []
+    rows_by_id: dict[str, dict[str, Any]] = {}
     invalid = []
+    input_count = 0
     for decision in decisions:
         for evidence in decision.get("evidence", []):
+            input_count += 1
             item = dict(evidence)
             errors = validate_evidence(item)
             if errors:
                 invalid.append({"evidence_id": item.get("evidence_id"), "errors": errors})
-            rows.append(item)
+            evidence_id = str(item.get("evidence_id") or f"invalid-{input_count}")
+            current = rows_by_id.get(evidence_id)
+            if current is None:
+                rows_by_id[evidence_id] = item
+                continue
+            # The same source/symbol/horizon/session is one fact even if two
+            # page adapters surface it. Keep the most decision-relevant copy
+            # so linked pages cannot multiply the same signal's weight.
+            current_priority = (
+                bool(current.get("affects_decision")),
+                _bounded(current.get("confidence")),
+                _bounded(current.get("strength")),
+                len(str(current.get("reason") or "")),
+            )
+            item_priority = (
+                bool(item.get("affects_decision")),
+                _bounded(item.get("confidence")),
+                _bounded(item.get("strength")),
+                len(str(item.get("reason") or "")),
+            )
+            if item_priority > current_priority:
+                rows_by_id[evidence_id] = item
+    rows = list(rows_by_id.values())
     return {
         "schema_version": SCHEMA_VERSION,
         "updated_at": updated_at,
         "status": "ready" if not invalid else "invalid",
+        "input_evidence_count": input_count,
         "evidence_count": len(rows),
+        "deduplicated_count": input_count - len(rows),
         "invalid_count": len(invalid),
         "invalid": invalid,
         "contract": {
@@ -94,6 +120,7 @@ def build_unified_evidence_report(
             "horizons": sorted(VALID_HORIZONS),
             "missing_never_imputed": True,
             "provenance_required": True,
+            "same_source_symbol_horizon_session_counted_once": True,
         },
         "evidence": rows,
         "integrity_sha256": hashlib.sha256(

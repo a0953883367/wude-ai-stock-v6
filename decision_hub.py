@@ -18,10 +18,13 @@ from evidence_contract import build_unified_evidence_report, make_evidence
 from portfolio_control import build_portfolio_control
 
 
-SCHEMA_VERSION = 2
-MODEL_VERSION = "CENTRAL-DECISION-HUB-V2"
+SCHEMA_VERSION = 3
+MODEL_VERSION = "CENTRAL-DECISION-HUB-V3"
 CHUNK_SIZE = 50
 EVIDENCE_CHUNK_SIZE = 400
+CAPITAL_FLOW_MIN_CONFIDENCE = 60.0
+CAPITAL_FLOW_MIN_PERSISTENCE = 50.0
+CAPITAL_FLOW_MAX_SHORT_ADJUSTMENT = 3.0
 POLICY = {
     "formal_ranking_locked": True,
     "shadow_models_evidence_only": True,
@@ -191,6 +194,55 @@ def _rotation_index(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     return result
 
 
+def _capital_flow_index(
+    report: dict[str, Any] | None,
+) -> dict[tuple[str, str, str], dict[str, Any]]:
+    """Index only complete closed-session quality rankings by stock.
+
+    Net-flow amount remains descriptive. Eligibility and central influence
+    come from the original confidence/persistence model, never amount size.
+    """
+    result: dict[tuple[str, str, str], dict[str, Any]] = {}
+    if not isinstance(report, dict):
+        return result
+    if (report.get("policy") or {}).get("intraday_exposed") is not False:
+        return result
+    for market, sessions in (report.get("markets") or {}).items():
+        if not isinstance(sessions, list):
+            continue
+        for session in sessions:
+            if not isinstance(session, dict) or not (
+                session.get("closed") is True
+                and session.get("complete") is True
+                and session.get("session_scope") == "regular_hours_only"
+                and session.get("ranking_basis") == "signal_quality"
+            ):
+                continue
+            session_date = str(session.get("session_date") or "")
+            for field, direction in (
+                ("top_inflows", "support"), ("top_outflows", "oppose")
+            ):
+                for row in session.get(field) or []:
+                    if not isinstance(row, dict) or not row.get("symbol"):
+                        continue
+                    key = (
+                        str(market).upper(), session_date,
+                        str(row.get("symbol") or "").upper(),
+                    )
+                    candidate = {
+                        **row,
+                        "flow_direction": direction,
+                        "session_date": session_date,
+                        "source": session.get("source"),
+                    }
+                    current = result.get(key)
+                    if current is None or _number(candidate.get("confidence"), 0) > _number(
+                        current.get("confidence"), 0
+                    ):
+                        result[key] = candidate
+    return result
+
+
 def _inverse_indexes(
     database: dict[str, Any] | None,
     shadow: dict[str, Any] | None,
@@ -231,6 +283,7 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
     validation = reports.get("validation_60d") or {}
     graduation = reports.get("graduation") or {}
     tw_financial = reports.get("tw_financial") or {}
+    capital_flow = reports.get("capital_flow") or {}
     valuation_coverage = valuation.get("coverage", {})
     inverse_samples = sum(
         len((inverse.get("markets", {}).get(market) or {}).get("cohorts", []))
@@ -320,6 +373,20 @@ def _model_readiness(reports: dict[str, dict[str, Any] | None]) -> dict[str, Any
             "coverage_pct": tw_financial.get("coverage_pct"),
             "missing": tw_financial.get("missing_symbols", []),
         },
+        "capital_flow": {
+            "status": "ready" if capital_flow else "missing",
+            "closed_complete_sessions": sum(
+                1
+                for sessions in (capital_flow.get("markets") or {}).values()
+                for session in (sessions if isinstance(sessions, list) else [])
+                if isinstance(session, dict)
+                and session.get("closed") is True
+                and session.get("complete") is True
+            ),
+            "intraday_used": False,
+            "ranking_basis": "signal_quality",
+            "amount_affects_decision": False,
+        },
     }
 
 
@@ -331,6 +398,7 @@ def _build_decision(
     inverse_mapping: dict[str, Any] | None,
     inverse_candidate: dict[str, Any] | None,
     inverse_ready: bool,
+    capital_flow: dict[str, Any] | None,
     updated_at: str,
 ) -> dict[str, Any]:
     symbol = str(row.get("symbol") or "")
@@ -395,6 +463,35 @@ def _build_decision(
     if valuation_ready and valuation_pressure is not None:
         # Risk-only deduction in this downstream decision; formal rank is untouched.
         long_score = round(max(0.0, long_score - max(0.0, valuation_pressure - 55) * 0.20), 1)
+
+    flow_confidence = _bounded((capital_flow or {}).get("confidence"))
+    flow_persistence = _bounded((capital_flow or {}).get("persistence_pct"))
+    flow_direction = str((capital_flow or {}).get("flow_direction") or "missing")
+    flow_ready = bool(
+        capital_flow
+        and flow_direction in ("support", "oppose")
+        and flow_confidence >= CAPITAL_FLOW_MIN_CONFIDENCE
+        and flow_persistence >= CAPITAL_FLOW_MIN_PERSISTENCE
+    )
+    flow_adjustment = 0.0
+    if flow_ready:
+        quality_margin = min(
+            (flow_confidence - CAPITAL_FLOW_MIN_CONFIDENCE)
+            / (100.0 - CAPITAL_FLOW_MIN_CONFIDENCE),
+            (flow_persistence - CAPITAL_FLOW_MIN_PERSISTENCE)
+            / (100.0 - CAPITAL_FLOW_MIN_PERSISTENCE),
+        )
+        flow_adjustment = round(
+            max(0.5, min(CAPITAL_FLOW_MAX_SHORT_ADJUSTMENT,
+                         0.5 + quality_margin * 2.5)),
+            1,
+        )
+        if flow_direction == "oppose":
+            flow_adjustment *= -1
+        short_score = round(max(0.0, min(100.0, short_score + flow_adjustment)), 1)
+        short_code = _recommendation(
+            short_score, bool(row.get("short_term_eligible")), data_block
+        )
 
     inverse_bear_score = _number((inverse_candidate or {}).get("bear_score"))
     inverse_active = bool(inverse_ready and inverse_bear_score is not None and inverse_bear_score >= 60)
@@ -500,6 +597,26 @@ def _build_decision(
         evidence.append(_evidence(
             "rotation_shadow", "族群輪動影子", "market", "missing", 0, 0, updated_at,
             "insufficient", "目前沒有可對齊的族群輪動樣本", affects_decision=False,
+        ))
+    if capital_flow:
+        currency = "NT$" if str(row.get("market") or "").upper() == "TW" else "US$"
+        net_flow = _number(capital_flow.get("net_flow"), 0.0) or 0.0
+        flow_label = "淨流入" if net_flow >= 0 else "淨流出"
+        evidence.append(_evidence(
+            "capital_flow_shadow", "大量買賣資金流", "short", flow_direction,
+            flow_confidence, flow_confidence,
+            str(capital_flow.get("session_date") or updated_at),
+            "validated_closed_session" if flow_ready else "low_quality_observation",
+            f"完整收盤品質排名；{flow_label} {currency}{abs(net_flow):,.0f}；"
+            f"信心 {flow_confidence:.0f}；持續 {flow_persistence:.0f}%；"
+            f"中央短線調整 {flow_adjustment:+.1f} 點。金額只顯示、不參與加分。",
+            affects_decision=flow_ready,
+        ))
+    else:
+        evidence.append(_evidence(
+            "capital_flow_shadow", "大量買賣資金流", "short", "missing", 0, 0,
+            updated_at, "not_linked", "沒有同市場、同交易日的完整收盤品質訊號",
+            affects_decision=False,
         ))
     news_available = bool(row.get("news_data_available"))
     news_penalty = _number(row.get("news_penalty"), 0) or 0
@@ -696,6 +813,17 @@ def _build_decision(
             "affects_central_decision": inverse_active,
             "affects_formal_ranking": False,
         },
+        "capital_flow_shadow": {
+            "linked": bool(capital_flow),
+            "validated_for_decision": flow_ready,
+            "direction": flow_direction,
+            "confidence": flow_confidence if capital_flow else None,
+            "persistence_pct": flow_persistence if capital_flow else None,
+            "net_flow": _number((capital_flow or {}).get("net_flow")),
+            "short_adjustment_points": flow_adjustment,
+            "amount_affects_decision": False,
+            "affects_formal_ranking": False,
+        },
         "horizons": horizons,
         "evidence": evidence,
         "conflicts": conflicts,
@@ -745,6 +873,7 @@ def update_decision_hub(
         "validation_60d": _read_json(reports_dir / "validation_60d.json"),
         "graduation": _read_json(reports_dir / "model_graduation.json"),
         "tw_financial": _read_json(reports_dir / "tw_financial_official_cache.json"),
+        "capital_flow": _read_json(reports_dir / "capital_flow_daily.json"),
     }
     news_cache = _read_json(reports_dir / "news_risk_cache.json") or {}
     news_by_symbol = (
@@ -757,6 +886,7 @@ def update_decision_hub(
     inverse_by_symbol, inverse_by_group = _inverse_indexes(
         source_reports["inverse_database"], source_reports["inverse"]
     )
+    capital_flow_by_symbol = _capital_flow_index(source_reports["capital_flow"])
     decisions = []
     for row in frozen_rows:
         if not isinstance(row, dict) or not row.get("symbol"):
@@ -776,6 +906,11 @@ def update_decision_hub(
             inverse_mapping=inverse_mapping,
             inverse_candidate=inverse_by_group.get(f"{market}:{inverse_group}"),
             inverse_ready=_inverse_market_ready(source_reports["inverse"], market),
+            capital_flow=capital_flow_by_symbol.get((
+                market.upper(),
+                str(row.get("official_session_date") or ""),
+                symbol_key,
+            )),
             updated_at=updated_at,
         ))
     decisions.sort(key=lambda item: (
@@ -835,6 +970,14 @@ def update_decision_hub(
             1 for item in decisions
             if (item.get("inverse_shadow") or {}).get("validated_for_decision")
         ),
+        "capital_flow_linked_count": sum(
+            1 for item in decisions
+            if (item.get("capital_flow_shadow") or {}).get("linked")
+        ),
+        "capital_flow_active_count": sum(
+            1 for item in decisions
+            if (item.get("capital_flow_shadow") or {}).get("validated_for_decision")
+        ),
         "by_recommendation": {
             code: sum(1 for item in decisions if item["final"]["recommendation"] == code)
             for code in ("can_scale", "wait_pullback", "watch", "avoid", "data_insufficient")
@@ -883,6 +1026,8 @@ def update_decision_hub(
             "資料契約與重大風險優先，缺資料不推測",
             "1～5日、45日、6個月分開判斷，不以多數決互相覆蓋",
             "未完成向前驗證的影子模型只能提供證據，不能提高正式排名",
+            "大量買賣依原訊號品質連動；淨流金額只顯示，完整收盤且品質達標才以最多±3點影響短線中央判斷",
+            "同來源、同標的、同時段、同交易日證據只計一次；族群輪動中的資金流不再重複加權",
             "短線強但估值過高時，保留短線觀察並降低6個月判斷",
             "盤中不抓、不補、不結算正式價格；收盤後才更新同交易日資料",
             "StockQ只在收盤後補主要來源缺少的市場指標，不覆蓋個股資料、不直接改分",
