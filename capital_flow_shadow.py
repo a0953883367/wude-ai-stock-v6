@@ -562,6 +562,26 @@ class CapitalFlowShadow:
             key=lambda row: (100 - row["buy_ratio_pct"], abs(row["net_flow"])),
             reverse=True,
         )[:10]
+        amount_inflows = sorted(
+            (row for row in rows if row["net_flow"] > 0),
+            key=lambda row: (row["net_flow"], row["confidence"], row["persistence_pct"]),
+            reverse=True,
+        )[:10]
+        amount_outflows = sorted(
+            (row for row in rows if row["net_flow"] < 0),
+            key=lambda row: (abs(row["net_flow"]), row["confidence"], row["persistence_pct"]),
+            reverse=True,
+        )[:10]
+        amount_theme_inflows = sorted(
+            (row for row in themes if row["net_flow"] > 0),
+            key=lambda row: (row["net_flow"], row["resonance"], row["buy_ratio_pct"]),
+            reverse=True,
+        )[:10]
+        amount_theme_outflows = sorted(
+            (row for row in themes if row["net_flow"] < 0),
+            key=lambda row: (abs(row["net_flow"]), row["resonance"], 100 - row["buy_ratio_pct"]),
+            reverse=True,
+        )[:10]
         asset_groups = {}
         for asset_label, predicate in {
             "ETF": lambda row: "ETF" in row["asset_type"].upper(),
@@ -590,12 +610,18 @@ class CapitalFlowShadow:
             "trade_count": sum(row["trade_count"] for row in rows),
             "eligible_trade_count": sum(row["eligible_trade_count"] for row in rows),
             "filtered_trade_count": sum(row["filtered_trade_count"] for row in rows),
+            "ranking_basis": "signal_quality",
+            "display_ranking_basis": "net_flow_amount",
             "asset_groups": asset_groups,
             "themes": sorted(themes, key=lambda row: row["theme"]),
             "top_inflows": inflows,
             "top_outflows": outflows,
             "theme_inflows": theme_inflows,
             "theme_outflows": theme_outflows,
+            "amount_top_inflows": amount_inflows,
+            "amount_top_outflows": amount_outflows,
+            "amount_theme_inflows": amount_theme_inflows,
+            "amount_theme_outflows": amount_theme_outflows,
         }
 
     def _window_snapshot(self, market: str, seconds: int, at: float) -> dict[str, Any]:
