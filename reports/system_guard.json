@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-01T17:10:51+08:00",
+  "checked_at": "2026-09-01T17:36:33+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-01 17:07:25",
-  "report_age_minutes": 3.4,
+  "report_age_minutes": 29.1,
   "counts": {
-    "ok": 20,
+    "ok": 19,
     "info": 4,
-    "warning": 2,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 3 分鐘",
+      "detail": "最近更新距今 29 分鐘",
       "action": ""
     },
     {
@@ -193,10 +193,10 @@
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近一次已送達：2026-09-01T09:10:44+00:00",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近一次通知未送達：send_returned_false；後端與串流未停止",
+      "action": "檢查專用 Bot 對話與 Railway Telegram 設定"
     },
     {
       "code": "device_authorization",
@@ -219,13 +219,14 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     }
   ],
   "action_required": [
     "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
-    "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
+    "每次排程續補；只降低6個月信心，不把整檔標成資料不足",
+    "檢查專用 Bot 對話與 Railway Telegram 設定"
   ],
   "safety": {
     "changes_rankings": false,
