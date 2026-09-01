@@ -46,7 +46,8 @@ class LargeBuyConfig:
     cluster_max_trades: int = 5
     cluster_buy_ratio_min: float = 0.70
     cooldown_seconds: float = 180.0
-    single_min_twd: float = 3_000_000.0
+    single_min_twd: float = 500_000.0
+    major_single_min_twd: float = 3_000_000.0
     # US single prints only use the separate block threshold below.  Keeping
     # this as None prevents the former USD 100,000 general alert from firing.
     single_min_usd: float | None = None
@@ -54,7 +55,10 @@ class LargeBuyConfig:
     cluster_min_usd: float = 250_000.0
     block_single_min_twd: float = 10_000_000.0
     block_single_min_usd: float = 1_000_000.0
-    single_daily_value_ratio: float = 0.0002
+    # Keep the Taiwan general tier at the exact configured amount.  A dynamic
+    # daily-value multiplier previously raised the effective floor for liquid
+    # stocks, which made a displayed TWD threshold misleading.
+    single_daily_value_ratio: float = 0.0
     cluster_daily_value_ratio: float = 0.0005
     alert_history_limit: int = 300
 
@@ -100,6 +104,7 @@ class LargeBuyDetector:
         self._last_price: dict[str, float] = {}
         self._last_side: dict[str, bool] = {}
         self._last_alert_at: dict[tuple[str, bool], float] = {}
+        self._last_alert_rank: dict[tuple[str, bool], int] = {}
         self._lock = threading.RLock()
 
     def update_quote(self, symbol: str, *, bid: Any = None, ask: Any = None) -> None:
@@ -122,6 +127,7 @@ class LargeBuyDetector:
             for key in list(self._last_alert_at):
                 if key[0] in symbols:
                     del self._last_alert_at[key]
+                    self._last_alert_rank.pop(key, None)
 
     def _thresholds(self, baseline: StockBaseline) -> tuple[float | None, float]:
         daily_value = baseline.average_daily_value
@@ -204,10 +210,6 @@ class LargeBuyDetector:
             while window and window[0].timestamp < cutoff:
                 window.popleft()
 
-            cooldown_key = (symbol, is_buy)
-            if at - self._last_alert_at.get(cooldown_key, float("-inf")) < self.config.cooldown_seconds:
-                return None
-
             single_threshold, cluster_threshold = self._thresholds(baseline)
             block_single_threshold = (
                 self.config.block_single_min_twd
@@ -216,26 +218,31 @@ class LargeBuyDetector:
             )
             trigger_type = ""
             selected: list[TradePrint] = []
-            if (
+            is_single_candidate = (
                 trade.value >= block_single_threshold
                 or (single_threshold is not None and trade.value >= single_threshold)
-            ):
+            )
+            directional_trades = [
+                item for item in window if item.is_aggressive_buy is is_buy
+            ]
+            cluster_selected = directional_trades[-self.config.cluster_max_trades:]
+            total_value = sum(item.value for item in window)
+            cluster_value = sum(item.value for item in cluster_selected)
+            directional_ratio = cluster_value / total_value if total_value > 0 else 0.0
+            is_cluster_candidate = (
+                self.config.cluster_min_trades <= len(cluster_selected) <= self.config.cluster_max_trades
+                and cluster_value >= cluster_threshold
+                and directional_ratio >= self.config.cluster_buy_ratio_min
+            )
+            if trade.value >= block_single_threshold:
                 trigger_type = "single"
                 selected = [trade]
-            else:
-                directional_trades = [
-                    item for item in window if item.is_aggressive_buy is is_buy
-                ]
-                selected = directional_trades[-self.config.cluster_max_trades:]
-                total_value = sum(item.value for item in window)
-                selected_value = sum(item.value for item in selected)
-                directional_ratio = selected_value / total_value if total_value > 0 else 0.0
-                if (
-                    self.config.cluster_min_trades <= len(selected) <= self.config.cluster_max_trades
-                    and selected_value >= cluster_threshold
-                    and directional_ratio >= self.config.cluster_buy_ratio_min
-                ):
-                    trigger_type = "cluster"
+            elif is_cluster_candidate:
+                trigger_type = "cluster"
+                selected = cluster_selected
+            elif is_single_candidate:
+                trigger_type = "single"
+                selected = [trade]
             if not trigger_type:
                 return None
 
@@ -244,16 +251,41 @@ class LargeBuyDetector:
             aggressive_sell_value = sum(item.value for item in window if not item.is_aggressive_buy)
             alert_value = sum(item.value for item in selected)
             is_block_trade = trigger_type == "single" and trade.value >= block_single_threshold
+            is_major_trade = (
+                baseline.market == "TW"
+                and alert_value >= self.config.major_single_min_twd
+                and not is_block_trade
+            )
+            alert_rank = 3 if is_block_trade else 2 if is_major_trade else 1
+            cooldown_key = (symbol, is_buy)
+            last_alert_at = self._last_alert_at.get(cooldown_key, float("-inf"))
+            last_alert_rank = self._last_alert_rank.get(cooldown_key, 0)
+            if (
+                at - last_alert_at < self.config.cooldown_seconds
+                and alert_rank <= last_alert_rank
+            ):
+                return None
             self._last_alert_at[cooldown_key] = at
+            self._last_alert_rank[cooldown_key] = alert_rank
             side = "buy" if is_buy else "sell"
             side_text = "大買" if is_buy else "大賣"
+            threshold_level = "block" if is_block_trade else "major" if is_major_trade else "general"
+            if baseline.market == "TW":
+                threshold_level_label = (
+                    "1,000萬級" if is_block_trade else "300萬級" if is_major_trade else "50萬級"
+                )
+            else:
+                threshold_level_label = "US$100萬級" if is_block_trade else "一般級"
             return {
                 "symbol": baseline.symbol,
                 "name": baseline.name,
                 "market": baseline.market,
                 "alert_side": side,
                 "trigger_type": trigger_type,
-                "trigger_label": f"單筆{side_text}" if trigger_type == "single" else f"{len(selected)}筆連續{side_text}",
+                "trigger_label": (
+                    f"{threshold_level_label}單筆{side_text}"
+                    if trigger_type == "single" else f"{len(selected)}筆連續{side_text}"
+                ),
                 "trade_count": len(selected),
                 "window_seconds": self.config.window_seconds,
                 "price": trade_price,
@@ -280,8 +312,13 @@ class LargeBuyDetector:
                 ),
                 "cluster_threshold": round(cluster_threshold, 2),
                 "is_block_trade": is_block_trade,
+                "is_major_trade": is_major_trade,
+                "threshold_level": threshold_level,
+                "threshold_level_label": threshold_level_label,
                 "block_trade_threshold": round(block_single_threshold, 2),
-                "block_trade_label": f"單筆巨額{side_text}" if is_block_trade else None,
+                "block_trade_label": (
+                    f"{threshold_level_label}單筆巨額{side_text}" if is_block_trade else None
+                ),
                 "classification": classification,
                 "detected_at": datetime.fromtimestamp(at, timezone.utc).isoformat(timespec="milliseconds"),
                 "detected_at_epoch": at,
@@ -581,6 +618,10 @@ class LargeBuyAlertService:
                     "TW": self.config.single_min_twd,
                     "US": self.config.single_min_usd,
                 },
+                "major_single_thresholds": {
+                    "TW": self.config.major_single_min_twd,
+                    "US": None,
+                },
                 "cluster_thresholds": {
                     "TW": self.config.cluster_min_twd,
                     "US": self.config.cluster_min_usd,
@@ -588,6 +629,14 @@ class LargeBuyAlertService:
                 "block_single_thresholds": {
                     "TW": self.config.block_single_min_twd,
                     "US": self.config.block_single_min_usd,
+                },
+                "single_threshold_tiers": {
+                    "TW": [
+                        self.config.single_min_twd,
+                        self.config.major_single_min_twd,
+                        self.config.block_single_min_twd,
+                    ],
+                    "US": [self.config.block_single_min_usd],
                 },
                 "broker_orders": False,
                 "us_session_policy": {

@@ -117,7 +117,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=646/);
+  assert.match(html, /live_flow\.js\?v=647/);
 
   const renderRow = loadRenderRow();
   const output = renderRow({
@@ -136,8 +136,9 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
 test('single-trade thresholds and block labels stay linked to the API policy', () => {
   assert.match(html, /id="alertPolicy"/);
   assert.match(script, /general_single_thresholds/);
+  assert.match(script, /major_single_thresholds/);
   assert.match(script, /block_single_thresholds/);
-  assert.match(script, /美股不啟用/);
+  assert.match(script, /美股巨額單筆/);
   assert.match(script, /row\.is_block_trade&&row\.block_trade_label/);
 });
 
