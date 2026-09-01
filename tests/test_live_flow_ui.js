@@ -117,7 +117,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=646/);
+  assert.match(html, /live_flow\.js\?v=647/);
 
   const renderRow = loadRenderRow();
   const output = renderRow({
