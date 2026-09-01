@@ -110,6 +110,15 @@ test('capital flow keeps buy and sell analysis', () => {
   assert.match(script, /top_outflows/);
 });
 
+test('owner page shows the current regular-session buy and sell ranking', () => {
+  assert.match(html, /data-window="session">今日/);
+  assert.match(html, /今日.*只累積正式盤有效逐筆成交/);
+  assert.match(script, /window:'session'/);
+  assert.match(script, /state\.window==='session'\?marketData\.session/);
+  assert.match(script, /今日正式盤/);
+  assert.match(html, /live_flow\.js\?v=650/);
+});
+
 test('theme outflows keep theme labels and never render raw undefined names', () => {
   assert.match(script, /function renderRow\(row,index,market,rowType,direction\)/);
   assert.match(script, /theme_outflows\|\|\[\],state\.market,'theme','out'/);
@@ -117,7 +126,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=649/);
+  assert.match(html, /live_flow\.js\?v=650/);
   assert.match(script, /族群流入排名（綜合訊號品質）/);
   assert.match(script, /個股流出排名（綜合訊號品質）/);
   assert.match(script, /flow\.theme_inflows\|\|\[\]/);
