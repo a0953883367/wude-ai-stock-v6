@@ -156,6 +156,59 @@ def test_alert_signal_tracks_5_15_60_minute_direction(tmp_path: Path):
     assert performance["horizons"]["eod"]["samples"] == 1
 
 
+def test_pending_5_15_60_minute_horizons_survive_restarts(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    state = tmp_path / "state.json"
+    _write_report(report, "2026-08-28", "evening")
+    alert = _alert("T01")
+    alert["sequence"] = 701
+    at = alert["detected_at_epoch"]
+
+    model = _model(report, state)
+    model.record_alert(alert)
+    model.observe_trade("T01", "TW", price=101, timestamp=at + 301)
+
+    model = _model(report, state)
+    first_restart = model.snapshot({})["markets"]["TW"]["signal_performance"]["horizons"]
+    assert first_restart["5m"]["samples"] == 1
+    assert first_restart["15m"]["samples"] == 0
+    assert first_restart["60m"]["samples"] == 0
+    model.observe_trade("T01", "TW", price=102, timestamp=at + 901)
+
+    model = _model(report, state)
+    model.observe_trade("T01", "TW", price=103, timestamp=at + 3601)
+    final = model.snapshot({})["markets"]["TW"]["signal_performance"]["horizons"]
+    assert final["5m"]["samples"] == 1
+    assert final["15m"]["samples"] == 1
+    assert final["60m"]["samples"] == 1
+    assert final["60m"]["average_directional_return_pct"] == 3
+
+
+def test_ephemeral_storage_never_counts_as_official_validation(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    state = tmp_path / "state.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = FlowWeightShadow(
+        report,
+        state,
+        calendar=_TestCalendar(),
+        validation_enabled=False,
+    )
+    alert = _alert("T01")
+    alert["sequence"] = 702
+    model.record_alert(alert)
+
+    snapshot = model.snapshot({})
+    tw = snapshot["markets"]["TW"]
+    assert tw["status"] == "storage_not_persistent"
+    assert tw["summary"]["valid_trading_days"] == 0
+    assert tw["summary"]["valid_signals"] == 0
+    assert tw["summary"]["review_status"] == "storage_not_persistent"
+    assert snapshot["policy"]["storage_persistent"] is False
+    assert snapshot["policy"]["validation_eligible"] is False
+    assert model._state["markets"]["TW"]["sessions"] == []
+
+
 def test_sell_signal_counts_price_decline_as_correct_direction(tmp_path: Path):
     report = tmp_path / "all_analysis.json"
     _write_report(report, "2026-08-28", "evening")

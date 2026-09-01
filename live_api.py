@@ -47,6 +47,42 @@ DEFAULT_SITE_LIVE_TOKEN_SHA256 = "0cf3e46b11bb22461985200095067592e354335fa026c4
 DEFAULT_VERCEL_APP_TOKEN_SHA256 = "80beb3c0100e5a4365a767019ac3e4dcb0f7d162915cf1efdf5570b4b577e638"
 
 
+def _persistent_data_root() -> Path:
+    """Return the Railway volume mount without creating a false local volume."""
+    configured = (
+        os.getenv("LIVE_PERSISTENT_DATA_DIR", "").strip()
+        or os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "").strip()
+    )
+    return Path(configured or "/data")
+
+
+def _runtime_storage_health() -> dict[str, Any]:
+    """Expose whether forward-only live validation can safely survive a restart."""
+    root = _persistent_data_root()
+    mounted = root.is_dir()
+    writable = mounted and os.access(root, os.W_OK)
+    if not mounted:
+        state = "volume_missing"
+    elif not writable:
+        state = "volume_not_writable"
+    else:
+        state = "persistent"
+    return {
+        "state": state,
+        "persistent": bool(mounted and writable),
+        "writable": bool(writable),
+        "mount_path": str(root),
+        "validation_eligible": bool(mounted and writable),
+    }
+
+
+def _runtime_state_path(filename: str) -> Path:
+    storage = _runtime_storage_health()
+    if storage["persistent"]:
+        return Path(storage["mount_path"]) / filename
+    return Path("/tmp") / f"wude-{filename}"
+
+
 def market_closed_label(market: str) -> str:
     if str(market or "").upper() == "TW":
         return "台股尚未到 09:00 開盤時間"
@@ -59,35 +95,38 @@ def _trading_state_path() -> Path:
         return Path(configured)
     live = os.getenv("TRADING_MODE", "paper").strip().lower() == "live"
     filename = "live_trading_state.json" if live else "paper_trading_state.json"
-    return Path("/data") / filename if Path("/data").is_dir() else Path("/tmp") / f"wude-{filename}"
+    return _runtime_state_path(filename)
 
 
 def _large_buy_state_path() -> Path:
     configured = os.getenv("LARGE_BUY_STATE_PATH", "").strip()
     if configured:
         return Path(configured)
-    return Path("/data/large_buy_alerts.json") if Path("/data").is_dir() else Path("/tmp/wude-large-buy-alerts.json")
+    return _runtime_state_path("large_buy_alerts.json")
 
 
 def _capital_flow_state_path() -> Path:
-    return Path("/data/capital_flow_shadow.json") if Path("/data").is_dir() else Path("/tmp/wude-capital-flow-shadow.json")
+    return _runtime_state_path("capital_flow_shadow.json")
 
 
 def _flow_weight_shadow_state_path() -> Path:
-    return Path("/data/flow_weight_shadow.json") if Path("/data").is_dir() else Path("/tmp/wude-flow-weight-shadow.json")
+    return _runtime_state_path("flow_weight_shadow.json")
 
 
 def _live_telegram_ready_path() -> Path:
     configured = os.getenv("TELEGRAM_LIVE_READY_PATH", "").strip()
     if configured:
         return Path(configured)
-    return Path("/data/live_telegram_ready.json") if Path("/data").is_dir() else Path("/tmp/wude-live-telegram-ready.json")
+    return _runtime_state_path("live_telegram_ready.json")
 
 
 def _send_live_telegram_ready_once(handler: type["LiveRequestHandler"]) -> bool:
     """Confirm a newly configured live bot once without storing its token."""
     token = os.getenv("TELEGRAM_LIVE_BOT_TOKEN", "").strip()
     if not token:
+        return False
+    if not _runtime_storage_health()["persistent"]:
+        LOG.warning("Skip Telegram ready notice until a persistent Railway volume is mounted")
         return False
     fingerprint = hashlib.sha256(token.encode("utf-8")).hexdigest()
     marker = _live_telegram_ready_path()
@@ -155,7 +194,11 @@ def _live_telegram_delivery_health(handler: type["LiveRequestHandler"]) -> dict[
 
 
 def _web_push_paths() -> tuple[Path, Path]:
-    root = Path(os.getenv("WEB_PUSH_STATE_DIR", "/data" if Path("/data").is_dir() else "/tmp"))
+    default_root = (
+        _persistent_data_root()
+        if _runtime_storage_health()["persistent"] else Path("/tmp")
+    )
+    root = Path(os.getenv("WEB_PUSH_STATE_DIR", str(default_root)))
     return root / "web_push_subscriptions.json", root / "web_push_vapid_private.pem"
 
 
@@ -562,6 +605,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         _large_buy_state_path(),
         flow_state_path=_capital_flow_state_path(),
         weight_shadow_state_path=_flow_weight_shadow_state_path(),
+        weight_shadow_validation_enabled=_runtime_storage_health()["validation_eligible"],
         alert_notifier=fanout_alert(web_push.send_alert, live_telegram.enqueue),
     )
     rate_limiter = MinuteRateLimiter(int(os.getenv("LIVE_MAX_REQUESTS_PER_MINUTE", "120")))
@@ -640,6 +684,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/health":
             health = self.service.health()
+            storage = _runtime_storage_health()
+            health["persistent_storage"] = storage
             monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
             weight_shadow = monitor.get("flow_weight_shadow") or {}
             inverse_live = monitor.get("inverse_etf_live_shadow") or {}
@@ -664,6 +710,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     "formal_ranking_locked": (weight_shadow.get("policy") or {}).get("formal_ranking_locked"),
                     "medium_45_day_unchanged": (weight_shadow.get("policy") or {}).get("medium_45_day_unchanged"),
                     "long_6_month_unchanged": (weight_shadow.get("policy") or {}).get("long_6_month_unchanged"),
+                    "storage_persistent": (weight_shadow.get("policy") or {}).get("storage_persistent"),
+                    "validation_eligible": (weight_shadow.get("policy") or {}).get("validation_eligible"),
                     "markets_separate": (weight_shadow.get("policy") or {}).get("markets_separate"),
                     "markets": {
                         market: {

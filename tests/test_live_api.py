@@ -4,6 +4,7 @@ import json
 import re
 from datetime import datetime, timezone
 from email.message import Message
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -70,6 +71,33 @@ def test_live_telegram_health_marks_a_newer_failed_attempt(tmp_path, monkeypatch
     assert health["state"] == "delivery_failed"
     assert health["last_success_at"] == "2026-08-24T08:01:00+00:00"
     assert health["last_error"] == "HTTPError"
+
+
+def test_runtime_storage_requires_an_existing_writable_volume(tmp_path, monkeypatch):
+    volume = tmp_path / "railway-volume"
+    monkeypatch.setenv("LIVE_PERSISTENT_DATA_DIR", str(volume))
+
+    missing = live_api._runtime_storage_health()
+    assert missing["state"] == "volume_missing"
+    assert missing["validation_eligible"] is False
+    assert live_api._flow_weight_shadow_state_path() == Path("/tmp/wude-flow_weight_shadow.json")
+
+    volume.mkdir()
+    healthy = live_api._runtime_storage_health()
+    assert healthy["state"] == "persistent"
+    assert healthy["validation_eligible"] is True
+    assert live_api._flow_weight_shadow_state_path() == volume / "flow_weight_shadow.json"
+
+
+def test_telegram_ready_notice_waits_for_persistent_storage(tmp_path, monkeypatch):
+    missing = tmp_path / "missing-volume"
+    sent = []
+    monkeypatch.setenv("LIVE_PERSISTENT_DATA_DIR", str(missing))
+    monkeypatch.setenv("TELEGRAM_LIVE_BOT_TOKEN", "dedicated-live-bot-token")
+    monkeypatch.setattr(live_api, "send_live_telegram", lambda message: sent.append(message) or True)
+
+    assert live_api._send_live_telegram_ready_once(SimpleNamespace()) is False
+    assert sent == []
 
 
 def _handler_with_headers(**headers):
