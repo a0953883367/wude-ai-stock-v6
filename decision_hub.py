@@ -14,12 +14,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+from comprehensive_shadow_ranking import update_comprehensive_shadow_ranking
 from evidence_contract import build_unified_evidence_report, make_evidence
 from portfolio_control import build_portfolio_control
 
 
-SCHEMA_VERSION = 4
-MODEL_VERSION = "CENTRAL-DECISION-HUB-V4"
+SCHEMA_VERSION = 5
+MODEL_VERSION = "CENTRAL-DECISION-HUB-V5"
 CHUNK_SIZE = 50
 EVIDENCE_CHUNK_SIZE = 400
 CAPITAL_FLOW_MIN_CONFIDENCE = 60.0
@@ -583,6 +584,11 @@ def _build_decision(
         long_parts.extend(_bounded(item) for item in (financial, growth, fundamental) if item is not None)
     long_score = round(sum(long_parts) / len(long_parts), 1)
     long_conf = medium_conf
+    shadow_baseline = {
+        "short": {"score": short_score, "confidence": short_confidence},
+        "medium": {"score": medium_score, "confidence": medium_conf},
+        "long": {"score": long_score, "confidence": long_conf},
+    }
     valuation_unit_valid = not bool(
         valuation
         and str(row.get("market") or "").upper() == "TW"
@@ -964,6 +970,7 @@ def _build_decision(
         "formal_rank": row.get("overall_rank") or row.get("rank"),
         "formal_score": _number(row.get("overall_ranking_score") or row.get("score")),
         "formal_ranking_unchanged": True,
+        "shadow_baseline": shadow_baseline,
         "institutional_link": institutional_link,
         "inverse_shadow": {
             "group": (inverse_mapping or {}).get("group"),
@@ -1090,6 +1097,25 @@ def update_decision_hub(
         item.get("formal_rank") if isinstance(item.get("formal_rank"), (int, float)) else 999999,
         str(item.get("symbol") or ""),
     ))
+    comprehensive_shadow = update_comprehensive_shadow_ranking(
+        reports_dir,
+        decisions,
+        period=period,
+        updated_at=updated_at,
+        intraday=intraday,
+    )
+    try:
+        from model_graduation import update_model_graduation
+        from validation_60d import update_validation_60d
+
+        source_reports["validation_60d"] = update_validation_60d(
+            reports_dir, updated_at=updated_at
+        )
+        source_reports["graduation"] = update_model_graduation(
+            reports_dir, updated_at=updated_at
+        )
+    except Exception:  # noqa: BLE001 - shadow graduation must not block the hub
+        pass
     portfolio = build_portfolio_control(decisions)
     for item in decisions:
         item["portfolio"] = portfolio["by_symbol"].get(item["symbol"], {})
@@ -1237,6 +1263,12 @@ def update_decision_hub(
                 "applies_to": "TW",
                 "never_applies_to": "US",
             },
+            "comprehensive_shadow": {
+                "available": True,
+                "updated_at": comprehensive_shadow.get("updated_at"),
+                "model_version": comprehensive_shadow.get("model_version"),
+                "formal_ranking_unchanged": True,
+            },
             **{
             name: {
                 "available": report is not None,
@@ -1247,6 +1279,20 @@ def update_decision_hub(
         },
         "missing_sources": missing_sources,
         "readiness": _model_readiness(source_reports, institution_status),
+        "comprehensive_shadow": {
+            "report": "comprehensive_shadow_ranking.json",
+            "history": "comprehensive_shadow_history.json",
+            "status": comprehensive_shadow.get("status"),
+            "model_version": comprehensive_shadow.get("model_version"),
+            "validation": comprehensive_shadow.get("validation"),
+            "markets": {
+                market: {
+                    "session_date": (comprehensive_shadow.get("markets", {}).get(market) or {}).get("session_date"),
+                    "ranking_count": (comprehensive_shadow.get("markets", {}).get(market) or {}).get("ranking_count", 0),
+                }
+                for market in ("TW", "US")
+            },
+        },
         "single_answer": single_answer,
         "portfolio_control": {
             key: value for key, value in portfolio.items() if key != "by_symbol"

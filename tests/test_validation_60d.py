@@ -53,3 +53,16 @@ def test_validation_reports_medium_and_long_without_changing_horizons(tmp_path):
         "completed_days": 4, "target_days": 60,
     }
     assert payload["rules"]["holding_horizons_unchanged"] is True
+
+
+def test_validation_keeps_comprehensive_shadow_markets_separate(tmp_path):
+    _write(tmp_path / "comprehensive_shadow_history.json", {
+        "valid_trading_days": {"TW": 20, "US": 8}
+    })
+    payload = update_validation_60d(tmp_path, updated_at="now")
+    track = payload["tracks"]["comprehensive_shadow"]
+    assert track["TW"]["completed_days"] == 20
+    assert track["US"]["completed_days"] == 8
+    assert track["TW"]["initial_review_days"] == 20
+    assert track["TW"]["target_days"] == 60
+    assert track["TW"]["formal_ranking_unchanged"] is True
