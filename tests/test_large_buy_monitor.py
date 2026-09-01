@@ -23,7 +23,7 @@ def config():
         single_min_twd=500_000,
         major_single_min_twd=3_000_000,
         cluster_min_twd=5_000_000,
-        single_min_usd=None,
+        single_min_usd=500_000,
         cluster_min_usd=250_000,
         block_single_min_twd=10_000_000,
         block_single_min_usd=1_000_000,
@@ -107,21 +107,52 @@ def test_single_block_trade_is_flagged_without_replacing_existing_alerts():
     assert us["block_trade_threshold"] == 1_000_000
 
 
-def test_us_general_single_100k_is_removed_but_one_million_block_remains():
-    detector = LargeBuyDetector(baselines(), config=config())
+def test_us_500k_general_single_is_added_while_100k_stays_removed():
+    detector = LargeBuyDetector(baselines())
     assert detector.process_trade(
         "NVDA", price=200, size=500, ask=200, timestamp=100
     ) is None
     assert detector.process_trade(
-        "NVDA", price=200, size=4999, ask=200, timestamp=120
+        "NVDA", price=200, size=2499, ask=200, timestamp=120
     ) is None
     alert = detector.process_trade(
-        "NVDA", price=200, size=5000, ask=200, timestamp=140
+        "NVDA", price=200, size=2500, ask=200, timestamp=140
     )
     assert alert["trigger_type"] == "single"
-    assert alert["is_block_trade"] is True
-    assert alert["general_single_threshold"] is None
+    assert alert["is_block_trade"] is False
+    assert alert["threshold_level"] == "general"
+    assert alert["threshold_level_label"] == "US$50萬級"
+    assert alert["trigger_label"] == "US$50萬級單筆大買"
+    assert alert["general_single_threshold"] == 500_000
     assert alert["block_trade_threshold"] == 1_000_000
+
+
+def test_us_one_million_block_tier_escalates_during_500k_cooldown():
+    detector = LargeBuyDetector(baselines(), config=config())
+    general = detector.process_trade(
+        "NVDA", price=200, size=2500, ask=200, timestamp=100
+    )
+    assert general["threshold_level"] == "general"
+    assert detector.process_trade(
+        "NVDA", price=200, size=3000, ask=200, timestamp=110
+    ) is None
+    block = detector.process_trade(
+        "NVDA", price=200, size=5000, ask=200, timestamp=120
+    )
+    assert block["threshold_level"] == "block"
+    assert block["threshold_level_label"] == "US$100萬級"
+    assert block["block_trade_label"] == "US$100萬級單筆巨額大買"
+
+
+def test_us_500k_tier_applies_to_large_sells_too():
+    detector = LargeBuyDetector(baselines())
+    alert = detector.process_trade(
+        "NVDA", price=200, size=2500, bid=200, ask=200.1, timestamp=100
+    )
+    assert alert["alert_side"] == "sell"
+    assert alert["sell_value"] == 500_000
+    assert alert["threshold_level_label"] == "US$50萬級"
+    assert alert["trigger_label"] == "US$50萬級單筆大賣"
 
 
 def test_us_three_trade_cluster_rule_is_unchanged():
@@ -257,12 +288,12 @@ def test_notifications_cover_every_stock_without_selected_symbol_filter(tmp_path
     snapshot = service.snapshot()
     assert snapshot["policy"]["notification_scope"] == "all_site_stocks"
     assert snapshot["policy"]["selected_symbol_filter"] is False
-    assert snapshot["policy"]["general_single_thresholds"] == {"TW": 500_000, "US": None}
+    assert snapshot["policy"]["general_single_thresholds"] == {"TW": 500_000, "US": 500_000}
     assert snapshot["policy"]["major_single_thresholds"] == {"TW": 3_000_000, "US": None}
     assert snapshot["policy"]["block_single_thresholds"] == {"TW": 10_000_000, "US": 1_000_000}
     assert snapshot["policy"]["single_threshold_tiers"] == {
         "TW": [500_000, 3_000_000, 10_000_000],
-        "US": [1_000_000],
+        "US": [500_000, 1_000_000],
     }
     assert snapshot["policy"]["tw_trade_size_unit"] == "shares_normalized_from_fubon_board_lots"
     assert snapshot["policy"]["tw_board_lot_multiplier"] == 1_000

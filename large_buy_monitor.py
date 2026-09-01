@@ -51,9 +51,9 @@ class LargeBuyConfig:
     # board-lot sizes were normalized to shares.
     single_min_twd: float = 3_000_000.0
     major_single_min_twd: float = 3_000_000.0
-    # US single prints only use the separate block threshold below.  Keeping
-    # this as None prevents the former USD 100,000 general alert from firing.
-    single_min_usd: float | None = None
+    # US single prints start at USD 500,000.  The former USD 100,000 tier stays
+    # removed, while USD 1 million remains a higher block-trade tier.
+    single_min_usd: float | None = 500_000.0
     cluster_min_twd: float = 5_000_000.0
     cluster_min_usd: float = 250_000.0
     block_single_min_twd: float = 10_000_000.0
@@ -278,7 +278,7 @@ class LargeBuyDetector:
                     "1,000萬級" if is_block_trade else "300萬級" if is_major_trade else "50萬級"
                 )
             else:
-                threshold_level_label = "US$100萬級" if is_block_trade else "一般級"
+                threshold_level_label = "US$100萬級" if is_block_trade else "US$50萬級"
             return {
                 "symbol": baseline.symbol,
                 "name": baseline.name,
@@ -639,7 +639,12 @@ class LargeBuyAlertService:
                         self.config.major_single_min_twd,
                         self.config.block_single_min_twd,
                     ])),
-                    "US": [self.config.block_single_min_usd],
+                    "US": sorted(set([
+                        value for value in (
+                            self.config.single_min_usd,
+                            self.config.block_single_min_usd,
+                        ) if value is not None
+                    ])),
                 },
                 "tw_trade_size_unit": "shares_normalized_from_fubon_board_lots",
                 "tw_board_lot_multiplier": 1_000,
