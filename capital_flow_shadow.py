@@ -639,6 +639,32 @@ class CapitalFlowShadow:
                 rows.append(result)
         return {"seconds": seconds, **self._summarize_rows(rows)}
 
+    def _session_snapshot(self, market: str, at: float) -> dict[str, Any]:
+        """Expose the authenticated owner's current regular-session aggregate.
+
+        The same persisted daily buckets feed the close-only evidence adapter,
+        so the live page and the later AI-decision link cannot drift into two
+        different versions of the day's buy/sell flow.
+        """
+        zone, _opened, closed = MARKET_CLOCKS[market]
+        local = datetime.fromtimestamp(at, zone)
+        session_date = local.date().isoformat()
+        rows: list[dict[str, Any]] = []
+        for symbol, bucket in self._daily.get(session_date, {}).items():
+            baseline = self.baselines.get(symbol)
+            if baseline is None or str(getattr(baseline, "market", "")) != market:
+                continue
+            result = self._symbol_row(symbol, [bucket])
+            if result and result["trade_count"]:
+                rows.append(result)
+        close_at = datetime.combine(local.date(), closed, zone).timestamp()
+        return {
+            "session_date": session_date,
+            "session_scope": "regular_hours_only",
+            "closed": at >= close_at,
+            **self._summarize_rows(rows),
+        }
+
     def _daily_snapshot(self, market: str, session_date: str, at: float) -> dict[str, Any] | None:
         zone, opened, closed = MARKET_CLOCKS[market]
         try:
@@ -735,6 +761,7 @@ class CapitalFlowShadow:
                         datetime.fromtimestamp(self._market_last_at[market], timezone.utc).isoformat(timespec="seconds")
                         if self._market_last_at[market] is not None else None
                     ),
+                    "session": self._session_snapshot(market, at),
                     "windows": {
                         label: self._window_snapshot(market, seconds, at)
                         for label, seconds in WINDOWS.items()
@@ -752,6 +779,7 @@ class CapitalFlowShadow:
                 "policy": {
                     "markets_separate": True,
                     "windows": list(WINDOWS),
+                    "authenticated_session_summary": True,
                     "aggregate_bucket_seconds": BUCKET_SECONDS,
                     "aggregate_retention_minutes": 60,
                     "classification": "quote_then_tick_rule",

@@ -49,10 +49,10 @@
   <section class="panel">
     <p class="eyebrow">獨立影子統計・買進與賣出都計算</p><h2>🌊 推估資金流向</h2>
     <div class="tabs" id="marketTabs"><button class="active" data-market="TW">🇹🇼 台股</button><button data-market="US">🇺🇸 美股</button></div>
-    <div class="tabs" id="windowTabs"><button data-window="1m">1分鐘</button><button data-window="5m">5分鐘</button><button class="active" data-window="15m">15分鐘</button><button data-window="60m">60分鐘</button></div>
+    <div class="tabs" id="windowTabs"><button class="active" data-window="session">今日</button><button data-window="1m">1分鐘</button><button data-window="5m">5分鐘</button><button data-window="15m">15分鐘</button><button data-window="60m">60分鐘</button></div>
     <div class="summary" id="flowSummary"></div>
     <div class="lists" id="flowLists"></div>
-    <p class="note">依逐筆成交價相對委買賣與 tick rule 推估，無法識別真實帳戶、外資或主力身分。ETF、集合競價及特殊成交會分開或排除。</p>
+    <p class="note">「今日」只累積正式盤有效逐筆成交，收盤後保留當日結果。依成交價相對委買賣與 tick rule 推估，無法識別真實帳戶、外資或主力身分；ETF、集合競價及特殊成交會分開或排除。</p>
   </section>
 
   <section class="panel">
@@ -68,7 +68,7 @@
   <section class="panel"><p class="eyebrow">最近50筆</p><h2>↕️ 大量主動買賣</h2><div class="alerts" id="alerts"><div class="empty">符合門檻的大買或大賣訊號會顯示在這裡。</div></div></section>
 </main>
 <script src="live_config.js?v=636"></script>
-<script src="live_flow.js?v=649"></script>
+<script src="live_flow.js?v=650"></script>
 <script src="app_shell.js?v=1"></script>
 </body>
 </html>

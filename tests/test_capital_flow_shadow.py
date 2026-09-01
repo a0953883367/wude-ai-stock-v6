@@ -225,6 +225,24 @@ def test_daily_flow_is_hidden_until_close_and_requires_full_session_coverage():
     assert daily["session_scope"] == "regular_hours_only"
 
 
+def test_owner_snapshot_exposes_today_regular_session_before_and_after_close():
+    zone = ZoneInfo("Asia/Taipei")
+    active = datetime(2026, 8, 31, 10, 0, tzinfo=zone).timestamp()
+    closed = datetime(2026, 8, 31, 13, 31, tzinfo=zone).timestamp()
+    flow = CapitalFlowShadow(baselines(), clock=lambda: active)
+    flow.process_trade("2330.TW", price=1000, size=100, ask=1000, timestamp=active)
+
+    during = flow.snapshot(now=active)["markets"]["TW"]["session"]
+    after = flow.snapshot(now=closed)["markets"]["TW"]["session"]
+    assert during["session_date"] == "2026-08-31"
+    assert during["session_scope"] == "regular_hours_only"
+    assert during["closed"] is False
+    assert during["trade_count"] == 1
+    assert during["top_inflows"][0]["symbol"] == "2330.TW"
+    assert after["closed"] is True
+    assert after["trade_count"] == 1
+
+
 def test_daily_flow_survives_restart_without_exposing_intraday(tmp_path):
     state = tmp_path / "capital-flow.json"
     zone = ZoneInfo("America/New_York")
