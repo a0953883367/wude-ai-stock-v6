@@ -116,7 +116,7 @@ test('owner page shows the current regular-session buy and sell ranking', () => 
   assert.match(script, /window:'session'/);
   assert.match(script, /state\.window==='session'\?marketData\.session/);
   assert.match(script, /今日正式盤/);
-  assert.match(html, /live_flow\.js\?v=652/);
+  assert.match(html, /live_flow\.js\?v=653/);
 });
 
 test('theme outflows keep theme labels and never render raw undefined names', () => {
@@ -126,7 +126,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=652/);
+  assert.match(html, /live_flow\.js\?v=653/);
   assert.match(script, /族群流入排名（綜合訊號品質）/);
   assert.match(script, /個股流出排名（綜合訊號品質）/);
   assert.match(script, /flow\.theme_inflows\|\|\[\]/);
@@ -150,11 +150,11 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
 
 test('single-trade thresholds and block labels stay linked to the API policy', () => {
   assert.match(html, /id="alertPolicy"/);
-  assert.match(script, /general_single_thresholds/);
-  assert.match(script, /major_single_thresholds/);
-  assert.match(script, /block_single_thresholds/);
+  assert.match(script, /single_threshold_tiers/);
+  assert.match(script, /thresholdTierText/);
+  assert.match(script, /3–5筆合計/);
   assert.match(script, /美股單筆/);
-  assert.match(script, /thresholdMoney\(general\.US,'US'\)/);
+  assert.match(script, /thresholdTierText\(policy,'US'\)/);
   assert.match(script, /row\.is_block_trade&&row\.block_trade_label/);
 });
 

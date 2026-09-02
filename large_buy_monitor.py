@@ -39,6 +39,14 @@ def _finite(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
+def _threshold_level_label(value: float, market: str) -> str:
+    """Format an alert threshold in the user-facing ten-thousand unit."""
+    amount_wan = value / 10_000
+    formatted = f"{amount_wan:,.0f}" if amount_wan.is_integer() else f"{amount_wan:,.1f}"
+    prefix = "US$" if market == "US" else ""
+    return f"{prefix}{formatted}萬級"
+
+
 @dataclass(frozen=True)
 class LargeBuyConfig:
     window_seconds: float = 10.0
@@ -46,18 +54,16 @@ class LargeBuyConfig:
     cluster_max_trades: int = 5
     cluster_buy_ratio_min: float = 0.70
     cooldown_seconds: float = 180.0
-    # Production Taiwan single-print alerts start at TWD 3 million.  The
-    # former TWD 500,000 tier generated excessive notifications after Fubon
-    # board-lot sizes were normalized to shares.
-    single_min_twd: float = 3_000_000.0
-    major_single_min_twd: float = 3_000_000.0
-    # US single prints start at USD 500,000.  The former USD 100,000 tier stays
-    # removed, while USD 1 million remains a higher block-trade tier.
-    single_min_usd: float | None = 500_000.0
-    cluster_min_twd: float = 5_000_000.0
-    cluster_min_usd: float = 250_000.0
-    block_single_min_twd: float = 10_000_000.0
-    block_single_min_usd: float = 1_000_000.0
+    # Production alerts use exactly two tiers per market.  Clusters must reach
+    # the lower tier as well, so no notification can bypass the displayed
+    # minimum by being split across 3-5 prints.
+    single_min_twd: float = 10_000_000.0
+    major_single_min_twd: float = 10_000_000.0
+    single_min_usd: float | None = 1_000_000.0
+    cluster_min_twd: float = 10_000_000.0
+    cluster_min_usd: float = 1_000_000.0
+    block_single_min_twd: float = 15_000_000.0
+    block_single_min_usd: float = 2_000_000.0
     # Keep the Taiwan general tier at the exact configured amount.  A dynamic
     # daily-value multiplier previously raised the effective floor for liquid
     # stocks, which made a displayed TWD threshold misleading.
@@ -273,12 +279,16 @@ class LargeBuyDetector:
             side = "buy" if is_buy else "sell"
             side_text = "大買" if is_buy else "大賣"
             threshold_level = "block" if is_block_trade else "major" if is_major_trade else "general"
-            if baseline.market == "TW":
-                threshold_level_label = (
-                    "1,000萬級" if is_block_trade else "300萬級" if is_major_trade else "50萬級"
-                )
-            else:
-                threshold_level_label = "US$100萬級" if is_block_trade else "US$50萬級"
+            label_threshold = (
+                block_single_threshold
+                if is_block_trade
+                else self.config.major_single_min_twd
+                if is_major_trade
+                else single_threshold
+            )
+            threshold_level_label = _threshold_level_label(
+                float(label_threshold or block_single_threshold), baseline.market
+            )
             return {
                 "symbol": baseline.symbol,
                 "name": baseline.name,
