@@ -14,6 +14,12 @@ __pycache__/
 venv/
 .cache/historical_lab/
 
+# Private prediction-engine state.  The public app receives only compact JSON
+# summaries; immutable model observations and outcomes stay in SQLite.
+.prediction_engine/
+*.sqlite3-wal
+*.sqlite3-shm
+
 # Local Fubon helper files
 fubon_local_config.json
 
