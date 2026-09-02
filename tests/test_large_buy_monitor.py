@@ -92,16 +92,21 @@ def test_one_large_aggressive_buy_triggers_immediately():
     assert alert["trigger_label"] == "300萬級單筆大買"
 
 
-def test_default_production_config_does_not_emit_tw_500k_tier():
+def test_default_production_config_uses_tw_10m_and_15m_tiers():
     detector = LargeBuyDetector(baselines())
     assert detector.process_trade(
-        "2330.TW", price=1000, size=500, bid=999, ask=1000, timestamp=100
+        "2330.TW", price=1000, size=9_999, bid=999, ask=1000, timestamp=100
     ) is None
-    alert = detector.process_trade(
-        "2330.TW", price=1000, size=3000, bid=999, ask=1000, timestamp=101
+    lower = detector.process_trade(
+        "2330.TW", price=1000, size=10_000, bid=999, ask=1000, timestamp=101
     )
-    assert alert["threshold_level"] == "major"
-    assert alert["threshold_level_label"] == "300萬級"
+    assert lower["threshold_level"] == "major"
+    assert lower["threshold_level_label"] == "1,000萬級"
+    upper = detector.process_trade(
+        "2330.TW", price=1000, size=15_000, bid=999, ask=1000, timestamp=102
+    )
+    assert upper["threshold_level"] == "block"
+    assert upper["threshold_level_label"] == "1,500萬級"
 
 
 def test_tw_500k_single_trade_is_the_fixed_general_floor():
@@ -153,24 +158,26 @@ def test_single_block_trade_is_flagged_without_replacing_existing_alerts():
     assert us["block_trade_threshold"] == 1_000_000
 
 
-def test_us_500k_general_single_is_added_while_100k_stays_removed():
+def test_default_production_config_uses_us_1m_and_2m_tiers():
     detector = LargeBuyDetector(baselines())
     assert detector.process_trade(
-        "NVDA", price=200, size=500, ask=200, timestamp=100
+        "NVDA", price=200, size=4_999, ask=200, timestamp=100
     ) is None
-    assert detector.process_trade(
-        "NVDA", price=200, size=2499, ask=200, timestamp=120
-    ) is None
-    alert = detector.process_trade(
-        "NVDA", price=200, size=2500, ask=200, timestamp=140
+    lower = detector.process_trade(
+        "NVDA", price=200, size=5_000, ask=200, timestamp=120
     )
-    assert alert["trigger_type"] == "single"
-    assert alert["is_block_trade"] is False
-    assert alert["threshold_level"] == "general"
-    assert alert["threshold_level_label"] == "US$50萬級"
-    assert alert["trigger_label"] == "US$50萬級單筆大買"
-    assert alert["general_single_threshold"] == 500_000
-    assert alert["block_trade_threshold"] == 1_000_000
+    assert lower["trigger_type"] == "single"
+    assert lower["is_block_trade"] is False
+    assert lower["threshold_level"] == "general"
+    assert lower["threshold_level_label"] == "US$100萬級"
+    assert lower["trigger_label"] == "US$100萬級單筆大買"
+    assert lower["general_single_threshold"] == 1_000_000
+    assert lower["block_trade_threshold"] == 2_000_000
+    upper = detector.process_trade(
+        "NVDA", price=200, size=10_000, ask=200, timestamp=121
+    )
+    assert upper["threshold_level"] == "block"
+    assert upper["threshold_level_label"] == "US$200萬級"
 
 
 def test_us_one_million_block_tier_escalates_during_500k_cooldown():
@@ -190,15 +197,27 @@ def test_us_one_million_block_tier_escalates_during_500k_cooldown():
     assert block["block_trade_label"] == "US$100萬級單筆巨額大買"
 
 
-def test_us_500k_tier_applies_to_large_sells_too():
+def test_us_one_million_tier_applies_to_large_sells_too():
     detector = LargeBuyDetector(baselines())
     alert = detector.process_trade(
-        "NVDA", price=200, size=2500, bid=200, ask=200.1, timestamp=100
+        "NVDA", price=200, size=5000, bid=200, ask=200.1, timestamp=100
     )
     assert alert["alert_side"] == "sell"
-    assert alert["sell_value"] == 500_000
-    assert alert["threshold_level_label"] == "US$50萬級"
-    assert alert["trigger_label"] == "US$50萬級單筆大賣"
+    assert alert["sell_value"] == 1_000_000
+    assert alert["threshold_level_label"] == "US$100萬級"
+    assert alert["trigger_label"] == "US$100萬級單筆大賣"
+
+
+def test_default_clusters_cannot_bypass_new_market_minimums():
+    detector = LargeBuyDetector(baselines())
+    for at in (100, 103, 108):
+        assert detector.process_trade(
+            "2330.TW", price=1000, size=3_000, ask=1000, timestamp=at
+        ) is None
+    for at in (200, 203, 208):
+        assert detector.process_trade(
+            "NVDA", price=200, size=1_500, ask=200, timestamp=at
+        ) is None
 
 
 def test_us_three_trade_cluster_rule_is_unchanged():
