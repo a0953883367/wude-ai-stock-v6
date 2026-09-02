@@ -28,6 +28,7 @@ def _healthy_reports(tmp_path: Path) -> None:
     timestamp = "2026-08-24 16:00:00"
     status = {
         "expected_tw_count": 67,
+        "expected_financial_quality_count": 67,
         "tw_official_price_count": 175,
         "institutional_count": 176,
         "credit_count": 175,
@@ -280,16 +281,37 @@ def test_stale_and_inconsistent_reports_are_red(tmp_path: Path) -> None:
     assert codes["publish_friend"] == "warning"
 
 
-def test_missing_broker_is_warning_not_critical(tmp_path: Path) -> None:
+def test_missing_optional_broker_data_is_information_not_system_warning(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     latest = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
     latest["data_status"]["broker_count"] = 0
     _write(tmp_path / "latest.json", latest)
     now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
     guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
-    assert guard["status"] == "warning"
     broker = next(item for item in guard["checks"] if item["code"] == "broker_data")
-    assert broker["level"] == "warning"
+    assert broker["level"] == "info"
+    assert "未以其他資料冒充" in broker["detail"]
+
+
+def test_financial_quality_excludes_watchlist_etfs_from_expected_count(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    latest = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    latest["data_status"].pop("expected_financial_quality_count", None)
+    latest["data_status"]["expected_tw_count"] = 2
+    latest["data_status"]["financial_quality_count"] = 1
+    latest["watchlist"] = [
+        {"symbol": "2330.TW", "market": "TW", "type": "個股"},
+        {"symbol": "0050.TW", "market": "TW", "type": "ETF"},
+    ]
+    _write(tmp_path / "latest.json", latest)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+
+    financial = next(item for item in guard["checks"] if item["code"] == "financial_quality")
+    assert financial["level"] == "ok"
+    assert "1/1 檔公司" in financial["detail"]
+    assert "1 檔 ETF 不適用" in financial["detail"]
 
 
 def test_closed_market_carried_official_snapshot_is_not_a_false_red(tmp_path: Path) -> None:

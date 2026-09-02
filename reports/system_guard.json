@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
   "checked_at": "2026-09-02T21:36:11+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-02 20:10:03",
   "report_age_minutes": 86.1,
   "counts": {
-    "ok": 21,
-    "info": 3,
-    "warning": 2,
+    "ok": 22,
+    "info": 4,
+    "warning": 0,
     "critical": 0
   },
   "checks": [
@@ -64,18 +64,18 @@
     {
       "code": "broker_data",
       "title": "券商分點",
-      "level": "warning",
-      "label": "注意",
-      "detail": "目前沒有取得券商分點資料",
-      "action": "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷"
+      "level": "info",
+      "label": "資訊",
+      "detail": "FinMind Sponsor 分點目前未回傳；未以其他資料冒充",
+      "action": "每次正式報告保留重試；需合法 Sponsor／資料授權才可完整取得"
     },
     {
       "code": "financial_quality",
       "title": "財務品質",
-      "level": "warning",
-      "label": "注意",
-      "detail": "已取得 58/66 檔，仍在分批補齊",
-      "action": "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
+      "level": "ok",
+      "label": "正常",
+      "detail": "已取得 58/58 檔公司；另有 8 檔 ETF 不適用公司財報",
+      "action": ""
     },
     {
       "code": "tw_official_financial",
@@ -223,10 +223,7 @@
       "action": ""
     }
   ],
-  "action_required": [
-    "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
-    "每次排程續補；只降低6個月信心，不把整檔標成資料不足"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,

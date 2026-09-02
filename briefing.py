@@ -572,6 +572,30 @@ def _freeze_tw_prices_until_close(period: str, intraday: bool = False) -> bool:
     return intraday or period == "noon"
 
 
+def _tw_watchlist_enrichment_ids(
+    watchlist: list[dict],
+) -> tuple[set[str], set[str]]:
+    """Separate Taiwan market-flow symbols from company-financial symbols.
+
+    ETFs can have institution, credit and broker-flow records, but they do not
+    publish company income statements.  Counting them in the financial-quality
+    denominator creates a permanent false missing-data warning.
+    """
+    market_ids = {
+        str(item.get("symbol") or "").split(".")[0]
+        for item in watchlist
+        if item.get("market") == "TW" and item.get("symbol")
+    }
+    company_ids = {
+        str(item.get("symbol") or "").split(".")[0]
+        for item in watchlist
+        if item.get("market") == "TW"
+        and item.get("symbol")
+        and "ETF" not in str(item.get("type") or "").upper()
+    }
+    return market_ids, company_ids
+
+
 def _is_tw_price_symbol(symbol: str) -> bool:
     return str(symbol).upper().endswith((".TW", ".TWO"))
 
@@ -997,11 +1021,9 @@ def main() -> int:
         if not (freeze_tw_prices and _is_tw_price_symbol(symbol))
     ]
     intraday = _stage("盤中量價", lambda: download_intraday(intraday_symbols))
-    watchlist_stock_ids = {
-        item["symbol"].split(".")[0]
-        for item in watchlist
-        if item.get("market") == "TW"
-    }
+    watchlist_stock_ids, watchlist_company_ids = _tw_watchlist_enrichment_ids(
+        watchlist
+    )
     all_tw_stock_ids = {
         item["symbol"].split(".")[0]
         for item in universe
@@ -1098,7 +1120,7 @@ def main() -> int:
         fundamentals, tw_official.get("fundamentals", {}), kind="fundamental"
     )
     financial_quality = _stage(
-        "財務品質快取", lambda: fetch_financial_quality(watchlist_stock_ids)
+        "財務品質快取", lambda: fetch_financial_quality(watchlist_company_ids)
     )
     # Populate a separate, quota-bounded cache for the full Taiwan equity
     # universe.  These rows are never merged into production features: only a
@@ -1122,7 +1144,7 @@ def main() -> int:
         valuation_tw_financial[stock_id] = {
             **valuation_tw_financial.get(stock_id, {}), **official_row,
         }
-        if stock_id in watchlist_stock_ids:
+        if stock_id in watchlist_company_ids:
             financial_quality[stock_id] = {
                 **financial_quality.get(stock_id, {}), **official_row,
             }
@@ -1428,11 +1450,17 @@ def main() -> int:
             "tw_official_fundamental_count": len(tw_official.get("fundamentals", {})),
             "tw_official_announcement_count": len(tw_official.get("announcements", {})),
             "financial_quality_count": len(financial_quality),
+            "expected_financial_quality_count": len(watchlist_company_ids),
+            "financial_quality_not_applicable_count": len(
+                watchlist_stock_ids - watchlist_company_ids
+            ),
             "tw_official_financial_count": len(official_tw_financial),
             "broker_count": sum(
                 1 for item in broker_branches.values()
                 if item.get("broker_available") and item.get("broker_date")
             ),
+            "broker_source": "FinMind Sponsor broker-branch dataset",
+            "broker_optional": True,
             "us_short_volume_count": len(us_short_volume),
             "us_extended_hours_count": len(us_extended_hours),
             "us_sip_count": len(us_live),

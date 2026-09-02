@@ -550,21 +550,49 @@ def build_guard(
     broker = int(data_status.get("broker_count") or 0)
     if broker <= 0:
         checks.append(_check(
-            "broker_data", "券商分點", "warning", "目前沒有取得券商分點資料",
-            "每次正式報告自動重試；此選配欄位不阻斷現價、趨勢與風險判斷",
+            "broker_data", "券商分點", "info",
+            "FinMind Sponsor 分點目前未回傳；未以其他資料冒充",
+            "每次正式報告保留重試；需合法 Sponsor／資料授權才可完整取得",
         ))
     else:
         checks.append(_check("broker_data", "券商分點", "ok", f"已取得 {broker} 檔分點資料"))
 
     financial = int(data_status.get("financial_quality_count") or 0)
-    if expected_tw and financial < expected_tw:
+    watchlist_rows = (
+        latest.get("watchlist") if isinstance(latest.get("watchlist"), list) else []
+    )
+    derived_financial_expected = sum(
+        str(row.get("market") or "").upper() == "TW"
+        and "ETF" not in str(row.get("type") or "").upper()
+        for row in watchlist_rows
+        if isinstance(row, dict)
+    )
+    financial_expected = int(
+        data_status.get("expected_financial_quality_count")
+        or derived_financial_expected
+        or expected_tw
+        or 0
+    )
+    financial_not_applicable = int(
+        data_status.get("financial_quality_not_applicable_count")
+        or max(0, expected_tw - financial_expected)
+        or 0
+    )
+    if financial_expected and financial < financial_expected:
         checks.append(_check(
             "financial_quality", "財務品質", "warning",
-            f"已取得 {financial}/{expected_tw} 檔，仍在分批補齊",
+            f"已取得 {financial}/{financial_expected} 檔公司，仍在分批補齊",
             "每次排程續補；只降低6個月信心，不把整檔標成資料不足",
         ))
     else:
-        checks.append(_check("financial_quality", "財務品質", "ok", f"已取得 {financial} 檔"))
+        suffix = (
+            f"；另有 {financial_not_applicable} 檔 ETF 不適用公司財報"
+            if financial_not_applicable else ""
+        )
+        checks.append(_check(
+            "financial_quality", "財務品質", "ok",
+            f"已取得 {financial}/{financial_expected or financial} 檔公司{suffix}",
+        ))
 
     official_requested = int(official_financial.get("requested_count") or 0)
     official_available = int(official_financial.get("available_count") or 0)

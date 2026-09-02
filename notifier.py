@@ -123,9 +123,19 @@ def render_markdown(report: dict[str, Any]) -> str:
         if missing:
             lines.append(f"⚠️ 籌碼通報：{'、'.join(missing)}資料未取得，請檢查 Token／API額度；缺少維度不納入計分並降低資料信心")
         if not status.get("broker_count"):
-            lines.append("ℹ️ 分點通報：券商分點未取得，可能為 Sponsor 試用到期；其他免費籌碼不受影響")
+            lines.append("ℹ️ 分點通報：FinMind Sponsor 分點目前未回傳；不以法人或成交量冒充分點，其他免費籌碼不受影響")
         quality_count = int(status.get("financial_quality_count") or 0)
-        expected_count = int(status.get("expected_tw_count") or 0)
+        expected_count = int(
+            status.get("expected_financial_quality_count")
+            or sum(
+                str(row.get("market") or "").upper() == "TW"
+                and "ETF" not in str(row.get("type") or "").upper()
+                for row in report.get("watchlist", [])
+                if isinstance(row, dict)
+            )
+            or status.get("expected_tw_count")
+            or 0
+        )
         if quality_count == 0:
             lines.append("⚠️ 財務品質通報：本次未取得財報資料，請檢查 Token／API額度；缺少維度不納入計分並限制中長線資格")
         elif quality_count < expected_count:

@@ -8,6 +8,7 @@ from briefing import (
     _simulation_input_rows,
     _freeze_tw_prices_until_close,
     _institution_coverage_status,
+    _tw_watchlist_enrichment_ids,
     _tw_intraday_enrichment,
 )
 
@@ -201,6 +202,17 @@ def test_noon_and_intraday_defer_taiwan_price_fetch_until_close():
     assert _freeze_tw_prices_until_close("morning") is False
     assert _freeze_tw_prices_until_close("evening") is False
     assert _freeze_tw_prices_until_close("evening", intraday=True) is True
+
+
+def test_tw_financial_quality_denominator_excludes_etfs():
+    market_ids, company_ids = _tw_watchlist_enrichment_ids([
+        {"symbol": "2330.TW", "market": "TW", "type": "個股"},
+        {"symbol": "0050.TW", "market": "TW", "type": "ETF"},
+        {"symbol": "NVDA", "market": "US", "type": "個股"},
+    ])
+
+    assert market_ids == {"2330", "0050"}
+    assert company_ids == {"2330"}
 
 
 def test_noon_report_carries_only_last_completed_taiwan_rows():
