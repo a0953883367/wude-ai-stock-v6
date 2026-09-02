@@ -414,4 +414,202 @@ def _integrity(value: Any) -> str:
 
 def _record_history(
     reports_dir: Path,
-    groups: dict[str, dict[str, list[dic
+    groups: dict[str, dict[str, list[dict[str, Any]]]],
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> dict[str, Any]:
+    path = reports_dir / "next_session_ranking_history.json"
+    history = _read(path)
+    records = [item for item in history.get("records") or [] if isinstance(item, dict)]
+    close_market = None if intraday else "TW" if period == "evening" else "US" if period == "morning" else None
+    if close_market:
+        market_groups = [key for key in GROUPS if key.startswith(close_market + "_")]
+        session_dates = [
+            item.get("session_date")
+            for key in market_groups
+            for item in groups[key]["forecast"]
+            if item.get("session_date") and item.get("data_ready")
+        ]
+        session_date = Counter(session_dates).most_common(1)[0][0] if session_dates else None
+        exists = any(
+            item.get("market") == close_market
+            and item.get("session_date") == session_date
+            and item.get("model_version") == MODEL_VERSION
+            for item in records
+        )
+        if session_date and not exists:
+            top = {
+                key: {
+                    "forecast": [
+                        {"rank": item["forecast_rank"], "symbol": item["symbol"],
+                         "up_probability_estimate_pct": item["up_probability_estimate_pct"]}
+                        for item in groups[key]["forecast"][:10]
+                    ],
+                    "buyable": [
+                        {"rank": item["buyability_rank"], "symbol": item["symbol"],
+                         "buyability_score": item["buyability_score"]}
+                        for item in groups[key]["buyable"][:10]
+                    ],
+                }
+                for key in market_groups
+            }
+            records.append({
+                "market": close_market,
+                "session_date": session_date,
+                "created_at": updated_at,
+                "model_version": MODEL_VERSION,
+                "target": "next_exchange_session",
+                "top10": top,
+                "integrity_sha256": _integrity(top),
+            })
+    records = sorted(records, key=lambda item: (
+        str(item.get("session_date") or ""), str(item.get("market") or "")
+    ))[-240:]
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "model_version": MODEL_VERSION,
+        "updated_at": updated_at,
+        "mode": "forward_only_immutable_shadow_snapshots",
+        "records": records,
+        "valid_trading_days": {
+            market: len({
+                item.get("session_date") for item in records
+                if item.get("market") == market and item.get("session_date")
+            })
+            for market in ("TW", "US")
+        },
+        "policy": {
+            "future_outcomes_forbidden": True,
+            "same_session_snapshot_immutable": True,
+            "formal_v6_unchanged": True,
+            "five_day_records_unchanged": True,
+            "validation_60d_unchanged": True,
+        },
+    }
+    _write(path, payload)
+    return payload
+
+
+def update_next_session_ranking(
+    reports_dir: Path,
+    rows: list[dict[str, Any]],
+    decisions: list[dict[str, Any]] | None = None,
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> dict[str, Any]:
+    """Build isolated rankings without mutating source rows or old ledgers."""
+    reports_dir = Path(reports_dir)
+    decisions_by_symbol = {
+        str(item.get("symbol") or ""): item
+        for item in decisions or []
+        if isinstance(item, dict) and item.get("symbol")
+    }
+    predictions = [
+        _row_prediction(
+            copy.deepcopy(row), decisions_by_symbol.get(str(row.get("symbol") or "")),
+            period=period, intraday=intraday,
+        )
+        for row in rows
+        if isinstance(row, dict) and row.get("symbol") and _group(row) in GROUPS
+    ]
+    groups = {
+        group: _rank_group([item for item in predictions if item["group"] == group])
+        for group in GROUPS
+    }
+    history = _record_history(
+        reports_dir, groups, period=period, updated_at=updated_at, intraday=intraday
+    )
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "model_version": MODEL_VERSION,
+        "updated_at": updated_at,
+        "period": period,
+        "run_mode": "intraday_refresh" if intraday else "scheduled_report",
+        "mode": "isolated_next_session_prediction",
+        "status": "collecting",
+        "target_definition": {
+            "forecast": "下一個有效交易日收盤相對本次固定收盤",
+            "buyability": "預判偏多後，再扣除追高、落刀、風險與資料不足",
+            "probability": "研究機率估計，完成向前校準前不宣稱為實際勝率",
+        },
+        "policy": {
+            "fixed_full_universe": True,
+            "gainers_prefilter_forbidden": True,
+            "future_outcomes_forbidden": True,
+            "same_session_change_positive_bonus_points": 0,
+            "same_session_change_forecast_penalty_points": 0,
+            "same_session_change_used_only_for_buyability": True,
+            "independent_continuation_forecast_allowed": True,
+            "correlated_models_grouped_once": True,
+            "markets_and_assets_separate": True,
+            "formal_v6_unchanged": True,
+            "formal_strength_ranking_auxiliary_only": True,
+            "shadow_only": True,
+            "automatic_orders": False,
+            "five_day_records_unchanged": True,
+            "validation_60d_unchanged": True,
+        },
+        "models": {
+            "names": sorted({name for names in MODEL_FAMILIES.values() for name in names}),
+            "families": MODEL_FAMILIES,
+            "family_weights": FAMILY_WEIGHTS,
+            "shadow_adjustment_caps": SHADOW_LIMITS,
+        },
+        "validation": {
+            "valid_trading_days": history["valid_trading_days"],
+            "initial_review_days": 20,
+            "graduation_days": 60,
+            "promotion_requires_manual_decision": True,
+        },
+        "summary": {
+            "input_count": len(predictions),
+            "data_ready_count": sum(item["data_ready"] for item in predictions),
+            "up_count": sum(item["direction"] == "UP" for item in predictions),
+            "buyable_candidate_count": sum(
+                item["buyability_status"] == "candidate_wait_live_confirmation"
+                for item in predictions
+            ),
+            "group_counts": {group: len(groups[group]["forecast"]) for group in GROUPS},
+        },
+        "groups": groups,
+        "history_report": "next_session_ranking_history.json",
+        "disclaimer": "隔日機率與可買性只供向前驗證，不保證獲利，也不會自動下單。",
+    }
+    _write(reports_dir / "next_session_shadow_ranking.json", payload)
+    return payload
+
+
+def _load_decisions(reports_dir: Path) -> list[dict[str, Any]]:
+    index = _read(reports_dir / "decision_hub.json")
+    rows: list[dict[str, Any]] = []
+    for filename in index.get("decision_files") or []:
+        rows.extend(_read(reports_dir / str(filename)).get("decisions") or [])
+    return rows
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Build isolated next-session rankings")
+    parser.add_argument("--reports-dir", default="reports")
+    args = parser.parse_args()
+    reports_dir = Path(args.reports_dir)
+    analysis = _read(reports_dir / "all_analysis.json")
+    rows = analysis.get("data") or []
+    period = str(analysis.get("period") or "evening")
+    payload = update_next_session_ranking(
+        reports_dir, rows, _load_decisions(reports_dir), period=period,
+        updated_at=str(analysis.get("updated_at") or ""),
+        intraday=analysis.get("run_mode") == "intraday_refresh",
+    )
+    print(
+        f"Next-session shadow: {payload['summary']['input_count']} inputs; "
+        f"{payload['summary']['data_ready_count']} ready"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

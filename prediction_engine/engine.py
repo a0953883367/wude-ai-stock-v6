@@ -398,4 +398,284 @@ def _build_public_contract(
                     "automatic_promotion": True,
                 }
                 if challenger else {
-  
+                    "status": "collecting_point_in_time_outcomes",
+                    "control": control,
+                    "automatic_promotion": True,
+                }
+            )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "contract_version": REPORT_VERSION,
+        "model_version": MODEL_VERSION,
+        "updated_at": updated_at,
+        "period": period,
+        "mode": "independent_prediction_engine",
+        "status": "ready" if predictions else "collecting",
+        "policy": {
+            "formal_v6_unchanged": True,
+            "existing_5d_ledger_unchanged": True,
+            "existing_60d_ledger_unchanged": True,
+            "large_buy_collector_unchanged": True,
+            "large_buy_used_as_read_only_evidence": True,
+            "news_used_as_point_in_time_evidence": True,
+            "future_outcomes_forbidden": True,
+            "same_session_gain_direction_bonus": 0,
+            "continuation_allowed_when_independent_evidence_supports": True,
+            "automatic_orders": False,
+            "challenger_auto_promotion": True,
+            "promotion_requires_distinct_session_wins": 3,
+            "automatic_rollback_after_failures": 2,
+            "self_learning_scope": "independent_prediction_engine_only",
+            "network_requests": 0,
+        },
+        "market_status": market_status,
+        "horizons": HORIZONS,
+        "run_summary": {
+            "latest_prediction_count": len(predictions),
+            "inserted_predictions": inserted,
+            "matured_predictions": matured,
+            "settled_portfolios": portfolios_settled,
+            "symbol_count": len(symbols),
+            "current_universe_count": input_symbol_count,
+            "waiting_for_market_checkpoint_count": max(0, input_symbol_count - len(symbols)),
+            "archive_bootstrap": archive_bootstrap,
+        },
+        "rankings": rankings,
+        "symbols": symbols,
+        "learning": learning,
+        "model_competition_history": store.recent_control_events(),
+        "paper_portfolios": {
+            "capital_policy": {
+                "TW": {"capital": 1_000_000, "currency": "TWD"},
+                "US": {"capital": 1_000_000, "currency": "USD"},
+                "horizons": list(PORTFOLIO_HORIZONS),
+                "selection": "每市場、每週期獨立選擇最多5檔，等權重；無合格標的則保留現金",
+            },
+            "summary": store.portfolio_summary(),
+            "recent": store.recent_portfolios(),
+        },
+        "database": store.health(),
+        "capacity_maintenance": maintenance,
+        "disclaimer": "研究與向前驗證用途，不保證獲利，不連券商且不自動下單。",
+    }
+
+
+def _selected_models(store: PredictionStore) -> dict[tuple[str, str], dict[str, Any]]:
+    return {
+        (group, code): store.selected_model(group.split("_", 1)[0], group, code)
+        for group in GROUPS for code in HORIZONS
+    }
+
+
+def _train_and_compete(store: PredictionStore, *, updated_at: str) -> dict[str, int]:
+    trained = evaluated = promoted = rolled_back = 0
+    for group in GROUPS:
+        market = group.split("_", 1)[0]
+        for code in HORIZONS:
+            challenger = fit_challenger(
+                store.training_rows(market, group, code),
+                market=market,
+                asset_group=group,
+                horizon_code=code,
+                created_at=updated_at,
+            )
+            if not challenger:
+                continue
+            trained += 1
+            store.save_model(challenger)
+            qualified, reasons = challenger_qualification(challenger)
+            before = store.control_state(market, group, code)
+            after = store.evaluate_candidate(
+                challenger, qualified=qualified, reasons=reasons
+            )
+            if before.get("last_evaluated_through") != after.get("last_evaluated_through"):
+                evaluated += 1
+            if before["active_model_version"] == MODEL_VERSION and after["active_model_version"] != MODEL_VERSION:
+                promoted += 1
+            if before["active_model_version"] != MODEL_VERSION and after["active_model_version"] == MODEL_VERSION:
+                rolled_back += 1
+    return {
+        "challengers_trained": trained,
+        "new_session_evaluations": evaluated,
+        "automatic_promotions": promoted,
+        "automatic_rollbacks": rolled_back,
+    }
+
+
+def _write_chunked_contract(
+    reports_dir: Path,
+    contract: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Publish a tiny index plus lazy-loaded group/horizon files."""
+    symbols = contract.get("symbols") or {}
+    rankings = contract.get("rankings") or {}
+    data_files: dict[str, dict[str, str]] = {}
+    sizes: dict[str, int] = {}
+    live_files = set()
+    for group in GROUPS:
+        data_files[group] = {}
+        for code in HORIZONS:
+            filename = f"prediction_engine_data_{group}_{code}.json"
+            live_files.add(filename)
+            predictions = []
+            for symbol in symbols.values():
+                if symbol.get("asset_group") != group:
+                    continue
+                horizon = (symbol.get("horizons") or {}).get(code)
+                if not isinstance(horizon, dict):
+                    continue
+                predictions.append({
+                    "symbol": symbol.get("symbol"), "name": symbol.get("name"),
+                    "market": symbol.get("market"), "asset_group": group,
+                    "session_date": symbol.get("session_date"), "horizon_code": code,
+                    **horizon,
+                })
+            payload = {
+                "schema_version": contract["schema_version"],
+                "contract_version": contract["contract_version"],
+                "updated_at": contract["updated_at"],
+                "group": group,
+                "horizon_code": code,
+                "rankings": (rankings.get(group) or {}).get(code) or [],
+                "predictions": predictions,
+            }
+            size = _write_json(reports_dir / filename, payload)
+            if size > MAX_PUBLIC_CHUNK_BYTES:
+                (reports_dir / filename).unlink(missing_ok=True)
+                raise RuntimeError(
+                    f"prediction engine chunk {filename} exceeded {MAX_PUBLIC_CHUNK_BYTES} bytes"
+                )
+            sizes[filename] = size
+            data_files[group][code] = filename
+    for stale in reports_dir.glob("prediction_engine_data_*.json"):
+        if stale.name not in live_files:
+            stale.unlink()
+    index = {
+        key: value for key, value in contract.items()
+        if key not in {"symbols", "rankings"}
+    }
+    index["data_files"] = data_files
+    index["delivery"] = {
+        "mode": "lazy_group_horizon_chunks",
+        "combined_file_limit_removed": True,
+        "index_max_bytes": MAX_PUBLIC_INDEX_BYTES,
+        "chunk_max_bytes": MAX_PUBLIC_CHUNK_BYTES,
+        "chunk_count": len(sizes),
+    }
+    index_size = _write_json(reports_dir / "prediction_engine.json", index)
+    if index_size > MAX_PUBLIC_INDEX_BYTES:
+        (reports_dir / "prediction_engine.json").unlink(missing_ok=True)
+        raise RuntimeError(
+            f"prediction engine index exceeded {MAX_PUBLIC_INDEX_BYTES} bytes"
+        )
+    return index, {
+        "index_bytes": index_size,
+        "chunk_count": len(sizes),
+        "largest_chunk_bytes": max(sizes.values(), default=0),
+        "total_chunk_bytes": sum(sizes.values()),
+    }
+
+
+def run_prediction_engine(
+    reports_dir: Path,
+    rows: list[dict[str, Any]],
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+    db_path: Path | None = None,
+) -> dict[str, Any]:
+    """Run one isolated checkpoint and return the compact public contract."""
+    reports_dir = Path(reports_dir)
+    frozen_rows = copy.deepcopy([row for row in rows if isinstance(row, dict)])
+    database_path = Path(
+        db_path
+        or os.getenv("PREDICTION_ENGINE_DB")
+        or reports_dir.parent / ".prediction_engine" / "prediction_engine.sqlite3"
+    )
+    max_bytes = int(os.getenv("PREDICTION_ENGINE_MAX_BYTES", str(500 * 1024 * 1024)))
+    store = PredictionStore(database_path, max_bytes=max_bytes)
+    archive_bootstrap = _bootstrap_archived_point_in_time_reports(reports_dir, store)
+    selected_models = _selected_models(store)
+    flow_payload = _read_json(reports_dir / "capital_flow_daily.json")
+    flow_by_symbol = _capital_flow_index(flow_payload)
+    inserted = matured = portfolios_settled = 0
+    market_status: dict[str, dict[str, Any]] = {}
+
+    by_market: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in frozen_rows:
+        market = str(row.get("market") or "").upper()
+        if market in ("TW", "US") and row.get("symbol"):
+            by_market[market].append(row)
+
+    for market in ("TW", "US"):
+        market_rows = by_market.get(market, [])
+        date = _dominant_session(market_rows)
+        ready = bool(date and market_rows and _market_ready(market, period, intraday))
+        market_status[market] = {
+            "ready_for_checkpoint": ready,
+            "session_date": date or None,
+            "row_count": len(market_rows),
+            "checkpoint": "evening" if market == "TW" else "morning",
+            "reason": "completed_close_checkpoint" if ready else (
+                "intraday_never_freezes" if intraday else "waiting_for_market_checkpoint"
+            ),
+        }
+        if not ready:
+            continue
+        store.record_session(market, date, updated_at)
+        store.record_prices(market_rows, date)
+        matured += store.settle_matured(market)
+        portfolios_settled += store.settle_portfolios(market)
+
+        predictions = _make_predictions(
+            market_rows,
+            market=market,
+            date=date,
+            updated_at=updated_at,
+            flow_by_symbol=flow_by_symbol,
+            selected_models=selected_models,
+        )
+        inserted += store.insert_predictions(predictions)
+        store.record_source_usage(
+            date,
+            "existing_app_completed_reports",
+            read_count=len(market_rows),
+            network_requests=0,
+            cache_hits=len(market_rows),
+        )
+
+    competition = _train_and_compete(store, updated_at=updated_at)
+    latest = store.latest_predictions()
+    _ensure_latest_paper_portfolios(store, latest, created_at=updated_at)
+    maintenance = store.maintain_capacity()
+    contract = _build_public_contract(
+        latest,
+        updated_at=updated_at,
+        period=period,
+        market_status=market_status,
+        store=store,
+        inserted=inserted,
+        matured=matured,
+        portfolios_settled=portfolios_settled,
+        archive_bootstrap=archive_bootstrap,
+        maintenance=maintenance,
+        input_symbol_count=len({
+            (str(row.get("market") or "").upper(), str(row.get("symbol") or "").upper())
+            for row in frozen_rows if row.get("symbol")
+        }),
+    )
+    contract["run_summary"]["model_competition"] = competition
+    index, delivery_health = _write_chunked_contract(reports_dir, contract)
+    health = {
+        "status": "ok" if contract["database"]["capacity_status"] == "ok" else "warning",
+        "checked_at": updated_at,
+        "delivery": delivery_health,
+        "database": contract["database"],
+        "formal_pipeline_continues": True,
+        "formal_v6_unchanged": True,
+        "existing_ledgers_unchanged": True,
+        "network_requests": 0,
+    }
+    _write_json(reports_dir / "prediction_engine_health.json", health, compact=False)
+    return index

@@ -352,4 +352,344 @@ class PredictionStore:
     def control_state(self, market: str, asset_group: str, horizon_code: str) -> dict[str, Any]:
         with self.connect() as db:
             row = db.execute(
-                "SELECT * FROM model_control WHERE market=? AND asset_group=? AND hor
+                "SELECT * FROM model_control WHERE market=? AND asset_group=? AND horizon_code=?",
+                (market, asset_group, horizon_code),
+            ).fetchone()
+        if not row:
+            return {
+                "market": market,
+                "asset_group": asset_group,
+                "horizon_code": horizon_code,
+                "active_model_version": STABLE_MODEL_VERSION,
+                "previous_model_version": None,
+                "candidate_model_version": None,
+                "status": "stable_champion",
+                "consecutive_wins": 0,
+                "consecutive_failures": 0,
+                "last_evaluated_through": None,
+                "reason": "等待足夠樣本進行模型競賽",
+                "metrics": {},
+                "updated_at": None,
+            }
+        payload = dict(row)
+        payload["metrics"] = json.loads(payload.pop("metrics_json"))
+        return payload
+
+    def selected_model(self, market: str, asset_group: str, horizon_code: str) -> dict[str, Any]:
+        state = self.control_state(market, asset_group, horizon_code)
+        version = state["active_model_version"]
+        if version == STABLE_MODEL_VERSION:
+            return {"model_version": version, "weights": None, "control": state}
+        model = self.model_by_version(version)
+        if not model:
+            return {"model_version": STABLE_MODEL_VERSION, "weights": None, "control": {
+                **state, "status": "safe_fallback", "reason": "主動模型檔不存在，改用穩定模型",
+            }}
+        return {"model_version": version, "weights": model["weights"], "control": state}
+
+    def evaluate_candidate(
+        self,
+        payload: dict[str, Any],
+        *,
+        qualified: bool,
+        reasons: list[str],
+        required_consecutive_wins: int = 3,
+        rollback_failures: int = 2,
+    ) -> dict[str, Any]:
+        """Promote or roll back only after distinct completed-session evaluations."""
+        market = payload["market"]
+        group = payload["asset_group"]
+        horizon = payload["horizon_code"]
+        state = self.control_state(market, group, horizon)
+        trained_through = payload.get("trained_through")
+        if state.get("last_evaluated_through") == trained_through:
+            return state
+        active = state["active_model_version"]
+        active_before = active
+        previous = state.get("previous_model_version")
+        wins = int(state.get("consecutive_wins") or 0)
+        failures = int(state.get("consecutive_failures") or 0)
+        status = state.get("status") or "stable_champion"
+        reason = "；".join(reasons) if reasons else "樣本外方向與誤差均優於穩定模型"
+        if active == STABLE_MODEL_VERSION:
+            wins = wins + 1 if qualified else 0
+            failures = 0
+            status = "challenger_confirming" if qualified else "stable_champion"
+            if wins >= required_consecutive_wins:
+                previous = active
+                active = payload["model_version"]
+                wins = 0
+                status = "challenger_active"
+                reason = "連續三個不同交易日樣本外勝出，下一交易日起接管獨立預判"
+        elif qualified:
+            previous = active
+            active = payload["model_version"]
+            wins = 0
+            failures = 0
+            status = "challenger_active"
+            reason = "新版本再次通過樣本外競賽，下一交易日起更新"
+        else:
+            failures += 1
+            wins = 0
+            status = "active_model_warning"
+            if failures >= rollback_failures:
+                previous = active
+                active = STABLE_MODEL_VERSION
+                failures = 0
+                status = "rolled_back_to_stable"
+                reason = "主動模型連續兩次未通過樣本外守門，下一交易日起退回穩定模型"
+        with self.connect() as db:
+            db.execute(
+                """INSERT OR REPLACE INTO model_control VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    market, group, horizon, active, previous, payload["model_version"],
+                    status, wins, failures, trained_through, reason,
+                    json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
+                    payload["created_at"],
+                ),
+            )
+            event = (
+                "promoted" if active_before == STABLE_MODEL_VERSION and active != STABLE_MODEL_VERSION
+                else "rolled_back" if active_before != STABLE_MODEL_VERSION and active == STABLE_MODEL_VERSION
+                else "challenger_updated" if active_before != active
+                else "qualified_waiting" if qualified
+                else "rejected_or_warning"
+            )
+            db.execute(
+                """INSERT OR IGNORE INTO model_control_events(
+                market,asset_group,horizon_code,previous_active_model_version,
+                new_active_model_version,candidate_model_version,event,qualified,
+                trained_through,reason,metrics_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    market, group, horizon, active_before, active,
+                    payload["model_version"], event, int(qualified), trained_through,
+                    reason, json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
+                    payload["created_at"],
+                ),
+            )
+        return self.control_state(market, group, horizon)
+
+    def all_control_states(self) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM model_control ORDER BY market,asset_group,horizon_code"
+            ).fetchall()
+        results = []
+        for row in rows:
+            payload = dict(row)
+            payload["metrics"] = json.loads(payload.pop("metrics_json"))
+            results.append(payload)
+        return results
+
+    def recent_control_events(self, limit: int = 24) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM model_control_events ORDER BY id DESC LIMIT ?", (int(limit),)
+            ).fetchall()
+        results = []
+        for row in rows:
+            payload = dict(row)
+            payload["qualified"] = bool(payload["qualified"])
+            payload["metrics"] = json.loads(payload.pop("metrics_json"))
+            results.append(payload)
+        return results
+
+    def create_portfolio(self, payload: dict[str, Any], positions: list[dict[str, Any]]) -> bool:
+        with self.connect() as db:
+            cursor = db.execute(
+                """INSERT OR IGNORE INTO portfolios(
+                market,horizon_code,session_date,capital,currency,horizon_sessions,status,created_at
+                ) VALUES(?,?,?,?,?,?,'open',?)""",
+                (
+                    payload["market"], payload["horizon_code"], payload["session_date"],
+                    payload["capital"], payload["currency"], payload["horizon_sessions"],
+                    payload["created_at"],
+                ),
+            )
+            if not cursor.rowcount:
+                return False
+            portfolio_id = int(cursor.lastrowid)
+            db.executemany(
+                "INSERT INTO portfolio_positions VALUES(?,?,?,?,?,NULL,NULL,'open')",
+                [(
+                    portfolio_id, row["symbol"], row["rank"], row["weight"],
+                    row["entry_price"],
+                ) for row in positions],
+            )
+            return True
+
+    def settle_portfolios(self, market: str) -> int:
+        with self.connect() as db:
+            sessions = [row[0] for row in db.execute(
+                "SELECT session_date FROM market_sessions WHERE market=? ORDER BY session_date",
+                (market,),
+            )]
+            index = {day: idx for idx, day in enumerate(sessions)}
+            portfolios = db.execute(
+                "SELECT * FROM portfolios WHERE market=? AND status='open'", (market,)
+            ).fetchall()
+            settled = 0
+            for portfolio in portfolios:
+                start = index.get(portfolio["session_date"])
+                target = None if start is None else start + int(portfolio["horizon_sessions"])
+                if target is None or target >= len(sessions):
+                    continue
+                exit_day = sessions[target]
+                positions = db.execute(
+                    "SELECT * FROM portfolio_positions WHERE portfolio_id=?", (portfolio["id"],)
+                ).fetchall()
+                ending = 0.0
+                completed = []
+                for position in positions:
+                    price = db.execute(
+                        "SELECT close_price FROM prices WHERE market=? AND session_date=? AND symbol=?",
+                        (market, exit_day, position["symbol"]),
+                    ).fetchone()
+                    if not price:
+                        completed = []
+                        break
+                    allocation = float(portfolio["capital"]) * float(position["weight"])
+                    value = allocation * float(price[0]) / float(position["entry_price"])
+                    ending += value
+                    completed.append((float(price[0]), value - allocation, portfolio["id"], position["symbol"]))
+                if not completed or len(completed) != len(positions):
+                    continue
+                db.executemany(
+                    "UPDATE portfolio_positions SET exit_price=?,pnl=?,status='closed' "
+                    "WHERE portfolio_id=? AND symbol=?", completed,
+                )
+                result = (ending / float(portfolio["capital"]) - 1.0) * 100.0
+                db.execute(
+                    "UPDATE portfolios SET status='closed',exit_session_date=?,ending_value=?,return_pct=? WHERE id=?",
+                    (exit_day, ending, result, portfolio["id"]),
+                )
+                settled += 1
+            return settled
+
+    def portfolio_summary(self) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT market,horizon_code,status,COUNT(*) count,"
+                "AVG(return_pct) avg_return_pct,SUM(CASE WHEN return_pct>0 THEN 1 ELSE 0 END) wins "
+                "FROM portfolios GROUP BY market,horizon_code,status ORDER BY market,horizon_code,status"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def recent_portfolios(self, limit: int = 24) -> list[dict[str, Any]]:
+        """Return compact portfolio details without exposing model feature rows."""
+        with self.connect() as db:
+            portfolios = db.execute(
+                "SELECT * FROM portfolios ORDER BY session_date DESC,id DESC LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+            results: list[dict[str, Any]] = []
+            for portfolio in portfolios:
+                positions = db.execute(
+                    "SELECT symbol,rank,weight,entry_price,exit_price,pnl,status "
+                    "FROM portfolio_positions WHERE portfolio_id=? ORDER BY rank",
+                    (portfolio["id"],),
+                ).fetchall()
+                results.append({
+                    "market": portfolio["market"],
+                    "horizon_code": portfolio["horizon_code"],
+                    "session_date": portfolio["session_date"],
+                    "capital": portfolio["capital"],
+                    "currency": portfolio["currency"],
+                    "status": portfolio["status"],
+                    "exit_session_date": portfolio["exit_session_date"],
+                    "ending_value": portfolio["ending_value"],
+                    "return_pct": portfolio["return_pct"],
+                    "positions": [dict(position) for position in positions],
+                })
+        return results
+
+    def record_source_usage(
+        self,
+        session_date: str,
+        source: str,
+        *,
+        read_count: int = 0,
+        network_requests: int = 0,
+        cache_hits: int = 0,
+        failure_count: int = 0,
+    ) -> None:
+        with self.connect() as db:
+            db.execute(
+                """INSERT INTO source_usage(
+                session_date,source,read_count,network_requests,cache_hits,failure_count
+                ) VALUES(?,?,?,?,?,?) ON CONFLICT(session_date,source) DO UPDATE SET
+                read_count=excluded.read_count,
+                network_requests=excluded.network_requests,
+                cache_hits=excluded.cache_hits,
+                failure_count=excluded.failure_count""",
+                (
+                    session_date, source, int(read_count), int(network_requests),
+                    int(cache_hits), int(failure_count),
+                ),
+            )
+
+    def maintain_capacity(self, *, keep_matured_sessions: int = 140) -> dict[str, Any]:
+        """Bound storage while retaining pending labels and a rolling learning window."""
+        with self.connect() as db:
+            compacted = db.execute(
+                "UPDATE predictions SET evidence_json='{}' "
+                "WHERE status='matured' AND evidence_json<>'{}'"
+            ).rowcount
+            deleted = 0
+            for market in ("TW", "US"):
+                sessions = [row[0] for row in db.execute(
+                    "SELECT session_date FROM market_sessions WHERE market=? ORDER BY session_date DESC",
+                    (market,),
+                )]
+                if len(sessions) <= keep_matured_sessions:
+                    continue
+                cutoff = sessions[keep_matured_sessions - 1]
+                deleted += db.execute(
+                    "DELETE FROM predictions WHERE market=? AND status='matured' AND session_date<?",
+                    (market, cutoff),
+                ).rowcount
+                db.execute(
+                    "DELETE FROM prices WHERE market=? AND session_date<? AND session_date NOT IN "
+                    "(SELECT DISTINCT session_date FROM predictions WHERE market=?)",
+                    (market, cutoff, market),
+                )
+        with self.connect() as db:
+            db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        size = self.path.stat().st_size if self.path.exists() else 0
+        vacuumed = False
+        if self.max_bytes and size / self.max_bytes >= 0.8 and deleted:
+            with self.connect() as db:
+                db.execute("VACUUM")
+            vacuumed = True
+        return {
+            "matured_evidence_compacted": int(compacted),
+            "old_matured_predictions_pruned": int(deleted),
+            "rolling_matured_sessions_retained": int(keep_matured_sessions),
+            "pending_predictions_never_pruned": True,
+            "vacuumed": vacuumed,
+        }
+
+    def health(self) -> dict[str, Any]:
+        size = self.path.stat().st_size if self.path.exists() else 0
+        with self.connect() as db:
+            tables = {}
+            for name in (
+                "market_sessions", "prices", "predictions", "model_versions",
+                "model_control", "model_control_events", "portfolios",
+            ):
+                tables[name] = int(db.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
+            mature = int(db.execute(
+                "SELECT COUNT(*) FROM predictions WHERE status='matured'"
+            ).fetchone()[0])
+        ratio = size / self.max_bytes if self.max_bytes else 0.0
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "database_bytes": size,
+            "configured_max_bytes": self.max_bytes,
+            "capacity_pct": round(ratio * 100, 2),
+            "capacity_status": "blocked" if ratio >= 1 else "warning" if ratio >= 0.8 else "ok",
+            "tables": tables,
+            "matured_predictions": mature,
+            "public_database_exposed": False,
+        }

@@ -360,4 +360,149 @@ def test_trade_risk_block_is_avoid_not_missing_data(tmp_path):
     report = update_decision_hub(
         tmp_path,
         [_row(trade_guard_blocked=True, trade_guard_reason="價格已跌破20日低點")],
-        period="evening", updated_at="2026-08-29 20:00:00", intraday
+        period="evening", updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    assert item["final"]["recommendation"] == "avoid"
+    assert item["final"]["reason"] == "價格已跌破20日低點"
+    assert item["core_data_missing"] == []
+    assert report["summary"]["data_insufficient_count"] == 0
+    assert report["summary"]["risk_blocked_count"] == 1
+    assert any(
+        conflict["code"] == "positive_signal_vs_risk_block"
+        for conflict in item["conflicts"]
+    )
+
+
+def test_conflicts_are_reported_as_resolved(tmp_path):
+    _reports(tmp_path, valuation_score=78)
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    assert report["summary"]["detected_conflict_count"] == 1
+    assert report["summary"]["resolved_conflict_count"] == 1
+    assert report["summary"]["unresolved_conflict_count"] == 0
+
+
+def test_full_universe_news_cache_repairs_optional_news_without_changing_rank(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "news_risk_cache.json", {
+        "updated_at": "2026-08-29T20:00:00+00:00",
+        "symbols": {"TEST.TW": {
+            "news_data_available": True, "news_verified": False,
+            "news_penalty": 0, "news_summary": "快取完整掃描",
+            "news_scanned_at": "2026-08-29T20:00:00+00:00",
+        }},
+    })
+    item_row = _row(news_data_available=False, news_summary=None)
+    report = update_decision_hub(
+        tmp_path, [item_row], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    assert report["summary"]["news_coverage_count"] == 1
+    assert "verified_news" not in item["data_missing"]
+    assert item["formal_rank"] == item_row["overall_rank"]
+
+
+def test_missing_shadow_sources_are_explicit_and_not_imputed(tmp_path):
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening", updated_at="2026-08-29 20:00:00", intraday=False
+    )
+    assert report["status"] == "warning"
+    assert "valuation" in report["missing_sources"]
+    evidence = report["decisions"][0]["evidence"]
+    valuation = next(item for item in evidence if item["source_id"] == "valuation_shadow")
+    assert valuation["direction"] == "missing"
+    assert valuation["affects_decision"] is False
+    assert report["policy"]["missing_data_never_imputed"] is True
+
+
+def test_completed_quality_flow_links_to_short_decision_without_using_amount(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "capital_flow_daily.json", {
+        "updated_at": "2026-08-29T06:00:00+00:00",
+        "mode": "closed_session_shadow_only",
+        "policy": {"intraday_exposed": False},
+        "markets": {"TW": [{
+            "market": "TW", "session_date": "2026-08-29", "closed": True,
+            "complete": True, "session_scope": "regular_hours_only",
+            "source": "Fubon Neo", "ranking_basis": "signal_quality",
+            "top_inflows": [{
+                "symbol": "TEST.TW", "net_flow": 99_000_000,
+                "confidence": 80, "persistence_pct": 70,
+                "buy_ratio_pct": 75,
+            }],
+            "top_outflows": [],
+        }], "US": []},
+    })
+    report = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )
+    item = report["decisions"][0]
+    link = item["capital_flow_shadow"]
+    evidence = next(
+        row for row in item["evidence"]
+        if row["source_id"] == "capital_flow_shadow"
+    )
+    assert link["linked"] is True
+    assert link["validated_for_decision"] is True
+    assert link["short_adjustment_points"] == 1.5
+    assert link["amount_affects_decision"] is False
+    assert item["horizons"]["short"]["score"] == 83.5
+    assert evidence["affects_decision"] is True
+    assert "金額只顯示、不參與加分" in evidence["reason"]
+    assert report["summary"]["capital_flow_active_count"] == 1
+
+
+def test_low_quality_or_wrong_session_flow_never_changes_decision(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    _write(tmp_path / "capital_flow_daily.json", {
+        "mode": "closed_session_shadow_only",
+        "policy": {"intraday_exposed": False},
+        "markets": {"TW": [{
+            "session_date": "2026-08-29", "closed": True, "complete": True,
+            "session_scope": "regular_hours_only", "ranking_basis": "signal_quality",
+            "top_inflows": [],
+            "top_outflows": [{
+                "symbol": "TEST.TW", "net_flow": -900_000_000,
+                "confidence": 35, "persistence_pct": 100,
+            }],
+        }], "US": []},
+    })
+    item = update_decision_hub(
+        tmp_path, [_row()], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )["decisions"][0]
+    assert item["capital_flow_shadow"]["linked"] is True
+    assert item["capital_flow_shadow"]["validated_for_decision"] is False
+    assert item["capital_flow_shadow"]["short_adjustment_points"] == 0
+    assert item["horizons"]["short"]["score"] == 82
+
+
+def test_verified_material_news_overrides_positive_models(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    item = update_decision_hub(
+        tmp_path, [_row(news_verified=True, news_penalty=8, news_summary="重大事件已驗證")],
+        period="evening", updated_at="2026-08-29 20:00:00", intraday=False,
+    )["decisions"][0]
+    assert item["final"]["recommendation"] == "avoid"
+    assert all(plan["recommendation"] == "avoid" for plan in item["horizons"].values())
+    assert any(conflict["code"] == "verified_material_risk" for conflict in item["conflicts"])
+
+
+def test_safe_wrapper_quarantines_failure(tmp_path, monkeypatch):
+    def fail(*args, **kwargs):
+        raise RuntimeError("hub unavailable")
+
+    monkeypatch.setattr(decision_hub, "update_decision_hub", fail)
+    success = _update_decision_hub_safely(
+        tmp_path, [_row()], period="evening", updated_at="2026-08-29 20:00:00", intraday=False
+    )
+    health = json.loads((tmp_path / "decision_hub_health.json").read_text(encoding="utf-8"))
+    assert success is False
+    assert health["formal_pipeline_continues"] is True
+    assert health["changes_rankings"] is False
+    assert health["places_orders"] is False
