@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-04T04:34:57+08:00",
+  "checked_at": "2026-09-04T06:06:14+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-03 20:10:24",
-  "report_age_minutes": 504.6,
+  "report_updated_at": "2026-09-04 06:03:35",
+  "report_age_minutes": 2.7,
   "counts": {
-    "ok": 23,
-    "info": 5,
+    "ok": 22,
+    "info": 6,
     "warning": 1,
     "critical": 0
   },
@@ -16,10 +16,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 8.4 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -42,7 +42,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-09-03 33/33；TW_STOCK 2026-09-03 154/155；US_ETF 2026-09-02 34/35；US_STOCK 2026-09-02 151/151",
+      "detail": "TW_ETF 2026-09-03 33/33；TW_STOCK 2026-09-03 155/155；US_ETF 2026-09-03 34/35；US_STOCK 2026-09-03 151/151",
       "action": ""
     },
     {
@@ -58,7 +58,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 188、法人 186、信用 184",
+      "detail": "價格 188、法人 186、信用 183",
       "action": ""
     },
     {
@@ -96,10 +96,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "ok",
-      "label": "正常",
-      "detail": "私密完整快取涵蓋 186 檔；原始價格未進入網站或計算",
-      "action": ""
+      "level": "info",
+      "label": "資訊",
+      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
       "code": "us_sec_fundamentals",
@@ -112,10 +112,10 @@
     {
       "code": "validation_60d",
       "title": "60日向前驗證",
-      "level": "ok",
-      "label": "正常",
-      "detail": "真實交易日 9/60；進度監控正常；TW 2026-09-03／9天、US 2026-09-02／8天",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "真實交易日 9/60；US交易訊號連續 9 日未增加",
+      "action": "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
     },
     {
       "code": "model_graduation",
@@ -130,7 +130,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 479 筆錯誤列合併為 165 個事件；影子候選 6 組；完整學習治理 51/51 項，正式V6鎖定",
+      "detail": "已將 515 筆錯誤列合併為 166 個事件；影子候選 6 組；完整學習治理 51/51 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -243,12 +243,12 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
   "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲"
+    "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
   ],
   "safety": {
     "changes_rankings": false,

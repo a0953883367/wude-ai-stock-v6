@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-03 20:10:24",
-  "status": "ok",
+  "updated_at": "2026-09-04 06:03:35",
+  "status": "warning",
   "mode": "completed_session_observer_only",
   "current": {
     "trading_days_collected": 9,
     "target_trading_days": 60,
     "remaining_trading_days": 51,
-    "eligible_samples": 299
+    "eligible_samples": 311
   },
   "markets": {
     "TW": {
@@ -20,11 +20,11 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-09-02",
-      "last_completed_days": 8,
-      "last_progress_at": "2026-09-03 20:10:24",
+      "last_session_date": "2026-09-03",
+      "last_completed_days": 9,
+      "last_progress_at": "2026-09-04 06:03:35",
       "stalled_sessions": 0,
-      "detail": "已建立 2026-09-02／8 天監控基準"
+      "detail": "2026-09-03 正常增加至 9 天"
     }
   },
   "weekly_baseline": {
@@ -43,5 +43,33 @@
     "changes_rankings": false,
     "changes_weights": false,
     "places_orders": false
-  }
+  },
+  "signal_health": {
+    "TW": {
+      "status": "initializing",
+      "last_session_date": "",
+      "last_validation_days": 0,
+      "last_trade_signal_samples": 0,
+      "direction_samples": 0,
+      "stagnant_sessions": 0,
+      "last_signal_growth_at": null,
+      "alert_notified": false,
+      "detail": "等待方向樣本建立交易訊號監控基準"
+    },
+    "US": {
+      "status": "warning",
+      "last_session_date": "2026-09-03",
+      "last_validation_days": 9,
+      "last_trade_signal_samples": 0,
+      "direction_samples": 75,
+      "stagnant_sessions": 9,
+      "last_signal_growth_at": null,
+      "alert_notified": true,
+      "detail": "已有 75 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
+    }
+  },
+  "last_notification_delivered_at": "2026-09-04 06:03:35",
+  "last_notification_ids": [
+    "trade-signal:US:warning:9:0"
+  ]
 }
