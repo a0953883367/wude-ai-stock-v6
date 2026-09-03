@@ -13,7 +13,7 @@ const evidence=unified.evidence_files.flatMap(path=>JSON.parse(fs.readFileSync('
   '明日預判隔離','下一交易日預判','上漲機率估計','可買性','趨勢、量價與資金流若支持續漲仍可入榜',
   '中央唯一答案','台股官方財報','台股法人連動','綜合影子試走','統一證據','模型畢業','部位控制',
   '中央決策','綜合影子排名','正式基準／影子比較','20日初評','60日後才可人工決定是否整合',
-  '時段基準（未加影子）','影子試跑結果','影子分數調整','同時段名次變化','名次相同','變動最大優先',
+  '時段基準（未加影子）','影子試跑結果','影子分數調整','同時段名次變化','影子上調最多','影子下調最多','名次不變',
   '價格到買進區','高於買進區','停損／獲利出場','可進場','等進場價','不進場／退出','買進區','停損','目標一','目標二','進出場規則',
   '1～5 日','45 日','6 個月','有衝突','資料不足','查看全部證據與日期'
 ].forEach(text=>assert(ui.includes(text),`missing UI copy: ${text}`));
@@ -37,11 +37,13 @@ assert(js.includes('ranking_files'));
 assert(js.includes('loadShadowSelection'));
 assert(js.includes("state.mode==='compare'"));
 assert(js.includes('影子覆蓋'));
-assert(html.includes('decision_hub.js?v=7'));
-assert(html.includes('.filters[hidden],.shadow-horizons[hidden],.shadow-note[hidden]{display:none!important}'));
+assert(html.includes('decision_hub.js?v=8'));
+assert(html.includes('.compare-filters[hidden]'));
 assert(js.includes("if(state.mode!=='decision')return;"));
-assert(js.includes("if(state.mode==='compare')rows.sort"));
-assert(js.includes('Math.abs(Number(b.rank_change)||0)-Math.abs(Number(a.rank_change)||0)'));
+assert(js.includes("compareFilter:'up'"));
+assert(js.includes("state.compareFilter==='up'?change>0:state.compareFilter==='down'?change<0:change===0"));
+assert(js.includes("state.compareFilter==='down'?first-second:second-first"));
+assert(js.includes("compareFilters.hidden=state.mode!=='compare'"));
 assert(html.includes('next-session-shadow.html'));
 assert(js.includes('next_session_prediction'));
 assert(js.includes("fetchJSON('decision_hub.json'"));
@@ -66,6 +68,9 @@ assert(decisions.every(row=>['short','medium','long'].every(key=>row.horizons[ke
 const shadowIndex=JSON.parse(fs.readFileSync('reports/comprehensive_shadow_ranking.json','utf8'));
 const shadowRows=Object.values(shadowIndex.ranking_files).flatMap(group=>Object.values(group)).flatMap(path=>JSON.parse(fs.readFileSync('reports/'+path,'utf8')).rankings);
 assert(shadowRows.some(row=>row.rank_change!==0));
+assert(shadowRows.some(row=>row.rank_change>0));
+assert(shadowRows.some(row=>row.rank_change<0));
+assert(shadowRows.some(row=>row.rank_change===0));
 assert(shadowRows.every(row=>row.rank_change===row.baseline_rank-row.shadow_rank));
 assert(shadowRows.every(row=>row.formal_ranking_unchanged===true));
 console.log('decision hub UI checks passed');
