@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-03 20:10:24",
+  "status": "ok",
+  "mode": "completed_session_observer_only",
+  "current": {
+    "trading_days_collected": 9,
+    "target_trading_days": 60,
+    "remaining_trading_days": 51,
+    "eligible_samples": 299
+  },
+  "markets": {
+    "TW": {
+      "status": "ok",
+      "last_session_date": "2026-09-03",
+      "last_completed_days": 9,
+      "last_progress_at": "2026-09-03 20:10:24",
+      "stalled_sessions": 0,
+      "detail": "已建立 2026-09-03／9 天監控基準"
+    },
+    "US": {
+      "status": "ok",
+      "last_session_date": "2026-09-02",
+      "last_completed_days": 8,
+      "last_progress_at": "2026-09-03 20:10:24",
+      "stalled_sessions": 0,
+      "detail": "已建立 2026-09-02／8 天監控基準"
+    }
+  },
+  "weekly_baseline": {
+    "date": "2026-09-03",
+    "trading_days_collected": 9,
+    "eligible_samples": 299
+  },
+  "last_weekly_summary_date": null,
+  "pending_notifications": [],
+  "policy": {
+    "warning_after_missed_sessions": 1,
+    "critical_after_missed_sessions": 2,
+    "weekends_and_holidays_ignored": true,
+    "isolated_invalid_sessions_ignored": true,
+    "same_session_runs_deduplicated": true,
+    "changes_rankings": false,
+    "changes_weights": false,
+    "places_orders": false
+  }
+}

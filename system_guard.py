@@ -464,6 +464,7 @@ def build_guard(
     decision_health = _load(reports_dir / "decision_hub_health.json")
     stockq = _load(reports_dir / "stockq_market_context.json")
     validation_60d = _load(reports_dir / "validation_60d.json")
+    validation_progress = _load(reports_dir / "validation_progress_monitor.json")
     graduation = _load(reports_dir / "model_graduation.json")
     unified_evidence = _load(reports_dir / "unified_evidence.json")
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
@@ -671,10 +672,34 @@ def build_guard(
 
     if not validation_60d:
         checks.append(_check("validation_60d", "60日向前驗證", "warning", "尚未建立統一60日進度檔", "下一次報告自動重建"))
-    else:
+    elif validation_progress.get("status") in {"warning", "critical"}:
+        progress_level = str(validation_progress["status"])
+        stalled = [
+            f"{market} 連續 {int(row.get('stalled_sessions') or 0)} 次"
+            for market, row in (validation_progress.get("markets") or {}).items()
+            if isinstance(row, dict) and row.get("status") in {"warning", "critical"}
+        ]
+        checks.append(_check(
+            "validation_60d", "60日向前驗證", progress_level,
+            f"真實交易日 {int(validation_60d.get('trading_days_collected') or 0)}/{int(validation_60d.get('target_trading_days') or 60)}；"
+            + "、".join(stalled),
+            "檢查完成交易日資料與隔離紀錄；監控不會自動修改模型、權重或正式排名",
+        ))
+    elif validation_progress:
+        market_parts = [
+            f"{market} {row.get('last_session_date') or '待建立'}／{int(row.get('last_completed_days') or 0)}天"
+            for market, row in (validation_progress.get("markets") or {}).items()
+            if isinstance(row, dict)
+        ]
+        suffix = f"；{'、'.join(market_parts)}" if market_parts else ""
         checks.append(_check(
             "validation_60d", "60日向前驗證", "ok",
-            f"真實交易日 {int(validation_60d.get('trading_days_collected') or 0)}/{int(validation_60d.get('target_trading_days') or 60)}；未補造缺日",
+            f"真實交易日 {int(validation_60d.get('trading_days_collected') or 0)}/{int(validation_60d.get('target_trading_days') or 60)}；進度監控正常{suffix}",
+        ))
+    else:
+        checks.append(_check(
+            "validation_60d", "60日向前驗證", "info",
+            f"真實交易日 {int(validation_60d.get('trading_days_collected') or 0)}/{int(validation_60d.get('target_trading_days') or 60)}；等待下一次固定報告建立自動進度基準",
         ))
 
     if graduation.get("status") == "ready":

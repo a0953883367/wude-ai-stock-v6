@@ -388,6 +388,30 @@ def _update_central_controls_safely(reports_dir, *, updated_at: str) -> bool:
     return True
 
 
+def _update_validation_progress_monitor_safely(
+    reports_dir,
+    rows,
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> dict:
+    """Observe completed-session progress without affecting formal outputs."""
+    try:
+        from validation_progress_monitor import update_validation_progress_monitor
+
+        return update_validation_progress_monitor(
+            reports_dir,
+            rows,
+            period=period,
+            updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception:  # noqa: BLE001 - monitoring must never stop a report
+        logging.exception("60日驗證進度監控失敗；正式排名與報表繼續")
+        return {}
+
+
 _NEXT_SESSION_FIELDS = (
     "next_session_model_version", "next_session_market_model",
     "next_session_direction", "next_session_confidence",
@@ -1710,6 +1734,13 @@ def main() -> int:
         SETTINGS.reports_dir,
         updated_at=report["updated_at"],
     )
+    validation_monitor = _update_validation_progress_monitor_safely(
+        SETTINGS.reports_dir,
+        simulation_rows,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+    )
     # The new multi-horizon engine owns a separate private SQLite database.
     # Central AI may read only its compact result contract after this succeeds.
     _update_prediction_engine_safely(
@@ -1762,7 +1793,29 @@ def main() -> int:
     )
     all_analysis_tmp.replace(all_analysis_path)
 
+    pending_notices = [
+        item
+        for item in validation_monitor.get("pending_notifications", [])
+        if isinstance(item, dict) and item.get("message")
+    ]
+    if pending_notices:
+        markdown = f"{markdown}\n\n" + "\n".join(
+            str(item["message"]) for item in pending_notices
+        )
+        # Keep the saved human-readable report identical to the Telegram copy.
+        latest_md.write_text(markdown, encoding="utf-8")
     delivered = False if args.no_telegram else send_telegram(markdown)
+    if delivered and pending_notices:
+        try:
+            from validation_progress_monitor import acknowledge_notifications
+
+            acknowledge_notifications(
+                SETTINGS.reports_dir,
+                [str(item.get("id") or "") for item in pending_notices],
+                delivered_at=report["updated_at"],
+            )
+        except Exception:  # noqa: BLE001 - delivery already succeeded
+            logging.exception("60日驗證通知已送達，但確認狀態寫入失敗")
     print(markdown)
     print(f"\nSaved: {latest_json}, {latest_md}; Telegram={delivered}")
     return 0
