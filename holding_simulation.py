@@ -463,6 +463,58 @@ def _quarantine_legacy_partial_medium(portfolio: dict[str, Any]) -> None:
     portfolio.update(replacement)
 
 
+def _stock_split_events(row: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not row or not isinstance(row.get("official_stock_splits"), list):
+        return []
+    events = []
+    for event in row["official_stock_splits"]:
+        if not isinstance(event, dict):
+            continue
+        split_date = str(event.get("date") or "")
+        ratio = _finite(event.get("ratio"))
+        try:
+            date.fromisoformat(split_date)
+        except ValueError:
+            continue
+        if ratio > 0 and abs(ratio - 1.0) >= 1e-9:
+            events.append({"date": split_date, "ratio": ratio})
+    return events
+
+
+def _applicable_stock_splits(
+    position: dict[str, Any], row: dict[str, Any] | None, session_date: str,
+) -> list[dict[str, Any]]:
+    entry_date = str(position.get("entry_session_date") or "")
+    applied = {
+        str(event.get("date") or "")
+        for event in position.get("applied_stock_splits") or []
+        if isinstance(event, dict)
+    }
+    return [
+        event for event in _stock_split_events(row)
+        if entry_date < event["date"] <= session_date and event["date"] not in applied
+    ]
+
+
+def _apply_stock_splits(
+    position: dict[str, Any], row: dict[str, Any] | None, session_date: str,
+) -> float:
+    factor = _finite(position.get("split_adjustment_factor"), 1.0) or 1.0
+    applied = list(position.get("applied_stock_splits") or [])
+    for event in _applicable_stock_splits(position, row, session_date):
+        factor *= event["ratio"]
+        applied.append({
+            "date": event["date"],
+            "ratio": round(event["ratio"], 8),
+        })
+    entry_price = _finite(position.get("entry_price"))
+    adjusted_entry = entry_price / factor if entry_price > 0 and factor > 0 else entry_price
+    position["split_adjustment_factor"] = round(factor, 8)
+    position["split_adjusted_entry_price"] = round(adjusted_entry, 4)
+    position["applied_stock_splits"] = applied
+    return adjusted_entry
+
+
 def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]], market: str, session_date: str) -> None:
     row_map = {str(row.get("symbol") or ""): row for row in rows if _is_stock(row, market)}
     for position in positions:
@@ -477,7 +529,7 @@ def _value_positions(positions: list[dict[str, Any]], rows: list[dict[str, Any]]
         close_price = _finite(row.get("official_close_price")) if row else 0.0
         if not row or str(row.get("official_session_date") or "") != session_date or close_price <= 0:
             continue
-        entry_price = _finite(position.get("entry_price"))
+        entry_price = _apply_stock_splits(position, row, session_date)
         allocation = _finite(position.get("allocation_twd"))
         return_pct = ((close_price / entry_price) - 1) * 100 if entry_price > 0 else 0.0
         net_return_pct = return_pct - ROUND_TRIP_COST_PCT[market]
@@ -614,6 +666,30 @@ def _value_market_atomically(
             "available_assets": len(required_symbols) - len(missing_symbols),
             "required_assets": len(required_symbols),
             "missing_symbols": missing_symbols,
+        }
+
+    suspicious_symbols = []
+    prior_snapshot_consistent = _valuation_dates_consistent(
+        positions, benchmark_positions, market
+    )
+    for position in market_positions:
+        symbol = str(position.get("symbol") or "")
+        row = row_map.get(symbol)
+        previous_price = _finite(position.get("last_price"))
+        current_price = _finite((row or {}).get("official_close_price"))
+        price_ratio = current_price / previous_price if previous_price > 0 else 1.0
+        if (
+            prior_snapshot_consistent
+            and (price_ratio < 0.65 or price_ratio > 1.55)
+            and not _applicable_stock_splits(position, row, session_date)
+        ):
+            suspicious_symbols.append(symbol)
+    if suspicious_symbols:
+        return {
+            "status": "corporate_action_unverified",
+            "target_session_date": session_date,
+            "symbols": suspicious_symbols,
+            "reason": "價格跳動疑似股票分割；確認公司行為前保留上一個完整估值",
         }
 
     # Coverage was checked before either function mutates state, so holdings

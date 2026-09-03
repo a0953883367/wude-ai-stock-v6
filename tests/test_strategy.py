@@ -264,6 +264,32 @@ def test_build_features_exposes_split_adjusted_official_open_and_close():
     assert result["official_adjusted_close_price"] == 50.0
 
 
+def test_build_features_exposes_stock_split_events_for_portfolio_accounting():
+    dates = pd.date_range("2026-08-01", periods=30, freq="B")
+    splits = [0.0] * 30
+    splits[-1] = 2.0
+    daily = pd.DataFrame({
+        "close": [100.0] * 30,
+        "adj close": [100.0] * 30,
+        "open": [99.0] * 30,
+        "high": [101.0] * 30,
+        "low": [98.0] * 30,
+        "volume": [1_000_000] * 30,
+        "stock splits": splits,
+    }, index=dates)
+
+    result = build_features(
+        {"symbol": "TEST", "market": "US", "name": "Test", "type": "個股", "theme": "Test"},
+        daily, None, None,
+    )
+
+    assert result is not None
+    assert result["official_stock_splits"] == [{
+        "date": dates[-1].date().isoformat(),
+        "ratio": 2.0,
+    }]
+
+
 def test_build_features_never_turns_missing_multiday_institution_history_into_zero():
     dates = pd.date_range("2026-05-01", periods=65, freq="B")
     daily = pd.DataFrame({
