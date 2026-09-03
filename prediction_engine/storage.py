@@ -395,8 +395,18 @@ class PredictionStore:
         reasons: list[str],
         required_consecutive_wins: int = 3,
         rollback_failures: int = 2,
+        manual_approval: bool = False,
     ) -> dict[str, Any]:
-        """Promote or roll back only after distinct completed-session evaluations."""
+        """Promote only through an explicit manual-approval call.
+
+        Normal scheduled jobs must use ``record_candidate_review``.  Keeping
+        the default closed prevents a future caller from accidentally turning
+        automatic evaluation into automatic model control.
+        """
+        if not manual_approval:
+            return self.record_candidate_review(
+                payload, qualified=qualified, reasons=reasons
+            )
         market = payload["market"]
         group = payload["asset_group"]
         horizon = payload["horizon_code"]
@@ -465,6 +475,60 @@ class PredictionStore:
                     market, group, horizon, active_before, active,
                     payload["model_version"], event, int(qualified), trained_through,
                     reason, json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
+                    payload["created_at"],
+                ),
+            )
+        return self.control_state(market, group, horizon)
+
+    def record_candidate_review(
+        self,
+        payload: dict[str, Any],
+        *,
+        qualified: bool,
+        reasons: list[str],
+    ) -> dict[str, Any]:
+        """Record a challenger result without allowing it to take control.
+
+        Training and evaluation may run automatically.  Model selection is a
+        separate human decision, so this method never changes active_model_version.
+        """
+        market = payload["market"]
+        group = payload["asset_group"]
+        horizon = payload["horizon_code"]
+        state = self.control_state(market, group, horizon)
+        trained_through = payload.get("trained_through")
+        if state.get("last_evaluated_through") == trained_through:
+            return state
+        active = state["active_model_version"]
+        wins = int(state.get("consecutive_wins") or 0) + 1 if qualified else 0
+        failures = 0 if qualified else int(state.get("consecutive_failures") or 0) + 1
+        status = "eligible_for_manual_review" if qualified else "challenger_not_qualified"
+        reason = (
+            "樣本外條件通過；只列入人工審查，不會自動接管"
+            if qualified
+            else "；".join(reasons) or "樣本外條件未通過"
+        )
+        with self.connect() as db:
+            db.execute(
+                """INSERT OR REPLACE INTO model_control VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    market, group, horizon, active, state.get("previous_model_version"),
+                    payload["model_version"], status, wins, failures, trained_through,
+                    reason, json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
+                    payload["created_at"],
+                ),
+            )
+            db.execute(
+                """INSERT OR IGNORE INTO model_control_events(
+                market,asset_group,horizon_code,previous_active_model_version,
+                new_active_model_version,candidate_model_version,event,qualified,
+                trained_through,reason,metrics_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    market, group, horizon, active, active, payload["model_version"],
+                    "qualified_waiting_manual_review" if qualified else "rejected",
+                    int(qualified), trained_through, reason,
+                    json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
                     payload["created_at"],
                 ),
             )
