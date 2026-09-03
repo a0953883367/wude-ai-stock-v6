@@ -4,6 +4,7 @@ import json
 import decision_hub
 from briefing import _update_decision_hub_safely
 from decision_hub import update_decision_hub
+from model_unit_learning import _evaluate_control, open_prediction_store
 
 
 def _write(path, payload):
@@ -97,6 +98,8 @@ def test_report_locks_formal_rank_and_explains_horizon_conflict(tmp_path):
     assert item["horizons"]["short"]["recommendation"] == "can_scale"
     assert item["horizons"]["long"]["recommendation"] != "can_scale"
     assert item["formal_ranking_unchanged"] is True
+    assert item["adaptive_trust"]["scope"] == "central_ai_shadow_only"
+    assert item["adaptive_trust"]["formal_v6_unchanged"] is True
     assert item["shadow_baseline"]["short"]["score"] == 82
     assert report["comprehensive_shadow"]["report"] == "comprehensive_shadow_ranking.json"
     shadow = json.loads((tmp_path / "comprehensive_shadow_ranking.json").read_text())
@@ -108,6 +111,9 @@ def test_report_locks_formal_rank_and_explains_horizon_conflict(tmp_path):
     assert stockq["status"] == "ok"
     assert stockq["indicator_count"] == 16
     assert stockq["affects_formal_ranking"] is False
+    assert report["policy"]["controlled_shadow_trust_learning"] is True
+    assert report["unit_learning"]["summary"]["dedicated_ledger_units"] == 11
+    assert (tmp_path / "model_unit_learning.json").exists()
 
 
 def test_central_hub_exposes_isolated_next_session_prediction(tmp_path):
@@ -506,3 +512,29 @@ def test_safe_wrapper_quarantines_failure(tmp_path, monkeypatch):
     assert health["formal_pipeline_continues"] is True
     assert health["changes_rankings"] is False
     assert health["places_orders"] is False
+
+
+def test_earned_trust_changes_only_central_shadow_not_formal_row(tmp_path):
+    _reports(tmp_path, valuation_score=30)
+    store = open_prediction_store(tmp_path)
+    for day in ("2026-08-26", "2026-08-27", "2026-08-28"):
+        _evaluate_control(
+            store, "technical_kline", "TW_STOCK",
+            {
+                "session_count": 20, "scored_samples": 100,
+                "holdout_hit_pct": 60.0, "latest_session": day,
+            },
+            updated_at=day,
+        )
+    source = _row()
+    frozen = copy.deepcopy(source)
+    item = update_decision_hub(
+        tmp_path, [source], period="evening",
+        updated_at="2026-08-29 20:00:00", intraday=False,
+    )["decisions"][0]
+    assert source == frozen
+    assert item["formal_score"] == frozen["overall_ranking_score"]
+    assert item["formal_ranking_unchanged"] is True
+    assert item["adaptive_trust"]["active"] is True
+    assert item["adaptive_trust"]["unit_multipliers"]["technical_kline"] == 1.1
+    assert item["horizons"]["short"]["score"] > item["shadow_baseline"]["short"]["score"]

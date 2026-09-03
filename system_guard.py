@@ -466,6 +466,8 @@ def build_guard(
     validation_60d = _load(reports_dir / "validation_60d.json")
     validation_progress = _load(reports_dir / "validation_progress_monitor.json")
     model_learning = _load(reports_dir / "model_learning.json")
+    model_unit_learning = _load(reports_dir / "model_unit_learning.json")
+    prediction_engine = _load(reports_dir / "prediction_engine.json")
     graduation = _load(reports_dir / "model_graduation.json")
     unified_evidence = _load(reports_dir / "unified_evidence.json")
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
@@ -710,7 +712,7 @@ def build_guard(
         ))
 
     if graduation.get("status") == "ready":
-        checks.append(_check("model_graduation", "模型畢業控制器", "ok", "已自動產生畢業結論；升級仍須人工決定"))
+        checks.append(_check("model_graduation", "正式V6畢業控制器", "ok", "正式V6畢業仍須人工；隔離影子模型可依守門規則自動升級或退版"))
     else:
         checks.append(_check("model_graduation", "模型畢業控制器", "warning", "尚未產生完整畢業結論", "下一次報告自動重建"))
 
@@ -746,6 +748,50 @@ def build_guard(
             "model_learning", "錯題學習／影子成長", "warning",
             "尚未建立錯題學習報告；正式V6不受影響",
             "下一次台股晚報或美股早報自動重建",
+        ))
+
+    unit_summary = model_unit_learning.get("summary") or {}
+    unit_policy = model_unit_learning.get("policy") or {}
+    if (
+        model_unit_learning.get("status") == "ready"
+        and int(unit_summary.get("dedicated_ledger_units") or 0) == 11
+        and unit_policy.get("formal_v6_unchanged") is True
+        and unit_policy.get("automatic_orders") is False
+    ):
+        recent_material = [
+            event for event in (model_unit_learning.get("recent_events") or [])
+            if isinstance(event, dict) and event.get("event") in {"promoted", "updated", "rolled_back"}
+        ]
+        checks.append(_check(
+            "model_unit_learning", "11個證據單元獨立學習", "ok",
+            f"專屬帳本 11/11；已成熟 {int(unit_summary.get('matured_rows') or 0)} 筆；"
+            f"啟用影子信任 {int(unit_summary.get('active_shadow_trust_streams') or 0)} 路；"
+            f"近期升級／退版事件 {len(recent_material)} 件，正式V6未變更",
+        ))
+    elif model_unit_learning:
+        checks.append(_check(
+            "model_unit_learning", "11個證據單元獨立學習", "critical",
+            "單元帳本不完整或缺少正式V6隔離保證",
+            "停用中央影子信任調整；正式V6繼續鎖定",
+        ))
+    else:
+        checks.append(_check(
+            "model_unit_learning", "11個證據單元獨立學習", "warning",
+            "尚未建立11個證據單元的獨立向前帳本；正式V6不受影響",
+            "下一次固定報告自動建立，不回填歷史答案",
+        ))
+
+    competition = ((prediction_engine.get("run_summary") or {}).get("model_competition") or {})
+    if prediction_engine:
+        checks.append(_check(
+            "shadow_model_competition", "多期間影子自動升退版", "ok",
+            f"本次升級 {int(competition.get('controlled_shadow_promotions') or 0)}、"
+            f"退版 {int(competition.get('controlled_shadow_rollbacks') or 0)}；正式V6升級 0",
+        ))
+    else:
+        checks.append(_check(
+            "shadow_model_competition", "多期間影子自動升退版", "info",
+            "獨立多期間引擎尚待完成收盤檢查點；正式流程繼續",
         ))
 
     if unified_evidence.get("status") == "ready" and int(unified_evidence.get("invalid_count") or 0) == 0:

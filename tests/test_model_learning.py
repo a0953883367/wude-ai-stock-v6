@@ -55,8 +55,11 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
         "forecast": 22, "evidence": 14, "execution": 9, "governance": 6,
     }
     assert complete["summary"]["controlled_shadow_auto_upgrade_units"] == 6
+    assert complete["summary"]["controlled_shadow_trust_units"] == 11
+    assert complete["summary"]["dedicated_validation_units"] == 51
     assert complete["shared_rules"]["controlled_shadow_auto_promotion"] is True
     assert complete["shared_rules"]["formal_v6_automatic_promotion"] is False
+    assert report["policy"]["controlled_central_trust_auto_update"] is True
     assert (tmp_path / "model_learning.json").exists()
 
 

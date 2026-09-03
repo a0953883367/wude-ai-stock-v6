@@ -1,0 +1,1138 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-03 23:00:00",
+  "status": "ready",
+  "mode": "private_forward_unit_learning_with_public_summary",
+  "summary": {
+    "registered_units": 11,
+    "dedicated_ledger_units": 11,
+    "cohort_streams": 44,
+    "active_shadow_trust_streams": 0,
+    "inserted_rows_this_run": 0,
+    "frozen_rows": 0,
+    "matured_rows": 0,
+    "pending_rows": 0
+  },
+  "policy": {
+    "point_in_time_only": true,
+    "next_completed_session_outcome": true,
+    "minimum_sessions": 20,
+    "minimum_samples": 100,
+    "minimum_holdout_hit_pct": 52.0,
+    "activation_requires_distinct_session_wins": 3,
+    "automatic_rollback_after_failures": 2,
+    "multiplier_bounds": [
+      0.85,
+      1.15
+    ],
+    "scope": "central_ai_shadow_only",
+    "formal_v6_unchanged": true,
+    "formal_ranking_unchanged": true,
+    "automatic_orders": false,
+    "data_quality_never_judged_by_stock_return": true
+  },
+  "units": [
+    {
+      "unit_id": "central_decision",
+      "label": "中央AI決策中樞",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "central_decision",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "central_decision",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "central_decision",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "central_decision",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "technical_kline",
+      "label": "技術趨勢／K線／頭肩",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "technical_kline",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "technical_kline",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "technical_kline",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "technical_kline",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "volume_attack",
+      "label": "量能／分時量／攻擊量",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "volume_attack",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "volume_attack",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "volume_attack",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "volume_attack",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "capital_flow",
+      "label": "大量買賣／資金流",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "capital_flow",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "capital_flow",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "capital_flow",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "capital_flow",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "tw_credit_broker",
+      "label": "融資融券／借券／券商分點",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "tw_credit_broker",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "tw_credit_broker",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "tw_credit_broker",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "tw_credit_broker",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "tw_accumulation",
+      "label": "台股法人累積",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "tw_accumulation",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "tw_accumulation",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "tw_accumulation",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "tw_accumulation",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "macro_regime",
+      "label": "大盤／總經狀態",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "macro_regime",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "macro_regime",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "macro_regime",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "macro_regime",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "news_event",
+      "label": "新聞／公告／突發事件",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "news_event",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "news_event",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "news_event",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "news_event",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "fundamental_growth_quality",
+      "label": "基本面／成長／財務品質",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "fundamental_growth_quality",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "fundamental_growth_quality",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "fundamental_growth_quality",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "fundamental_growth_quality",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "etf_structure",
+      "label": "ETF成分／廣度／折溢價／追蹤／費用",
+      "objective": "forward_direction",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "etf_structure",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "etf_structure",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "etf_structure",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "etf_structure",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    },
+    {
+      "unit_id": "data_quality",
+      "label": "資料品質／日期／來源契約",
+      "objective": "source_reliability",
+      "dedicated_ledger": true,
+      "cohorts": {
+        "TW_STOCK": {
+          "unit_id": "data_quality",
+          "market": "TW",
+          "asset_group": "TW_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "TW_ETF": {
+          "unit_id": "data_quality",
+          "market": "TW",
+          "asset_group": "TW_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_STOCK": {
+          "unit_id": "data_quality",
+          "market": "US",
+          "asset_group": "US_STOCK",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        },
+        "US_ETF": {
+          "unit_id": "data_quality",
+          "market": "US",
+          "asset_group": "US_ETF",
+          "active_multiplier": 1.0,
+          "previous_multiplier": null,
+          "candidate_multiplier": null,
+          "status": "collecting",
+          "consecutive_wins": 0,
+          "consecutive_failures": 0,
+          "last_evaluated_through": null,
+          "reason": "等待至少20個有效交易日與100筆獨立方向樣本",
+          "metrics": {
+            "matured_rows": 0,
+            "scored_samples": 0,
+            "session_count": 0,
+            "direction_hit_pct": null,
+            "holdout_hit_pct": null,
+            "average_strength": null,
+            "latest_session": null
+          },
+          "updated_at": null
+        }
+      }
+    }
+  ],
+  "recent_events": [],
+  "pending_notifications": []
+}

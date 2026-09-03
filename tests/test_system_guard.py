@@ -103,6 +103,24 @@ def _healthy_reports(tmp_path: Path) -> None:
             "broker_orders": False,
         },
     })
+    _write(tmp_path / "model_unit_learning.json", {
+        "status": "ready",
+        "summary": {
+            "dedicated_ledger_units": 11,
+            "matured_rows": 0,
+            "active_shadow_trust_streams": 0,
+        },
+        "policy": {"formal_v6_unchanged": True, "automatic_orders": False},
+        "recent_events": [],
+    })
+    _write(tmp_path / "prediction_engine.json", {
+        "status": "collecting",
+        "run_summary": {"model_competition": {
+            "controlled_shadow_promotions": 0,
+            "controlled_shadow_rollbacks": 0,
+            "formal_v6_promotions": 0,
+        }},
+    })
     _write(tmp_path / "unified_evidence.json", {"status": "ready", "evidence_count": 20, "invalid_count": 0})
     _write(tmp_path / "tw_financial_official_cache.json", {
         "requested_count": 67, "available_count": 66, "coverage_pct": 98.51,

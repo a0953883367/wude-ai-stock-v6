@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 STABLE_MODEL_VERSION = "WUDE-PREDICT-ENGINE-V1-CHAMPION"
 SHADOW_PROMOTION_SCOPE = "independent_shadow_engine_only"
 
@@ -176,6 +176,64 @@ class PredictionStore:
                     metrics_json TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     UNIQUE (market, asset_group, horizon_code, trained_through)
+                );
+                CREATE TABLE IF NOT EXISTS unit_learning_predictions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    unit_id TEXT NOT NULL,
+                    objective TEXT NOT NULL,
+                    market TEXT NOT NULL,
+                    asset_group TEXT NOT NULL,
+                    session_date TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    source_price REAL NOT NULL,
+                    direction INTEGER NOT NULL,
+                    strength REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    evidence_status TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    outcome_session_date TEXT,
+                    outcome_price REAL,
+                    realized_return_pct REAL,
+                    direction_correct INTEGER,
+                    created_at TEXT NOT NULL,
+                    UNIQUE (unit_id, market, asset_group, session_date, symbol)
+                );
+                CREATE INDEX IF NOT EXISTS idx_unit_learning_pending
+                    ON unit_learning_predictions (market, status, session_date);
+                CREATE INDEX IF NOT EXISTS idx_unit_learning_metrics
+                    ON unit_learning_predictions (unit_id, asset_group, status, session_date);
+                CREATE TABLE IF NOT EXISTS unit_trust_control (
+                    unit_id TEXT NOT NULL,
+                    market TEXT NOT NULL,
+                    asset_group TEXT NOT NULL,
+                    active_multiplier REAL NOT NULL DEFAULT 1.0,
+                    previous_multiplier REAL,
+                    candidate_multiplier REAL,
+                    status TEXT NOT NULL,
+                    consecutive_wins INTEGER NOT NULL DEFAULT 0,
+                    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+                    last_evaluated_through TEXT,
+                    reason TEXT NOT NULL,
+                    metrics_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (unit_id, market, asset_group)
+                );
+                CREATE TABLE IF NOT EXISTS unit_trust_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    unit_id TEXT NOT NULL,
+                    market TEXT NOT NULL,
+                    asset_group TEXT NOT NULL,
+                    previous_multiplier REAL NOT NULL,
+                    new_multiplier REAL NOT NULL,
+                    candidate_multiplier REAL NOT NULL,
+                    event TEXT NOT NULL,
+                    qualified INTEGER NOT NULL,
+                    evaluated_through TEXT,
+                    reason TEXT NOT NULL,
+                    metrics_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE (unit_id, market, asset_group, evaluated_through)
                 );
                 """
             )
@@ -714,6 +772,7 @@ class PredictionStore:
                 "WHERE status='matured' AND evidence_json<>'{}'"
             ).rowcount
             deleted = 0
+            unit_deleted = 0
             for market in ("TW", "US"):
                 sessions = [row[0] for row in db.execute(
                     "SELECT session_date FROM market_sessions WHERE market=? ORDER BY session_date DESC",
@@ -726,6 +785,11 @@ class PredictionStore:
                     "DELETE FROM predictions WHERE market=? AND status='matured' AND session_date<?",
                     (market, cutoff),
                 ).rowcount
+                unit_deleted += db.execute(
+                    "DELETE FROM unit_learning_predictions "
+                    "WHERE market=? AND status='matured' AND session_date<?",
+                    (market, cutoff),
+                ).rowcount
                 db.execute(
                     "DELETE FROM prices WHERE market=? AND session_date<? AND session_date NOT IN "
                     "(SELECT DISTINCT session_date FROM predictions WHERE market=?)",
@@ -735,13 +799,14 @@ class PredictionStore:
             db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         size = self.path.stat().st_size if self.path.exists() else 0
         vacuumed = False
-        if self.max_bytes and size / self.max_bytes >= 0.8 and deleted:
+        if self.max_bytes and size / self.max_bytes >= 0.8 and (deleted or unit_deleted):
             with self.connect() as db:
                 db.execute("VACUUM")
             vacuumed = True
         return {
             "matured_evidence_compacted": int(compacted),
             "old_matured_predictions_pruned": int(deleted),
+            "old_matured_unit_rows_pruned": int(unit_deleted),
             "rolling_matured_sessions_retained": int(keep_matured_sessions),
             "pending_predictions_never_pruned": True,
             "vacuumed": vacuumed,
@@ -753,7 +818,8 @@ class PredictionStore:
             tables = {}
             for name in (
                 "market_sessions", "prices", "predictions", "model_versions",
-                "model_control", "model_control_events", "portfolios",
+                "model_control", "model_control_events", "unit_learning_predictions",
+                "unit_trust_control", "unit_trust_events", "portfolios",
             ):
                 tables[name] = int(db.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
             mature = int(db.execute(

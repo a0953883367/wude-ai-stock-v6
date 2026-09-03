@@ -1,4 +1,4 @@
-"""Automatic model-graduation conclusions without automatic promotion."""
+"""Formal V6 graduation conclusions; shadow promotion is governed separately."""
 
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ def _conclusion(name: str, label: str, current: int, target: int, *,
         "model_id": name, "label": label, "status": status,
         "current": current, "target": target, "reason": reason,
         "automatic_promotion": False, "changes_formal_weights": False,
+        "promotion_scope": "formal_v6",
         "places_orders": False,
     }
 
@@ -119,6 +120,10 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
         "policy": {
             "conclusion_generated_automatically": True,
             "promotion_requires_manual_decision": True,
+            "promotion_requires_manual_decision_scope": "formal_v6_only",
+            "controlled_shadow_promotion_automatic": True,
+            "controlled_shadow_trust_automatic": True,
+            "formal_v6_promotion_requires_manual_decision": True,
             "formal_ranking_locked": True,
             "automatic_weight_changes": False,
             "automatic_merge": False,

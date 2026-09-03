@@ -1,9 +1,10 @@
-"""Build the read-only Central AI Decision Hub evidence report.
+"""Build the Central AI Decision Hub shadow evidence report.
 
 This module is deliberately downstream of the formal V6 rankings.  It turns
 existing model outputs into comparable evidence, explains conflicts, and
-leaves the final choice to the owner.  It never changes a score/rank and never
-creates broker instructions.
+leaves the final choice to the owner.  Bounded, forward-tested trust
+multipliers may adjust this downstream shadow view, but formal V6 scores,
+ranks and broker instructions are never changed.
 """
 
 from __future__ import annotations
@@ -19,6 +20,12 @@ from comprehensive_shadow_ranking import update_comprehensive_shadow_ranking
 from evidence_contract import build_unified_evidence_report, make_evidence
 from next_session_ranking import update_next_session_ranking
 from portfolio_control import build_portfolio_control
+from model_unit_learning import (
+    build_unit_learning_report,
+    open_prediction_store,
+    record_unit_signals,
+    refresh_unit_learning,
+)
 
 
 SCHEMA_VERSION = 6
@@ -33,6 +40,8 @@ POLICY = {
     "shadow_models_evidence_only": True,
     "missing_data_never_imputed": True,
     "automatic_weight_changes": False,
+    "controlled_shadow_trust_learning": True,
+    "formal_weight_changes": False,
     "automatic_orders": False,
     "horizons_separate": True,
     "user_final_decision_required": True,
@@ -61,6 +70,19 @@ def _number(value: Any, default: float | None = None) -> float | None:
 def _bounded(value: Any, default: float = 0.0) -> float:
     number = _number(value, default)
     return round(max(0.0, min(100.0, float(number))), 1)
+
+
+def _trust_multiplier(trust: dict[str, float] | None, unit_id: str) -> float:
+    value = _number((trust or {}).get(unit_id), 1.0) or 1.0
+    return max(0.85, min(1.15, float(value)))
+
+
+def _apply_shadow_trust(score: float, trust: dict[str, float] | None,
+                        unit_ids: tuple[str, ...]) -> tuple[float, float]:
+    multipliers = [_trust_multiplier(trust, unit_id) for unit_id in unit_ids]
+    combined = sum(multipliers) / len(multipliers) if multipliers else 1.0
+    adjusted = 50.0 + (float(score) - 50.0) * combined
+    return round(max(0.0, min(100.0, adjusted)), 1), round(combined, 4)
 
 
 def _read_json(path: Path) -> dict[str, Any] | None:
@@ -625,6 +647,7 @@ def _build_decision(
     inverse_ready: bool,
     capital_flow: dict[str, Any] | None,
     institution_eligible: bool,
+    adaptive_trust: dict[str, float] | None,
     updated_at: str,
 ) -> dict[str, Any]:
     symbol = str(row.get("symbol") or "")
@@ -744,6 +767,26 @@ def _build_decision(
         medium_code = _recommendation(
             medium_score, bool(row.get("mid_long_eligible")), data_block
         )
+
+    # Trust multipliers are earned only from forward-settled unit ledgers.
+    # They alter this downstream Central AI shadow view around a neutral score
+    # of 50 and can never write back to the formal V6 row.
+    short_score, short_trust = _apply_shadow_trust(
+        short_score, adaptive_trust,
+        ("technical_kline", "volume_attack", "capital_flow", "tw_credit_broker",
+         "tw_accumulation", "macro_regime", "news_event"),
+    )
+    medium_score, medium_trust = _apply_shadow_trust(
+        medium_score, adaptive_trust,
+        ("technical_kline", "tw_credit_broker", "tw_accumulation",
+         "macro_regime", "fundamental_growth_quality"),
+    )
+    long_score, long_trust = _apply_shadow_trust(
+        long_score, adaptive_trust,
+        ("macro_regime", "news_event", "fundamental_growth_quality", "etf_structure"),
+    )
+    short_code = _recommendation(short_score, bool(row.get("short_term_eligible")), data_block)
+    medium_code = _recommendation(medium_score, bool(row.get("mid_long_eligible")), data_block)
     long_code = _recommendation(
         long_score,
         bool(row.get("mid_long_eligible")) and (
@@ -1006,6 +1049,10 @@ def _build_decision(
     confidence = round(min(short_confidence, medium_conf, long_conf), 1)
     if data_missing:
         confidence = max(0.0, round(confidence - min(25, len(set(data_missing)) * 5), 1))
+    central_confidence_trust = _trust_multiplier(adaptive_trust, "central_decision")
+    confidence = round(max(0.0, min(
+        100.0, 50.0 + (confidence - 50.0) * central_confidence_trust
+    )), 1)
 
     horizons = {
         "short": {
@@ -1067,6 +1114,18 @@ def _build_decision(
         "formal_rank": row.get("overall_rank") or row.get("rank"),
         "formal_score": _number(row.get("overall_ranking_score") or row.get("score")),
         "formal_ranking_unchanged": True,
+        "adaptive_trust": {
+            "scope": "central_ai_shadow_only",
+            "short_multiplier": short_trust,
+            "medium_multiplier": medium_trust,
+            "long_multiplier": long_trust,
+            "confidence_multiplier": central_confidence_trust,
+            "active": any(abs(value - 1.0) >= 0.001 for value in (
+                short_trust, medium_trust, long_trust, central_confidence_trust
+            )),
+            "unit_multipliers": dict(adaptive_trust or {}),
+            "formal_v6_unchanged": True,
+        },
         "shadow_baseline": shadow_baseline,
         "institutional_link": institutional_link,
         "inverse_shadow": {
@@ -1129,6 +1188,18 @@ def update_decision_hub(
     """Generate the hub without mutating ``rows`` or formal report files."""
     reports_dir = Path(reports_dir)
     frozen_rows = copy.deepcopy(rows)
+    try:
+        unit_store = open_prediction_store(reports_dir)
+        unit_trust, unit_refresh = refresh_unit_learning(
+            unit_store, updated_at=updated_at, intraday=intraday
+        )
+        unit_learning_error = None
+    except Exception as exc:  # noqa: BLE001 - formal and hub output must continue
+        logging.exception("證據單元學習更新失敗；中央維持中性信任")
+        unit_store = None
+        unit_trust = {}
+        unit_refresh = {"settled_rows": 0, "controls": {}}
+        unit_learning_error = str(exc)
     institution_status = _resolved_institution_status(
         frozen_rows, institution_status
     )
@@ -1162,6 +1233,7 @@ def update_decision_hub(
     capital_flow_by_symbol = _capital_flow_index(source_reports["capital_flow"])
     prediction_by_symbol = _prediction_engine_index(source_reports["prediction_engine"])
     decisions = []
+    learning_rows = []
     for row in frozen_rows:
         if not isinstance(row, dict) or not row.get("symbol"):
             continue
@@ -1169,6 +1241,7 @@ def update_decision_hub(
         cached_news = news_by_symbol.get(str(row.get("symbol") or ""))
         if isinstance(cached_news, dict):
             decision_row.update(cached_news)
+        learning_rows.append(decision_row)
         symbol_key = str(row.get("symbol") or "").upper()
         inverse_mapping = inverse_by_symbol.get(symbol_key)
         inverse_group = (inverse_mapping or {}).get("group")
@@ -1188,6 +1261,10 @@ def update_decision_hub(
             institution_eligible=bool(
                 institution_status.get("ranking_eligible")
                 and institution_status.get("ai_eligible")
+            ),
+            adaptive_trust=unit_trust.get(
+                f"{market.upper()}_{'ETF' if 'ETF' in str(row.get('type') or '').upper() else 'STOCK'}",
+                {},
             ),
             updated_at=updated_at,
         ))
@@ -1254,6 +1331,29 @@ def update_decision_hub(
         updated_at=updated_at,
         intraday=intraday,
     )
+    unit_learning_report: dict[str, Any]
+    if unit_store is not None:
+        try:
+            inserted_unit_rows = record_unit_signals(
+                unit_store, learning_rows, decisions,
+                period=period, updated_at=updated_at, intraday=intraday,
+            )
+            unit_learning_report = build_unit_learning_report(
+                reports_dir, unit_store, unit_refresh,
+                inserted_rows=inserted_unit_rows, updated_at=updated_at,
+            )
+        except Exception as exc:  # noqa: BLE001 - isolated learning must not block hub
+            logging.exception("證據單元事前留樣失敗；正式V6與中央原結論繼續")
+            unit_learning_error = str(exc)
+            unit_learning_report = {
+                "status": "error", "summary": {}, "pending_notifications": [],
+                "policy": {"formal_v6_unchanged": True}, "error": str(exc),
+            }
+    else:
+        unit_learning_report = {
+            "status": "error", "summary": {}, "pending_notifications": [],
+            "policy": {"formal_v6_unchanged": True}, "error": unit_learning_error,
+        }
     try:
         from model_graduation import update_model_graduation
         from validation_60d import update_validation_60d
@@ -1421,7 +1521,7 @@ def update_decision_hub(
             "盤中不抓、不補、不結算正式價格；收盤後才更新同交易日資料",
             "StockQ只在收盤後補主要來源缺少的市場指標，不覆蓋個股資料、不直接改分",
             "部位控制在中央結論後執行；風險擋下與資料不足一律配置為零",
-            "模型畢業結論自動產生，但升級、改權重與合併仍需人工決定",
+            "多期間模型與中央證據信任只在隔離影子層受控自動升級或退版；正式V6、正式權重與合併仍須人工決定",
             "最終按鈕只保存你的人工選擇，不連券商、不下單",
         ],
         "source_status": {
@@ -1446,6 +1546,17 @@ def update_decision_hub(
                 "updated_at": comprehensive_shadow.get("updated_at"),
                 "model_version": comprehensive_shadow.get("model_version"),
                 "formal_ranking_unchanged": True,
+            },
+            "unit_learning": {
+                "available": unit_learning_report.get("status") == "ready",
+                "updated_at": unit_learning_report.get("updated_at"),
+                "dedicated_ledger_units": int(
+                    (unit_learning_report.get("summary") or {}).get("dedicated_ledger_units") or 0
+                ),
+                "active_shadow_trust_streams": int(
+                    (unit_learning_report.get("summary") or {}).get("active_shadow_trust_streams") or 0
+                ),
+                "formal_v6_unchanged": True,
             },
             "next_session_shadow": {
                 "available": next_session_shadow.get("status") != "error",
@@ -1489,6 +1600,14 @@ def update_decision_hub(
             "database_health": (source_reports["prediction_engine"] or {}).get("database") or {},
             "formal_v6_unchanged": True,
             "automatic_orders": False,
+        },
+        "unit_learning": {
+            "report": "model_unit_learning.json",
+            "status": unit_learning_report.get("status"),
+            "summary": unit_learning_report.get("summary") or {},
+            "policy": unit_learning_report.get("policy") or {},
+            "pending_notifications": unit_learning_report.get("pending_notifications") or [],
+            "error": unit_learning_error,
         },
         "next_session_answer": next_session_answer,
         "next_session_shadow": {
