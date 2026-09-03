@@ -143,6 +143,34 @@ def test_healthy_guard_is_green(tmp_path: Path) -> None:
     assert "實際補值 3 檔" in sec["detail"]
 
 
+def test_validation_progress_stall_is_visible_without_changing_models(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "validation_progress_monitor.json", {
+        "status": "warning",
+        "current": {"trading_days_collected": 5, "target_trading_days": 60},
+        "markets": {
+            "TW": {
+                "status": "warning", "last_session_date": "2026-08-24",
+                "last_completed_days": 5, "stalled_sessions": 1,
+            },
+            "US": {
+                "status": "ok", "last_session_date": "2026-08-23",
+                "last_completed_days": 4, "stalled_sessions": 0,
+            },
+        },
+    })
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(tmp_path, now=now, friend_publish="success", owner_publish="success")
+
+    check = next(item for item in guard["checks"] if item["code"] == "validation_60d")
+    assert guard["status"] == "warning"
+    assert check["level"] == "warning"
+    assert "TW 連續 1 次" in check["detail"]
+    assert guard["safety"]["changes_rankings"] is False
+    assert guard["safety"]["places_orders"] is False
+
+
 def test_legacy_owner_publish_failure_does_not_turn_primary_app_red(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
