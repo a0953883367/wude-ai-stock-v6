@@ -704,6 +704,20 @@ def build_features(
     official_adjusted_open = official_open * adjustment_factor
     official_adjusted_high = official_high * adjustment_factor
     official_adjusted_low = official_low * adjustment_factor
+    official_stock_splits = []
+    if "stock splits" in daily:
+        for split_timestamp, raw_ratio in daily["stock splits"].fillna(0).items():
+            ratio = _finite(raw_ratio)
+            if ratio <= 0 or abs(ratio - 1.0) < 1e-9:
+                continue
+            split_date = pd.Timestamp(split_timestamp)
+            if split_date.tzinfo is not None:
+                market_zone = ZoneInfo("Asia/Taipei" if market == "TW" else "America/New_York")
+                split_date = split_date.tz_convert(market_zone)
+            official_stock_splits.append({
+                "date": split_date.date().isoformat(),
+                "ratio": round(ratio, 8),
+            })
     pace, attack, live, attack15, attack30 = _intraday_metrics(intraday, avg20, market)
     if intraday is not None and not intraday.empty and completed_volume is not volume:
         candle["daily_volume_ratio"] = round(pace, 2)
@@ -745,6 +759,7 @@ def build_features(
         "official_adjusted_high_price": round(official_adjusted_high, 4),
         "official_adjusted_low_price": round(official_adjusted_low, 4),
         "official_adjusted_close_price": round(official_adjusted_close, 4),
+        "official_stock_splits": official_stock_splits,
         "change_pct": round(change, 2),
         "volume_pace": round(pace, 2),
         "attack_volume": round(attack, 1),

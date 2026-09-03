@@ -232,6 +232,54 @@ def test_medium_missing_close_does_not_count_as_a_valid_session():
     assert portfolio["valuation_sessions"] == ["2026-08-24", "2026-08-26"]
 
 
+def test_medium_applies_stock_split_without_recording_a_false_loss():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=1)
+    update_state(state, entry, period="morning", updated_at="entry")
+    portfolio = state["medium"]["US"]
+    position = portfolio["positions"][0]
+    symbol = position["symbol"]
+    split_session = universe("2026-09-03", close_offset=1)
+    for item in split_session:
+        if item["symbol"] == symbol:
+            item["official_close_price"] = position["entry_price"] / 2 + 1
+            item["official_stock_splits"] = [{"date": "2026-09-03", "ratio": 2.0}]
+
+    update_state(state, split_session, period="morning", updated_at="split")
+    adjusted = next(item for item in portfolio["positions"] if item["symbol"] == symbol)
+
+    assert adjusted["entry_price"] == position["entry_price"]
+    assert adjusted["split_adjusted_entry_price"] == round(position["entry_price"] / 2, 4)
+    assert adjusted["split_adjustment_factor"] == 2.0
+    assert adjusted["gross_return_pct"] > 0
+    assert adjusted["gross_return_pct"] < 5
+
+    update_state(state, split_session, period="morning", updated_at="rerun")
+    assert adjusted["split_adjustment_factor"] == 2.0
+    assert len(adjusted["applied_stock_splits"]) == 1
+
+
+def test_medium_quarantines_unexplained_split_sized_price_jump():
+    state = start_state()
+    entry = universe("2026-08-24", close_offset=1)
+    update_state(state, entry, period="morning", updated_at="entry")
+    portfolio = state["medium"]["US"]
+    position = portfolio["positions"][0]
+    previous_date = position["last_valuation_date"]
+    previous_return = position["gross_return_pct"]
+    suspicious = universe("2026-09-03", close_offset=1)
+    for item in suspicious:
+        if item["symbol"] == position["symbol"]:
+            item["official_close_price"] = position["last_price"] / 2
+
+    update_state(state, suspicious, period="morning", updated_at="suspicious")
+
+    assert position["last_valuation_date"] == previous_date
+    assert position["gross_return_pct"] == previous_return
+    assert portfolio["valuation_pending"]["status"] == "corporate_action_unverified"
+    assert position["symbol"] in portfolio["valuation_pending"]["symbols"]
+
+
 def test_sixty_day_validation_does_not_change_long_six_month_exit():
     state = start_state()
     entry = universe("2026-08-24", close_offset=1)
