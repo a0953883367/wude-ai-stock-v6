@@ -8,15 +8,17 @@ const html = fs.readFileSync('index.html', 'utf8');
   'data-view="TRAINING"',
   'AI 模型訓練中心',
   'function showTrainingCenter()',
-  '全自動驗證模式',
+  '全自動驗證＋受控影子成長',
   '每日收盤自動凍結快照',
   '自動 A/B 測試＋法人權重校準',
   '錯誤案例與缺資料隔離',
   '全模型學習＋影子成長',
   'function renderModelLearning(value)',
   'function renderCompleteLearning(value)',
+  'function renderUnitLearning(value)',
   '全模型學習治理已接入',
   '影子升級：受控自動',
+  '影子信任：受控自動',
   '連續3日樣本外勝出',
   '連續2次失敗自動退版',
   '正式升級：關閉',
@@ -36,6 +38,7 @@ const html = fs.readFileSync('index.html', 'utf8');
   '券商下單：關閉',
   "fetchJSON('reports/accuracy.json')",
   "fetchJSON('reports/model_learning.json')",
+  "fetchJSON('reports/model_unit_learning.json')",
   'data-training-view'
 ].forEach((text) => assert.ok(html.includes(text), `missing training center UI contract: ${text}`));
 

@@ -1745,10 +1745,6 @@ def main() -> int:
         SETTINGS.reports_dir,
         updated_at=report["updated_at"],
     )
-    _update_model_learning_safely(
-        SETTINGS.reports_dir,
-        updated_at=report["updated_at"],
-    )
     validation_monitor = _update_validation_progress_monitor_safely(
         SETTINGS.reports_dir,
         simulation_rows,
@@ -1774,6 +1770,13 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         institution_status=institution_status,
+    )
+    # Build the catalog after both autonomous shadow engines have published
+    # their fresh ledgers, so the training center never shows yesterday's
+    # learning state beside today's decisions.
+    _update_model_learning_safely(
+        SETTINGS.reports_dir,
+        updated_at=report["updated_at"],
     )
     ranking_payload = {
         "updated_at": report["updated_at"],
@@ -1808,11 +1811,36 @@ def main() -> int:
     )
     all_analysis_tmp.replace(all_analysis_path)
 
-    pending_notices = [
+    validation_notices = [
         item
         for item in validation_monitor.get("pending_notifications", [])
         if isinstance(item, dict) and item.get("message")
     ]
+    pending_notices = list(validation_notices)
+    for notice_path, nested_keys in (
+        (SETTINGS.reports_dir / "model_unit_learning.json", ("pending_notifications",)),
+        (SETTINGS.reports_dir / "prediction_engine.json", ("run_summary", "model_competition", "pending_notifications")),
+    ):
+        try:
+            notice_payload = json.loads(notice_path.read_text(encoding="utf-8"))
+            current = notice_payload
+            for key in nested_keys:
+                current = current.get(key, {}) if isinstance(current, dict) else {}
+            if isinstance(current, list):
+                pending_notices.extend(
+                    item for item in current
+                    if isinstance(item, dict) and item.get("message")
+                )
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            logging.exception("讀取模型成長通知失敗：%s", notice_path.name)
+    unique_notices = []
+    seen_notice_ids = set()
+    for item in pending_notices:
+        notice_id = str(item.get("id") or item.get("message") or "")
+        if notice_id and notice_id not in seen_notice_ids:
+            seen_notice_ids.add(notice_id)
+            unique_notices.append(item)
+    pending_notices = unique_notices
     if pending_notices:
         markdown = f"{markdown}\n\n" + "\n".join(
             str(item["message"]) for item in pending_notices
@@ -1826,7 +1854,7 @@ def main() -> int:
 
             acknowledge_notifications(
                 SETTINGS.reports_dir,
-                [str(item.get("id") or "") for item in pending_notices],
+                [str(item.get("id") or "") for item in validation_notices],
                 delivered_at=report["updated_at"],
             )
         except Exception:  # noqa: BLE001 - delivery already succeeded

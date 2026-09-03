@@ -472,8 +472,9 @@ def _selected_models(store: PredictionStore) -> dict[tuple[str, str], dict[str, 
     }
 
 
-def _train_and_compete(store: PredictionStore, *, updated_at: str) -> dict[str, int]:
+def _train_and_compete(store: PredictionStore, *, updated_at: str) -> dict[str, Any]:
     trained = evaluated = promoted = rolled_back = 0
+    notifications: list[dict[str, str]] = []
     for group in GROUPS:
         market = group.split("_", 1)[0]
         for code in HORIZONS:
@@ -504,14 +505,28 @@ def _train_and_compete(store: PredictionStore, *, updated_at: str) -> dict[str, 
             if before["active_model_version"] != after["active_model_version"]:
                 if after["active_model_version"] == STABLE_MODEL_VERSION or after["status"].startswith("rolled_back"):
                     rolled_back += 1
+                    event = "rolled_back"
+                    action = "自動退版"
                 else:
                     promoted += 1
+                    event = "promoted"
+                    action = "自動升級"
+                notifications.append({
+                    "id": f"prediction-model:{group}:{code}:{after.get('last_evaluated_through')}:{event}",
+                    "event": event,
+                    "message": (
+                        f"🧠 模型成長｜{group}／{code} {action}："
+                        f"{before.get('active_model_version')} → {after.get('active_model_version')}。"
+                        "只影響獨立影子預判；正式V6未變更。"
+                    ),
+                })
     return {
         "challengers_trained": trained,
         "new_session_evaluations": evaluated,
         "controlled_shadow_promotions": promoted,
         "controlled_shadow_rollbacks": rolled_back,
         "formal_v6_promotions": 0,
+        "pending_notifications": notifications,
     }
 
 

@@ -10,6 +10,7 @@ const evidence=unified.evidence_files.flatMap(path=>JSON.parse(fs.readFileSync('
 
 [
   '中央 AI 決策中樞','正式排名鎖定','不自動改權重','不連券商下單',
+  '正式權重鎖定','影子信任受控成長','證據單元學習','已套用前向驗證的影子信任',
   '明日預判隔離','下一交易日預判','上漲機率估計','可買性','趨勢、量價與資金流若支持續漲仍可入榜',
   '中央唯一答案','台股官方財報','台股法人連動','綜合影子試走','統一證據','模型畢業','部位控制',
   '中央決策','綜合影子排名','正式基準／影子比較','20日初評','60日後才可人工決定是否整合',
@@ -37,7 +38,7 @@ assert(js.includes('ranking_files'));
 assert(js.includes('loadShadowSelection'));
 assert(js.includes("state.mode==='compare'"));
 assert(js.includes('影子覆蓋'));
-assert(html.includes('decision_hub.js?v=8'));
+assert(html.includes('decision_hub.js?v=9'));
 assert(html.includes('.compare-filters[hidden]'));
 assert(js.includes("if(state.mode!=='decision')return;"));
 assert(js.includes("compareFilter:'up'"));

@@ -26,6 +26,11 @@ LAYER_LABELS = {
 }
 COHORTS = ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF")
 TRACKS = ("overnight", "session", "full_day")
+UNIT_LEDGER_MODELS = {
+    "central_decision", "technical_kline", "volume_attack", "capital_flow",
+    "tw_credit_broker", "tw_accumulation", "macro_regime", "news_event",
+    "fundamental_growth_quality", "etf_structure", "data_quality",
+}
 
 MODEL_LABELS = {
     "balanced_next": "綜合平衡",
@@ -144,7 +149,8 @@ def _catalog_specs() -> list[dict[str, Any]]:
         _spec("central_decision", "中央AI決策中樞", "forecast", "meta_controller", "gating_challenger",
               "學習各盤勢、期間、群組與資料品質下該相信哪一個模型，以及何時棄權",
               "中央唯一答案的實際方向、報酬與風險", ["校準後機率", "扣成本超額報酬", "錯誤衝突率", "棄權品質"],
-              ["decision_hub.json", "performance.json"], progress_tag="shared", dedicated_validation=False),
+              ["decision_hub.json", "model_unit_learning.json"],
+              progress_tag="unit:central_decision", dedicated_validation=True),
     ])
 
     evidence_specs = [
@@ -164,15 +170,19 @@ def _catalog_specs() -> list[dict[str, Any]]:
         ("data_quality", "資料品質／日期／來源契約", "source_reliability", "學習各來源的延遲、缺值、錯值與市場別可靠度，但不猜股價", "system_guard.json"),
     ]
     for model_id, label, mode, learns, source in evidence_specs:
+        dedicated_unit = model_id in UNIT_LEDGER_MODELS
         specs.append(_spec(
             model_id, label, "evidence", "evidence_provider", mode, learns,
             "事前證據分桶對未來結果的穩定關係", ["涵蓋率", "資訊係數", "分桶報酬", "漂移", "缺值率"],
-            [source, "prediction_history.json"], progress_tag=(
+            [source, "prediction_history.json"] + (["model_unit_learning.json"] if dedicated_unit else []), progress_tag=(
+                f"unit:{model_id}" if dedicated_unit else
                 "rotation" if model_id == "market_rotation" else
                 "valuation" if model_id == "valuation" else
                 "weight" if model_id == "tw_institution" else
                 "shared"
-            ), dedicated_validation=model_id in {"market_rotation", "valuation", "tw_institution", "sector_relative_strength"},
+            ), dedicated_validation=(
+                dedicated_unit or model_id in {"market_rotation", "valuation", "tw_institution", "sector_relative_strength"}
+            ),
         ))
 
     execution_specs = [
@@ -235,6 +245,22 @@ def _progress(tag: str, reports: dict[str, dict[str, Any]]) -> dict[str, Any]:
         rows = [((learning.get(cohort) or {}).get(code) or {}) for cohort in COHORTS]
         session_values = [int(row.get("session_count") or 0) for row in rows]
         return {"sessions": min(session_values) if session_values else 0, "samples": sum(int(row.get("sample_count") or 0) for row in rows), "streams": len(rows)}
+    if tag.startswith("unit:"):
+        unit_id = tag.split(":", 1)[1]
+        unit = next((
+            row for row in reports["model_unit_learning.json"].get("units", [])
+            if isinstance(row, dict) and row.get("unit_id") == unit_id
+        ), {})
+        cohorts = unit.get("cohorts") or {}
+        metrics = {
+            cohort: ((cohorts.get(cohort) or {}).get("metrics") or {})
+            for cohort in COHORTS
+        }
+        return {
+            "sessions": max([int(row.get("session_count") or 0) for row in metrics.values()] or [0]),
+            "samples": sum(int(row.get("scored_samples") or 0) for row in metrics.values()),
+            "by_cohort": metrics,
+        }
     if tag == "comprehensive":
         days_by_market = reports["comprehensive_shadow_history.json"].get("valid_trading_days") or {}
         values = [int(days_by_market.get(market) or 0) for market in ("TW", "US")]
@@ -307,8 +333,11 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
         else:
             stage = "manual_review_available"
         automatic_shadow_upgrade = spec["learning_mode"] == "coefficient_challenger"
+        automatic_shadow_trust = spec["model_id"] in UNIT_LEDGER_MODELS
         if automatic_shadow_upgrade:
             shadow_upgrade_status = "controlled_automatic"
+        elif automatic_shadow_trust:
+            shadow_upgrade_status = "controlled_shadow_trust"
         elif spec["learning_mode"] in {"frozen_baseline", "monitor_only", "manual_gate", "proxy_validation"}:
             shadow_upgrade_status = "not_applicable"
         elif spec["dedicated_validation"]:
@@ -324,6 +353,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "uses_future_data": False,
             "changes_formal_v6": False,
             "automatic_shadow_upgrade": automatic_shadow_upgrade,
+            "automatic_shadow_trust": automatic_shadow_trust,
             "shadow_upgrade_status": shadow_upgrade_status,
             "formal_v6_automatic_promotion": False,
             "broker_orders": False,
@@ -335,6 +365,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
     source_ready = sum(bool(item["source_available"]) for item in units)
     dedicated = sum(bool(item["dedicated_validation"]) for item in units)
     automatic_shadow_units = sum(bool(item["automatic_shadow_upgrade"]) for item in units)
+    automatic_trust_units = sum(bool(item["automatic_shadow_trust"]) for item in units)
     gaps = []
     if source_ready < len(units):
         gaps.append(f"{len(units) - source_ready}個單元等待來源報表")
@@ -350,6 +381,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "source_ready_units": source_ready,
             "dedicated_validation_units": dedicated,
             "controlled_shadow_auto_upgrade_units": automatic_shadow_units,
+            "controlled_shadow_trust_units": automatic_trust_units,
             "learning_governance_coverage_pct": 100.0,
             "by_layer": {key: layer_counts.get(key, 0) for key in LAYER_LABELS},
             "by_mode": dict(sorted(mode_counts.items())),
@@ -376,6 +408,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "cost_and_drawdown_required": True,
             "formal_v6_frozen": True,
             "controlled_shadow_auto_promotion": True,
+            "controlled_central_trust_auto_update": True,
             "shadow_promotion_requires_distinct_session_wins": 3,
             "automatic_shadow_rollback_after_failures": 2,
             "formal_v6_automatic_promotion": False,

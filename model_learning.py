@@ -216,13 +216,16 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
             "historical_predictions_never_rewritten": True,
             "future_data_forbidden": True,
             "event_rows_not_treated_as_independent": True,
-            "candidate_only_until_manual_approval": True,
+            "formal_candidate_only_until_manual_approval": True,
+            "controlled_shadow_auto_promotion": True,
+            "controlled_central_trust_auto_update": True,
+            "formal_v6_automatic_promotion": False,
             "automatic_merge": False,
             "broker_orders": False,
         },
         "plain_language": (
             "每天把錯題合併成獨立事件並提出影子改善候選；正式V6繼續原本60日考試，"
-            "不會因單日輸贏自動改排名、權重或下單。"
+            "影子層達守門條件才會受控自動升級或退版；正式V6不會因單日輸贏自動改排名、權重或下單。"
         ),
     }
     _write(reports_dir / "model_learning.json", payload)
