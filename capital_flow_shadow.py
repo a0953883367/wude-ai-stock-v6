@@ -688,6 +688,16 @@ class CapitalFlowShadow:
                 ended_at = bucket.ended_at or bucket.started_at
                 last_at = ended_at if last_at is None else max(last_at, ended_at)
         summary = self._summarize_rows(rows)
+        # Keep a compact, close-only symbol summary so downstream sector
+        # models can aggregate the exact members of each sector.  This does
+        # not expose raw trades and is deliberately absent from intraday
+        # snapshots.
+        symbol_flows = [{
+            "symbol": str(row.get("symbol") or ""),
+            "buy_value": _finite(row.get("buy_value")) or 0.0,
+            "sell_value": _finite(row.get("sell_value")) or 0.0,
+            "net_flow": _finite(row.get("net_flow")) or 0.0,
+        } for row in sorted(rows, key=lambda item: str(item.get("symbol") or ""))]
         opened_at = datetime.combine(day, opened, zone).timestamp()
         coverage_open = first_at is not None and first_at <= opened_at + 30 * 60
         coverage_close = last_at is not None and last_at >= close_at - 30 * 60
@@ -716,6 +726,7 @@ class CapitalFlowShadow:
                 datetime.fromtimestamp(last_at, timezone.utc).isoformat(timespec="seconds")
                 if last_at is not None else None
             ),
+            "symbol_flows": symbol_flows,
             **summary,
         }
 
@@ -738,6 +749,8 @@ class CapitalFlowShadow:
                     "intraday_exposed": False,
                     "regular_hours_only": True,
                     "markets_separate": True,
+                    "symbol_summaries_only": True,
+                    "raw_trades_exposed": False,
                     "formal_ranking_locked": True,
                     "places_orders": False,
                 },

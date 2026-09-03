@@ -223,6 +223,19 @@ def test_daily_flow_is_hidden_until_close_and_requires_full_session_coverage():
     assert daily["quality"]["closing_coverage"] is True
     assert daily["active_symbols"] == 10
     assert daily["session_scope"] == "regular_hours_only"
+    assert len(daily["symbol_flows"]) == 10
+    assert set(daily["symbol_flows"][0]) == {
+        "symbol", "buy_value", "sell_value", "net_flow",
+    }
+    assert flow.closed_daily_snapshots(now=closed)["policy"] == {
+        "intraday_exposed": False,
+        "regular_hours_only": True,
+        "markets_separate": True,
+        "symbol_summaries_only": True,
+        "raw_trades_exposed": False,
+        "formal_ranking_locked": True,
+        "places_orders": False,
+    }
 
 
 def test_owner_snapshot_exposes_today_regular_session_before_and_after_close():

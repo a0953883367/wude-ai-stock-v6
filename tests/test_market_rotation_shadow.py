@@ -163,6 +163,42 @@ def test_completed_daily_flow_links_only_to_same_market_and_session():
     assert stale_sector["rotation_score"] == plain_sector["rotation_score"]
 
 
+def test_daily_flow_uses_exact_sector_members_instead_of_theme_label():
+    rows = _rows("US", "2026-08-27")
+    payload = _daily_flow("US", "2026-08-27", buy_ratio=0)
+    session = payload["markets"]["US"][0]
+    session["themes"] = [{
+        "theme": "不同名稱的大範圍族群", "member_count": 30,
+        "positive_symbols": 0, "negative_symbols": 30,
+        "buy_ratio_pct": 0,
+    }]
+    session["symbol_flows"] = [
+        {
+            "symbol": f"S{index}",
+            "buy_value": 90 if index < 10 else 0,
+            "sell_value": 10 if index < 10 else 100,
+            "net_flow": 80 if index < 10 else -100,
+        }
+        for index in range(30)
+    ]
+
+    snapshot = build_market_snapshot(rows, "US", daily_flow=payload)
+    sector = next(item for item in snapshot["sectors"] if item["industry"] == "點火族")
+    assert sector["daily_flow_status"] == "linked"
+    assert sector["daily_flow_link_basis"] == "member_symbols"
+    assert sector["daily_flow_member_count"] == 10
+    assert sector["daily_flow_expected_members"] == 10
+    assert sector["daily_flow_score"] == 94.5
+
+    session["symbol_flows"] = session["symbol_flows"][:1]
+    partial = build_market_snapshot(rows, "US", daily_flow=payload)
+    partial_sector = next(
+        item for item in partial["sectors"] if item["industry"] == "點火族"
+    )
+    assert partial_sector["daily_flow_status"] == "not_available"
+    assert partial_sector["daily_flow_member_count"] == 1
+
+
 def test_incomplete_daily_flow_never_penalizes_rotation_score():
     payload = _daily_flow(buy_ratio=0)
     payload["markets"]["TW"][0]["complete"] = False

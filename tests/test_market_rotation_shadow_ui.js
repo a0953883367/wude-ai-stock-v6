@@ -24,6 +24,9 @@ const html = fs.readFileSync('index.html', 'utf8');
   '缺法人資料列資料不足',
   '嚴格組跳空失效',
   '日結資金流',
+  'function rotationFlowCell(item)',
+  '成分股 ',
+  '等待成分股',
   '收盤資金流已連動',
   '等待完整收盤資金流'
 ].forEach((text) => assert.ok(html.includes(text), `missing rotation UI contract: ${text}`));

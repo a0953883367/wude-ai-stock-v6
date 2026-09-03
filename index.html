@@ -617,6 +617,11 @@ function showWeightExperiment(){
   document.getElementById('results').innerHTML=notice+'<div class="million-grid">'+order.map(function(key){return weightModelHtml(models[key]);}).join('')+'</div>';
 }
 function rotationStageLabel(stage){return {collecting:'建立基準',ignition:'點火期',expansion:'擴散期',climax:'高潮期',ebb:'退潮期',neutral:'中性',insufficient_members:'成員不足'}[stage]||stage||'等待';}
+function rotationFlowCell(item){
+  var score=item.daily_flow_score,count=Number(item.daily_flow_member_count||0),expected=Number(item.daily_flow_expected_members||item.member_count||0),memberBasis=item.daily_flow_link_basis==='member_symbols';
+  if(score==null)return memberBasis?'等待成分股<br><span class="holding-meta">'+esc(count)+' / '+esc(expected)+'檔</span>':'未連動';
+  return esc(number(score,1))+(memberBasis?'<br><span class="holding-meta">成分股 '+esc(count)+' / '+esc(expected)+'檔</span>':'');
+}
 function rotationPicks(model,other){
   var picks=model&&Array.isArray(model.picks)?model.picks:[],otherSet={};
   ((other&&other.picks)||[]).forEach(function(pick){otherSet[pick.symbol]=true;});
@@ -625,7 +630,7 @@ function rotationPicks(model,other){
 }
 function rotationMarketHtml(market){
   market=market||{};var snapshots=market.snapshots||[],latest=snapshots.length?snapshots[snapshots.length-1]:{},sectors=(latest.sectors||[]).filter(function(item){return item.eligible;}).slice(0,10),summary=market.summary||{},metrics=summary.model_metrics||{},pending=market.pending||{},models=pending.models||{};
-  var rows=sectors.map(function(item){return '<tr><td>'+esc(item.industry)+'<br><span class="holding-meta">'+esc(item.member_count)+'檔</span></td><td>'+esc(rotationStageLabel(item.stage))+'</td><td>'+esc(number(item.rotation_score,2))+'</td><td>'+(item.daily_flow_score==null?'未連動':esc(number(item.daily_flow_score,1)))+'</td><td>'+esc(number(item.up_ratio_pct,1))+'%</td><td class="'+(Number(item.median_change_pct)>=0?'up':'down')+'">'+esc(percent(item.median_change_pct))+'</td><td>'+esc(number(item.median_volume_ratio,2))+'倍</td><td>'+esc(number(item.market_specific_evidence_score,1))+'</td></tr>';}).join('');
+  var rows=sectors.map(function(item){return '<tr><td>'+esc(item.industry)+'<br><span class="holding-meta">'+esc(item.member_count)+'檔</span></td><td>'+esc(rotationStageLabel(item.stage))+'</td><td>'+esc(number(item.rotation_score,2))+'</td><td>'+rotationFlowCell(item)+'</td><td>'+esc(number(item.up_ratio_pct,1))+'%</td><td class="'+(Number(item.median_change_pct)>=0?'up':'down')+'">'+esc(percent(item.median_change_pct))+'</td><td>'+esc(number(item.median_volume_ratio,2))+'倍</td><td>'+esc(number(item.market_specific_evidence_score,1))+'</td></tr>';}).join('');
   var evidence=market.market==='TW'?'法人正向比例':'成長／營收代理';
   var compare='<div class="holding-summary"><div class="item"><div class="label">有效交易日</div><div class="value">'+esc(summary.valid_trading_days||0)+' / 60</div></div><div class="item"><div class="label">A 正式V6</div><div class="value">'+esc(millionMoney(summary.baseline_net_profit_twd))+'</div></div><div class="item"><div class="label">B 輪動15%</div><div class="value">'+esc(millionMoney(summary.rotation_net_profit_twd))+'</div></div><div class="item"><div class="label">B 相對A</div><div class="value">'+esc(millionMoney(summary.rotation_incremental_net_profit_twd))+'</div></div></div>';
   var strictMetric=metrics.strict_5of5||{},practicalMetric=metrics.practical_4of5||{};
