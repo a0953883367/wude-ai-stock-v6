@@ -1,25 +1,25 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "ok",
-  "status_label": "🟢 系統正常",
-  "checked_at": "2026-09-04T00:35:55+08:00",
+  "status": "warning",
+  "status_label": "🟡 需要注意",
+  "checked_at": "2026-09-04T01:34:59+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-03 20:10:24",
-  "report_age_minutes": 265.5,
+  "report_age_minutes": 324.6,
   "counts": {
-    "ok": 23,
+    "ok": 24,
     "info": 4,
-    "warning": 0,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近更新距今 266 分鐘",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 5.4 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
       "code": "report_consistency",
@@ -119,10 +119,10 @@
     },
     {
       "code": "model_graduation",
-      "title": "模型畢業控制器",
+      "title": "正式V6畢業控制器",
       "level": "ok",
       "label": "正常",
-      "detail": "已自動產生畢業結論；升級仍須人工決定",
+      "detail": "正式V6畢業仍須人工；隔離影子模型可依守門規則自動升級或退版",
       "action": ""
     },
     {
@@ -131,6 +131,22 @@
       "level": "ok",
       "label": "正常",
       "detail": "已將 479 筆錯誤列合併為 165 個事件；影子候選 6 組；完整學習治理 51/51 項，正式V6鎖定",
+      "action": ""
+    },
+    {
+      "code": "model_unit_learning",
+      "title": "11個證據單元獨立學習",
+      "level": "ok",
+      "label": "正常",
+      "detail": "專屬帳本 11/11；已成熟 0 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
+      "action": ""
+    },
+    {
+      "code": "shadow_model_competition",
+      "title": "多期間影子自動升退版",
+      "level": "ok",
+      "label": "正常",
+      "detail": "本次升級 0、退版 0；正式V6升級 0",
       "action": ""
     },
     {
@@ -203,7 +219,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-09-03T16:35:48+00:00",
+      "detail": "最近一次已送達：2026-09-03T17:34:39+00:00",
       "action": ""
     },
     {
@@ -231,7 +247,9 @@
       "action": ""
     }
   ],
-  "action_required": [],
+  "action_required": [
+    "若已跨過下一個排程時間，檢查排程是否延遲"
+  ],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,
