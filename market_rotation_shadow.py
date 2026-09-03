@@ -241,26 +241,67 @@ def build_market_snapshot(
         for item in (flow_session or {}).get("themes") or []
         if isinstance(item, dict)
     }
+    raw_symbol_flows = (flow_session or {}).get("symbol_flows")
+    symbol_flow_available = isinstance(raw_symbol_flows, list)
+    flow_symbols = {
+        str(item.get("symbol") or "").upper(): item
+        for item in (raw_symbol_flows or [])
+        if isinstance(item, dict) and item.get("symbol")
+    }
     sectors = []
     for industry, members in grouped.items():
         components = _sector_components(members, market_median, market)
         eligible = len(members) >= MIN_SECTOR_MEMBERS
         base_rotation = _rotation_score(components, market) if eligible else None
-        theme_flow = flow_themes.get(normalize_theme(industry))
         flow_score = None
-        directional_members = (
-            _number((theme_flow or {}).get("positive_symbols"))
-            + _number((theme_flow or {}).get("negative_symbols"))
-        )
-        if eligible and theme_flow and directional_members >= 2:
-            positive_breadth = (
-                _number(theme_flow.get("positive_symbols")) / directional_members * 100
-                if directional_members else 50.0
+        flow_member_count = 0
+        flow_link_basis = "none"
+        if symbol_flow_available:
+            member_flows = [
+                flow_symbols[symbol]
+                for symbol in {
+                    str(member.get("symbol") or "").upper() for member in members
+                }
+                if symbol in flow_symbols
+            ]
+            directional_flows = [
+                item for item in member_flows if _number(item.get("net_flow")) != 0
+            ]
+            flow_member_count = len(directional_flows)
+            flow_link_basis = "member_symbols"
+            flow_buy = sum(_number(item.get("buy_value")) for item in member_flows)
+            flow_sell = sum(_number(item.get("sell_value")) for item in member_flows)
+            flow_directional = flow_buy + flow_sell
+            if eligible and flow_member_count >= MIN_SECTOR_MEMBERS and flow_directional > 0:
+                positive_breadth = (
+                    sum(_number(item.get("net_flow")) > 0 for item in directional_flows)
+                    / flow_member_count * 100
+                )
+                flow_score = _clamp(
+                    flow_buy / flow_directional * 100 * 0.55
+                    + positive_breadth * 0.45
+                )
+        else:
+            # Backward compatibility for already-frozen close summaries made
+            # before compact per-symbol flow became available.  New snapshots
+            # always use exact member symbols and never depend on label aliases.
+            theme_flow = flow_themes.get(normalize_theme(industry))
+            flow_member_count = int(
+                _number((theme_flow or {}).get("positive_symbols"))
+                + _number((theme_flow or {}).get("negative_symbols"))
             )
-            flow_score = _clamp(
-                _number(theme_flow.get("buy_ratio_pct"), 50.0) * 0.55
-                + positive_breadth * 0.45
-            )
+            if theme_flow:
+                flow_link_basis = "legacy_theme"
+            if eligible and theme_flow and flow_member_count >= MIN_SECTOR_MEMBERS:
+                positive_breadth = (
+                    _number(theme_flow.get("positive_symbols"))
+                    / flow_member_count * 100
+                    if flow_member_count else 50.0
+                )
+                flow_score = _clamp(
+                    _number(theme_flow.get("buy_ratio_pct"), 50.0) * 0.55
+                    + positive_breadth * 0.45
+                )
         sector = {
             "industry": industry,
             "member_count": len(members),
@@ -269,6 +310,9 @@ def build_market_snapshot(
             "base_rotation_score": base_rotation,
             "daily_flow_score": round(flow_score, 2) if flow_score is not None else None,
             "daily_flow_status": "linked" if flow_score is not None else "not_available",
+            "daily_flow_member_count": flow_member_count,
+            "daily_flow_expected_members": len(members),
+            "daily_flow_link_basis": flow_link_basis,
             "rotation_score": round(
                 base_rotation * (1 - DAILY_FLOW_WEIGHT) + flow_score * DAILY_FLOW_WEIGHT, 2
             ) if base_rotation is not None and flow_score is not None else base_rotation,
