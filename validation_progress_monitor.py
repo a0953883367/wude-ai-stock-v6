@@ -19,6 +19,8 @@ MARKETS = ("TW", "US")
 CLOSED_PERIOD = {"TW": "evening", "US": "morning"}
 MARKET_LABEL = {"TW": "台股", "US": "美股"}
 LEVEL_ORDER = {"ok": 0, "warning": 1, "critical": 2}
+SIGNAL_WARNING_DAYS = 5
+SIGNAL_CRITICAL_DAYS = 10
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -67,6 +69,20 @@ def _empty_market() -> dict[str, Any]:
     }
 
 
+def _empty_signal_market() -> dict[str, Any]:
+    return {
+        "status": "initializing",
+        "last_session_date": "",
+        "last_validation_days": 0,
+        "last_trade_signal_samples": 0,
+        "direction_samples": 0,
+        "stagnant_sessions": 0,
+        "last_signal_growth_at": None,
+        "alert_notified": False,
+        "detail": "等待方向樣本建立交易訊號監控基準",
+    }
+
+
 def _empty_state(updated_at: str, validation: dict[str, Any]) -> dict[str, Any]:
     days = int(validation.get("trading_days_collected") or 0)
     samples = int(validation.get("eligible_samples") or 0)
@@ -82,6 +98,7 @@ def _empty_state(updated_at: str, validation: dict[str, Any]) -> dict[str, Any]:
             "eligible_samples": samples,
         },
         "markets": {market: _empty_market() for market in MARKETS},
+        "signal_health": {market: _empty_signal_market() for market in MARKETS},
         "weekly_baseline": {
             "date": updated_at[:10],
             "trading_days_collected": days,
@@ -92,6 +109,8 @@ def _empty_state(updated_at: str, validation: dict[str, Any]) -> dict[str, Any]:
         "policy": {
             "warning_after_missed_sessions": 1,
             "critical_after_missed_sessions": 2,
+            "trade_signal_warning_after_sessions": SIGNAL_WARNING_DAYS,
+            "trade_signal_critical_after_sessions": SIGNAL_CRITICAL_DAYS,
             "weekends_and_holidays_ignored": True,
             "isolated_invalid_sessions_ignored": True,
             "same_session_runs_deduplicated": True,
@@ -112,6 +131,13 @@ def _load_state(path: Path, updated_at: str, validation: dict[str, Any]) -> dict
     for market in MARKETS:
         if not isinstance(markets.get(market), dict):
             markets[market] = _empty_market()
+    signal_health = state.get("signal_health")
+    if not isinstance(signal_health, dict):
+        state["signal_health"] = {market: _empty_signal_market() for market in MARKETS}
+    else:
+        for market in MARKETS:
+            if not isinstance(signal_health.get(market), dict):
+                signal_health[market] = _empty_signal_market()
     if not isinstance(state.get("pending_notifications"), list):
         state["pending_notifications"] = []
     return state
@@ -125,6 +151,23 @@ def _completed_days(validation: dict[str, Any], million: dict[str, Any], market:
     if track.get("completed_days") is not None:
         return int(track.get("completed_days") or 0)
     return int(((million.get("markets") or {}).get(market) or {}).get("completed_days") or 0)
+
+
+def _signal_totals(performance: dict[str, Any], market: str) -> tuple[int, int, int]:
+    group = ((performance.get("groups") or {}).get(f"{market}_STOCK") or {})
+    direction = ((group.get("horizons") or {}).get("1") or {})
+    trades = ((group.get("trade_signals") or {}).get("1") or {})
+    market_days = int(
+        (((performance.get("ab_testing") or {}).get("markets") or {}).get(market) or {}).get(
+            "trading_days_collected"
+        )
+        or 0
+    )
+    return (
+        int(direction.get("samples") or 0),
+        int(trades.get("samples") or 0),
+        market_days,
+    )
 
 
 def _queue(state: dict[str, Any], event: dict[str, Any]) -> None:
@@ -208,6 +251,138 @@ def _isolated_resolution_event(
             "不列入停滯次數；模型、權重與正式排名均未變更。"
         ),
     }
+
+
+def _signal_alert_event(
+    market: str,
+    level: str,
+    stagnant: int,
+    direction_samples: int,
+    trade_samples: int,
+    updated_at: str,
+) -> dict[str, Any]:
+    icon = "🔴" if level == "critical" else "⚠️"
+    return {
+        "id": f"trade-signal:{market}:{level}:{stagnant}:{trade_samples}",
+        "type": "trade_signal_stagnation",
+        "market": market,
+        "level": level,
+        "created_at": updated_at,
+        "message": (
+            f"{icon} 模型成長提醒：{MARKET_LABEL[market]}已有 {direction_samples} 筆方向結果，"
+            f"但完整交易訊號連續 {stagnant} 個有效交易日沒有增加（目前 {trade_samples} 筆）。"
+            "請檢查買點門檻與資料契約；只啟動影子診斷，不放寬正式條件、不改排名或下單。"
+        ),
+    }
+
+
+def _signal_recovery_event(
+    market: str,
+    previous: int,
+    current: int,
+    updated_at: str,
+) -> dict[str, Any]:
+    return {
+        "id": f"trade-signal-recovery:{market}:{current}",
+        "type": "trade_signal_recovery",
+        "market": market,
+        "level": "ok",
+        "created_at": updated_at,
+        "message": (
+            f"✅ 模型成長訊號恢復：{MARKET_LABEL[market]}完整交易訊號已由 {previous} 筆增至 "
+            f"{current} 筆；零樣本／停滯提醒解除。正式V6仍維持不變。"
+        ),
+    }
+
+
+def _resolve_signal_alert(state: dict[str, Any], market: str) -> bool:
+    state["pending_notifications"] = [
+        item
+        for item in state.get("pending_notifications", [])
+        if not (
+            isinstance(item, dict)
+            and item.get("market") == market
+            and item.get("type") == "trade_signal_stagnation"
+        )
+    ]
+    return bool(state["signal_health"][market].get("alert_notified"))
+
+
+def _observe_signal_health(
+    state: dict[str, Any],
+    performance: dict[str, Any],
+    market: str,
+    session_date: str,
+    updated_at: str,
+) -> None:
+    direction_samples, trade_samples, validation_days = _signal_totals(performance, market)
+    signal = state["signal_health"][market]
+    previous_samples = int(signal.get("last_trade_signal_samples") or 0)
+    previous_days = int(signal.get("last_validation_days") or 0)
+    last_session = str(signal.get("last_session_date") or "")
+    old_status = str(signal.get("status") or "initializing")
+
+    signal["direction_samples"] = direction_samples
+    if not session_date or direction_samples <= 0:
+        signal.update({
+            "status": "initializing",
+            "last_trade_signal_samples": trade_samples,
+            "last_validation_days": validation_days,
+            "detail": "方向樣本尚未建立，暫不判定交易訊號停滯",
+        })
+        return
+
+    if not last_session:
+        stagnant = validation_days if trade_samples == 0 else 0
+    elif session_date == last_session and validation_days <= previous_days:
+        if trade_samples <= previous_samples:
+            return
+        stagnant = 0
+    elif trade_samples > previous_samples:
+        stagnant = 0
+    else:
+        stagnant = int(signal.get("stagnant_sessions") or 0) + max(
+            validation_days - previous_days, 1
+        )
+
+    signal.update({
+        "last_session_date": session_date,
+        "last_validation_days": validation_days,
+        "last_trade_signal_samples": trade_samples,
+        "stagnant_sessions": stagnant,
+    })
+    if trade_samples > previous_samples:
+        signal.update({
+            "status": "ok",
+            "last_signal_growth_at": updated_at,
+            "detail": f"完整交易訊號已增加至 {trade_samples} 筆",
+        })
+        if old_status in {"warning", "critical"}:
+            notified = _resolve_signal_alert(state, market)
+            if notified:
+                _queue(state, _signal_recovery_event(
+                    market, previous_samples, trade_samples, updated_at
+                ))
+            else:
+                signal["alert_notified"] = False
+        return
+
+    level = (
+        "critical" if stagnant >= SIGNAL_CRITICAL_DAYS
+        else "warning" if stagnant >= SIGNAL_WARNING_DAYS
+        else "ok"
+    )
+    signal.update({
+        "status": level,
+        "detail": (
+            f"已有 {direction_samples} 筆方向結果；完整交易訊號 {trade_samples} 筆，"
+            f"連續 {stagnant} 個有效交易日未增加"
+        ),
+    })
+    if level in {"warning", "critical"} and old_status != level:
+        _queue(state, _signal_alert_event(
+            market, level, stagnant, direction_samples, trade_samples, updated_at
+        ))
 
 
 def _observe_market(
@@ -405,6 +580,7 @@ def update_validation_progress_monitor(
     path = reports_dir / "validation_progress_monitor.json"
     validation = _read(reports_dir / "validation_60d.json")
     million = _read(reports_dir / "million_simulation.json")
+    performance = _read(reports_dir / "performance.json")
     state = _load_state(path, updated_at, validation)
     state["updated_at"] = updated_at
     days = int(validation.get("trading_days_collected") or 0)
@@ -418,9 +594,19 @@ def update_validation_progress_monitor(
         for market in MARKETS:
             if period == CLOSED_PERIOD[market]:
                 _observe_market(state, validation, million, rows, market, updated_at)
+                _observe_signal_health(
+                    state,
+                    performance,
+                    market,
+                    _market_session(rows, market),
+                    updated_at,
+                )
         _weekly_summary(state, period, updated_at)
     levels = [
         str(state["markets"][market].get("status") or "ok")
+        for market in MARKETS
+    ] + [
+        str(state["signal_health"][market].get("status") or "ok")
         for market in MARKETS
     ]
     highest = max(levels, key=lambda value: LEVEL_ORDER.get(value, 0), default="ok")
@@ -460,6 +646,12 @@ def acknowledge_notifications(
             market_state["alert_notified"] = True
         elif event.get("type") == "validation_recovery":
             market_state["alert_notified"] = False
+        signal_state = (state.get("signal_health") or {}).get(market)
+        if isinstance(signal_state, dict):
+            if event.get("type") == "trade_signal_stagnation":
+                signal_state["alert_notified"] = True
+            elif event.get("type") == "trade_signal_recovery":
+                signal_state["alert_notified"] = False
     state["pending_notifications"] = [
         item
         for item in state.get("pending_notifications", [])

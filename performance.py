@@ -581,11 +581,12 @@ def _error_cases(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                 if actual is None or evaluate_direction(direction, actual) is not False:
                     continue
                 directional = actual if direction == "UP" else -actual
+                outcome = outcome if isinstance(outcome, dict) else {}
                 rows.append({
                     "market": snapshot.get("market"),
                     "market_regime": (snapshot.get("market_regime") or {}).get("regime"),
                     "source_session_date": snapshot.get("session_date"),
-                    "evaluated_session_date": (outcome or {}).get("evaluated_session_date"),
+                    "evaluated_session_date": outcome.get("evaluated_session_date"),
                     "horizon": horizon,
                     "symbol": row.get("symbol"),
                     "name": row.get("name"),
@@ -593,15 +594,187 @@ def _error_cases(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                     "predicted_direction": direction,
                     "actual_return_pct": actual,
                     "directional_return_pct": round(directional, 4),
+                    "cohort": row.get("cohort"),
+                    "overnight_return_pct": _outcome_return(
+                        outcome, "close_to_open_return_pct"
+                    ),
+                    "session_return_pct": _outcome_return(
+                        outcome, "open_to_close_return_pct"
+                    ),
                     "reason": "預測方向與完成交易日結果相反",
                 })
     rows.sort(key=lambda item: (float(item["directional_return_pct"]), str(item["source_session_date"])))
+    events = _group_error_events(rows)
+    cause_counts: dict[str, int] = {}
+    for event in events:
+        cause = str(event.get("primary_cause") or "direction_calibration")
+        cause_counts[cause] = cause_counts.get(cause, 0) + 1
     return {
         "automatic_collection": True,
         "valid_samples_only": True,
         "count": len(rows),
-        "recent_worst": rows[:200],
+        "row_count": len(rows),
+        "unique_event_count": len(events),
+        "unique_symbol_count": len({str(row.get("symbol") or "") for row in rows}),
+        "duplicate_row_count": max(0, len(rows) - len(events)),
+        "counting_note": "錯誤列包含同一股票事件的不同起始日與1／2／3／5日觀察窗；獨立事件已依股票及重疊期間合併。",
+        "cause_counts": cause_counts,
+        "event_clusters": events[:20],
+        "recent_worst": [
+            {
+                key: value
+                for key, value in row.items()
+                if key not in {"cohort", "overnight_return_pct", "session_return_pct"}
+            }
+            for row in rows[:200]
+        ],
     }
+
+
+ERROR_CAUSES = {
+    "event_gap_risk": {
+        "label": "突發事件／跳空風險",
+        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
+        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。",
+    },
+    "missed_strength_rotation": {
+        "label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
+    },
+    "intraday_reversal": {
+        "label": "開盤後反轉",
+        "diagnosis": "隔夜方向與盤中方向分離，單一全天判斷無法說明進場後的反轉風險。",
+        "learning_action": "維持隔夜、盤中、全天三段模型，候選進場仍需15／30分鐘確認與停損控制。",
+    },
+    "etf_model_separation": {
+        "label": "ETF規則需分離",
+        "diagnosis": "ETF的成分、槓桿或反向結構與個股不同，不應直接沿用個股判斷。",
+        "learning_action": "建立ETF專屬影子候選並分市場驗證，不修改個股正式權重。",
+    },
+    "direction_calibration": {
+        "label": "一般方向校準",
+        "diagnosis": "目前資料只能確認方向判斷錯誤，尚不足以歸因為單一事件或特定因子。",
+        "learning_action": "保留為校準樣本，累積相同盤勢與市場後再提出影子權重候選。",
+    },
+}
+
+
+def _number(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _classify_error_case(row: dict[str, Any]) -> str:
+    cohort = str(row.get("cohort") or "")
+    actual = _number(row.get("actual_return_pct")) or 0.0
+    overnight = _number(row.get("overnight_return_pct"))
+    session = _number(row.get("session_return_pct"))
+    direction = str(row.get("predicted_direction") or "")
+    if cohort.endswith("_ETF"):
+        return "etf_model_separation"
+    if direction == "DOWN" and actual >= 8.0:
+        return "missed_strength_rotation"
+    if direction == "UP" and overnight is not None and session is not None:
+        if overnight > 0 and session <= -4.0:
+            return "intraday_reversal"
+    if abs(actual) >= 12.0 or (overnight is not None and abs(overnight) >= 5.0):
+        return "event_gap_risk"
+    return "direction_calibration"
+
+
+def _parse_date(value: Any) -> date | None:
+    try:
+        return date.fromisoformat(str(value or "")[:10])
+    except ValueError:
+        return None
+
+
+def _build_error_event(group: list[dict[str, Any]]) -> dict[str, Any]:
+    ordered = sorted(group, key=lambda item: float(item.get("directional_return_pct") or 0.0))
+    worst = ordered[0]
+    primary = _classify_error_case(worst)
+    rule = ERROR_CAUSES[primary]
+    source_dates = sorted(str(row.get("source_session_date") or "") for row in group)
+    evaluated_dates = sorted(str(row.get("evaluated_session_date") or "") for row in group)
+    market = str(worst.get("market") or "")
+    symbol = str(worst.get("symbol") or "")
+    start = source_dates[0] if source_dates else ""
+    end = evaluated_dates[-1] if evaluated_dates else ""
+    return {
+        "event_id": f"{market}:{symbol}:{start}:{end}",
+        "market": market,
+        "symbol": symbol,
+        "name": worst.get("name"),
+        "cohort": worst.get("cohort"),
+        "source_start_date": start,
+        "evaluated_end_date": end,
+        "row_count": len(group),
+        "horizons": sorted({int(row.get("horizon") or 0) for row in group}),
+        "predicted_directions": sorted({str(row.get("predicted_direction") or "") for row in group}),
+        "worst_directional_return_pct": round(
+            min(float(row.get("directional_return_pct") or 0.0) for row in group), 4
+        ),
+        "largest_actual_move_pct": round(
+            max((abs(float(row.get("actual_return_pct") or 0.0)) for row in group), default=0.0), 4
+        ),
+        "primary_cause": primary,
+        "cause_label": rule["label"],
+        "diagnosis": rule["diagnosis"],
+        "learning_action": rule["learning_action"],
+        "classification_status": "自動初判、等待前向驗證",
+        "affects_formal_model": False,
+    }
+
+
+def _group_error_events(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge overlapping evaluation windows for the same stock.
+
+    A single price shock can complete several frozen 1/2/3/5-day forecasts.
+    Keeping every row is important for the audit, but treating each row as an
+    independent learning event would over-train the challenger.
+    """
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in rows:
+        key = (str(row.get("market") or ""), str(row.get("symbol") or ""))
+        grouped.setdefault(key, []).append(row)
+
+    events: list[dict[str, Any]] = []
+    for symbol_rows in grouped.values():
+        ordered = sorted(symbol_rows, key=lambda item: (
+            str(item.get("source_session_date") or ""),
+            str(item.get("evaluated_session_date") or ""),
+        ))
+        current: list[dict[str, Any]] = []
+        current_end: date | None = None
+        current_start: date | None = None
+        for row in ordered:
+            start = _parse_date(row.get("source_session_date"))
+            end = _parse_date(row.get("evaluated_session_date")) or start
+            if (
+                current
+                and start is not None
+                and current_end is not None
+                and (start > current_end or (current_start is not None and (start - current_start).days > 7))
+            ):
+                events.append(_build_error_event(current))
+                current = []
+                current_end = None
+                current_start = None
+            current.append(row)
+            if current_start is None:
+                current_start = start
+            if end is not None and (current_end is None or end > current_end):
+                current_end = end
+        if current:
+            events.append(_build_error_event(current))
+    events.sort(key=lambda item: (
+        float(item.get("worst_directional_return_pct") or 0.0),
+        str(item.get("source_start_date") or ""),
+    ))
+    return events
 
 
 def _data_quality_summary(snapshots: list[dict[str, Any]]) -> dict[str, Any]:

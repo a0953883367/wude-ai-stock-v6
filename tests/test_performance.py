@@ -4,6 +4,7 @@ from pathlib import Path
 from model_lab import MODEL_NAMES, consensus_prediction, model_predictions, track_predictions
 from performance import (
     AUDIT_SCHEMA_VERSION,
+    _group_error_events,
     _snapshot_integrity,
     _summary,
     _tw_threshold_calibration,
@@ -12,6 +13,24 @@ from performance import (
     load_performance_context,
     update_performance,
 )
+
+
+def test_overlapping_error_rows_are_one_learning_event():
+    base = {
+        "market": "US", "symbol": "PCG", "name": "PG&E", "cohort": "US_STOCK",
+        "predicted_direction": "UP", "actual_return_pct": -20.0,
+        "directional_return_pct": -20.0, "overnight_return_pct": -18.0,
+    }
+    events = _group_error_events([
+        {**base, "source_session_date": "2026-08-24", "evaluated_session_date": "2026-08-31", "horizon": 5},
+        {**base, "source_session_date": "2026-08-26", "evaluated_session_date": "2026-08-31", "horizon": 3},
+        {**base, "source_session_date": "2026-08-27", "evaluated_session_date": "2026-09-01", "horizon": 3},
+    ])
+    assert len(events) == 1
+    assert events[0]["row_count"] == 3
+    assert events[0]["horizons"] == [3, 5]
+    assert events[0]["primary_cause"] == "event_gap_risk"
+    assert events[0]["affects_formal_model"] is False
 
 
 def test_current_v6_metrics_exclude_legacy_schema_but_keep_audit_count():

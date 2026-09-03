@@ -412,6 +412,17 @@ def _update_validation_progress_monitor_safely(
         return {}
 
 
+def _update_model_learning_safely(reports_dir, *, updated_at: str) -> dict:
+    """Turn frozen errors into research candidates without touching V6."""
+    try:
+        from model_learning import update_model_learning
+
+        return update_model_learning(reports_dir, updated_at=updated_at)
+    except Exception:  # noqa: BLE001 - learning research must never stop a report
+        logging.exception("錯題學習／影子候選整理失敗；正式V6與報表繼續")
+        return {}
+
+
 _NEXT_SESSION_FIELDS = (
     "next_session_model_version", "next_session_market_model",
     "next_session_direction", "next_session_confidence",
@@ -1731,6 +1742,10 @@ def main() -> int:
         intraday=args.intraday,
     )
     _update_central_controls_safely(
+        SETTINGS.reports_dir,
+        updated_at=report["updated_at"],
+    )
+    _update_model_learning_safely(
         SETTINGS.reports_dir,
         updated_at=report["updated_at"],
     )

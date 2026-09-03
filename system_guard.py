@@ -465,6 +465,7 @@ def build_guard(
     stockq = _load(reports_dir / "stockq_market_context.json")
     validation_60d = _load(reports_dir / "validation_60d.json")
     validation_progress = _load(reports_dir / "validation_progress_monitor.json")
+    model_learning = _load(reports_dir / "model_learning.json")
     graduation = _load(reports_dir / "model_graduation.json")
     unified_evidence = _load(reports_dir / "unified_evidence.json")
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
@@ -679,11 +680,17 @@ def build_guard(
             for market, row in (validation_progress.get("markets") or {}).items()
             if isinstance(row, dict) and row.get("status") in {"warning", "critical"}
         ]
+        signal_stalled = [
+            f"{market}交易訊號連續 {int(row.get('stagnant_sessions') or 0)} 日未增加"
+            for market, row in (validation_progress.get("signal_health") or {}).items()
+            if isinstance(row, dict) and row.get("status") in {"warning", "critical"}
+        ]
+        issues = stalled + signal_stalled
         checks.append(_check(
             "validation_60d", "60日向前驗證", progress_level,
             f"真實交易日 {int(validation_60d.get('trading_days_collected') or 0)}/{int(validation_60d.get('target_trading_days') or 60)}；"
-            + "、".join(stalled),
-            "檢查完成交易日資料與隔離紀錄；監控不會自動修改模型、權重或正式排名",
+            + "、".join(issues),
+            "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名",
         ))
     elif validation_progress:
         market_parts = [
@@ -706,6 +713,33 @@ def build_guard(
         checks.append(_check("model_graduation", "模型畢業控制器", "ok", "已自動產生畢業結論；升級仍須人工決定"))
     else:
         checks.append(_check("model_graduation", "模型畢業控制器", "warning", "尚未產生完整畢業結論", "下一次報告自動重建"))
+
+    learning_policy = model_learning.get("policy") or {}
+    if (
+        int(model_learning.get("schema_version") or 0) == 1
+        and learning_policy.get("formal_v6_frozen") is True
+        and learning_policy.get("automatic_merge") is False
+        and learning_policy.get("broker_orders") is False
+    ):
+        learning = model_learning.get("error_learning") or {}
+        candidates = model_learning.get("shadow_candidates") or []
+        checks.append(_check(
+            "model_learning", "錯題學習／影子成長", "ok",
+            f"已將 {int(learning.get('raw_error_rows') or 0)} 筆錯誤列合併為 "
+            f"{int(learning.get('independent_events') or 0)} 個事件；影子候選 {len(candidates)} 組，正式V6鎖定",
+        ))
+    elif model_learning:
+        checks.append(_check(
+            "model_learning", "錯題學習／影子成長", "critical",
+            "模型成長報告缺少正式V6隔離保證",
+            "停止採用該學習報告；不得修改正式排名、權重或下單",
+        ))
+    else:
+        checks.append(_check(
+            "model_learning", "錯題學習／影子成長", "warning",
+            "尚未建立錯題學習報告；正式V6不受影響",
+            "下一次台股晚報或美股早報自動重建",
+        ))
 
     if unified_evidence.get("status") == "ready" and int(unified_evidence.get("invalid_count") or 0) == 0:
         checks.append(_check(
