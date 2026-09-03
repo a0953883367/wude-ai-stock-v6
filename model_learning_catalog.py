@@ -306,6 +306,15 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             stage = "collecting"
         else:
             stage = "manual_review_available"
+        automatic_shadow_upgrade = spec["learning_mode"] == "coefficient_challenger"
+        if automatic_shadow_upgrade:
+            shadow_upgrade_status = "controlled_automatic"
+        elif spec["learning_mode"] in {"frozen_baseline", "monitor_only", "manual_gate", "proxy_validation"}:
+            shadow_upgrade_status = "not_applicable"
+        elif spec["dedicated_validation"]:
+            shadow_upgrade_status = "automatic_candidate_cycle"
+        else:
+            shadow_upgrade_status = "waiting_dedicated_validation"
         units.append({
             **{key: value for key, value in spec.items() if key != "progress_tag"},
             "source_available": source_available,
@@ -314,7 +323,9 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "stage": stage,
             "uses_future_data": False,
             "changes_formal_v6": False,
-            "automatic_promotion": False,
+            "automatic_shadow_upgrade": automatic_shadow_upgrade,
+            "shadow_upgrade_status": shadow_upgrade_status,
+            "formal_v6_automatic_promotion": False,
             "broker_orders": False,
         })
 
@@ -323,6 +334,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
     stage_counts = Counter(item["stage"] for item in units)
     source_ready = sum(bool(item["source_available"]) for item in units)
     dedicated = sum(bool(item["dedicated_validation"]) for item in units)
+    automatic_shadow_units = sum(bool(item["automatic_shadow_upgrade"]) for item in units)
     gaps = []
     if source_ready < len(units):
         gaps.append(f"{len(units) - source_ready}個單元等待來源報表")
@@ -337,6 +349,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "connected_units": len(units),
             "source_ready_units": source_ready,
             "dedicated_validation_units": dedicated,
+            "controlled_shadow_auto_upgrade_units": automatic_shadow_units,
             "learning_governance_coverage_pct": 100.0,
             "by_layer": {key: layer_counts.get(key, 0) for key in LAYER_LABELS},
             "by_mode": dict(sorted(mode_counts.items())),
@@ -357,12 +370,15 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "horizons_separate": True,
             "overlapping_outcomes_are_not_independent_events": True,
             "twenty_days_preliminary_only": True,
-            "sixty_days_manual_review_only": True,
+            "sixty_days_formal_review_only": True,
             "long_126d_requires_126_mature_sessions": True,
             "probability_calibration_required": True,
             "cost_and_drawdown_required": True,
             "formal_v6_frozen": True,
-            "automatic_promotion": False,
+            "controlled_shadow_auto_promotion": True,
+            "shadow_promotion_requires_distinct_session_wins": 3,
+            "automatic_shadow_rollback_after_failures": 2,
+            "formal_v6_automatic_promotion": False,
             "automatic_merge": False,
             "broker_orders": False,
         },

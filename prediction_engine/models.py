@@ -123,14 +123,30 @@ def learned_forecast(
 
 
 def challenger_qualification(model: dict[str, Any]) -> tuple[bool, list[str]]:
-    """Require a real holdout win and sane coefficients before auto-promotion."""
+    """Require mature samples, a real holdout win and sane coefficients."""
     metrics = model.get("metrics") or {}
+    horizon_code = str(model.get("horizon_code") or "")
     challenger_hit = float(metrics.get("walk_forward_holdout_direction_hit_pct") or 0)
-    champion_hit = float(metrics.get("champion_holdout_direction_hit_pct") or 0)
+    champion_hit = float(
+        metrics.get("benchmark_holdout_direction_hit_pct")
+        if metrics.get("benchmark_holdout_direction_hit_pct") is not None
+        else metrics.get("champion_holdout_direction_hit_pct") or 0
+    )
     challenger_mae = float(metrics.get("walk_forward_holdout_mae_pct") or float("inf"))
-    champion_mae = float(metrics.get("champion_holdout_mae_pct") or 0)
+    champion_mae = float(
+        metrics.get("benchmark_holdout_mae_pct")
+        if metrics.get("benchmark_holdout_mae_pct") is not None
+        else metrics.get("champion_holdout_mae_pct") or 0
+    )
     weights = model.get("weights") or {}
     reasons = []
+    if horizon_code not in HORIZONS:
+        reasons.append("未知預測期間，禁止升級")
+    else:
+        if int(model.get("session_count") or 0) < MIN_TRAINING_SESSIONS[horizon_code]:
+            reasons.append("完成交易日尚未達此期間的升級門檻")
+        if int(model.get("sample_count") or 0) < MIN_TRAINING_SAMPLES[horizon_code]:
+            reasons.append("完成樣本尚未達此期間的升級門檻")
     if challenger_hit < MIN_HOLDOUT_DIRECTION_HIT_PCT:
         reasons.append("挑戰模型樣本外方向命中率未達52%")
     if challenger_hit < champion_hit + MIN_DIRECTION_IMPROVEMENT_PCT:
@@ -142,7 +158,16 @@ def challenger_qualification(model: dict[str, Any]) -> tuple[bool, list[str]]:
     return not reasons, reasons
 
 
-def fit_challenger(rows: list[dict[str, Any]], *, market: str, asset_group: str, horizon_code: str, created_at: str) -> dict[str, Any] | None:
+def fit_challenger(
+    rows: list[dict[str, Any]],
+    *,
+    market: str,
+    asset_group: str,
+    horizon_code: str,
+    created_at: str,
+    benchmark_weights: dict[str, float] | None = None,
+    benchmark_model_version: str = MODEL_VERSION,
+) -> dict[str, Any] | None:
     sessions = {row["session_date"] for row in rows}
     if len(rows) < MIN_TRAINING_SAMPLES[horizon_code] or len(sessions) < MIN_TRAINING_SESSIONS[horizon_code]:
         return None
@@ -170,20 +195,30 @@ def fit_challenger(rows: list[dict[str, Any]], *, market: str, asset_group: str,
     coefficients = np.linalg.solve(x.T @ x + ridge, x.T @ y)
     prediction = x @ coefficients
     validation_prediction = validation_x @ coefficients
-    champion_prediction = np.array([
-        forecast(
-            row["features"], horizon_code,
-            chase_risk_points=0.0,
-            data_quality_pct=float(row["features"].get("quality", .5)) * 100.0,
-            trade_blocked=False,
+    benchmark_prediction = np.array([
+        (
+            learned_forecast(
+                row["features"], horizon_code,
+                weights=benchmark_weights,
+                chase_risk_points=0.0,
+                data_quality_pct=float(row["features"].get("quality", .5)) * 100.0,
+                trade_blocked=False,
+            )
+            if benchmark_weights
+            else forecast(
+                row["features"], horizon_code,
+                chase_risk_points=0.0,
+                data_quality_pct=float(row["features"].get("quality", .5)) * 100.0,
+                trade_blocked=False,
+            )
         )["expected_return_pct"]
         for row in validation_rows
     ], dtype=float)
     train_mae = float(np.mean(np.abs(prediction - y)))
     validation_mae = float(np.mean(np.abs(validation_prediction - validation_y)))
     validation_hit = float(np.mean((validation_prediction >= 0) == (validation_y >= 0))) * 100.0
-    champion_mae = float(np.mean(np.abs(champion_prediction - validation_y)))
-    champion_hit = float(np.mean((champion_prediction >= 0) == (validation_y >= 0))) * 100.0
+    benchmark_mae = float(np.mean(np.abs(benchmark_prediction - validation_y)))
+    benchmark_hit = float(np.mean((benchmark_prediction >= 0) == (validation_y >= 0))) * 100.0
     feature_weights = {
         name: round(float(value), 6)
         for name, value in zip(FEATURE_NAMES[:-1], coefficients[1:])
@@ -198,7 +233,7 @@ def fit_challenger(rows: list[dict[str, Any]], *, market: str, asset_group: str,
         "asset_group": asset_group,
         "horizon_code": horizon_code,
         "role": "challenger",
-        "status": "candidate_manual_review",
+        "status": "candidate_auto_shadow_competition",
         "trained_through": max(sessions),
         "sample_count": len(rows),
         "session_count": len(sessions),
@@ -207,8 +242,11 @@ def fit_challenger(rows: list[dict[str, Any]], *, market: str, asset_group: str,
             "training_mae_pct": round(train_mae, 4),
             "walk_forward_holdout_mae_pct": round(validation_mae, 4),
             "walk_forward_holdout_direction_hit_pct": round(validation_hit, 2),
-            "champion_holdout_mae_pct": round(champion_mae, 4),
-            "champion_holdout_direction_hit_pct": round(champion_hit, 2),
+            "champion_holdout_mae_pct": round(benchmark_mae, 4),
+            "champion_holdout_direction_hit_pct": round(benchmark_hit, 2),
+            "benchmark_holdout_mae_pct": round(benchmark_mae, 4),
+            "benchmark_holdout_direction_hit_pct": round(benchmark_hit, 2),
+            "benchmark_model_version": benchmark_model_version,
             "holdout_session_count": validation_count,
             "holdout_sample_count": len(validation_rows),
             "promotion_metric": "walk_forward_holdout",

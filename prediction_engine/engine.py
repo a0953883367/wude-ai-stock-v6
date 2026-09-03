@@ -24,7 +24,7 @@ from .models import (
     forecast,
     learned_forecast,
 )
-from .storage import PredictionStore
+from .storage import PredictionStore, SHADOW_PROMOTION_SCOPE, STABLE_MODEL_VERSION
 
 
 SCHEMA_VERSION = 1
@@ -395,14 +395,16 @@ def _build_public_contract(
                     "metrics": challenger["metrics"],
                     "qualified_for_promotion": challenger_qualification(challenger)[0],
                     "control": control,
-                    "automatic_promotion": False,
-                    "manual_approval_required": True,
+                    "automatic_shadow_promotion": True,
+                    "promotion_scope": SHADOW_PROMOTION_SCOPE,
+                    "changes_formal_v6": False,
                 }
                 if challenger else {
                     "status": "collecting_point_in_time_outcomes",
                     "control": control,
-                    "automatic_promotion": False,
-                    "manual_approval_required": True,
+                    "automatic_shadow_promotion": True,
+                    "promotion_scope": SHADOW_PROMOTION_SCOPE,
+                    "changes_formal_v6": False,
                 }
             )
     return {
@@ -424,9 +426,10 @@ def _build_public_contract(
             "same_session_gain_direction_bonus": 0,
             "continuation_allowed_when_independent_evidence_supports": True,
             "automatic_orders": False,
-            "challenger_auto_promotion": False,
-            "promotion_requires_manual_approval": True,
-            "automatic_rollback_after_failures": False,
+            "controlled_shadow_auto_promotion": True,
+            "formal_v6_auto_promotion": False,
+            "promotion_requires_distinct_session_wins": 3,
+            "automatic_shadow_rollback_after_failures": 2,
             "self_learning_scope": "independent_prediction_engine_only",
             "network_requests": 0,
         },
@@ -470,16 +473,19 @@ def _selected_models(store: PredictionStore) -> dict[tuple[str, str], dict[str, 
 
 
 def _train_and_compete(store: PredictionStore, *, updated_at: str) -> dict[str, int]:
-    trained = evaluated = manual_review = 0
+    trained = evaluated = promoted = rolled_back = 0
     for group in GROUPS:
         market = group.split("_", 1)[0]
         for code in HORIZONS:
+            selected = store.selected_model(market, group, code)
             challenger = fit_challenger(
                 store.training_rows(market, group, code),
                 market=market,
                 asset_group=group,
                 horizon_code=code,
                 created_at=updated_at,
+                benchmark_weights=selected.get("weights"),
+                benchmark_model_version=str(selected.get("model_version") or STABLE_MODEL_VERSION),
             )
             if not challenger:
                 continue
@@ -487,19 +493,25 @@ def _train_and_compete(store: PredictionStore, *, updated_at: str) -> dict[str, 
             store.save_model(challenger)
             qualified, reasons = challenger_qualification(challenger)
             before = store.control_state(market, group, code)
-            after = store.record_candidate_review(
-                challenger, qualified=qualified, reasons=reasons
+            after = store.evaluate_candidate(
+                challenger,
+                qualified=qualified,
+                reasons=reasons,
+                promotion_scope=SHADOW_PROMOTION_SCOPE,
             )
             if before.get("last_evaluated_through") != after.get("last_evaluated_through"):
                 evaluated += 1
-            if qualified and before.get("last_evaluated_through") != after.get("last_evaluated_through"):
-                manual_review += 1
+            if before["active_model_version"] != after["active_model_version"]:
+                if after["active_model_version"] == STABLE_MODEL_VERSION or after["status"].startswith("rolled_back"):
+                    rolled_back += 1
+                else:
+                    promoted += 1
     return {
         "challengers_trained": trained,
         "new_session_evaluations": evaluated,
-        "manual_review_candidates": manual_review,
-        "automatic_promotions": 0,
-        "automatic_rollbacks": 0,
+        "controlled_shadow_promotions": promoted,
+        "controlled_shadow_rollbacks": rolled_back,
+        "formal_v6_promotions": 0,
     }
 
 

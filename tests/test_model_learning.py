@@ -54,7 +54,9 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
     assert complete["summary"]["by_layer"] == {
         "forecast": 22, "evidence": 14, "execution": 9, "governance": 6,
     }
-    assert complete["shared_rules"]["automatic_promotion"] is False
+    assert complete["summary"]["controlled_shadow_auto_upgrade_units"] == 6
+    assert complete["shared_rules"]["controlled_shadow_auto_promotion"] is True
+    assert complete["shared_rules"]["formal_v6_automatic_promotion"] is False
     assert (tmp_path / "model_learning.json").exists()
 
 
