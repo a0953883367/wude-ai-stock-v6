@@ -11,6 +11,7 @@ from typing import Any, Iterator
 
 SCHEMA_VERSION = 3
 STABLE_MODEL_VERSION = "WUDE-PREDICT-ENGINE-V1-CHAMPION"
+SHADOW_PROMOTION_SCOPE = "independent_shadow_engine_only"
 
 
 class PredictionStore:
@@ -395,8 +396,20 @@ class PredictionStore:
         reasons: list[str],
         required_consecutive_wins: int = 3,
         rollback_failures: int = 2,
+        promotion_scope: str = "review_only",
     ) -> dict[str, Any]:
-        """Promote or roll back only after distinct completed-session evaluations."""
+        """Apply controlled upgrades only inside the independent shadow engine.
+
+        The default remains review-only.  A caller must explicitly provide the
+        shadow-only scope, and only a challenger payload may then control this
+        private engine.  Formal V6 does not use this database or this method.
+        """
+        if promotion_scope != SHADOW_PROMOTION_SCOPE:
+            return self.record_candidate_review(
+                payload, qualified=qualified, reasons=reasons
+            )
+        if payload.get("role") != "challenger":
+            raise ValueError("only challenger models may enter shadow promotion")
         market = payload["market"]
         group = payload["asset_group"]
         horizon = payload["horizon_code"]
@@ -420,24 +433,34 @@ class PredictionStore:
                 active = payload["model_version"]
                 wins = 0
                 status = "challenger_active"
-                reason = "連續三個不同交易日樣本外勝出，下一交易日起接管獨立預判"
+                reason = "連續三個不同交易日樣本外勝出，下一交易日起接管獨立影子預判"
         elif qualified:
-            previous = active
-            active = payload["model_version"]
-            wins = 0
+            wins += 1
             failures = 0
-            status = "challenger_active"
-            reason = "新版本再次通過樣本外競賽，下一交易日起更新"
+            status = "challenger_update_confirming"
+            if wins >= required_consecutive_wins:
+                previous = active
+                active = payload["model_version"]
+                wins = 0
+                status = "challenger_active"
+                reason = "新版連續三個不同交易日勝出，下一交易日起更新獨立影子預判"
         else:
             failures += 1
             wins = 0
             status = "active_model_warning"
             if failures >= rollback_failures:
-                previous = active
-                active = STABLE_MODEL_VERSION
+                rollback_target = previous or STABLE_MODEL_VERSION
+                if rollback_target != STABLE_MODEL_VERSION and not self.model_by_version(rollback_target):
+                    rollback_target = STABLE_MODEL_VERSION
+                previous = STABLE_MODEL_VERSION if rollback_target != STABLE_MODEL_VERSION else None
+                active = rollback_target
                 failures = 0
-                status = "rolled_back_to_stable"
-                reason = "主動模型連續兩次未通過樣本外守門，下一交易日起退回穩定模型"
+                status = (
+                    "rolled_back_to_previous"
+                    if active != STABLE_MODEL_VERSION
+                    else "rolled_back_to_stable"
+                )
+                reason = "主動影子模型連續兩次未通過樣本外守門，下一交易日起退回上一個可用版本"
         with self.connect() as db:
             db.execute(
                 """INSERT OR REPLACE INTO model_control VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
@@ -450,7 +473,7 @@ class PredictionStore:
             )
             event = (
                 "promoted" if active_before == STABLE_MODEL_VERSION and active != STABLE_MODEL_VERSION
-                else "rolled_back" if active_before != STABLE_MODEL_VERSION and active == STABLE_MODEL_VERSION
+                else "rolled_back" if status.startswith("rolled_back")
                 else "challenger_updated" if active_before != active
                 else "qualified_waiting" if qualified
                 else "rejected_or_warning"
@@ -465,6 +488,60 @@ class PredictionStore:
                     market, group, horizon, active_before, active,
                     payload["model_version"], event, int(qualified), trained_through,
                     reason, json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
+                    payload["created_at"],
+                ),
+            )
+        return self.control_state(market, group, horizon)
+
+    def record_candidate_review(
+        self,
+        payload: dict[str, Any],
+        *,
+        qualified: bool,
+        reasons: list[str],
+    ) -> dict[str, Any]:
+        """Record a challenger result without allowing it to take control.
+
+        Training and evaluation may run automatically.  Model selection is a
+        separate human decision, so this method never changes active_model_version.
+        """
+        market = payload["market"]
+        group = payload["asset_group"]
+        horizon = payload["horizon_code"]
+        state = self.control_state(market, group, horizon)
+        trained_through = payload.get("trained_through")
+        if state.get("last_evaluated_through") == trained_through:
+            return state
+        active = state["active_model_version"]
+        wins = int(state.get("consecutive_wins") or 0) + 1 if qualified else 0
+        failures = 0 if qualified else int(state.get("consecutive_failures") or 0) + 1
+        status = "eligible_for_manual_review" if qualified else "challenger_not_qualified"
+        reason = (
+            "樣本外條件通過；此次呼叫未授權影子升級，僅列入審查"
+            if qualified
+            else "；".join(reasons) or "樣本外條件未通過"
+        )
+        with self.connect() as db:
+            db.execute(
+                """INSERT OR REPLACE INTO model_control VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    market, group, horizon, active, state.get("previous_model_version"),
+                    payload["model_version"], status, wins, failures, trained_through,
+                    reason, json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
+                    payload["created_at"],
+                ),
+            )
+            db.execute(
+                """INSERT OR IGNORE INTO model_control_events(
+                market,asset_group,horizon_code,previous_active_model_version,
+                new_active_model_version,candidate_model_version,event,qualified,
+                trained_through,reason,metrics_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    market, group, horizon, active, active, payload["model_version"],
+                    "qualified_waiting_manual_review" if qualified else "rejected",
+                    int(qualified), trained_through, reason,
+                    json.dumps(payload.get("metrics") or {}, separators=(",", ":")),
                     payload["created_at"],
                 ),
             )

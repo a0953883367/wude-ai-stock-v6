@@ -715,18 +715,25 @@ def build_guard(
         checks.append(_check("model_graduation", "模型畢業控制器", "warning", "尚未產生完整畢業結論", "下一次報告自動重建"))
 
     learning_policy = model_learning.get("policy") or {}
+    learning_schema = int(model_learning.get("schema_version") or 0)
+    learning_coverage = float(
+        (((model_learning.get("complete_learning") or {}).get("summary") or {}).get("learning_governance_coverage_pct") or 0)
+    )
     if (
-        int(model_learning.get("schema_version") or 0) == 1
+        learning_schema >= 1
         and learning_policy.get("formal_v6_frozen") is True
         and learning_policy.get("automatic_merge") is False
         and learning_policy.get("broker_orders") is False
+        and (learning_schema == 1 or learning_coverage == 100.0)
     ):
         learning = model_learning.get("error_learning") or {}
         candidates = model_learning.get("shadow_candidates") or []
         checks.append(_check(
             "model_learning", "錯題學習／影子成長", "ok",
             f"已將 {int(learning.get('raw_error_rows') or 0)} 筆錯誤列合併為 "
-            f"{int(learning.get('independent_events') or 0)} 個事件；影子候選 {len(candidates)} 組，正式V6鎖定",
+            f"{int(learning.get('independent_events') or 0)} 個事件；影子候選 {len(candidates)} 組；"
+            f"完整學習治理 {int((((model_learning.get('complete_learning') or {}).get('summary') or {}).get('connected_units') or 0))}/"
+            f"{int((((model_learning.get('complete_learning') or {}).get('summary') or {}).get('registered_units') or 0))} 項，正式V6鎖定",
         ))
     elif model_learning:
         checks.append(_check(

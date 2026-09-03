@@ -13,8 +13,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from model_learning_catalog import build_complete_learning_catalog
 
-SCHEMA_VERSION = 1
+
+SCHEMA_VERSION = 2
 PRELIMINARY_DAYS = 20
 PROMOTION_DAYS = 60
 COHORT_LABELS = {
@@ -162,6 +164,7 @@ def _candidate_registry(
 
 def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[str, Any]:
     reports_dir = Path(reports_dir)
+    previous = _read(reports_dir / "model_learning.json")
     performance = _read(reports_dir / "performance.json")
     calibration = performance.get("calibration") or {}
     error_cases = performance.get("error_cases") or {}
@@ -169,7 +172,19 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
     signal_health = _signal_health(performance)
     candidates = _candidate_registry(error_cases, signal_health, days)
     events = error_cases.get("event_clusters") or []
+    previous_errors = previous.get("error_learning") or {}
+    previous_candidates = previous.get("shadow_candidates") or []
+    has_event_level_errors = bool(
+        error_cases.get("unique_event_count") is not None
+        or error_cases.get("event_clusters")
+        or error_cases.get("cause_counts")
+    )
+    if not has_event_level_errors and int(previous_errors.get("independent_events") or 0) > 0:
+        events = previous_errors.get("recent_events") or []
+        if isinstance(previous_candidates, list) and previous_candidates:
+            candidates = previous_candidates
     generated_at = updated_at or str(performance.get("updated_at") or datetime.now().isoformat(timespec="seconds"))
+    complete_catalog = build_complete_learning_catalog(reports_dir)
 
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -185,14 +200,15 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
         },
         "error_learning": {
             "raw_error_rows": int(error_cases.get("row_count") or error_cases.get("count") or 0),
-            "independent_events": int(error_cases.get("unique_event_count") or 0),
-            "unique_symbols": int(error_cases.get("unique_symbol_count") or 0),
-            "duplicate_rows_collapsed": int(error_cases.get("duplicate_row_count") or 0),
-            "cause_counts": error_cases.get("cause_counts") or {},
+            "independent_events": int(error_cases.get("unique_event_count") or (previous_errors.get("independent_events") if not has_event_level_errors else 0) or 0),
+            "unique_symbols": int(error_cases.get("unique_symbol_count") or (previous_errors.get("unique_symbols") if not has_event_level_errors else 0) or 0),
+            "duplicate_rows_collapsed": int(error_cases.get("duplicate_row_count") or (previous_errors.get("duplicate_rows_collapsed") if not has_event_level_errors else 0) or 0),
+            "cause_counts": error_cases.get("cause_counts") or (previous_errors.get("cause_counts") if not has_event_level_errors else {}) or {},
             "recent_events": events[:20],
         },
         "signal_health": signal_health,
         "shadow_candidates": candidates,
+        "complete_learning": complete_catalog,
         "policy": {
             "formal_v6_frozen": True,
             "formal_ranking_unchanged": True,

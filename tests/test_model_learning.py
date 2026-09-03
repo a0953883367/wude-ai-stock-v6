@@ -46,6 +46,17 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
     assert report["policy"]["formal_v6_frozen"] is True
     assert report["policy"]["automatic_merge"] is False
     assert report["policy"]["broker_orders"] is False
+    complete = report["complete_learning"]
+    assert complete["inventory_complete"] is True
+    assert complete["summary"]["registered_units"] == 51
+    assert complete["summary"]["connected_units"] == 51
+    assert complete["summary"]["learning_governance_coverage_pct"] == 100.0
+    assert complete["summary"]["by_layer"] == {
+        "forecast": 22, "evidence": 14, "execution": 9, "governance": 6,
+    }
+    assert complete["summary"]["controlled_shadow_auto_upgrade_units"] == 6
+    assert complete["shared_rules"]["controlled_shadow_auto_promotion"] is True
+    assert complete["shared_rules"]["formal_v6_automatic_promotion"] is False
     assert (tmp_path / "model_learning.json").exists()
 
 
@@ -64,3 +75,39 @@ def test_trade_signal_health_separates_direction_questions_from_trades(tmp_path:
     assert tw["direction_samples"] == 100
     assert tw["trade_signal_samples"] == 3
     assert tw["status"] == "collecting_trade_outcomes"
+
+
+def test_legacy_performance_does_not_erase_event_level_learning_history(tmp_path: Path) -> None:
+    _write(tmp_path / "model_learning.json", {
+        "error_learning": {
+            "raw_error_rows": 9,
+            "independent_events": 3,
+            "unique_symbols": 2,
+            "duplicate_rows_collapsed": 6,
+            "cause_counts": {"event_gap_risk": 2, "intraday_reversal": 1},
+            "recent_events": [{"event_id": "kept-event"}],
+        },
+        "shadow_candidates": [{
+            "candidate_id": "shadow:event_gap_risk:v1",
+            "evidence_event_count": 2,
+        }],
+    })
+    _write(tmp_path / "performance.json", {
+        "calibration": {"trading_days_collected": 4},
+        "error_cases": {"count": 9},
+    })
+
+    report = update_model_learning(tmp_path, updated_at="2026-09-03 20:00:00")
+
+    assert report["error_learning"] == {
+        "raw_error_rows": 9,
+        "independent_events": 3,
+        "unique_symbols": 2,
+        "duplicate_rows_collapsed": 6,
+        "cause_counts": {"event_gap_risk": 2, "intraday_reversal": 1},
+        "recent_events": [{"event_id": "kept-event"}],
+    }
+    assert report["shadow_candidates"] == [{
+        "candidate_id": "shadow:event_gap_risk:v1",
+        "evidence_event_count": 2,
+    }]

@@ -12,8 +12,17 @@ from prediction_engine.engine import (
     run_prediction_engine,
 )
 from prediction_engine.features import extract_features
-from prediction_engine.models import HORIZONS, fit_challenger, forecast
-from prediction_engine.storage import PredictionStore, STABLE_MODEL_VERSION
+from prediction_engine.models import (
+    HORIZONS,
+    challenger_qualification,
+    fit_challenger,
+    forecast,
+)
+from prediction_engine.storage import (
+    PredictionStore,
+    SHADOW_PROMOTION_SCOPE,
+    STABLE_MODEL_VERSION,
+)
 
 
 def _row(symbol: str, market: str = "TW", asset_type: str = "個股") -> dict:
@@ -114,6 +123,16 @@ def test_engine_is_immutable_compact_and_preserves_old_ledgers(tmp_path: Path) -
     assert max(path.stat().st_size for path in chunk_files) < MAX_PUBLIC_CHUNK_BYTES
     assert not (reports / "prediction_engine.sqlite3").exists()
     assert second["policy"]["network_requests"] == 0
+    assert second["policy"]["controlled_shadow_auto_promotion"] is True
+    assert second["policy"]["formal_v6_auto_promotion"] is False
+    assert second["policy"]["promotion_requires_distinct_session_wins"] == 3
+    assert second["policy"]["automatic_shadow_rollback_after_failures"] == 2
+    assert all(
+        item["automatic_shadow_promotion"] is True
+        and item["changes_formal_v6"] is False
+        for group in second["learning"].values()
+        for item in group.values()
+    )
     assert second["database"]["public_database_exposed"] is False
     for name, content in protected.items():
         assert (reports / name).read_bytes() == content
@@ -188,7 +207,7 @@ def test_historical_outcomes_train_out_of_sample_challenger() -> None:
         created_at="2026-02-01T00:00:00Z",
     )
     assert model is not None
-    assert model["status"] == "candidate_auto_competition"
+    assert model["status"] == "candidate_auto_shadow_competition"
     assert model["metrics"]["promotion_metric"] == "walk_forward_holdout"
     assert model["metrics"]["holdout_session_count"] == 4
     assert "champion_holdout_direction_hit_pct" in model["metrics"]
@@ -202,7 +221,7 @@ def _candidate(version: str, through: str, *, qualified: bool) -> dict:
         "asset_group": "TW_STOCK",
         "horizon_code": "NEXT_1D",
         "role": "challenger",
-        "status": "candidate_auto_competition",
+        "status": "candidate_auto_shadow_competition",
         "trained_through": through,
         "sample_count": 300,
         "session_count": 30,
@@ -217,13 +236,27 @@ def _candidate(version: str, through: str, *, qualified: bool) -> dict:
     }
 
 
-def test_model_controller_requires_distinct_wins_and_rolls_back(tmp_path: Path) -> None:
+def test_six_month_shadow_cannot_upgrade_with_only_sixty_sessions() -> None:
+    payload = _candidate("six-month-too-early", "2026-06-30", qualified=True)
+    payload.update({"horizon_code": "UP_126D", "session_count": 60})
+
+    qualified, reasons = challenger_qualification(payload)
+
+    assert qualified is False
+    assert "完成交易日尚未達此期間的升級門檻" in reasons
+
+
+def test_shadow_controller_requires_distinct_wins_then_can_roll_back(tmp_path: Path) -> None:
     store = PredictionStore(tmp_path / "engine.sqlite3")
     for index, through in enumerate(("2026-01-20", "2026-01-21", "2026-01-22"), 1):
         payload = _candidate(f"challenger-{index}", through, qualified=True)
         store.save_model(payload)
-        state = store.evaluate_candidate(payload, qualified=True, reasons=[])
-        assert store.evaluate_candidate(payload, qualified=True, reasons=[]) == state
+        state = store.evaluate_candidate(
+            payload, qualified=True, reasons=[], promotion_scope=SHADOW_PROMOTION_SCOPE
+        )
+        assert store.evaluate_candidate(
+            payload, qualified=True, reasons=[], promotion_scope=SHADOW_PROMOTION_SCOPE
+        ) == state
     assert state["active_model_version"] == "challenger-3"
     assert state["status"] == "challenger_active"
     assert store.selected_model("TW", "TW_STOCK", "NEXT_1D")["weights"]["trend"] == 0.2
@@ -231,13 +264,67 @@ def test_model_controller_requires_distinct_wins_and_rolls_back(tmp_path: Path) 
     for index, through in enumerate(("2026-01-23", "2026-01-24"), 4):
         payload = _candidate(f"challenger-{index}", through, qualified=False)
         store.save_model(payload)
-        state = store.evaluate_candidate(payload, qualified=False, reasons=["樣本外未勝出"])
+        state = store.evaluate_candidate(
+            payload,
+            qualified=False,
+            reasons=["樣本外未勝出"],
+            promotion_scope=SHADOW_PROMOTION_SCOPE,
+        )
     assert state["active_model_version"] == STABLE_MODEL_VERSION
     assert state["status"] == "rolled_back_to_stable"
     assert store.selected_model("TW", "TW_STOCK", "NEXT_1D")["weights"] is None
     events = store.recent_control_events()
     assert [item["event"] for item in events[:2]] == ["rolled_back", "rejected_or_warning"]
     assert any(item["event"] == "promoted" for item in events)
+
+
+def test_review_only_candidate_evaluation_never_changes_active_model(tmp_path: Path) -> None:
+    store = PredictionStore(tmp_path / "engine.sqlite3")
+    for index, through in enumerate(("2026-01-20", "2026-01-21", "2026-01-22"), 1):
+        payload = _candidate(f"candidate-{index}", through, qualified=True)
+        store.save_model(payload)
+        state = store.evaluate_candidate(payload, qualified=True, reasons=[])
+    assert state["active_model_version"] == STABLE_MODEL_VERSION
+    assert state["status"] == "eligible_for_manual_review"
+    assert state["candidate_model_version"] == "candidate-3"
+    assert all(item["event"] != "promoted" for item in store.recent_control_events())
+
+
+def test_active_shadow_upgrade_needs_three_wins_and_rolls_back_one_version(tmp_path: Path) -> None:
+    store = PredictionStore(tmp_path / "engine.sqlite3")
+    for index, through in enumerate(("2026-01-20", "2026-01-21", "2026-01-22"), 1):
+        payload = _candidate(f"first-{index}", through, qualified=True)
+        store.save_model(payload)
+        state = store.evaluate_candidate(
+            payload, qualified=True, reasons=[], promotion_scope=SHADOW_PROMOTION_SCOPE
+        )
+    assert state["active_model_version"] == "first-3"
+
+    for index, through in enumerate(("2026-01-23", "2026-01-24", "2026-01-25"), 1):
+        payload = _candidate(f"second-{index}", through, qualified=True)
+        store.save_model(payload)
+        state = store.evaluate_candidate(
+            payload, qualified=True, reasons=[], promotion_scope=SHADOW_PROMOTION_SCOPE
+        )
+        if index < 3:
+            assert state["active_model_version"] == "first-3"
+    assert state["active_model_version"] == "second-3"
+    assert state["previous_model_version"] == "first-3"
+
+    for index, through in enumerate(("2026-01-26", "2026-01-27"), 1):
+        payload = _candidate(f"failed-{index}", through, qualified=False)
+        store.save_model(payload)
+        state = store.evaluate_candidate(
+            payload,
+            qualified=False,
+            reasons=["樣本外未勝出"],
+            promotion_scope=SHADOW_PROMOTION_SCOPE,
+        )
+    assert state["active_model_version"] == "first-3"
+    assert state["status"] == "rolled_back_to_previous"
+    rollback = store.recent_control_events()[0]
+    assert rollback["event"] == "rolled_back"
+    assert rollback["new_active_model_version"] == "first-3"
 
 
 def test_promoted_model_cannot_rewrite_an_already_frozen_answer(tmp_path: Path) -> None:
@@ -253,7 +340,9 @@ def test_promoted_model_cannot_rewrite_an_already_frozen_answer(tmp_path: Path) 
     for index, through in enumerate(("2026-01-20", "2026-01-21", "2026-01-22"), 1):
         payload = _candidate(f"rewrite-guard-{index}", through, qualified=True)
         store.save_model(payload)
-        store.evaluate_candidate(payload, qualified=True, reasons=[])
+        store.evaluate_candidate(
+            payload, qualified=True, reasons=[], promotion_scope=SHADOW_PROMOTION_SCOPE
+        )
 
     second = run_prediction_engine(
         reports, [_row("2330")], period="test",
