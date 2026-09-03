@@ -12,6 +12,10 @@ const html = fs.readFileSync('index.html', 'utf8');
   '每日收盤自動凍結快照',
   '自動 A/B 測試＋法人權重校準',
   '錯誤案例與缺資料隔離',
+  '錯題學習＋影子成長候選',
+  'function renderModelLearning(value)',
+  '錯誤列合併成獨立事件',
+  '完整交易訊號',
   'function renderAutomaticTraining(a)',
   '最大回撤',
   '最大回撤幅度',
@@ -25,6 +29,7 @@ const html = fs.readFileSync('index.html', 'utf8');
   '自動 Merge：關閉',
   '券商下單：關閉',
   "fetchJSON('reports/accuracy.json')",
+  "fetchJSON('reports/model_learning.json')",
   'data-training-view'
 ].forEach((text) => assert.ok(html.includes(text), `missing training center UI contract: ${text}`));
 

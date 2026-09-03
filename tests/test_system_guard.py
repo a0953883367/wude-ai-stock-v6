@@ -93,6 +93,16 @@ def _healthy_reports(tmp_path: Path) -> None:
         "status": "collecting", "trading_days_collected": 5, "target_trading_days": 60,
     })
     _write(tmp_path / "model_graduation.json", {"status": "ready", "summary": {"collecting": 5}})
+    _write(tmp_path / "model_learning.json", {
+        "schema_version": 1,
+        "error_learning": {"raw_error_rows": 10, "independent_events": 4},
+        "shadow_candidates": [{"candidate_id": "shadow:test:v1"}],
+        "policy": {
+            "formal_v6_frozen": True,
+            "automatic_merge": False,
+            "broker_orders": False,
+        },
+    })
     _write(tmp_path / "unified_evidence.json", {"status": "ready", "evidence_count": 20, "invalid_count": 0})
     _write(tmp_path / "tw_financial_official_cache.json", {
         "requested_count": 67, "available_count": 66, "coverage_pct": 98.51,

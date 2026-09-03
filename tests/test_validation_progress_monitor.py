@@ -57,6 +57,66 @@ def _source(tmp_path: Path, tw: int, us: int, *, global_days: int | None = None,
     })
 
 
+def _performance(tmp_path: Path, market: str, days: int, direction: int, trades: int) -> None:
+    _write(tmp_path / "performance.json", {
+        "groups": {
+            f"{market}_STOCK": {
+                "horizons": {"1": {"samples": direction}},
+                "trade_signals": {"1": {"samples": trades}},
+            },
+        },
+        "ab_testing": {
+            "markets": {market: {"trading_days_collected": days}},
+        },
+    })
+
+
+def test_zero_trade_signals_warn_after_five_days_and_recover(tmp_path: Path) -> None:
+    _source(tmp_path, 5, 4, global_days=4)
+    _performance(tmp_path, "TW", days=5, direction=80, trades=0)
+    state = update_validation_progress_monitor(
+        tmp_path, _rows("TW", "2026-08-24"),
+        period="evening", updated_at="2026-08-24 20:00:00",
+    )
+    assert state["signal_health"]["TW"]["status"] == "warning"
+    assert state["signal_health"]["TW"]["stagnant_sessions"] == 5
+    signal_events = [
+        item for item in state["pending_notifications"]
+        if item["type"] == "trade_signal_stagnation"
+    ]
+    assert len(signal_events) == 1
+    assert "80 筆方向結果" in signal_events[0]["message"]
+
+    acknowledge_notifications(
+        tmp_path, [signal_events[0]["id"]], delivered_at="2026-08-24 20:00:01"
+    )
+    _source(tmp_path, 6, 4, global_days=4)
+    _performance(tmp_path, "TW", days=6, direction=95, trades=2)
+    recovered = update_validation_progress_monitor(
+        tmp_path, _rows("TW", "2026-08-25"),
+        period="evening", updated_at="2026-08-25 20:00:00",
+    )
+    assert recovered["signal_health"]["TW"]["status"] == "ok"
+    assert any(
+        item["type"] == "trade_signal_recovery"
+        for item in recovered["pending_notifications"]
+    )
+
+
+def test_trade_signal_monitor_does_not_run_intraday(tmp_path: Path) -> None:
+    _source(tmp_path, 9, 8, global_days=8)
+    _performance(tmp_path, "TW", days=9, direction=100, trades=0)
+    state = update_validation_progress_monitor(
+        tmp_path, _rows("TW", "2026-09-03"),
+        period="evening", updated_at="2026-09-03 15:00:00", intraday=True,
+    )
+    assert state["signal_health"]["TW"]["status"] == "initializing"
+    assert not any(
+        item["type"] == "trade_signal_stagnation"
+        for item in state["pending_notifications"]
+    )
+
+
 def test_warns_once_then_escalates_and_recovers(tmp_path: Path) -> None:
     _source(tmp_path, 5, 4)
     state = update_validation_progress_monitor(
