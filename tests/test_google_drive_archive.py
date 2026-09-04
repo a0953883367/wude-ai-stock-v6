@@ -1,6 +1,11 @@
 from pathlib import Path
+import sys
 
 import pytest
+
+tools_dir = Path(__file__).resolve().parents[1] / "tools"
+if tools_dir.exists():
+    sys.path.insert(0, str(tools_dir))
 
 from google_drive_archive import (
     ArchiveConflictError,
