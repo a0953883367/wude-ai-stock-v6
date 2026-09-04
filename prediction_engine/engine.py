@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .features import extract_features, group_name, session_date
+from .industry_lifecycle import analyze_industry_lifecycle
 from .models import (
     HORIZONS,
     MODEL_VERSION,
@@ -27,8 +28,8 @@ from .models import (
 from .storage import PredictionStore, SHADOW_PROMOTION_SCOPE, STABLE_MODEL_VERSION
 
 
-SCHEMA_VERSION = 1
-REPORT_VERSION = "WUDE-PREDICTION-CONTRACT-V1"
+SCHEMA_VERSION = 2
+REPORT_VERSION = "WUDE-PREDICTION-CONTRACT-V2"
 GROUPS = ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF")
 PORTFOLIO_HORIZONS = ("UP_5D", "UP_45D", "UP_126D")
 FORWARD_OUTCOME_HORIZONS = {
@@ -169,6 +170,9 @@ def _make_predictions(
             capital_flow=flow,
             shadow=_shadow_evidence(row),
         )
+        lifecycle = row.get("_industry_lifecycle")
+        if not isinstance(lifecycle, dict):
+            lifecycle = analyze_industry_lifecycle(row, date)
         for code in HORIZONS:
             selection = (selected_models or {}).get((group, code)) or {
                 "model_version": MODEL_VERSION, "weights": None,
@@ -178,16 +182,24 @@ def _make_predictions(
                 "data_quality_pct": float(extracted["data_quality_pct"]),
                 "trade_blocked": _trade_blocked(row),
             }
+            features = dict(extracted["features"])
+            features["industry_lifecycle"] = (
+                float(lifecycle.get("shadow_score", 50.0)) / 100.0
+                if code == "UP_60D" and group.endswith("_STOCK")
+                else 0.5
+            )
             if selection.get("weights"):
                 result = learned_forecast(
-                    extracted["features"], code,
+                    features, code,
                     weights=selection["weights"], **arguments,
                 )
             else:
-                result = forecast(extracted["features"], code, **arguments)
+                result = forecast(features, code, **arguments)
             evidence = dict(extracted["evidence"])
             evidence["active_model_version"] = selection["model_version"]
             evidence["model_selected_before_session"] = True
+            if code == "UP_60D" and group.endswith("_STOCK"):
+                evidence["industry_lifecycle"] = copy.deepcopy(lifecycle)
             predictions.append({
                 "market": market,
                 "asset_group": group,
@@ -198,7 +210,7 @@ def _make_predictions(
                 "model_version": selection["model_version"],
                 "source_price": source_price,
                 "data_quality_pct": extracted["data_quality_pct"],
-                "features": extracted["features"],
+                "features": features,
                 "evidence": evidence,
                 "trade_blocked": _trade_blocked(row),
                 "created_at": updated_at,
@@ -237,6 +249,9 @@ def _bootstrap_archived_point_in_time_reports(
     for (market, date), (updated, rows) in sorted(checkpoints.items(), key=lambda item: (item[0][1], item[0][0])):
         store.record_session(market, date, updated)
         store.record_prices(rows, date)
+        for row in rows:
+            if "ETF" not in str(row.get("type") or "").upper():
+                row["_industry_lifecycle"] = analyze_industry_lifecycle(row, date)
         predictions = _make_predictions(
             rows,
             market=market,
@@ -325,7 +340,7 @@ def _ensure_latest_paper_portfolios(
 
 def _compact_prediction(row: dict[str, Any]) -> dict[str, Any]:
     evidence = row.get("evidence") or {}
-    return {
+    compact = {
         "symbol": row["symbol"],
         "name": row["name"],
         "market": row["market"],
@@ -343,6 +358,9 @@ def _compact_prediction(row: dict[str, Any]) -> dict[str, Any]:
         "trade_blocked": bool(row.get("trade_blocked")),
         "ranking_score": round(_ranking_score(row), 2),
     }
+    if row.get("horizon_code") == "UP_60D" and isinstance(evidence.get("industry_lifecycle"), dict):
+        compact["industry_lifecycle"] = copy.deepcopy(evidence["industry_lifecycle"])
+    return compact
 
 
 def _build_public_contract(
@@ -372,13 +390,16 @@ def _build_public_contract(
             "symbol": row["symbol"], "name": row["name"], "market": row["market"],
             "asset_group": row["asset_group"], "session_date": row["session_date"], "horizons": {},
         })
-        symbol["horizons"][row["horizon_code"]] = {
+        horizon_payload = {
             key: row[key] for key in (
                 "target_side", "probability_pct", "expected_return_pct", "buyability_score",
                 "downside_risk_pct", "data_quality_pct", "chase_risk_points", "trade_blocked",
                 "ranking_score", "model_version",
             )
         }
+        if isinstance(row.get("industry_lifecycle"), dict):
+            horizon_payload["industry_lifecycle"] = copy.deepcopy(row["industry_lifecycle"])
+        symbol["horizons"][row["horizon_code"]] = horizon_payload
     rankings: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for group, horizons in grouped.items():
         rankings[group] = {}
@@ -676,6 +697,9 @@ def run_prediction_engine(
         matured += store.settle_matured(market)
         portfolios_settled += store.settle_portfolios(market)
 
+        for row in market_rows:
+            if "ETF" not in str(row.get("type") or "").upper():
+                row["_industry_lifecycle"] = analyze_industry_lifecycle(row, date)
         predictions = _make_predictions(
             market_rows,
             market=market,
@@ -717,6 +741,10 @@ def run_prediction_engine(
             "minimum_learning_sessions": 20,
             "minimum_learning_samples": 100,
             "shadow_learning_only": True,
+            "industry_lifecycle_60d_only": True,
+            "industry_lifecycle_preliminary_review_sessions": 20,
+            "industry_lifecycle_comparison_sessions": 60,
+            "industry_lifecycle_formal_promotion_requires_owner_approval": True,
             "formal_v6_modified": False,
             "automatic_orders": False,
             "round_trip_cost_pct": FORWARD_OUTCOME_COST_PCT,

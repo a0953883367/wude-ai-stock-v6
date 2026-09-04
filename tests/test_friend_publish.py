@@ -15,6 +15,7 @@ def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
         "support1": 970, "resistance1": 1030,
         "account": "private-account", "inventory": ["secret"],
         "api_key": "secret", "certificate": "secret",
+        "_industry_lifecycle": {"stage": "成長期", "source": "owner-only"},
     }
     result = sanitize(row)
     assert result["rank"] == 3
@@ -22,6 +23,7 @@ def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
     assert result["score"] == 72.5
     assert result["timing"] == 64.0
     assert not ({"account", "inventory", "api_key", "certificate"} & result.keys())
+    assert "industry_lifecycle" not in json.dumps(result, ensure_ascii=False)
 
 
 def test_friend_accuracy_is_always_cleared():

@@ -391,6 +391,7 @@ class PredictionStore:
                     "entry_score": row.get("entry_score"),
                     "sector": row.get("sector"),
                     "market_regime": row.get("market_regime"),
+                    "industry_lifecycle": row.get("_industry_lifecycle"),
                 }
                 values.append((
                     market, session_date, str(row["symbol"]),
@@ -562,7 +563,7 @@ class PredictionStore:
                         cohorts.get(latest_date, []),
                         key=lambda row: (-float(row["max_return_pct"]), row["symbol"]),
                     )[:10]
-                    horizon_summary[code] = {
+                    summary = {
                         "horizon_sessions": target,
                         "matured_cohorts": len(cohorts),
                         "valid_samples": len(valid),
@@ -588,8 +589,48 @@ class PredictionStore:
                                 round(float(row["excess_return_pct"]), 4)
                                 if row["excess_return_pct"] is not None else None
                             ),
+                            "industry_lifecycle": (json.loads(row["prior_json"]).get("industry_lifecycle") or {}),
                         } for row in latest],
                     }
+                    if code == "UP_60D":
+                        stages: dict[str, dict[str, float | int]] = {}
+                        for row in valid:
+                            lifecycle = json.loads(row["prior_json"]).get("industry_lifecycle") or {}
+                            stage = str(lifecycle.get("stage") or "資料不足")
+                            item = stages.setdefault(stage, {
+                                "samples": 0, "positive_samples": 0, "return_sum_pct": 0.0,
+                            })
+                            realized = float(row["close_return_pct"])
+                            item["samples"] += 1
+                            item["positive_samples"] += int(realized > 0)
+                            item["return_sum_pct"] += realized
+                        stage_metrics = {}
+                        for stage, item in stages.items():
+                            samples = int(item["samples"])
+                            stage_metrics[stage] = {
+                                "samples": samples,
+                                "positive_return_rate_pct": round(
+                                    int(item["positive_samples"]) / samples * 100, 4
+                                ) if samples else None,
+                                "average_close_return_pct": round(
+                                    float(item["return_sum_pct"]) / samples, 4
+                                ) if samples else None,
+                            }
+                        completed = len(cohorts)
+                        summary["industry_lifecycle_validation"] = {
+                            "status": (
+                                "ready_for_60d_shadow_comparison" if completed >= 60
+                                else "preliminary_observation_only" if completed >= 20
+                                else "collecting_without_conclusion"
+                            ),
+                            "completed_signal_cohorts": completed,
+                            "preliminary_observation_sessions": 20,
+                            "minimum_comparison_sessions": 60,
+                            "can_compare_shadow_improvement": completed >= 60,
+                            "can_modify_formal_v6": False,
+                            "stages": stage_metrics,
+                        }
+                    horizon_summary[code] = summary
                 counts = db.execute(
                     "SELECT COUNT(*),SUM(CASE WHEN status='waiting_entry' THEN 1 ELSE 0 END),"
                     "SUM(CASE WHEN status='tracking' THEN 1 ELSE 0 END) "
