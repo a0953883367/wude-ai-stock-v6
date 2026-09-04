@@ -207,6 +207,54 @@ def test_archive_integrity_error_turns_guard_red_without_changing_models(tmp_pat
     assert guard["safety"]["deletes_data"] is False
 
 
+def test_verified_private_evidence_backup_is_green(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "prediction_evidence_backup_health.json", {
+        "status": "ok",
+        "verified": True,
+        "private_backup": True,
+        "public_database_exposed": False,
+        "compressed_bytes": 2 * 1024 * 1024,
+        "formal_v6_modified": False,
+        "automatic_orders": False,
+    })
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=_healthy_live_probe(),
+    )
+    check = next(item for item in guard["checks"] if item["code"] == "prediction_evidence_backup")
+    assert check["level"] == "ok"
+
+
+def test_unverified_private_evidence_backup_turns_guard_yellow(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "prediction_evidence_backup_health.json", {
+        "status": "warning",
+        "verified": False,
+        "private_backup": True,
+        "public_database_exposed": False,
+        "formal_v6_modified": False,
+        "automatic_orders": False,
+    })
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=_healthy_live_probe(),
+    )
+    check = next(item for item in guard["checks"] if item["code"] == "prediction_evidence_backup")
+    assert check["level"] == "warning"
+    assert guard["status"] == "warning"
+    assert guard["safety"]["changes_rankings"] is False
+    assert guard["safety"]["places_orders"] is False
+
+
 def test_validation_progress_stall_is_visible_without_changing_models(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     _write(tmp_path / "validation_progress_monitor.json", {
