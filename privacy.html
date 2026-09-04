@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>隱私權政策｜Wude AI Stock Archive</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07111f;--card:#111c2e;--line:#2b405d;--text:#f8fafc;--muted:#b9c5d6;--blue:#38bdf8;--green:#4ade80}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;line-height:1.75}
+    main{max-width:760px;margin:0 auto;padding:40px 18px 64px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px}
+    h1{margin:0 0 6px;font-size:30px}h2{margin:28px 0 8px;font-size:20px}.date,.muted{color:var(--muted)}a{color:var(--blue)}li{margin:7px 0}
+  </style>
+</head>
+<body>
+<main>
+  <article class="card">
+    <h1>隱私權政策</h1>
+    <div class="date">Wude AI Stock Archive｜更新日期：2026-09-04</div>
+    <p>本工具用於將武得 AI 股票助理自行產生的壓縮影子證據、答案帳本摘要與校驗資訊，備份到使用者自己的 Google Drive。</p>
+
+    <h2>存取的 Google 使用者資料</h2>
+    <p>本工具僅要求 Google Drive 的 <code>drive.file</code> 權限，用於建立、讀取、更新或刪除本工具建立，或由使用者明確選取供本工具使用的檔案。本工具不要求瀏覽或讀取使用者整個 Google Drive。</p>
+
+    <h2>資料使用方式</h2>
+    <ul>
+      <li>上傳壓縮備份及其 SHA-256 校驗資料。</li>
+      <li>必要時讀回本工具建立的備份，以驗證檔案完整性或執行復原。</li>
+      <li>資料只用於私人歷史封存，不用於廣告、出售、人物分析或對外行銷。</li>
+    </ul>
+
+    <h2>資料儲存與分享</h2>
+    <p>備份保存在使用者自己的 Google Drive。OAuth 憑證只應存放於 GitHub Secrets 等受保護的祕密設定，不寫入公開程式碼或公開報告。本工具不向第三方出售或分享 Google 使用者資料，除非法律要求或使用者明確指示。</p>
+
+    <h2>資料保留與刪除</h2>
+    <p>備份保留時間由使用者決定。使用者可直接刪除 Drive 中的備份，也可從 Google 帳戶的第三方應用程式連線設定撤銷授權。授權撤銷後，本工具無法再存取相關 Drive 檔案。</p>
+
+    <h2>安全措施</h2>
+    <p>系統採最小權限、壓縮檔校驗、失敗不刪原始資料及祕密不公開等措施。Google Drive 上傳失敗不會改動正式 V6、正式排名、權重或下單設定。</p>
+
+    <h2>政策變更</h2>
+    <p>若存取範圍或資料用途有重大改變，本頁會先更新，並重新取得必要授權。</p>
+
+    <h2>聯絡方式</h2>
+    <p>如有隱私或資料刪除問題，請透過本專案的 <a href="https://github.com/a0953883367/wude-ai-stock-v6/issues">GitHub Issues</a> 聯絡。</p>
+
+    <p><a href="oauth-app.html">返回應用程式首頁</a></p>
+  </article>
+</main>
+</body>
+</html>
