@@ -473,6 +473,7 @@ def build_guard(
     unified_evidence = _load(reports_dir / "unified_evidence.json")
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
     archive_health = _load(reports_dir / "history_archive_health.json")
+    evidence_backup_health = _load(reports_dir / "prediction_evidence_backup_health.json")
     checks: list[dict[str, Any]] = []
 
     if archive_health:
@@ -496,6 +497,27 @@ def build_guard(
             checks.append(_check(
                 "history_archive_storage", "歷史資料保存", "ok",
                 f"封存容量 {reports_mb:.1f} MB；可壓縮 {eligible} 份；未發現校驗錯誤",
+            ))
+
+    if evidence_backup_health:
+        verified = evidence_backup_health.get("verified") is True
+        isolated = (
+            evidence_backup_health.get("private_backup") is True
+            and evidence_backup_health.get("public_database_exposed") is False
+            and evidence_backup_health.get("formal_v6_modified") is False
+            and evidence_backup_health.get("automatic_orders") is False
+        )
+        if evidence_backup_health.get("status") == "ok" and verified and isolated:
+            compressed_mb = float(evidence_backup_health.get("compressed_bytes") or 0) / (1024 * 1024)
+            checks.append(_check(
+                "prediction_evidence_backup", "影子證據私人備份", "ok",
+                f"完整資料庫備份已校驗（{compressed_mb:.1f} MB）；未發布至網站，正式V6未變更",
+            ))
+        else:
+            checks.append(_check(
+                "prediction_evidence_backup", "影子證據私人備份", "warning",
+                "影子證據備份未通過校驗或隔離保證；正式流程仍保持鎖定",
+                "保留原始資料庫並重新建立私人備份；不得刪除歷史資料",
             ))
 
     updated = _parse_taipei(latest.get("updated_at"))
