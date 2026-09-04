@@ -4,6 +4,7 @@ from pathlib import Path
 from model_lab import MODEL_NAMES, consensus_prediction, model_predictions, track_predictions
 from performance import (
     AUDIT_SCHEMA_VERSION,
+    TRADE_SIGNAL_CONTRACT_VERSION,
     _group_error_events,
     _snapshot_integrity,
     _summary,
@@ -252,6 +253,8 @@ def test_taiwan_uses_evening_completed_sessions_and_auditable_prices(tmp_path: P
         "evaluated_price": 110.0,
         "evaluated_open_price": 105.0,
         "evaluated_close_price": 110.0,
+        "entry_triggered": False,
+        "entry_evaluation_status": "missing_completed_session_ohlc",
     }
 
 
@@ -285,11 +288,75 @@ def test_trade_metric_only_counts_real_entry_zone_trigger(tmp_path: Path):
     first["short_term_entry_high"] = 95
     update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
     second = _row(110, "2026-08-19")
+    second["official_high_price"] = 112
+    second["official_adjusted_high_price"] = 112
+    second["official_low_price"] = 108
+    second["official_adjusted_low_price"] = 108
     summary = update_performance(
         tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
     )
     assert summary["horizons"]["1"]["samples"] == 1
     assert summary["trade_signals"]["1"]["samples"] == 0
+
+
+def test_trade_signal_uses_frozen_zone_and_next_completed_session_range(tmp_path: Path):
+    first = _row(110, "2026-08-18")
+    first["short_term_entry_low"] = 95
+    first["short_term_entry_high"] = 100
+    update_performance(tmp_path, [first], [first], "2026-08-18 20:00:00", "evening")
+
+    second = _row(104, "2026-08-19", open_price=103)
+    second["official_high_price"] = 105
+    second["official_adjusted_high_price"] = 105
+    second["official_low_price"] = 99
+    second["official_adjusted_low_price"] = 99
+    summary = update_performance(
+        tmp_path, [second], [second], "2026-08-19 20:00:00", "evening"
+    )
+
+    metric = summary["trade_signals"]["1"]
+    assert metric["samples"] == 1
+    assert metric["avg_return_pct"] == 4.0
+    assert summary["trade_signal_contract"]["version"] == TRADE_SIGNAL_CONTRACT_VERSION
+    history = json.loads((tmp_path / "prediction_history.json").read_text(encoding="utf-8"))
+    frozen = history["snapshots"][0]["predictions"][0]
+    assert frozen["trade_setup_eligible"] is True
+    assert frozen["trade_triggered"] is False
+    outcome = frozen["outcomes"]["1"]
+    assert outcome["entry_triggered"] is True
+    assert outcome["entry_fill_price"] == 100.0
+    assert outcome["entry_to_close_return_pct"] == 4.0
+
+
+def test_trade_signal_does_not_infer_missing_range_or_override_frozen_guard(tmp_path: Path):
+    missing = _row(100, "2026-08-18")
+    update_performance(tmp_path, [missing], [missing], "2026-08-18 20:00:00", "evening")
+    next_day = _row(101, "2026-08-19")
+    summary = update_performance(
+        tmp_path, [next_day], [next_day], "2026-08-19 20:00:00", "evening"
+    )
+    assert summary["trade_signals"]["1"]["samples"] == 0
+
+    guarded_dir = tmp_path / "guarded"
+    guarded = _row(100, "2026-08-18")
+    guarded["trade_guard_blocked"] = True
+    update_performance(guarded_dir, [guarded], [guarded], "2026-08-18 20:00:00", "evening")
+    guarded_next = _row(101, "2026-08-19")
+    guarded_next.update({
+        "official_high_price": 102,
+        "official_adjusted_high_price": 102,
+        "official_low_price": 99,
+        "official_adjusted_low_price": 99,
+    })
+    guarded_summary = update_performance(
+        guarded_dir, [guarded_next], [guarded_next], "2026-08-19 20:00:00", "evening"
+    )
+    assert guarded_summary["trade_signals"]["1"]["samples"] == 0
+    guarded_history = json.loads(
+        (guarded_dir / "prediction_history.json").read_text(encoding="utf-8")
+    )
+    outcome = guarded_history["snapshots"][0]["predictions"][0]["outcomes"]["1"]
+    assert outcome["entry_evaluation_status"] == "source_guard_blocked"
 
 
 def test_missing_open_price_never_fabricates_overnight_or_session_accuracy(tmp_path: Path):
