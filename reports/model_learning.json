@@ -1,26 +1,26 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-09-04 12:07:54",
+  "updated_at": "2026-09-04 17:07:12",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
-    "trading_days_collected": 9,
+    "trading_days_collected": 10,
     "preliminary_review_days": 20,
     "promotion_review_days": 60,
-    "remaining_to_preliminary": 11,
-    "remaining_to_promotion_review": 51
+    "remaining_to_preliminary": 10,
+    "remaining_to_promotion_review": 50
   },
   "error_learning": {
-    "raw_error_rows": 515,
-    "independent_events": 166,
-    "unique_symbols": 158,
-    "duplicate_rows_collapsed": 349,
+    "raw_error_rows": 626,
+    "independent_events": 208,
+    "unique_symbols": 182,
+    "duplicate_rows_collapsed": 418,
     "cause_counts": {
       "event_gap_risk": 7,
-      "missed_strength_rotation": 10,
-      "direction_calibration": 120,
+      "missed_strength_rotation": 13,
+      "direction_calibration": 161,
       "etf_model_separation": 24,
-      "intraday_reversal": 5
+      "intraday_reversal": 3
     },
     "recent_events": [
       {
@@ -237,24 +237,25 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:4958.TW:2026-08-31:2026-09-03",
+        "event_id": "TW:4958.TW:2026-08-27:2026-09-04",
         "market": "TW",
         "symbol": "4958.TW",
         "name": "臻鼎-KY",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-08-31",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 3,
+        "source_start_date": "2026-08-27",
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 5,
         "horizons": [
           1,
           2,
-          3
+          3,
+          5
         ],
         "predicted_directions": [
           "UP"
         ],
-        "worst_directional_return_pct": -13.271,
-        "largest_actual_move_pct": 13.271,
+        "worst_directional_return_pct": -13.4579,
+        "largest_actual_move_pct": 13.4579,
         "primary_cause": "event_gap_risk",
         "cause_label": "突發事件／跳空風險",
         "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
@@ -289,16 +290,17 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:7815.TWO:2026-09-02:2026-09-03",
+        "event_id": "TW:7815.TWO:2026-09-02:2026-09-04",
         "market": "TW",
         "symbol": "7815.TWO",
         "name": "新特",
         "cohort": "TW_STOCK",
         "source_start_date": "2026-09-02",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 1,
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 2,
         "horizons": [
-          1
+          1,
+          2
         ],
         "predicted_directions": [
           "DOWN"
@@ -313,14 +315,14 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:2408.TW:2026-08-26:2026-09-03",
+        "event_id": "TW:2408.TW:2026-08-26:2026-09-04",
         "market": "TW",
         "symbol": "2408.TW",
         "name": "南亞科",
         "cohort": "TW_STOCK",
         "source_start_date": "2026-08-26",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 6,
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 7,
         "horizons": [
           1,
           2,
@@ -446,17 +448,18 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:2327.TW:2026-08-31:2026-09-03",
+        "event_id": "TW:2327.TW:2026-08-31:2026-09-04",
         "market": "TW",
         "symbol": "2327.TW",
         "name": "國巨",
         "cohort": "TW_STOCK",
         "source_start_date": "2026-08-31",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 3,
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 6,
         "horizons": [
           1,
-          2
+          2,
+          3
         ],
         "predicted_directions": [
           "DOWN",
@@ -472,14 +475,41 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:6182.TWO:2026-08-31:2026-09-02",
+        "event_id": "TW:4979.TWO:2026-08-27:2026-09-04",
+        "market": "TW",
+        "symbol": "4979.TWO",
+        "name": "華星光",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-08-27",
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 5,
+        "horizons": [
+          1,
+          2,
+          3
+        ],
+        "predicted_directions": [
+          "DOWN",
+          "UP"
+        ],
+        "worst_directional_return_pct": -9.965,
+        "largest_actual_move_pct": 9.965,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
+        "classification_status": "自動初判、等待前向驗證",
+        "affects_formal_model": false
+      },
+      {
+        "event_id": "TW:6182.TWO:2026-08-31:2026-09-04",
         "market": "TW",
         "symbol": "6182.TWO",
         "name": "合晶",
         "cohort": "TW_STOCK",
         "source_start_date": "2026-08-31",
-        "evaluated_end_date": "2026-09-02",
-        "row_count": 2,
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 4,
         "horizons": [
           1,
           2
@@ -497,53 +527,27 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "US:URA:2026-08-25:2026-09-03",
-        "market": "US",
-        "symbol": "URA",
-        "name": "Global X Uranium ETF",
-        "cohort": "US_ETF",
-        "source_start_date": "2026-08-25",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 8,
+        "event_id": "TW:4908.TWO:2026-09-02:2026-09-04",
+        "market": "TW",
+        "symbol": "4908.TWO",
+        "name": "前鼎",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-09-02",
+        "evaluated_end_date": "2026-09-04",
+        "row_count": 2,
         "horizons": [
-          1,
-          2,
-          3,
-          5
+          1
         ],
         "predicted_directions": [
+          "DOWN",
           "UP"
         ],
-        "worst_directional_return_pct": -9.1586,
-        "largest_actual_move_pct": 9.1586,
-        "primary_cause": "etf_model_separation",
-        "cause_label": "ETF規則需分離",
-        "diagnosis": "ETF的成分、槓桿或反向結構與個股不同，不應直接沿用個股判斷。",
-        "learning_action": "建立ETF專屬影子候選並分市場驗證，不修改個股正式權重。",
-        "classification_status": "自動初判、等待前向驗證",
-        "affects_formal_model": false
-      },
-      {
-        "event_id": "US:DDOG:2026-08-26:2026-09-02",
-        "market": "US",
-        "symbol": "DDOG",
-        "name": "Datadog",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-08-26",
-        "evaluated_end_date": "2026-09-02",
-        "row_count": 1,
-        "horizons": [
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -9.0285,
-        "largest_actual_move_pct": 9.0285,
-        "primary_cause": "direction_calibration",
-        "cause_label": "一般方向校準",
-        "diagnosis": "目前資料只能確認方向判斷錯誤，尚不足以歸因為單一事件或特定因子。",
-        "learning_action": "保留為校準樣本，累積相同盤勢與市場後再提出影子權重候選。",
+        "worst_directional_return_pct": -9.78,
+        "largest_actual_move_pct": 9.78,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
         "classification_status": "自動初判、等待前向驗證",
         "affects_formal_model": false
       }
@@ -552,10 +556,10 @@
   "signal_health": {
     "TW_STOCK": {
       "label": "台股個股",
-      "direction_samples": 182,
+      "direction_samples": 251,
       "trade_signal_samples": 0,
       "status": "no_trade_signal_yet",
-      "detail": "已有 182 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
+      "detail": "已有 251 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
     },
     "TW_ETF": {
       "label": "台灣ETF",
@@ -584,7 +588,7 @@
       "candidate_id": "shadow:trade_threshold_diagnostic:v1",
       "name": "交易門檻診斷影子候選",
       "cause": "zero_trade_signal",
-      "evidence_event_count": 311,
+      "evidence_event_count": 380,
       "affected_cohorts": [
         "TW_STOCK",
         "TW_ETF",
@@ -603,7 +607,7 @@
       "candidate_id": "shadow:direction_calibration:v1",
       "name": "方向門檻校準影子候選",
       "cause": "direction_calibration",
-      "evidence_event_count": 120,
+      "evidence_event_count": 161,
       "purpose": "在固定資料上比較共識門檻，不回頭改寫正式V6預測。",
       "required_evidence": "相同市場、盤勢與期間的獨立前向事件",
       "stage": "collecting_before_20d",
@@ -629,7 +633,7 @@
       "candidate_id": "shadow:missed_strength_rotation:v1",
       "name": "強勢反轉與族群輪動影子候選",
       "cause": "missed_strength_rotation",
-      "evidence_event_count": 10,
+      "evidence_event_count": 13,
       "purpose": "檢查量能、突破、攻擊量與族群廣度是否已推翻原本看跌判斷。",
       "required_evidence": "事前凍結的量價、族群廣度與資金流證據",
       "stage": "collecting_before_20d",
@@ -655,7 +659,7 @@
       "candidate_id": "shadow:intraday_reversal:v1",
       "name": "開盤確認影子候選",
       "cause": "intraday_reversal",
-      "evidence_event_count": 5,
+      "evidence_event_count": 3,
       "purpose": "把隔夜方向和盤中進場分開，使用15／30分鐘確認及風險控制。",
       "required_evidence": "事前預判、正式開盤及15／30分鐘確認資料",
       "stage": "collecting_before_20d",
@@ -670,15 +674,15 @@
     "inventory_complete": true,
     "unit_definition": "包含可預測模型、證據模型、交易風控與治理單元；不是把每個欄位冒充獨立AI",
     "summary": {
-      "registered_units": 51,
-      "connected_units": 51,
-      "source_ready_units": 51,
-      "dedicated_validation_units": 51,
-      "controlled_shadow_auto_upgrade_units": 6,
+      "registered_units": 52,
+      "connected_units": 52,
+      "source_ready_units": 52,
+      "dedicated_validation_units": 52,
+      "controlled_shadow_auto_upgrade_units": 7,
       "controlled_shadow_trust_units": 11,
       "learning_governance_coverage_pct": 100.0,
       "by_layer": {
-        "forecast": 22,
+        "forecast": 23,
         "evidence": 14,
         "execution": 9,
         "governance": 6
@@ -686,7 +690,7 @@
       "by_mode": {
         "asset_specific_challenger": 1,
         "bucket_challenger": 1,
-        "coefficient_challenger": 6,
+        "coefficient_challenger": 7,
         "decay_calibration": 1,
         "entry_challenger": 1,
         "error_discovery": 1,
@@ -713,7 +717,7 @@
         "weight_challenger": 2
       },
       "by_stage": {
-        "collecting": 41,
+        "collecting": 42,
         "frozen_baseline": 4,
         "manual_review_available": 3,
         "monitoring": 3
@@ -750,15 +754,15 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 182,
+              "sessions": 10,
+              "samples": 251,
               "detail": {
-                "samples": 182,
-                "eligible_samples": 686,
-                "abstain_samples": 504,
-                "coverage_pct": 26.5,
-                "win_rate_pct": 46.7,
-                "avg_return_pct": 0.15,
+                "samples": 251,
+                "eligible_samples": 839,
+                "abstain_samples": 588,
+                "coverage_pct": 29.9,
+                "win_rate_pct": 38.2,
+                "avg_return_pct": -0.49,
                 "worst_return_pct": -12.33,
                 "lowest_actual_return_pct": -8.48,
                 "highest_actual_return_pct": 12.33,
@@ -800,7 +804,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 1,
               "detail": {
                 "samples": 1,
@@ -850,7 +854,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 75,
               "detail": {
                 "samples": 75,
@@ -900,7 +904,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 53,
               "detail": {
                 "samples": 53,
@@ -958,17 +962,17 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 377,
+              "sessions": 10,
+              "samples": 448,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 207,
-                  "eligible_samples": 686,
-                  "abstain_samples": 479,
-                  "coverage_pct": 30.2,
-                  "win_rate_pct": 45.9,
-                  "avg_return_pct": 0.18,
-                  "worst_return_pct": -9.95,
+                  "samples": 278,
+                  "eligible_samples": 839,
+                  "abstain_samples": 561,
+                  "coverage_pct": 33.1,
+                  "win_rate_pct": 39.2,
+                  "avg_return_pct": -0.34,
+                  "worst_return_pct": -9.98,
                   "lowest_actual_return_pct": -8.48,
                   "highest_actual_return_pct": 10.0,
                   "sample_status": "較具參考性"
@@ -1054,16 +1058,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 384,
+              "sessions": 10,
+              "samples": 466,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 267,
-                  "eligible_samples": 686,
-                  "abstain_samples": 419,
-                  "coverage_pct": 38.9,
-                  "win_rate_pct": 44.6,
-                  "avg_return_pct": -0.18,
+                  "samples": 349,
+                  "eligible_samples": 839,
+                  "abstain_samples": 490,
+                  "coverage_pct": 41.6,
+                  "win_rate_pct": 37.2,
+                  "avg_return_pct": -0.67,
                   "worst_return_pct": -12.33,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 12.33,
@@ -1150,17 +1154,17 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 338,
+              "sessions": 10,
+              "samples": 419,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 202,
-                  "eligible_samples": 686,
-                  "abstain_samples": 484,
-                  "coverage_pct": 29.4,
-                  "win_rate_pct": 45.0,
-                  "avg_return_pct": 0.21,
-                  "worst_return_pct": -9.95,
+                  "samples": 283,
+                  "eligible_samples": 839,
+                  "abstain_samples": 556,
+                  "coverage_pct": 33.7,
+                  "win_rate_pct": 36.0,
+                  "avg_return_pct": -0.54,
+                  "worst_return_pct": -10.0,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 10.0,
                   "sample_status": "較具參考性"
@@ -1246,16 +1250,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 380,
+              "sessions": 10,
+              "samples": 462,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 246,
-                  "eligible_samples": 686,
-                  "abstain_samples": 440,
-                  "coverage_pct": 35.9,
-                  "win_rate_pct": 45.5,
-                  "avg_return_pct": -0.07,
+                  "samples": 328,
+                  "eligible_samples": 839,
+                  "abstain_samples": 511,
+                  "coverage_pct": 39.1,
+                  "win_rate_pct": 38.7,
+                  "avg_return_pct": -0.54,
                   "worst_return_pct": -12.33,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 12.33,
@@ -1342,16 +1346,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 451,
+              "sessions": 10,
+              "samples": 533,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 240,
-                  "eligible_samples": 686,
-                  "abstain_samples": 446,
-                  "coverage_pct": 35.0,
-                  "win_rate_pct": 52.9,
-                  "avg_return_pct": 0.55,
+                  "samples": 322,
+                  "eligible_samples": 839,
+                  "abstain_samples": 517,
+                  "coverage_pct": 38.4,
+                  "win_rate_pct": 42.5,
+                  "avg_return_pct": -0.19,
                   "worst_return_pct": -12.33,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 12.33,
@@ -1438,16 +1442,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 393,
+              "sessions": 10,
+              "samples": 417,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 190,
-                  "eligible_samples": 686,
-                  "abstain_samples": 496,
-                  "coverage_pct": 27.7,
-                  "win_rate_pct": 51.6,
-                  "avg_return_pct": 0.38,
+                  "samples": 214,
+                  "eligible_samples": 839,
+                  "abstain_samples": 625,
+                  "coverage_pct": 25.5,
+                  "win_rate_pct": 49.1,
+                  "avg_return_pct": 0.18,
                   "worst_return_pct": -10.0,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 10.0,
@@ -1534,17 +1538,17 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 216,
+              "sessions": 10,
+              "samples": 245,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 116,
-                  "eligible_samples": 686,
-                  "abstain_samples": 570,
-                  "coverage_pct": 16.9,
-                  "win_rate_pct": 51.7,
-                  "avg_return_pct": 0.73,
-                  "worst_return_pct": -9.95,
+                  "samples": 145,
+                  "eligible_samples": 839,
+                  "abstain_samples": 694,
+                  "coverage_pct": 17.3,
+                  "win_rate_pct": 45.5,
+                  "avg_return_pct": 0.13,
+                  "worst_return_pct": -10.0,
                   "lowest_actual_return_pct": -8.67,
                   "highest_actual_return_pct": 10.0,
                   "sample_status": "較具參考性"
@@ -1630,16 +1634,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 379,
+              "sessions": 10,
+              "samples": 473,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 253,
-                  "eligible_samples": 686,
-                  "abstain_samples": 433,
-                  "coverage_pct": 36.9,
-                  "win_rate_pct": 44.7,
-                  "avg_return_pct": -0.03,
+                  "samples": 347,
+                  "eligible_samples": 839,
+                  "abstain_samples": 492,
+                  "coverage_pct": 41.4,
+                  "win_rate_pct": 36.0,
+                  "avg_return_pct": -0.67,
                   "worst_return_pct": -12.33,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 12.33,
@@ -1726,16 +1730,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 303,
+              "sessions": 10,
+              "samples": 380,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 227,
-                  "eligible_samples": 686,
-                  "abstain_samples": 459,
-                  "coverage_pct": 33.1,
-                  "win_rate_pct": 48.0,
-                  "avg_return_pct": -0.0,
+                  "samples": 304,
+                  "eligible_samples": 839,
+                  "abstain_samples": 535,
+                  "coverage_pct": 36.2,
+                  "win_rate_pct": 39.5,
+                  "avg_return_pct": -0.56,
                   "worst_return_pct": -12.33,
                   "lowest_actual_return_pct": -10.0,
                   "highest_actual_return_pct": 12.33,
@@ -1822,16 +1826,16 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 302,
+              "sessions": 10,
+              "samples": 376,
               "by_cohort": {
                 "TW_STOCK": {
-                  "samples": 183,
-                  "eligible_samples": 686,
-                  "abstain_samples": 503,
-                  "coverage_pct": 26.7,
-                  "win_rate_pct": 46.4,
-                  "avg_return_pct": 0.06,
+                  "samples": 257,
+                  "eligible_samples": 839,
+                  "abstain_samples": 582,
+                  "coverage_pct": 30.6,
+                  "win_rate_pct": 37.7,
+                  "avg_return_pct": -0.6,
                   "worst_return_pct": -12.33,
                   "lowest_actual_return_pct": -8.58,
                   "highest_actual_return_pct": 12.33,
@@ -2095,6 +2099,48 @@
             "broker_orders": false
           },
           {
+            "model_id": "horizon_up_60d",
+            "label": "多期間引擎・未來60交易日",
+            "layer": "forecast",
+            "role": "champion_challenger",
+            "learning_mode": "coefficient_challenger",
+            "learns": "分市場與資產類型學習未來60交易日的上漲機率、幅度與可買性",
+            "outcome_target": "60個交易日後實際報酬",
+            "metrics": [
+              "樣本外方向命中",
+              "MAE",
+              "Brier校準",
+              "扣成本報酬"
+            ],
+            "source_reports": [
+              "prediction_engine.json"
+            ],
+            "segments": [
+              "TW_STOCK",
+              "TW_ETF",
+              "US_STOCK",
+              "US_ETF"
+            ],
+            "minimum_sessions": 60,
+            "minimum_samples": 200,
+            "dedicated_validation": true,
+            "source_available": true,
+            "connected_to_learning_governance": true,
+            "progress": {
+              "sessions": 0,
+              "samples": 0,
+              "streams": 4
+            },
+            "stage": "collecting",
+            "uses_future_data": false,
+            "changes_formal_v6": false,
+            "automatic_shadow_upgrade": true,
+            "automatic_shadow_trust": false,
+            "shadow_upgrade_status": "controlled_automatic",
+            "formal_v6_automatic_promotion": false,
+            "broker_orders": false
+          },
+          {
             "model_id": "horizon_up_126d",
             "label": "多期間引擎・未來6個月",
             "layer": "forecast",
@@ -2167,9 +2213,9 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 3,
-              "samples": 6,
+              "samples": 7,
               "by_market": {
-                "TW": 3,
+                "TW": 4,
                 "US": 3
               }
             },
@@ -2545,7 +2591,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 8,
+              "sessions": 9,
               "samples": 1
             },
             "stage": "collecting",
@@ -2752,8 +2798,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 311
+              "sessions": 10,
+              "samples": 380
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -2796,7 +2842,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 5,
-              "samples": 10
+              "samples": 11
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3084,8 +3130,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 3,
-              "samples": 1069
+              "sessions": 4,
+              "samples": 1223
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3296,8 +3342,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 311
+              "sessions": 10,
+              "samples": 380
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3338,8 +3384,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 311
+              "sessions": 10,
+              "samples": 380
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3380,7 +3426,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 0
             },
             "stage": "collecting",
@@ -3506,8 +3552,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 14,
-              "samples": 14
+              "sessions": 16,
+              "samples": 16
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3590,8 +3636,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 311
+              "sessions": 10,
+              "samples": 380
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3633,7 +3679,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 9,
-              "samples": 18
+              "samples": 19
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3721,7 +3767,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 6,
-              "samples": 98
+              "samples": 107
             },
             "stage": "manual_review_available",
             "uses_future_data": false,
@@ -3761,8 +3807,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 311
+              "sessions": 10,
+              "samples": 380
             },
             "stage": "manual_review_available",
             "uses_future_data": false,
@@ -3802,7 +3848,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 0
             },
             "stage": "monitoring",
@@ -3843,7 +3889,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 0
             },
             "stage": "monitoring",
@@ -3884,7 +3930,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
+              "sessions": 10,
               "samples": 0
             },
             "stage": "monitoring",

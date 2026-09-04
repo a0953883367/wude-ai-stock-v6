@@ -1,22 +1,22 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-04 12:07:54",
+  "updated_at": "2026-09-04 17:07:12",
   "status": "warning",
   "mode": "completed_session_observer_only",
   "current": {
-    "trading_days_collected": 9,
+    "trading_days_collected": 10,
     "target_trading_days": 60,
-    "remaining_trading_days": 51,
-    "eligible_samples": 311
+    "remaining_trading_days": 50,
+    "eligible_samples": 380
   },
   "markets": {
     "TW": {
       "status": "ok",
-      "last_session_date": "2026-09-03",
-      "last_completed_days": 9,
-      "last_progress_at": "2026-09-03 20:10:24",
+      "last_session_date": "2026-09-04",
+      "last_completed_days": 10,
+      "last_progress_at": "2026-09-04 17:07:12",
       "stalled_sessions": 0,
-      "detail": "已建立 2026-09-03／9 天監控基準"
+      "detail": "2026-09-04 正常增加至 10 天"
     },
     "US": {
       "status": "ok",
@@ -33,7 +33,16 @@
     "eligible_samples": 299
   },
   "last_weekly_summary_date": null,
-  "pending_notifications": [],
+  "pending_notifications": [
+    {
+      "id": "trade-signal:TW:warning:9:0",
+      "type": "trade_signal_stagnation",
+      "market": "TW",
+      "level": "warning",
+      "created_at": "2026-09-04 17:07:12",
+      "message": "⚠️ 模型成長提醒：台股已有 251 筆方向結果，但完整交易訊號連續 9 個有效交易日沒有增加（目前 0 筆）。請檢查買點門檻與資料契約；只啟動影子診斷，不放寬正式條件、不改排名或下單。"
+    }
+  ],
   "policy": {
     "warning_after_missed_sessions": 1,
     "critical_after_missed_sessions": 2,
@@ -46,15 +55,15 @@
   },
   "signal_health": {
     "TW": {
-      "status": "initializing",
-      "last_session_date": "",
-      "last_validation_days": 0,
+      "status": "warning",
+      "last_session_date": "2026-09-04",
+      "last_validation_days": 9,
       "last_trade_signal_samples": 0,
-      "direction_samples": 0,
-      "stagnant_sessions": 0,
+      "direction_samples": 251,
+      "stagnant_sessions": 9,
       "last_signal_growth_at": null,
       "alert_notified": false,
-      "detail": "等待方向樣本建立交易訊號監控基準"
+      "detail": "已有 251 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
     },
     "US": {
       "status": "warning",

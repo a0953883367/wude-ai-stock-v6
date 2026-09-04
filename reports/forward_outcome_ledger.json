@@ -1,0 +1,129 @@
+{
+  "markets": {
+    "TW": {
+      "cohort_count": 1,
+      "waiting_entry_cohorts": 1,
+      "tracking_cohorts": 0,
+      "horizons": {
+        "UP_5D": {
+          "horizon_sessions": 5,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        },
+        "UP_45D": {
+          "horizon_sessions": 45,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        },
+        "UP_60D": {
+          "horizon_sessions": 60,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        },
+        "UP_126D": {
+          "horizon_sessions": 126,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        }
+      }
+    },
+    "US": {
+      "cohort_count": 0,
+      "waiting_entry_cohorts": 0,
+      "tracking_cohorts": 0,
+      "horizons": {
+        "UP_5D": {
+          "horizon_sessions": 5,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        },
+        "UP_45D": {
+          "horizon_sessions": 45,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        },
+        "UP_60D": {
+          "horizon_sessions": 60,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        },
+        "UP_126D": {
+          "horizon_sessions": 126,
+          "matured_cohorts": 0,
+          "valid_samples": 0,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": null,
+          "top20_capture_rate_pct": null,
+          "latest_signal_session_date": null,
+          "latest_winners": []
+        }
+      }
+    }
+  },
+  "version": 1,
+  "title": "台股／美股多期間真實答案帳本",
+  "updated_at": "2026-09-04 17:07:12",
+  "mode": "forward_only_shadow_answers",
+  "horizons": {
+    "UP_5D": 5,
+    "UP_45D": 45,
+    "UP_60D": 60,
+    "UP_126D": 126
+  },
+  "policy": {
+    "entry": "訊號日收盤凍結，下一完成交易日正式開盤",
+    "all_stocks_recorded": true,
+    "same_day_backfill_forbidden": true,
+    "future_data_forbidden": true,
+    "corporate_actions_adjusted": true,
+    "markets_separated": true,
+    "minimum_learning_sessions": 20,
+    "minimum_learning_samples": 100,
+    "shadow_learning_only": true,
+    "formal_v6_modified": false,
+    "automatic_orders": false,
+    "round_trip_cost_pct": {
+      "TW": 0.685,
+      "US": 0.2
+    }
+  },
+  "run": {
+    "inserted_candidates": 155,
+    "settled_results": 0
+  }
+}
