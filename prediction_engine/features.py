@@ -9,7 +9,7 @@ from typing import Any
 FEATURE_NAMES = (
     "trend", "volume", "capital_flow", "positioning", "sector",
     "market_regime", "fundamental", "valuation", "news", "entry",
-    "shadow_consensus", "quality",
+    "shadow_consensus", "industry_lifecycle", "quality",
 )
 
 FORBIDDEN_INPUT_FRAGMENTS = (
