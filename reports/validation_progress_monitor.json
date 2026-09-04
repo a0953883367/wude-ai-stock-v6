@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-04 20:09:55",
+  "updated_at": "2026-09-05 06:03:35",
   "status": "warning",
   "mode": "completed_session_observer_only",
   "current": {
     "trading_days_collected": 10,
     "target_trading_days": 60,
     "remaining_trading_days": 50,
-    "eligible_samples": 380
+    "eligible_samples": 403
   },
   "markets": {
     "TW": {
@@ -20,19 +20,19 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-09-03",
-      "last_completed_days": 9,
-      "last_progress_at": "2026-09-04 06:03:35",
+      "last_session_date": "2026-09-04",
+      "last_completed_days": 10,
+      "last_progress_at": "2026-09-05 06:03:35",
       "stalled_sessions": 0,
-      "detail": "2026-09-03 正常增加至 9 天"
+      "detail": "2026-09-04 正常增加至 10 天"
     }
   },
   "weekly_baseline": {
-    "date": "2026-09-03",
-    "trading_days_collected": 9,
-    "eligible_samples": 299
+    "date": "2026-09-05",
+    "trading_days_collected": 10,
+    "eligible_samples": 403
   },
-  "last_weekly_summary_date": null,
+  "last_weekly_summary_date": "2026-09-05",
   "pending_notifications": [],
   "policy": {
     "warning_after_missed_sessions": 1,
@@ -57,19 +57,20 @@
       "detail": "已有 251 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
     },
     "US": {
-      "status": "warning",
-      "last_session_date": "2026-09-03",
-      "last_validation_days": 9,
+      "status": "initializing",
+      "last_session_date": "2026-09-04",
+      "last_validation_days": 10,
       "last_trade_signal_samples": 0,
-      "direction_samples": 75,
-      "stagnant_sessions": 9,
+      "direction_samples": 86,
+      "stagnant_sessions": 0,
       "last_signal_growth_at": null,
-      "alert_notified": true,
-      "detail": "已有 75 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
+      "alert_notified": false,
+      "detail": "交易訊號契約已升級為 V2；從新契約的下一個完成交易日重新觀察，不回填舊樣本",
+      "trade_signal_contract_version": 2
     }
   },
-  "last_notification_delivered_at": "2026-09-04 20:09:55",
+  "last_notification_delivered_at": "2026-09-05 06:03:35",
   "last_notification_ids": [
-    "trade-signal:TW:warning:9:0"
+    "weekly:2026-09-05"
   ]
 }
