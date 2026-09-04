@@ -15,6 +15,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from history_archive import iter_archive_documents, read_json_document
+
 from .features import extract_features, group_name, session_date
 from .industry_lifecycle import analyze_industry_lifecycle
 from .models import (
@@ -49,11 +51,7 @@ MAX_PUBLIC_REPORT_BYTES = MAX_PUBLIC_INDEX_BYTES
 
 
 def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
+    return read_json_document(path)
 
 
 def _write_json(path: Path, payload: dict[str, Any], *, compact: bool = True) -> int:
@@ -227,7 +225,7 @@ def _bootstrap_archived_point_in_time_reports(
     if store.session_count() or not (reports_dir / "archive").is_dir():
         return {"attempted": False, "sessions": 0, "predictions": 0, "matured": 0}
     checkpoints: dict[tuple[str, str], tuple[str, list[dict[str, Any]]]] = {}
-    for path in sorted((reports_dir / "archive").glob("*.json")):
+    for path in iter_archive_documents(reports_dir / "archive"):
         payload = _read_json(path)
         rows = payload.get("data") if isinstance(payload.get("data"), list) else []
         if not rows and isinstance(payload.get("watchlist"), list):

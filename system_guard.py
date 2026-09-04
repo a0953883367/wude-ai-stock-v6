@@ -472,7 +472,31 @@ def build_guard(
     graduation = _load(reports_dir / "model_graduation.json")
     unified_evidence = _load(reports_dir / "unified_evidence.json")
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
+    archive_health = _load(reports_dir / "history_archive_health.json")
     checks: list[dict[str, Any]] = []
+
+    if archive_health:
+        archive_status = str(archive_health.get("status") or "critical").lower()
+        archive_errors = archive_health.get("errors") if isinstance(archive_health.get("errors"), list) else []
+        reports_mb = float(archive_health.get("reports_bytes") or 0) / (1024 * 1024)
+        eligible = int(archive_health.get("eligible_plain_count") or 0)
+        if archive_errors or archive_status == "critical":
+            checks.append(_check(
+                "history_archive_storage", "歷史資料保存", "critical",
+                f"歷史封存校驗異常或容量已達危險值（{reports_mb:.1f} MB）",
+                "停止移除原檔；檢查壓縮校驗與容量後再處理",
+            ))
+        elif archive_status == "warning":
+            checks.append(_check(
+                "history_archive_storage", "歷史資料保存", "warning",
+                f"報表容量 {reports_mb:.1f} MB，已有 {eligible} 份可進入受控壓縮",
+                "先建立並驗證壓縮副本；未通過不得移除原檔",
+            ))
+        else:
+            checks.append(_check(
+                "history_archive_storage", "歷史資料保存", "ok",
+                f"封存容量 {reports_mb:.1f} MB；可壓縮 {eligible} 份；未發現校驗錯誤",
+            ))
 
     updated = _parse_taipei(latest.get("updated_at"))
     if not updated:
