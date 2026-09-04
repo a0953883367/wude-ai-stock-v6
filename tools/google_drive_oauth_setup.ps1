@@ -49,15 +49,14 @@ function Send-LocalBrowserResponse {
     $Stream.Flush()
 }
 
-function Show-ErrorAndExit {
+function Show-ErrorMessage {
     param([string]$Message)
     [System.Windows.Forms.MessageBox]::Show(
         $Message,
-        "Wude AI Google Drive 授權",
+        "Wude AI Google Drive Authorization",
         [System.Windows.Forms.MessageBoxButtons]::OK,
         [System.Windows.Forms.MessageBoxIcon]::Error
     ) | Out-Null
-    exit 1
 }
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -67,9 +66,11 @@ $listener = $null
 $client = $null
 $stream = $null
 $reader = $null
+$browserResponseSent = $false
+$failed = $false
 
 $dialog = New-Object System.Windows.Forms.OpenFileDialog
-$dialog.Title = "選擇從 Google Cloud 下載的 OAuth 用戶端 JSON"
+$dialog.Title = "Select the Desktop OAuth client JSON downloaded from Google Cloud"
 $dialog.Filter = "Google OAuth JSON (*.json)|*.json"
 $dialog.InitialDirectory = [Environment]::GetFolderPath("UserProfile") + "\Downloads"
 $dialog.Multiselect = $false
@@ -81,7 +82,7 @@ if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
 try {
     $json = Get-Content -LiteralPath $dialog.FileName -Raw -Encoding UTF8 | ConvertFrom-Json
     if (-not $json.installed) {
-        Show-ErrorAndExit "這不是「電腦版應用程式」OAuth JSON。請回 Google Cloud 下載正確的用戶端 JSON。"
+        throw "This is not a Desktop app OAuth JSON. Download the correct client JSON from Google Cloud."
     }
 
     $clientId = [string]$json.installed.client_id
@@ -93,10 +94,10 @@ try {
         [string]::IsNullOrWhiteSpace($clientSecret) -or
         [string]::IsNullOrWhiteSpace($authUri) -or
         [string]::IsNullOrWhiteSpace($tokenUri)) {
-        Show-ErrorAndExit "OAuth JSON 缺少必要欄位，請重新從 Google Cloud 下載。"
+        throw "The OAuth JSON is missing required fields. Download it again from Google Cloud."
     }
 
-    # TcpListener avoids Windows URL reservation/admin requirements.
+    # TcpListener avoids Windows URL reservation and administrator requirements.
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
     $listener.Start()
     $port = ([Net.IPEndPoint]$listener.LocalEndpoint).Port
@@ -110,6 +111,7 @@ try {
     finally {
         $sha256.Dispose()
     }
+
     $state = New-RandomBase64Url 32
     $scope = "https://www.googleapis.com/auth/drive.file"
 
@@ -137,12 +139,12 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($requestLine)) {
-        throw "沒有收到 Google 授權回傳資料。"
+        throw "No authorization response was received from Google."
     }
 
     $parts = $requestLine.Split(" ")
     if ($parts.Length -lt 2) {
-        throw "授權回傳格式不正確。"
+        throw "The authorization response format is invalid."
     }
 
     $callbackUri = [Uri]("http://127.0.0.1:$port" + $parts[1])
@@ -152,16 +154,12 @@ try {
     $code = $callbackQuery["code"]
 
     if ($errorName) {
-        Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body><h2>授權未完成</h2><p>你可以關閉此頁後重新執行工具。</p></body></html>"
-        throw "Google 授權未完成：$errorName"
+        throw "Google authorization was not completed: $errorName"
     }
 
     if ($returnedState -ne $state -or [string]::IsNullOrWhiteSpace($code)) {
-        Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body><h2>授權驗證失敗</h2><p>沒有建立任何 Token。</p></body></html>"
-        throw "授權回傳資料驗證失敗，沒有建立任何 Token。"
+        throw "Authorization response validation failed. No token was created."
     }
-
-    Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h2>Google Drive 授權完成</h2><p>Refresh Token 已複製到筆電剪貼簿。請回到工具視窗。</p><p>現在可以關閉此頁。</p></body></html>"
 
     $tokenBody = @{
         client_id = $clientId
@@ -176,15 +174,17 @@ try {
     $refreshToken = [string]$token.refresh_token
 
     if ([string]::IsNullOrWhiteSpace($refreshToken)) {
-        throw "Google 沒有回傳 Refresh Token。請撤銷舊授權後再執行一次。"
+        throw "Google did not return a refresh token. Revoke the old authorization and run this tool again."
     }
 
     Set-Clipboard -Value $refreshToken
-    $lineBreak = [Environment]::NewLine
+
+    Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h2>Google Drive authorization completed</h2><p>The refresh token was copied to the Windows clipboard.</p><p>You may close this page and return to the tool.</p></body></html>"
+    $browserResponseSent = $true
 
     [System.Windows.Forms.MessageBox]::Show(
-        "授權成功。Refresh Token 已複製到剪貼簿，沒有存成檔案，也沒有顯示在畫面上。" + $lineBreak + $lineBreak + "下一步：到 GitHub 建立 GOOGLE_DRIVE_REFRESH_TOKEN，直接貼上後儲存。",
-        "Wude AI Google Drive 授權完成",
+        "Authorization succeeded. The refresh token was copied to the clipboard. It was not saved to a file or printed. Next, create the GitHub secret GOOGLE_DRIVE_REFRESH_TOKEN and paste it there.",
+        "Wude AI Google Drive Authorization Complete",
         [System.Windows.Forms.MessageBoxButtons]::OK,
         [System.Windows.Forms.MessageBoxIcon]::Information
     ) | Out-Null
@@ -193,7 +193,17 @@ try {
     $token = $null
 }
 catch {
-    Show-ErrorAndExit $_.Exception.Message
+    $failed = $true
+    if ($null -ne $stream -and -not $browserResponseSent) {
+        try {
+            Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h2>Authorization was not completed</h2><p>No token was saved. Close this page and run the tool again.</p></body></html>"
+            $browserResponseSent = $true
+        }
+        catch {
+            # The local browser connection may already be closed.
+        }
+    }
+    Show-ErrorMessage $_.Exception.Message
 }
 finally {
     if ($null -ne $reader) {
@@ -208,4 +218,8 @@ finally {
     if ($null -ne $listener) {
         $listener.Stop()
     }
+}
+
+if ($failed) {
+    exit 1
 }
