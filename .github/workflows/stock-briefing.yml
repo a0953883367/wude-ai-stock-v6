@@ -130,7 +130,7 @@ jobs:
         env:
           OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
         run: python tools/publish_owner_data.py
-      - name: Audit historical archive storage
+      - name: Verify and compact historical archive storage
         if: ${{ always() && steps.generate.outcome == 'success' }}
         run: >-
           python tools/compact_history_archive.py
@@ -138,6 +138,8 @@ jobs:
           --reports-dir reports
           --health-file reports/history_archive_health.json
           --older-than-days 30
+          --compress
+          --remove-source-after-verify
       - name: Run independent system guard
         if: ${{ always() && steps.generate.outcome == 'success' }}
         run: >-

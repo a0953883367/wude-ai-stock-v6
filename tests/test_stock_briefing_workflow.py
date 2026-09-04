@@ -38,10 +38,11 @@ def test_official_report_cannot_be_cancelled_by_a_later_request():
     assert "程式更新後安全刷新" not in text
 
 
-def test_history_archive_is_audited_and_never_deleted_by_age() -> None:
+def test_history_archive_phase2_only_removes_verified_duplicate_source() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert "python tools/compact_history_archive.py" in text
     assert "--older-than-days 30" in text
-    assert "--compress" not in text
+    assert "--compress" in text
+    assert "--remove-source-after-verify" in text
     assert "-delete" not in text

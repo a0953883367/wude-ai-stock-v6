@@ -4,6 +4,8 @@ from datetime import date
 import gzip
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 from history_archive import (
     audit_manifest,
@@ -124,3 +126,84 @@ def test_unmanifested_compressed_file_is_an_error(tmp_path: Path) -> None:
         "compressed": "2026-01-01-evening.json.gz",
         "error": "compressed_file_not_in_manifest",
     }]
+
+
+def test_phase2_cli_keeps_data_readable_after_verified_source_removal(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    archive = reports / "archive"
+    archive.mkdir(parents=True)
+    source = archive / "2026-01-01-evening.json"
+    raw = _write(source, "frozen-phase2", count=5)
+    root = Path(__file__).parents[1]
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(root / "tools/compact_history_archive.py"),
+            "--archive-dir", str(archive),
+            "--reports-dir", str(reports),
+            "--health-file", str(reports / "history_archive_health.json"),
+            "--manifest-file", str(reports / "history_archive_manifest.json"),
+            "--older-than-days", "30",
+            "--as-of", "2026-02-15",
+            "--compress",
+            "--remove-source-after-verify",
+        ],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert not source.exists()
+    compressed = archive / "2026-01-01-evening.json.gz"
+    with gzip.open(compressed, "rb") as stream:
+        assert stream.read() == raw
+    assert read_json_document(compressed)["marker"] == "frozen-phase2"
+    assert [path.name for path in iter_archive_documents(archive)] == [compressed.name]
+    assert audit_manifest(
+        archive, load_manifest(reports / "history_archive_manifest.json")
+    ) == []
+    health = read_json_document(reports / "history_archive_health.json")
+    assert health["status"] == "ok"
+    assert health["mode"] == "compress_and_remove_verified_source"
+    assert health["verified_count"] == 1
+    assert health["source_removed_count"] == 1
+
+
+def test_phase2_cli_preserves_sources_when_archive_audit_has_an_error(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    archive = reports / "archive"
+    archive.mkdir(parents=True)
+    source = archive / "2026-01-01-evening.json"
+    raw = _write(source, "must-stay")
+    with gzip.open(archive / "2025-12-01-evening.json.gz", "wt", encoding="utf-8") as stream:
+        json.dump({"data": []}, stream)
+    root = Path(__file__).parents[1]
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(root / "tools/compact_history_archive.py"),
+            "--archive-dir", str(archive),
+            "--reports-dir", str(reports),
+            "--health-file", str(reports / "history_archive_health.json"),
+            "--manifest-file", str(reports / "history_archive_manifest.json"),
+            "--older-than-days", "30",
+            "--as-of", "2026-02-15",
+            "--compress",
+            "--remove-source-after-verify",
+        ],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 1
+    assert source.read_bytes() == raw
+    health = read_json_document(reports / "history_archive_health.json")
+    assert health["status"] == "critical"
+    assert health["source_removed_count"] == 0
+    assert health["errors"]
