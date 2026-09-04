@@ -181,6 +181,32 @@ def test_healthy_guard_is_green(tmp_path: Path) -> None:
     assert "實際補值 3 檔" in sec["detail"]
 
 
+def test_archive_integrity_error_turns_guard_red_without_changing_models(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    _write(tmp_path / "history_archive_health.json", {
+        "status": "critical",
+        "reports_bytes": 200 * 1024 * 1024,
+        "eligible_plain_count": 4,
+        "errors": [{"compressed": "old.json.gz", "error": "source_sha256_mismatch"}],
+        "formal_v6_changed": False,
+        "broker_orders": False,
+    })
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(
+        tmp_path, now=now, friend_publish="success", owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=_healthy_live_probe(),
+    )
+
+    check = next(item for item in guard["checks"] if item["code"] == "history_archive_storage")
+    assert guard["status"] == "critical"
+    assert check["level"] == "critical"
+    assert guard["safety"]["changes_rankings"] is False
+    assert guard["safety"]["places_orders"] is False
+    assert guard["safety"]["deletes_data"] is False
+
+
 def test_validation_progress_stall_is_visible_without_changing_models(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     _write(tmp_path / "validation_progress_monitor.json", {

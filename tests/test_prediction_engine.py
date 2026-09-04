@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import gzip
 import json
 import sqlite3
 from datetime import date, timedelta
@@ -155,6 +156,32 @@ def test_market_checkpoints_do_not_freeze_intraday_or_wrong_market(tmp_path: Pat
     assert evening["market_status"]["TW"]["ready_for_checkpoint"] is True
     assert evening["market_status"]["US"]["ready_for_checkpoint"] is False
     assert evening["run_summary"]["inserted_predictions"] == len(HORIZONS)
+
+
+def test_archive_bootstrap_reads_gzip_without_duplicate_learning(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    archive = reports / "archive"
+    archive.mkdir(parents=True)
+    row = _row("2330")
+    payload = {
+        "period": "evening",
+        "updated_at": "2026-01-02 20:00:00",
+        "data": [row],
+    }
+    plain = archive / "2026-01-02-evening.json"
+    plain.write_text(json.dumps(payload), encoding="utf-8")
+    with gzip.open(archive / "2026-01-02-evening.json.gz", "wt", encoding="utf-8") as stream:
+        json.dump(payload, stream)
+    database = tmp_path / "engine.sqlite3"
+
+    result = run_prediction_engine(
+        reports, [], period="test", updated_at="2026-01-03T12:00:00Z",
+        intraday=False, db_path=database,
+    )
+
+    assert result["run_summary"]["archive_bootstrap"]["sessions"] == 1
+    with sqlite3.connect(database) as db:
+        assert db.execute("SELECT COUNT(*) FROM predictions").fetchone()[0] == len(HORIZONS)
 
 
 def test_forward_settlement_uses_later_session_only(tmp_path: Path) -> None:
