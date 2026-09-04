@@ -26,6 +26,7 @@ from model_unit_learning import (
     record_unit_signals,
     refresh_unit_learning,
 )
+from prediction_engine.evidence_backup import create_verified_backup
 
 
 SCHEMA_VERSION = 6
@@ -1354,6 +1355,33 @@ def update_decision_hub(
             "status": "error", "summary": {}, "pending_notifications": [],
             "policy": {"formal_v6_unchanged": True}, "error": unit_learning_error,
         }
+    # Keep a private, verified recovery copy after both the multi-horizon
+    # forecasts and the 11 evidence-unit rows have been frozen.  This sidecar
+    # stays under .prediction_engine and is never published with the website.
+    if unit_store is not None and not intraday and period in {"morning", "evening"}:
+        backup_path = unit_store.path.parent / "prediction_evidence_backup.json.gz"
+        backup_health_path = reports_dir / "prediction_evidence_backup_health.json"
+        try:
+            backup_health = create_verified_backup(
+                unit_store, backup_path, created_at=updated_at
+            )
+            backup_health.update({
+                "status": "ok",
+                "detail": "影子學習資料已完成私人壓縮、校驗及可讀回備份",
+                "public_database_exposed": False,
+            })
+        except Exception as exc:  # noqa: BLE001 - backup must never block formal output
+            logging.exception("影子證據私人備份失敗；正式V6與報表繼續")
+            backup_health = {
+                "status": "warning",
+                "created_at": updated_at,
+                "detail": str(exc)[:300] or "影子證據私人備份失敗",
+                "private_backup": True,
+                "public_database_exposed": False,
+                "formal_v6_modified": False,
+                "automatic_orders": False,
+            }
+        _write_json(backup_health_path, backup_health)
     try:
         from model_graduation import update_model_graduation
         from validation_60d import update_validation_60d
