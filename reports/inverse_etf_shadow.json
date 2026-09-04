@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-09-04 17:07:12",
+  "updated_at": "2026-09-04 20:09:55",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -31,6 +31,7 @@
           "observed_sessions": [
             "2026-09-03",
             "2026-09-03",
+            "2026-09-04",
             "2026-09-04"
           ],
           "outcomes": {
@@ -73,10 +74,17 @@
           "signal_close": 10.0,
           "entry_open": 9.829999923706055,
           "observed_sessions": [
+            "2026-09-04",
             "2026-09-04"
           ],
           "outcomes": {
             "1": {
+              "status": "valid",
+              "session_date": "2026-09-04",
+              "actual_etf_return_pct": -0.203,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
               "status": "valid",
               "session_date": "2026-09-04",
               "actual_etf_return_pct": -0.203,
@@ -134,9 +142,9 @@
           "average_return_pct": 0.102
         },
         "2": {
-          "samples": 1,
-          "win_rate_pct": 100.0,
-          "average_return_pct": 0.407
+          "samples": 2,
+          "win_rate_pct": 50.0,
+          "average_return_pct": 0.102
         },
         "3": {
           "samples": 1,

@@ -33,7 +33,16 @@
           "top10_capture_rate_pct": null,
           "top20_capture_rate_pct": null,
           "latest_signal_session_date": null,
-          "latest_winners": []
+          "latest_winners": [],
+          "industry_lifecycle_validation": {
+            "status": "collecting_without_conclusion",
+            "completed_signal_cohorts": 0,
+            "preliminary_observation_sessions": 20,
+            "minimum_comparison_sessions": 60,
+            "can_compare_shadow_improvement": false,
+            "can_modify_formal_v6": false,
+            "stages": {}
+          }
         },
         "UP_126D": {
           "horizon_sessions": 126,
@@ -80,7 +89,16 @@
           "top10_capture_rate_pct": null,
           "top20_capture_rate_pct": null,
           "latest_signal_session_date": null,
-          "latest_winners": []
+          "latest_winners": [],
+          "industry_lifecycle_validation": {
+            "status": "collecting_without_conclusion",
+            "completed_signal_cohorts": 0,
+            "preliminary_observation_sessions": 20,
+            "minimum_comparison_sessions": 60,
+            "can_compare_shadow_improvement": false,
+            "can_modify_formal_v6": false,
+            "stages": {}
+          }
         },
         "UP_126D": {
           "horizon_sessions": 126,
@@ -97,7 +115,7 @@
   },
   "version": 1,
   "title": "台股／美股多期間真實答案帳本",
-  "updated_at": "2026-09-04 17:07:12",
+  "updated_at": "2026-09-04 20:09:55",
   "mode": "forward_only_shadow_answers",
   "horizons": {
     "UP_5D": 5,
@@ -115,6 +133,10 @@
     "minimum_learning_sessions": 20,
     "minimum_learning_samples": 100,
     "shadow_learning_only": true,
+    "industry_lifecycle_60d_only": true,
+    "industry_lifecycle_preliminary_review_sessions": 20,
+    "industry_lifecycle_comparison_sessions": 60,
+    "industry_lifecycle_formal_promotion_requires_owner_approval": true,
     "formal_v6_modified": false,
     "automatic_orders": false,
     "round_trip_cost_pct": {
@@ -123,7 +145,7 @@
     }
   },
   "run": {
-    "inserted_candidates": 155,
+    "inserted_candidates": 0,
     "settled_results": 0
   }
 }

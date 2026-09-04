@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-04 17:07:12",
+  "updated_at": "2026-09-04 20:09:55",
   "status": "warning",
   "mode": "completed_session_observer_only",
   "current": {
@@ -33,16 +33,7 @@
     "eligible_samples": 299
   },
   "last_weekly_summary_date": null,
-  "pending_notifications": [
-    {
-      "id": "trade-signal:TW:warning:9:0",
-      "type": "trade_signal_stagnation",
-      "market": "TW",
-      "level": "warning",
-      "created_at": "2026-09-04 17:07:12",
-      "message": "⚠️ 模型成長提醒：台股已有 251 筆方向結果，但完整交易訊號連續 9 個有效交易日沒有增加（目前 0 筆）。請檢查買點門檻與資料契約；只啟動影子診斷，不放寬正式條件、不改排名或下單。"
-    }
-  ],
+  "pending_notifications": [],
   "policy": {
     "warning_after_missed_sessions": 1,
     "critical_after_missed_sessions": 2,
@@ -62,7 +53,7 @@
       "direction_samples": 251,
       "stagnant_sessions": 9,
       "last_signal_growth_at": null,
-      "alert_notified": false,
+      "alert_notified": true,
       "detail": "已有 251 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
     },
     "US": {
@@ -77,8 +68,8 @@
       "detail": "已有 75 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
     }
   },
-  "last_notification_delivered_at": "2026-09-04 06:03:35",
+  "last_notification_delivered_at": "2026-09-04 20:09:55",
   "last_notification_ids": [
-    "trade-signal:US:warning:9:0"
+    "trade-signal:TW:warning:9:0"
   ]
 }
