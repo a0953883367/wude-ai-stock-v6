@@ -63,7 +63,7 @@ jobs:
       - name: Restore private AI prediction database
         uses: actions/cache/restore@v4
         with:
-          path: .prediction_engine/prediction_engine.sqlite3
+          path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             prediction-engine-v1-
@@ -163,7 +163,7 @@ jobs:
           github.event.schedule == '0 9 * * 1-5') }}
         uses: actions/cache/save@v4
         with:
-          path: .prediction_engine/prediction_engine.sqlite3
+          path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep reports and recent archive
         if: ${{ steps.generate.outcome == 'success' }}
