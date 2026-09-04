@@ -25,8 +25,28 @@ function ConvertTo-Base64Url {
 function New-RandomBase64Url {
     param([int]$Length = 64)
     $bytes = New-Object byte[] $Length
-    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($bytes)
+    }
+    finally {
+        $rng.Dispose()
+    }
     return ConvertTo-Base64Url $bytes
+}
+
+function Send-LocalBrowserResponse {
+    param(
+        [System.IO.Stream]$Stream,
+        [string]$Html
+    )
+    $body = [Text.Encoding]::UTF8.GetBytes($Html)
+    $crlf = [string][char]13 + [string][char]10
+    $header = "HTTP/1.1 200 OK" + $crlf + "Content-Type: text/html; charset=utf-8" + $crlf + "Content-Length: " + $body.Length + $crlf + "Connection: close" + $crlf + $crlf
+    $headerBytes = [Text.Encoding]::ASCII.GetBytes($header)
+    $Stream.Write($headerBytes, 0, $headerBytes.Length)
+    $Stream.Write($body, 0, $body.Length)
+    $Stream.Flush()
 }
 
 function Show-ErrorAndExit {
@@ -42,6 +62,11 @@ function Show-ErrorAndExit {
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Web
+
+$listener = $null
+$client = $null
+$stream = $null
+$reader = $null
 
 $dialog = New-Object System.Windows.Forms.OpenFileDialog
 $dialog.Title = "選擇從 Google Cloud 下載的 OAuth 用戶端 JSON"
@@ -71,19 +96,20 @@ try {
         Show-ErrorAndExit "OAuth JSON 缺少必要欄位，請重新從 Google Cloud 下載。"
     }
 
-    $probe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
-    $probe.Start()
-    $port = ([Net.IPEndPoint]$probe.LocalEndpoint).Port
-    $probe.Stop()
-
-    $redirectUri = "http://127.0.0.1:$port/"
-    $listener = New-Object System.Net.HttpListener
-    $listener.Prefixes.Add($redirectUri)
+    # TcpListener avoids Windows URL reservation/admin requirements.
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
     $listener.Start()
+    $port = ([Net.IPEndPoint]$listener.LocalEndpoint).Port
+    $redirectUri = "http://127.0.0.1:$port/"
 
     $verifier = New-RandomBase64Url 64
-    $sha = [Security.Cryptography.SHA256]::Create()
-    $challenge = ConvertTo-Base64Url ($sha.ComputeHash([Text.Encoding]::ASCII.GetBytes($verifier)))
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $challenge = ConvertTo-Base64Url ($sha256.ComputeHash([Text.Encoding]::ASCII.GetBytes($verifier)))
+    }
+    finally {
+        $sha256.Dispose()
+    }
     $state = New-RandomBase64Url 32
     $scope = "https://www.googleapis.com/auth/drive.file"
 
@@ -101,33 +127,41 @@ try {
     $authorizeUrl = $authUri + "?" + $query.ToString()
     Start-Process $authorizeUrl
 
-    $context = $listener.GetContext()
-    $request = $context.Request
-    $response = $context.Response
+    $client = $listener.AcceptTcpClient()
+    $stream = $client.GetStream()
+    $reader = New-Object System.IO.StreamReader($stream, [Text.Encoding]::ASCII, $false, 1024, $true)
 
-    $errorName = $request.QueryString["error"]
-    $returnedState = $request.QueryString["state"]
-    $code = $request.QueryString["code"]
+    $requestLine = $reader.ReadLine()
+    while ($null -ne ($headerLine = $reader.ReadLine()) -and $headerLine -ne "") {
+        # Consume the remaining local HTTP request headers.
+    }
+
+    if ([string]::IsNullOrWhiteSpace($requestLine)) {
+        throw "沒有收到 Google 授權回傳資料。"
+    }
+
+    $parts = $requestLine.Split(" ")
+    if ($parts.Length -lt 2) {
+        throw "授權回傳格式不正確。"
+    }
+
+    $callbackUri = [Uri]("http://127.0.0.1:$port" + $parts[1])
+    $callbackQuery = [System.Web.HttpUtility]::ParseQueryString($callbackUri.Query)
+    $errorName = $callbackQuery["error"]
+    $returnedState = $callbackQuery["state"]
+    $code = $callbackQuery["code"]
 
     if ($errorName) {
-        $html = "<html><meta charset='utf-8'><body><h2>授權未完成</h2><p>你可以關閉此頁後重新執行工具。</p></body></html>"
-        $buffer = [Text.Encoding]::UTF8.GetBytes($html)
-        $response.ContentType = "text/html; charset=utf-8"
-        $response.OutputStream.Write($buffer, 0, $buffer.Length)
-        $response.Close()
+        Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body><h2>授權未完成</h2><p>你可以關閉此頁後重新執行工具。</p></body></html>"
         throw "Google 授權未完成：$errorName"
     }
 
     if ($returnedState -ne $state -or [string]::IsNullOrWhiteSpace($code)) {
+        Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body><h2>授權驗證失敗</h2><p>沒有建立任何 Token。</p></body></html>"
         throw "授權回傳資料驗證失敗，沒有建立任何 Token。"
     }
 
-    $html = "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h2>Google Drive 授權完成</h2><p>Refresh Token 已複製到筆電剪貼簿。請回到工具視窗。</p><p>現在可以關閉此頁。</p></body></html>"
-    $buffer = [Text.Encoding]::UTF8.GetBytes($html)
-    $response.ContentType = "text/html; charset=utf-8"
-    $response.OutputStream.Write($buffer, 0, $buffer.Length)
-    $response.Close()
-    $listener.Stop()
+    Send-LocalBrowserResponse $stream "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h2>Google Drive 授權完成</h2><p>Refresh Token 已複製到筆電剪貼簿。請回到工具視窗。</p><p>現在可以關閉此頁。</p></body></html>"
 
     $tokenBody = @{
         client_id = $clientId
@@ -159,8 +193,19 @@ try {
     $token = $null
 }
 catch {
-    if ($listener -and $listener.IsListening) {
+    Show-ErrorAndExit $_.Exception.Message
+}
+finally {
+    if ($null -ne $reader) {
+        $reader.Dispose()
+    }
+    if ($null -ne $stream) {
+        $stream.Dispose()
+    }
+    if ($null -ne $client) {
+        $client.Close()
+    }
+    if ($null -ne $listener) {
         $listener.Stop()
     }
-    Show-ErrorAndExit $_.Exception.Message
 }
