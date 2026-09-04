@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-04T13:34:32+08:00",
+  "checked_at": "2026-09-04T14:39:02+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-04 12:07:54",
-  "report_age_minutes": 86.6,
+  "report_age_minutes": 151.1,
   "counts": {
     "ok": 22,
     "info": 6,
-    "warning": 1,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 87 分鐘",
+      "detail": "最近更新距今 151 分鐘",
       "action": ""
     },
     {
@@ -150,6 +150,14 @@
       "action": ""
     },
     {
+      "code": "forward_outcome_ledger",
+      "title": "多期間真實答案帳本",
+      "level": "warning",
+      "label": "注意",
+      "detail": "尚未建立5／45／60／126日逐股答案帳本；正式V6不受影響",
+      "action": "下一次台股晚報或美股早報自動建立，不回填歷史答案"
+    },
+    {
       "code": "unified_evidence",
       "title": "統一證據格式",
       "level": "ok",
@@ -248,7 +256,8 @@
     }
   ],
   "action_required": [
-    "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
+    "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名",
+    "下一次台股晚報或美股早報自動建立，不回填歷史答案"
   ],
   "safety": {
     "changes_rankings": false,
