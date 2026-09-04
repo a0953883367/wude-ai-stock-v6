@@ -78,6 +78,7 @@ def _empty_signal_market() -> dict[str, Any]:
         "direction_samples": 0,
         "stagnant_sessions": 0,
         "last_signal_growth_at": None,
+        "trade_signal_contract_version": 1,
         "alert_notified": False,
         "detail": "等待方向樣本建立交易訊號監控基準",
     }
@@ -153,7 +154,7 @@ def _completed_days(validation: dict[str, Any], million: dict[str, Any], market:
     return int(((million.get("markets") or {}).get(market) or {}).get("completed_days") or 0)
 
 
-def _signal_totals(performance: dict[str, Any], market: str) -> tuple[int, int, int]:
+def _signal_totals(performance: dict[str, Any], market: str) -> tuple[int, int, int, int]:
     group = ((performance.get("groups") or {}).get(f"{market}_STOCK") or {})
     direction = ((group.get("horizons") or {}).get("1") or {})
     trades = ((group.get("trade_signals") or {}).get("1") or {})
@@ -163,10 +164,14 @@ def _signal_totals(performance: dict[str, Any], market: str) -> tuple[int, int, 
         )
         or 0
     )
+    contract_version = int(
+        ((performance.get("trade_signal_contract") or {}).get("version")) or 1
+    )
     return (
         int(direction.get("samples") or 0),
         int(trades.get("samples") or 0),
         market_days,
+        contract_version,
     )
 
 
@@ -315,14 +320,35 @@ def _observe_signal_health(
     session_date: str,
     updated_at: str,
 ) -> None:
-    direction_samples, trade_samples, validation_days = _signal_totals(performance, market)
+    direction_samples, trade_samples, validation_days, contract_version = _signal_totals(
+        performance, market
+    )
     signal = state["signal_health"][market]
+    previous_contract = int(signal.get("trade_signal_contract_version") or 1)
     previous_samples = int(signal.get("last_trade_signal_samples") or 0)
     previous_days = int(signal.get("last_validation_days") or 0)
     last_session = str(signal.get("last_session_date") or "")
     old_status = str(signal.get("status") or "initializing")
 
     signal["direction_samples"] = direction_samples
+    if contract_version != previous_contract:
+        _resolve_signal_alert(state, market)
+        signal.update({
+            "status": "initializing",
+            "last_session_date": session_date,
+            "last_validation_days": validation_days,
+            "last_trade_signal_samples": trade_samples,
+            "trade_signal_contract_version": contract_version,
+            "stagnant_sessions": 0,
+            "last_signal_growth_at": None,
+            "alert_notified": False,
+            "detail": (
+                f"交易訊號契約已升級為 V{contract_version}；"
+                "從新契約的下一個完成交易日重新觀察，不回填舊樣本"
+            ),
+        })
+        return
+    signal["trade_signal_contract_version"] = contract_version
     if not session_date or direction_samples <= 0:
         signal.update({
             "status": "initializing",

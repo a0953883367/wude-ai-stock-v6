@@ -15,6 +15,7 @@ HORIZONS = (1, 2, 3, 5, 10, 20)
 TRAINING_HORIZONS = (1, 2, 3, 5)
 METHODOLOGY_VERSION = 6
 AUDIT_SCHEMA_VERSION = 4
+TRADE_SIGNAL_CONTRACT_VERSION = 2
 MINIMUM_TRADING_DAYS = 60
 MINIMUM_CONSENSUS_SAMPLES = 200
 TOP_K = (5, 10, 20)
@@ -358,6 +359,73 @@ def _metric_bundle(
     return result
 
 
+def _horizon_return(row: dict[str, Any], horizon: str) -> float | None:
+    return _outcome_return(row.get("outcomes", {}).get(horizon))
+
+
+def _trade_contract_version(row: dict[str, Any]) -> int:
+    try:
+        return int(row.get("trade_signal_contract_version") or 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _trade_signal_triggered(row: dict[str, Any]) -> bool:
+    """Read a completed, forward-only entry trigger without rewriting history."""
+    if row.get("trade_triggered") is True:
+        # Compatibility for immutable V1 rows whose signal was frozen at source close.
+        return True
+    outcome = (row.get("outcomes") or {}).get("1") or {}
+    return bool(
+        isinstance(outcome, dict)
+        and outcome.get("entry_triggered") is True
+        and _trade_contract_version(row) >= TRADE_SIGNAL_CONTRACT_VERSION
+    )
+
+
+def _trade_return(row: dict[str, Any], horizon: str) -> float | None:
+    """Return from the auditable entry fill for V2, or the legacy close for V1."""
+    outcome = (row.get("outcomes") or {}).get(horizon)
+    if not isinstance(outcome, dict):
+        return None
+    if _trade_contract_version(row) < TRADE_SIGNAL_CONTRACT_VERSION:
+        return _outcome_return(outcome) if row.get("trade_triggered") is True else None
+    first = (row.get("outcomes") or {}).get("1") or {}
+    if not isinstance(first, dict) or first.get("entry_triggered") is not True:
+        return None
+    try:
+        fill = float(first.get("entry_fill_price") or 0)
+        close = float(outcome.get("evaluated_close_price") or outcome.get("evaluated_price") or 0)
+    except (TypeError, ValueError):
+        return None
+    if fill <= 0 or close <= 0:
+        return None
+    return round((close / fill - 1) * 100, 4)
+
+
+def _trade_metric_bundle(
+    snapshots: list[dict[str, Any]],
+    predicate: Callable[[dict[str, Any]], bool],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for horizon in HORIZONS:
+        key = str(horizon)
+        records: list[tuple[float, str]] = []
+        eligible = 0
+        for snapshot in snapshots:
+            for row in snapshot.get("predictions", []):
+                if not predicate(row) or not _is_validation_eligible(row):
+                    continue
+                if _horizon_return(row, key) is None:
+                    continue
+                eligible += 1
+                value = _trade_return(row, key)
+                if value is not None and _trade_signal_triggered(row):
+                    records.append((value, "UP"))
+        result[key] = _metric(records, eligible)
+    return result
+
+
 def _track_bundle(
     snapshots: list[dict[str, Any]],
     predicate: Callable[[dict[str, Any]], bool],
@@ -400,11 +468,13 @@ def _track_consensus_direction(row: dict[str, Any], track: str) -> str:
 
 
 def _trade_direction(row: dict[str, Any]) -> str:
-    return "UP" if row.get("trade_triggered") else "ABSTAIN"
+    return "UP" if _trade_signal_triggered(row) else "ABSTAIN"
 
 
 def _track_trade_direction(row: dict[str, Any], _track: str) -> str:
-    return _trade_direction(row)
+    # V2 entry may happen after the open, so overnight/open-to-close tracks do
+    # not have a defensible execution timestamp. Keep these tracks legacy-only.
+    return "UP" if row.get("trade_triggered") is True else "ABSTAIN"
 
 
 def _model_direction(name: str) -> Callable[[dict[str, Any]], str]:
@@ -439,6 +509,7 @@ def _portfolio_metric(
     horizon: str,
     predicate: Callable[[dict[str, Any]], bool],
     direction_for: Callable[[dict[str, Any]], str],
+    return_for: Callable[[dict[str, Any], str], float | None] = _horizon_return,
 ) -> dict[str, Any]:
     """Build a chronological equal-weight shadow portfolio for risk metrics."""
     sample_returns: list[float] = []
@@ -451,7 +522,7 @@ def _portfolio_metric(
         for row in snapshot.get("predictions", []):
             if not _is_validation_eligible(row) or not predicate(row):
                 continue
-            actual = _outcome_return(row.get("outcomes", {}).get(horizon))
+            actual = return_for(row, horizon)
             if actual is None:
                 continue
             eligible += 1
@@ -491,9 +562,9 @@ def _portfolio_metric(
 
 def _portfolio_statistics(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
     strategies = {
-        "current_consensus": (lambda _row: True, _consensus_direction),
-        "top10_consensus": (lambda row: _within_rank(row, 10), _consensus_direction),
-        "buy_trigger": (lambda row: bool(row.get("trade_triggered")), _trade_direction),
+        "current_consensus": (lambda _row: True, _consensus_direction, _horizon_return),
+        "top10_consensus": (lambda row: _within_rank(row, 10), _consensus_direction, _horizon_return),
+        "buy_trigger": (_trade_signal_triggered, _trade_direction, _trade_return),
     }
     return {
         market: {
@@ -504,10 +575,11 @@ def _portfolio_statistics(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                     horizon=str(horizon),
                     predicate=predicate,
                     direction_for=direction_for,
+                    return_for=return_for,
                 )
                 for horizon in TRAINING_HORIZONS
             }
-            for name, (predicate, direction_for) in strategies.items()
+            for name, (predicate, direction_for, return_for) in strategies.items()
         }
         for market in ("TW", "US")
     }
@@ -804,6 +876,7 @@ def _regime_metric(
     horizon: str,
     predicate: Callable[[dict[str, Any]], bool],
     direction_for: Callable[[dict[str, Any]], str],
+    return_for: Callable[[dict[str, Any], str], float | None] = _horizon_return,
 ) -> dict[str, Any]:
     """Evaluate one strategy inside one source-date market regime."""
     records: list[tuple[float, str]] = []
@@ -824,7 +897,7 @@ def _regime_metric(
             if not predicate(row):
                 continue
             outcome = row.get("outcomes", {}).get(horizon)
-            actual = _outcome_return(outcome)
+            actual = return_for(row, horizon)
             if actual is None:
                 continue
             eligible += 1
@@ -859,10 +932,10 @@ def _regime_metric(
 
 def _regime_validation(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
     strategies = {
-        "consensus": (lambda _row: True, _consensus_direction),
-        "buy_trigger": (lambda row: bool(row.get("trade_triggered")), _trade_direction),
-        "top5": (lambda row: _within_rank(row, 5), _consensus_direction),
-        "top10": (lambda row: _within_rank(row, 10), _consensus_direction),
+        "consensus": (lambda _row: True, _consensus_direction, _horizon_return),
+        "buy_trigger": (_trade_signal_triggered, _trade_direction, _trade_return),
+        "top5": (lambda row: _within_rank(row, 5), _consensus_direction, _horizon_return),
+        "top10": (lambda row: _within_rank(row, 10), _consensus_direction, _horizon_return),
     }
     markets: dict[str, Any] = {}
     for market in ("TW", "US"):
@@ -884,10 +957,11 @@ def _regime_validation(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                             horizon=horizon,
                             predicate=predicate,
                             direction_for=direction_for,
+                            return_for=return_for,
                         )
                         for horizon in map(str, HORIZONS)
                     }
-                    for name, (predicate, direction_for) in strategies.items()
+                    for name, (predicate, direction_for, return_for) in strategies.items()
                 },
             }
     classified = sum(
@@ -919,7 +993,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
     legacy_snapshots = [item for item in snapshots if not _is_current_validation_snapshot(item)]
     horizons = _metric_bundle(current_snapshots, lambda _row: True, _consensus_direction)
     tracks = _track_bundle(current_snapshots, lambda _row: True, _track_consensus_direction)
-    trade_horizons = _metric_bundle(current_snapshots, lambda _row: True, _trade_direction)
+    trade_horizons = _trade_metric_bundle(current_snapshots, lambda _row: True)
     trade_tracks = _track_bundle(current_snapshots, lambda _row: True, _track_trade_direction)
     models = {
         name: {
@@ -954,7 +1028,7 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         groups[group] = {
             "horizons": _metric_bundle(current_snapshots, predicate, _consensus_direction),
             "tracks": _track_bundle(current_snapshots, predicate, _track_consensus_direction),
-            "trade_signals": _metric_bundle(current_snapshots, predicate, _trade_direction),
+            "trade_signals": _trade_metric_bundle(current_snapshots, predicate),
             "trade_tracks": _track_bundle(current_snapshots, predicate, _track_trade_direction),
             "models": {
                 name: {
@@ -1022,6 +1096,15 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
         "horizons": horizons,
         "tracks": tracks,
         "trade_signals": trade_horizons,
+        "trade_signal_contract": {
+            "version": TRADE_SIGNAL_CONTRACT_VERSION,
+            "mode": "forward_only_shadow_entry",
+            "trigger_basis": "事前凍結進場區與下一完成交易日OHLC相交",
+            "return_basis": "可稽核進場價至各觀察期完成收盤價",
+            "legacy_rows_rewritten": False,
+            "affects_formal_v6": False,
+            "places_orders": False,
+        },
         "trade_tracks": trade_tracks,
         "models": models,
         "model_leaderboard": leaderboards["full_day"],
@@ -1110,19 +1193,41 @@ def _session_date(row: dict[str, Any]) -> str:
         return ""
 
 
-def _trade_triggered(row: dict[str, Any], official_price: float) -> bool:
+def _entry_outcome(
+    row: dict[str, Any],
+    *,
+    current_open: float,
+    current_high: float,
+    current_low: float,
+) -> dict[str, Any]:
+    """Evaluate a frozen setup on the next completed session only."""
+    if _trade_contract_version(row) < TRADE_SIGNAL_CONTRACT_VERSION:
+        return {}
+    if row.get("trade_setup_eligible") is not True:
+        return {"entry_triggered": False, "entry_evaluation_status": "source_setup_ineligible"}
+    if row.get("trade_guard_blocked") is True:
+        return {"entry_triggered": False, "entry_evaluation_status": "source_guard_blocked"}
     try:
-        low = float(row.get("short_term_entry_low") or 0)
-        high = float(row.get("short_term_entry_high") or 0)
+        low = float(row.get("entry_low") or 0)
+        high = float(row.get("entry_high") or 0)
     except (TypeError, ValueError):
-        return False
-    return bool(
-        row.get("short_term_eligible")
-        and not row.get("trade_guard_blocked")
-        and low > 0
-        and high >= low
-        and low <= official_price <= high
-    )
+        low = high = 0.0
+    if low <= 0 or high < low:
+        return {"entry_triggered": False, "entry_evaluation_status": "invalid_frozen_entry_zone"}
+    if current_open <= 0 or current_high <= 0 or current_low <= 0:
+        return {"entry_triggered": False, "entry_evaluation_status": "missing_completed_session_ohlc"}
+    touched = current_low <= high and current_high >= low
+    if not touched:
+        return {"entry_triggered": False, "entry_evaluation_status": "entry_zone_not_touched"}
+    # The completed range proves the frozen zone traded. Clamp the open to the
+    # zone to obtain a deterministic, reproducible shadow fill without future data.
+    fill = min(high, max(low, current_open))
+    return {
+        "entry_triggered": True,
+        "entry_evaluation_status": "completed_session_zone_touch",
+        "entry_fill_price": round(fill, 4),
+        "entry_trigger_basis": "next_completed_session_ohlc",
+    }
 
 
 def _new_snapshot(
@@ -1166,6 +1271,9 @@ def _new_snapshot(
             "evidence_coverage_pct": evidence_coverage,
             "entry_low": row.get("short_term_entry_low"),
             "entry_high": row.get("short_term_entry_high"),
+            "trade_signal_contract_version": TRADE_SIGNAL_CONTRACT_VERSION,
+            "trade_setup_eligible": row.get("short_term_eligible") is True,
+            "trade_guard_blocked": row.get("trade_guard_blocked") is True,
             "stop_price": row.get("short_term_stop"),
             "target1_price": row.get("short_term_target1"),
             "target2_price": row.get("short_term_target2"),
@@ -1173,7 +1281,9 @@ def _new_snapshot(
             # Compatibility aliases are explicitly the full-day prediction.
             "model_predictions": full_day["models"],
             "consensus": full_day["consensus"],
-            "trade_triggered": _trade_triggered(row, price),
+            # Compatibility alias. V2 trigger lives in the appended day-1
+            # outcome so the immutable prediction never sees future prices.
+            "trade_triggered": False,
             "tw_accumulation_available": bool(row.get("tw_accumulation_available")),
             "tw_accumulation_score": row.get("tw_accumulation_score"),
             "tw_accumulation_candidate": bool(row.get("tw_accumulation_candidate")),
@@ -1333,6 +1443,18 @@ def _evaluate_with_new_session(
                         and current_high >= float(row.get("target2_price") or 0)
                     ),
                 })
+            if elapsed == 1:
+                outcome.update(_entry_outcome(
+                    row,
+                    current_open=current_open,
+                    current_high=current_high,
+                    current_low=current_low,
+                ))
+                if outcome.get("entry_triggered") is True:
+                    fill = float(outcome["entry_fill_price"])
+                    outcome["entry_to_close_return_pct"] = round(
+                        (current_close / fill - 1) * 100, 4
+                    )
             row.setdefault("outcomes", {})[key] = outcome
 
 

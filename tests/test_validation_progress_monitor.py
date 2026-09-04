@@ -57,8 +57,17 @@ def _source(tmp_path: Path, tw: int, us: int, *, global_days: int | None = None,
     })
 
 
-def _performance(tmp_path: Path, market: str, days: int, direction: int, trades: int) -> None:
+def _performance(
+    tmp_path: Path,
+    market: str,
+    days: int,
+    direction: int,
+    trades: int,
+    *,
+    contract_version: int = 1,
+) -> None:
     _write(tmp_path / "performance.json", {
+        "trade_signal_contract": {"version": contract_version},
         "groups": {
             f"{market}_STOCK": {
                 "horizons": {"1": {"samples": direction}},
@@ -101,6 +110,46 @@ def test_zero_trade_signals_warn_after_five_days_and_recover(tmp_path: Path) -> 
         item["type"] == "trade_signal_recovery"
         for item in recovered["pending_notifications"]
     )
+
+
+def test_new_trade_signal_contract_resets_only_the_stale_signal_warning(tmp_path: Path) -> None:
+    _source(tmp_path, 9, 8, global_days=8)
+    _performance(tmp_path, "TW", days=9, direction=251, trades=0, contract_version=1)
+    warning = update_validation_progress_monitor(
+        tmp_path, _rows("TW", "2026-09-03"),
+        period="evening", updated_at="2026-09-03 20:00:00",
+    )
+    assert warning["signal_health"]["TW"]["status"] == "warning"
+
+    _source(tmp_path, 10, 8, global_days=8)
+    _performance(tmp_path, "TW", days=10, direction=275, trades=0, contract_version=2)
+    reset = update_validation_progress_monitor(
+        tmp_path, _rows("TW", "2026-09-04"),
+        period="evening", updated_at="2026-09-04 20:00:00",
+    )
+    signal = reset["signal_health"]["TW"]
+    assert signal["status"] == "initializing"
+    assert signal["stagnant_sessions"] == 0
+    assert signal["trade_signal_contract_version"] == 2
+    assert "不回填舊樣本" in signal["detail"]
+    assert not any(
+        item["type"] == "trade_signal_stagnation"
+        for item in reset["pending_notifications"]
+    )
+
+    # A new warning is still allowed after five genuinely completed V2 sessions.
+    for offset in range(1, 6):
+        _source(tmp_path, 10 + offset, 8, global_days=8)
+        _performance(
+            tmp_path, "TW", days=10 + offset, direction=275 + offset,
+            trades=0, contract_version=2,
+        )
+        reset = update_validation_progress_monitor(
+            tmp_path, _rows("TW", f"2026-09-{4 + offset:02d}"),
+            period="evening", updated_at=f"2026-09-{4 + offset:02d} 20:00:00",
+        )
+    assert reset["signal_health"]["TW"]["status"] == "warning"
+    assert reset["signal_health"]["TW"]["stagnant_sessions"] == 5
 
 
 def test_trade_signal_monitor_does_not_run_intraday(tmp_path: Path) -> None:
