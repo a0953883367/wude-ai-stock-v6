@@ -17,6 +17,7 @@ from typing import Any
 
 from history_archive import iter_archive_documents, read_json_document
 
+from .evidence_backup import open_store_with_private_backup
 from .features import extract_features, group_name, session_date
 from .industry_lifecycle import analyze_industry_lifecycle
 from .models import (
@@ -222,10 +223,24 @@ def _bootstrap_archived_point_in_time_reports(
     store: PredictionStore,
 ) -> dict[str, Any]:
     """Seed learning only from immutable reports that existed at prediction time."""
-    if store.session_count() or not (reports_dir / "archive").is_dir():
+    if not (reports_dir / "archive").is_dir():
         return {"attempted": False, "sessions": 0, "predictions": 0, "matured": 0}
+    with store.connect() as db:
+        existing_sessions = {
+            (str(row[0]), str(row[1]))
+            for row in db.execute("SELECT market,session_date FROM market_sessions")
+        }
     checkpoints: dict[tuple[str, str], tuple[str, list[dict[str, Any]]]] = {}
     for path in iter_archive_documents(reports_dir / "archive"):
+        logical_name = path.name[:-3] if path.name.endswith(".json.gz") else path.name
+        checkpoint_date = logical_name[:10]
+        hinted_market = (
+            "TW" if logical_name.endswith("-evening.json")
+            else "US" if logical_name.endswith("-morning.json")
+            else None
+        )
+        if hinted_market and (hinted_market, checkpoint_date) in existing_sessions:
+            continue
         payload = _read_json(path)
         rows = payload.get("data") if isinstance(payload.get("data"), list) else []
         if not rows and isinstance(payload.get("watchlist"), list):
@@ -241,7 +256,7 @@ def _bootstrap_archived_point_in_time_reports(
                 continue
             market_rows = [row for row in rows if isinstance(row, dict) and str(row.get("market") or "").upper() == market]
             date = _dominant_session(market_rows)
-            if date and market_rows:
+            if date and market_rows and (market, date) not in existing_sessions:
                 checkpoints[(market, date)] = (updated, market_rows)
     inserted = 0
     for (market, date), (updated, rows) in sorted(checkpoints.items(), key=lambda item: (item[0][1], item[0][0])):
@@ -271,7 +286,7 @@ def _bootstrap_archived_point_in_time_reports(
         "sessions": len(checkpoints),
         "predictions": inserted,
         "matured": matured,
-        "source": "reports/archive point-in-time completed checkpoints",
+        "source": "private evidence backup plus missing reports/archive checkpoints",
         "historical_lab_proxy_used_for_training": False,
     }
 
@@ -650,8 +665,11 @@ def run_prediction_engine(
         or reports_dir.parent / ".prediction_engine" / "prediction_engine.sqlite3"
     )
     max_bytes = int(os.getenv("PREDICTION_ENGINE_MAX_BYTES", str(500 * 1024 * 1024)))
-    store = PredictionStore(database_path, max_bytes=max_bytes)
+    store, evidence_restore = open_store_with_private_backup(
+        database_path, max_bytes=max_bytes
+    )
     archive_bootstrap = _bootstrap_archived_point_in_time_reports(reports_dir, store)
+    archive_bootstrap["private_evidence_restore"] = evidence_restore
     selected_models = _selected_models(store)
     flow_payload = _read_json(reports_dir / "capital_flow_daily.json")
     flow_by_symbol = _capital_flow_index(flow_payload)
