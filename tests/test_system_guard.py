@@ -121,6 +121,16 @@ def _healthy_reports(tmp_path: Path) -> None:
             "formal_v6_promotions": 0,
         }},
     })
+    _write(tmp_path / "forward_outcome_ledger.json", {
+        "updated_at": timestamp,
+        "markets": {"TW": {"cohort_count": 1}, "US": {"cohort_count": 1}},
+        "policy": {
+            "same_day_backfill_forbidden": True,
+            "future_data_forbidden": True,
+            "shadow_learning_only": True,
+            "formal_v6_modified": False,
+        },
+    })
     _write(tmp_path / "unified_evidence.json", {"status": "ready", "evidence_count": 20, "invalid_count": 0})
     _write(tmp_path / "tw_financial_official_cache.json", {
         "requested_count": 67, "available_count": 66, "coverage_pct": 98.51,

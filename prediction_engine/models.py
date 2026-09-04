@@ -18,6 +18,7 @@ HORIZONS = {
     "DOWN_14D": {"sessions": 14, "side": "DOWN", "return_scale": 18.0, "label": "未來14交易日下跌"},
     "DOWN_21D": {"sessions": 21, "side": "DOWN", "return_scale": 22.0, "label": "未來1個月下跌"},
     "UP_45D": {"sessions": 45, "side": "UP", "return_scale": 32.0, "label": "未來45交易日"},
+    "UP_60D": {"sessions": 60, "side": "UP", "return_scale": 38.0, "label": "未來60交易日"},
     "UP_126D": {"sessions": 126, "side": "UP", "return_scale": 55.0, "label": "未來6個月"},
 }
 
@@ -27,10 +28,11 @@ BASE_WEIGHTS = {
     "DOWN_14D": {"trend": .17, "volume": .09, "capital_flow": .14, "positioning": .11, "sector": .10, "market_regime": .12, "fundamental": .06, "valuation": .04, "news": .09, "entry": .02, "shadow_consensus": .06},
     "DOWN_21D": {"trend": .15, "volume": .07, "capital_flow": .12, "positioning": .10, "sector": .11, "market_regime": .13, "fundamental": .09, "valuation": .06, "news": .10, "entry": .02, "shadow_consensus": .05},
     "UP_45D": {"trend": .13, "volume": .05, "capital_flow": .08, "positioning": .10, "sector": .12, "market_regime": .13, "fundamental": .14, "valuation": .10, "news": .07, "entry": .03, "shadow_consensus": .05},
+    "UP_60D": {"trend": .12, "volume": .04, "capital_flow": .07, "positioning": .09, "sector": .12, "market_regime": .13, "fundamental": .16, "valuation": .12, "news": .07, "entry": .03, "shadow_consensus": .05},
     "UP_126D": {"trend": .08, "volume": .02, "capital_flow": .04, "positioning": .07, "sector": .11, "market_regime": .13, "fundamental": .22, "valuation": .20, "news": .08, "entry": .01, "shadow_consensus": .04},
 }
 
-MIN_TRAINING_SESSIONS = {"NEXT_1D": 20, "UP_5D": 20, "DOWN_14D": 30, "DOWN_21D": 35, "UP_45D": 45, "UP_126D": 126}
+MIN_TRAINING_SESSIONS = {"NEXT_1D": 20, "UP_5D": 20, "DOWN_14D": 30, "DOWN_21D": 35, "UP_45D": 45, "UP_60D": 60, "UP_126D": 126}
 MIN_TRAINING_SAMPLES = {key: 200 for key in HORIZONS}
 MIN_HOLDOUT_DIRECTION_HIT_PCT = 52.0
 MIN_DIRECTION_IMPROVEMENT_PCT = 2.0

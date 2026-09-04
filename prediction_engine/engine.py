@@ -31,6 +31,13 @@ SCHEMA_VERSION = 1
 REPORT_VERSION = "WUDE-PREDICTION-CONTRACT-V1"
 GROUPS = ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF")
 PORTFOLIO_HORIZONS = ("UP_5D", "UP_45D", "UP_126D")
+FORWARD_OUTCOME_HORIZONS = {
+    "UP_5D": 5,
+    "UP_45D": 45,
+    "UP_60D": 60,
+    "UP_126D": 126,
+}
+FORWARD_OUTCOME_COST_PCT = {"TW": 0.685, "US": 0.20}
 PORTFOLIO_CAPITAL = {"TW": (1_000_000.0, "TWD"), "US": (1_000_000.0, "USD")}
 MIN_PORTFOLIO_QUALITY = 75.0
 MAX_PUBLIC_INDEX_BYTES = 300_000
@@ -351,6 +358,7 @@ def _build_public_contract(
     archive_bootstrap: dict[str, Any],
     maintenance: dict[str, Any],
     input_symbol_count: int,
+    forward_outcomes: dict[str, Any],
 ) -> dict[str, Any]:
     compact = [_compact_prediction(row) for row in predictions]
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {
@@ -445,6 +453,7 @@ def _build_public_contract(
             "waiting_for_market_checkpoint_count": max(0, input_symbol_count - len(symbols)),
             "archive_bootstrap": archive_bootstrap,
         },
+        "forward_outcome_ledger": forward_outcomes,
         "rankings": rankings,
         "symbols": symbols,
         "learning": learning,
@@ -628,6 +637,7 @@ def run_prediction_engine(
     flow_payload = _read_json(reports_dir / "capital_flow_daily.json")
     flow_by_symbol = _capital_flow_index(flow_payload)
     inserted = matured = portfolios_settled = 0
+    forward_candidates = forward_results = 0
     market_status: dict[str, dict[str, Any]] = {}
 
     by_market: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -651,6 +661,16 @@ def run_prediction_engine(
         }
         if not ready:
             continue
+        # Advance previously frozen cohorts before creating today's cohort.
+        # The signal session therefore cannot ever become its own answer.
+        forward_results += store.advance_forward_outcomes(
+            market,
+            date,
+            market_rows,
+            updated_at,
+            horizons=FORWARD_OUTCOME_HORIZONS,
+            round_trip_cost_pct=FORWARD_OUTCOME_COST_PCT[market],
+        )
         store.record_session(market, date, updated_at)
         store.record_prices(market_rows, date)
         matured += store.settle_matured(market)
@@ -665,6 +685,9 @@ def run_prediction_engine(
             selected_models=selected_models,
         )
         inserted += store.insert_predictions(predictions)
+        forward_candidates += store.record_forward_cohort(
+            market, date, market_rows, updated_at
+        )
         store.record_source_usage(
             date,
             "existing_app_completed_reports",
@@ -677,6 +700,32 @@ def run_prediction_engine(
     latest = store.latest_predictions()
     _ensure_latest_paper_portfolios(store, latest, created_at=updated_at)
     maintenance = store.maintain_capacity()
+    forward_outcomes = store.forward_outcome_summary(FORWARD_OUTCOME_HORIZONS)
+    forward_outcomes.update({
+        "version": 1,
+        "title": "台股／美股多期間真實答案帳本",
+        "updated_at": updated_at,
+        "mode": "forward_only_shadow_answers",
+        "horizons": FORWARD_OUTCOME_HORIZONS,
+        "policy": {
+            "entry": "訊號日收盤凍結，下一完成交易日正式開盤",
+            "all_stocks_recorded": True,
+            "same_day_backfill_forbidden": True,
+            "future_data_forbidden": True,
+            "corporate_actions_adjusted": True,
+            "markets_separated": True,
+            "minimum_learning_sessions": 20,
+            "minimum_learning_samples": 100,
+            "shadow_learning_only": True,
+            "formal_v6_modified": False,
+            "automatic_orders": False,
+            "round_trip_cost_pct": FORWARD_OUTCOME_COST_PCT,
+        },
+        "run": {
+            "inserted_candidates": forward_candidates,
+            "settled_results": forward_results,
+        },
+    })
     contract = _build_public_contract(
         latest,
         updated_at=updated_at,
@@ -688,11 +737,13 @@ def run_prediction_engine(
         portfolios_settled=portfolios_settled,
         archive_bootstrap=archive_bootstrap,
         maintenance=maintenance,
+        forward_outcomes=forward_outcomes,
         input_symbol_count=len({
             (str(row.get("market") or "").upper(), str(row.get("symbol") or "").upper())
             for row in frozen_rows if row.get("symbol")
         }),
     )
+    _write_json(reports_dir / "forward_outcome_ledger.json", forward_outcomes, compact=False)
     contract["run_summary"]["model_competition"] = competition
     index, delivery_health = _write_chunked_contract(reports_dir, contract)
     health = {

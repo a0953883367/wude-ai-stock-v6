@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 STABLE_MODEL_VERSION = "WUDE-PREDICT-ENGINE-V1-CHAMPION"
 SHADOW_PROMOTION_SCOPE = "independent_shadow_engine_only"
 
@@ -235,6 +235,73 @@ class PredictionStore:
                     created_at TEXT NOT NULL,
                     UNIQUE (unit_id, market, asset_group, evaluated_through)
                 );
+                CREATE TABLE IF NOT EXISTS forward_outcome_cohorts (
+                    market TEXT NOT NULL,
+                    signal_session_date TEXT NOT NULL,
+                    benchmark_symbol TEXT,
+                    status TEXT NOT NULL DEFAULT 'waiting_entry',
+                    entry_session_date TEXT,
+                    benchmark_entry_open REAL,
+                    benchmark_adjusted_entry REAL,
+                    benchmark_split_factor REAL NOT NULL DEFAULT 1.0,
+                    benchmark_last_close REAL,
+                    observed_sessions INTEGER NOT NULL DEFAULT 0,
+                    last_session_date TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (market, signal_session_date)
+                );
+                CREATE TABLE IF NOT EXISTS forward_outcome_candidates (
+                    market TEXT NOT NULL,
+                    signal_session_date TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    asset_group TEXT NOT NULL,
+                    frozen_rank INTEGER,
+                    frozen_qualified_rank INTEGER,
+                    frozen_score REAL,
+                    data_quality_pct REAL,
+                    prior_json TEXT NOT NULL,
+                    entry_open REAL,
+                    adjusted_entry REAL,
+                    split_factor REAL NOT NULL DEFAULT 1.0,
+                    last_close REAL,
+                    max_high REAL,
+                    min_low REAL,
+                    peak_session_no INTEGER,
+                    data_complete INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (market, signal_session_date, symbol),
+                    FOREIGN KEY (market, signal_session_date)
+                        REFERENCES forward_outcome_cohorts(market, signal_session_date)
+                );
+                CREATE TABLE IF NOT EXISTS forward_outcome_results (
+                    market TEXT NOT NULL,
+                    signal_session_date TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    horizon_code TEXT NOT NULL,
+                    horizon_sessions INTEGER NOT NULL,
+                    outcome_session_date TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    adjusted_entry REAL,
+                    outcome_close REAL,
+                    close_return_pct REAL,
+                    max_return_pct REAL,
+                    peak_session_no INTEGER,
+                    max_drawdown_pct REAL,
+                    net_close_return_pct REAL,
+                    benchmark_return_pct REAL,
+                    excess_return_pct REAL,
+                    frozen_rank INTEGER,
+                    frozen_qualified_rank INTEGER,
+                    frozen_score REAL,
+                    data_quality_pct REAL,
+                    prior_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (market, signal_session_date, symbol, horizon_code)
+                );
+                CREATE INDEX IF NOT EXISTS idx_forward_results_training
+                    ON forward_outcome_results(market,horizon_code,status,signal_session_date);
                 """
             )
             db.execute(
@@ -248,6 +315,294 @@ class PredictionStore:
                 "INSERT OR IGNORE INTO market_sessions VALUES(?,?,?)",
                 (market, session_date, captured_at),
             )
+
+    @staticmethod
+    def _forward_number(value: Any) -> float | None:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        return number if number > 0 else None
+
+    @staticmethod
+    def _forward_is_stock(row: dict[str, Any], market: str) -> bool:
+        return (
+            str(row.get("market") or "").upper() == market
+            and "ETF" not in str(row.get("type") or "").upper()
+            and bool(row.get("symbol"))
+        )
+
+    @staticmethod
+    def _forward_benchmark(rows: list[dict[str, Any]], market: str) -> dict[str, Any] | None:
+        target = "0050" if market == "TW" else "VOO"
+        for row in rows:
+            symbol = str(row.get("symbol") or "").upper().split(".", 1)[0]
+            if str(row.get("market") or "").upper() == market and symbol == target:
+                return row
+        return None
+
+    @staticmethod
+    def _forward_splits(row: dict[str, Any] | None, session_date: str, entry_date: str | None) -> list[float]:
+        if not row or not entry_date:
+            return []
+        ratios = []
+        for event in row.get("official_stock_splits") or []:
+            try:
+                ratio = float(event.get("ratio") or 0)
+            except (TypeError, ValueError, AttributeError):
+                continue
+            split_date = str(event.get("date") or "")
+            if ratio > 0 and entry_date < split_date <= session_date and split_date == session_date:
+                ratios.append(ratio)
+        return ratios
+
+    def record_forward_cohort(
+        self,
+        market: str,
+        session_date: str,
+        rows: list[dict[str, Any]],
+        created_at: str,
+    ) -> int:
+        """Freeze every stock before any future session can become its answer."""
+        benchmark = self._forward_benchmark(rows, market)
+        benchmark_symbol = str((benchmark or {}).get("symbol") or ("0050.TW" if market == "TW" else "VOO"))
+        candidates = [row for row in rows if self._forward_is_stock(row, market)]
+        if not candidates:
+            return 0
+        with self.connect() as db:
+            db.execute(
+                "INSERT OR IGNORE INTO forward_outcome_cohorts("
+                "market,signal_session_date,benchmark_symbol,created_at,updated_at) VALUES(?,?,?,?,?)",
+                (market, session_date, benchmark_symbol, created_at, created_at),
+            )
+            values = []
+            for fallback_rank, row in enumerate(candidates, 1):
+                rank = row.get("overall_display_rank")
+                qualified = row.get("overall_rank")
+                score = row.get("overall_ranking_score", row.get("score"))
+                quality = row.get("market_data_quality_score", row.get("overall_confidence"))
+                prior = {
+                    "action": row.get("action"),
+                    "buy_candidate_status": row.get("buy_candidate_status"),
+                    "buy_candidate_reasons": list(row.get("buy_candidate_reasons") or []),
+                    "technical_score": row.get("technical_score"),
+                    "volume_score": row.get("volume_score"),
+                    "institution_score": row.get("institution_score"),
+                    "entry_score": row.get("entry_score"),
+                    "sector": row.get("sector"),
+                    "market_regime": row.get("market_regime"),
+                }
+                values.append((
+                    market, session_date, str(row["symbol"]),
+                    str(row.get("name") or row["symbol"]), f"{market}_STOCK",
+                    int(rank or fallback_rank), int(qualified) if qualified is not None else None,
+                    float(score) if score is not None else None,
+                    float(quality) if quality is not None else None,
+                    json.dumps(prior, ensure_ascii=False, separators=(",", ":")),
+                ))
+            before = db.total_changes
+            db.executemany(
+                "INSERT OR IGNORE INTO forward_outcome_candidates("
+                "market,signal_session_date,symbol,name,asset_group,frozen_rank,"
+                "frozen_qualified_rank,frozen_score,data_quality_pct,prior_json) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?)",
+                values,
+            )
+            return db.total_changes - before
+
+    def advance_forward_outcomes(
+        self,
+        market: str,
+        session_date: str,
+        rows: list[dict[str, Any]],
+        updated_at: str,
+        *,
+        horizons: dict[str, int],
+        round_trip_cost_pct: float,
+    ) -> int:
+        """Advance old cohorts once; the signal session itself is never consumed."""
+        row_map = {
+            str(row.get("symbol")): row for row in rows
+            if str(row.get("market") or "").upper() == market
+        }
+        benchmark_row = self._forward_benchmark(rows, market)
+        settled = 0
+        with self.connect() as db:
+            cohorts = db.execute(
+                "SELECT * FROM forward_outcome_cohorts WHERE market=? "
+                "AND signal_session_date<? AND (last_session_date IS NULL OR last_session_date<?) "
+                "AND observed_sessions<? ORDER BY signal_session_date",
+                (market, session_date, session_date, max(horizons.values())),
+            ).fetchall()
+            for cohort in cohorts:
+                session_no = int(cohort["observed_sessions"] or 0) + 1
+                entry_date = cohort["entry_session_date"] or session_date
+                benchmark_entry = cohort["benchmark_adjusted_entry"]
+                benchmark_factor = float(cohort["benchmark_split_factor"] or 1.0)
+                if session_no == 1:
+                    benchmark_entry = self._forward_number((benchmark_row or {}).get("official_open_price"))
+                for ratio in self._forward_splits(benchmark_row, session_date, entry_date):
+                    benchmark_factor *= ratio
+                    if benchmark_entry:
+                        benchmark_entry /= ratio
+                benchmark_close = self._forward_number((benchmark_row or {}).get("official_close_price"))
+                benchmark_return = (
+                    (benchmark_close / benchmark_entry - 1.0) * 100.0
+                    if benchmark_close and benchmark_entry else None
+                )
+                candidates = db.execute(
+                    "SELECT * FROM forward_outcome_candidates WHERE market=? AND signal_session_date=?",
+                    (market, cohort["signal_session_date"]),
+                ).fetchall()
+                for candidate in candidates:
+                    row = row_map.get(candidate["symbol"])
+                    open_price = self._forward_number((row or {}).get("official_open_price"))
+                    high = self._forward_number((row or {}).get("official_high_price"))
+                    low = self._forward_number((row or {}).get("official_low_price"))
+                    close = self._forward_number((row or {}).get("official_close_price"))
+                    entry = candidate["adjusted_entry"]
+                    factor = float(candidate["split_factor"] or 1.0)
+                    max_high = candidate["max_high"]
+                    min_low = candidate["min_low"]
+                    peak_no = candidate["peak_session_no"]
+                    complete = bool(candidate["data_complete"])
+                    if session_no == 1:
+                        entry = open_price
+                        complete = complete and entry is not None
+                    for ratio in self._forward_splits(row, session_date, entry_date):
+                        factor *= ratio
+                        if entry:
+                            entry /= ratio
+                        if max_high:
+                            max_high /= ratio
+                        if min_low:
+                            min_low /= ratio
+                    if not (high and low and close):
+                        complete = False
+                    else:
+                        if max_high is None or high > float(max_high):
+                            max_high = high
+                            peak_no = session_no
+                        min_low = low if min_low is None else min(float(min_low), low)
+                    db.execute(
+                        "UPDATE forward_outcome_candidates SET entry_open=COALESCE(entry_open,?),"
+                        "adjusted_entry=?,split_factor=?,last_close=?,max_high=?,min_low=?,"
+                        "peak_session_no=?,data_complete=? WHERE market=? AND signal_session_date=? AND symbol=?",
+                        (
+                            open_price if session_no == 1 else None, entry, factor, close,
+                            max_high, min_low, peak_no, int(complete), market,
+                            cohort["signal_session_date"], candidate["symbol"],
+                        ),
+                    )
+                    for code, target in horizons.items():
+                        if session_no != target:
+                            continue
+                        valid = bool(complete and entry and close and max_high and min_low)
+                        close_return = (close / entry - 1.0) * 100.0 if valid else None
+                        max_return = (float(max_high) / entry - 1.0) * 100.0 if valid else None
+                        drawdown = (float(min_low) / entry - 1.0) * 100.0 if valid else None
+                        excess = close_return - benchmark_return if valid and benchmark_return is not None else None
+                        db.execute(
+                            "INSERT OR IGNORE INTO forward_outcome_results("
+                            "market,signal_session_date,symbol,name,horizon_code,horizon_sessions,"
+                            "outcome_session_date,status,adjusted_entry,outcome_close,close_return_pct,"
+                            "max_return_pct,peak_session_no,max_drawdown_pct,net_close_return_pct,"
+                            "benchmark_return_pct,excess_return_pct,frozen_rank,frozen_qualified_rank,"
+                            "frozen_score,data_quality_pct,prior_json,created_at) "
+                            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            (
+                                market, cohort["signal_session_date"], candidate["symbol"], candidate["name"],
+                                code, target, session_date, "valid" if valid else "data_incomplete",
+                                entry, close, close_return, max_return, peak_no, drawdown,
+                                close_return - round_trip_cost_pct if close_return is not None else None,
+                                benchmark_return, excess, candidate["frozen_rank"],
+                                candidate["frozen_qualified_rank"], candidate["frozen_score"],
+                                candidate["data_quality_pct"], candidate["prior_json"], updated_at,
+                            ),
+                        )
+                        settled += 1
+                db.execute(
+                    "UPDATE forward_outcome_cohorts SET status=?,entry_session_date=?,"
+                    "benchmark_entry_open=COALESCE(benchmark_entry_open,?),benchmark_adjusted_entry=?,"
+                    "benchmark_split_factor=?,benchmark_last_close=?,observed_sessions=?,"
+                    "last_session_date=?,updated_at=? WHERE market=? AND signal_session_date=?",
+                    (
+                        "matured" if session_no >= max(horizons.values()) else "tracking",
+                        entry_date, benchmark_entry if session_no == 1 else None, benchmark_entry,
+                        benchmark_factor, benchmark_close, session_no, session_date, updated_at,
+                        market, cohort["signal_session_date"],
+                    ),
+                )
+        return settled
+
+    def forward_outcome_summary(self, horizons: dict[str, int]) -> dict[str, Any]:
+        markets: dict[str, Any] = {}
+        with self.connect() as db:
+            for market in ("TW", "US"):
+                horizon_summary = {}
+                for code, target in horizons.items():
+                    rows = db.execute(
+                        "SELECT * FROM forward_outcome_results WHERE market=? AND horizon_code=? "
+                        "ORDER BY signal_session_date,symbol",
+                        (market, code),
+                    ).fetchall()
+                    valid = [row for row in rows if row["status"] == "valid"]
+                    cohorts: dict[str, list[sqlite3.Row]] = {}
+                    for row in valid:
+                        cohorts.setdefault(str(row["signal_session_date"]), []).append(row)
+                    caught10 = caught20 = actual10 = actual20 = 0
+                    for values in cohorts.values():
+                        winners = sorted(values, key=lambda row: (-float(row["max_return_pct"]), row["symbol"]))[:20]
+                        actual10 += min(10, len(winners))
+                        actual20 += len(winners)
+                        caught10 += sum(int(row["frozen_rank"] or 10**9) <= 10 for row in winners[:10])
+                        caught20 += sum(int(row["frozen_rank"] or 10**9) <= 20 for row in winners)
+                    latest_date = max(cohorts, default="")
+                    latest = sorted(
+                        cohorts.get(latest_date, []),
+                        key=lambda row: (-float(row["max_return_pct"]), row["symbol"]),
+                    )[:10]
+                    horizon_summary[code] = {
+                        "horizon_sessions": target,
+                        "matured_cohorts": len(cohorts),
+                        "valid_samples": len(valid),
+                        "incomplete_samples": len(rows) - len(valid),
+                        "top10_capture_rate_pct": round(caught10 / actual10 * 100, 4) if actual10 else None,
+                        "top20_capture_rate_pct": round(caught20 / actual20 * 100, 4) if actual20 else None,
+                        "latest_signal_session_date": latest_date or None,
+                        "latest_winners": [{
+                            "symbol": row["symbol"], "name": row["name"],
+                            "max_return_pct": round(float(row["max_return_pct"]), 4),
+                            "close_return_pct": round(float(row["close_return_pct"]), 4),
+                            "net_close_return_pct": round(float(row["net_close_return_pct"]), 4),
+                            "peak_session_no": row["peak_session_no"],
+                            "max_drawdown_pct": round(float(row["max_drawdown_pct"]), 4),
+                            "frozen_rank": row["frozen_rank"],
+                            "captured_top10": int(row["frozen_rank"] or 10**9) <= 10,
+                            "captured_top20": int(row["frozen_rank"] or 10**9) <= 20,
+                            "benchmark_return_pct": (
+                                round(float(row["benchmark_return_pct"]), 4)
+                                if row["benchmark_return_pct"] is not None else None
+                            ),
+                            "excess_return_pct": (
+                                round(float(row["excess_return_pct"]), 4)
+                                if row["excess_return_pct"] is not None else None
+                            ),
+                        } for row in latest],
+                    }
+                counts = db.execute(
+                    "SELECT COUNT(*),SUM(CASE WHEN status='waiting_entry' THEN 1 ELSE 0 END),"
+                    "SUM(CASE WHEN status='tracking' THEN 1 ELSE 0 END) "
+                    "FROM forward_outcome_cohorts WHERE market=?",
+                    (market,),
+                ).fetchone()
+                markets[market] = {
+                    "cohort_count": int(counts[0] or 0),
+                    "waiting_entry_cohorts": int(counts[1] or 0),
+                    "tracking_cohorts": int(counts[2] or 0),
+                    "horizons": horizon_summary,
+                }
+        return {"markets": markets}
 
     def session_count(self) -> int:
         with self.connect() as db:
@@ -337,12 +692,30 @@ class PredictionStore:
 
     def training_rows(self, market: str, asset_group: str, horizon_code: str) -> list[dict[str, Any]]:
         with self.connect() as db:
-            rows = db.execute(
-                "SELECT session_date,feature_json,realized_return_pct FROM predictions "
-                "WHERE market=? AND asset_group=? AND horizon_code=? AND status='matured' "
-                "ORDER BY session_date,symbol",
-                (market, asset_group, horizon_code),
-            ).fetchall()
+            # Stock up-horizon challengers learn from the stricter answer:
+            # signal close frozen first, next official open as entry, then the
+            # exact future horizon.  Before that answer matures there is no
+            # substitute label. ETFs and direction-only horizons keep their
+            # existing independent close-to-close ledger.
+            if asset_group == f"{market}_STOCK" and horizon_code in {
+                "UP_5D", "UP_45D", "UP_60D", "UP_126D"
+            }:
+                rows = db.execute(
+                    "SELECT p.session_date,p.feature_json,r.close_return_pct realized_return_pct "
+                    "FROM predictions p JOIN forward_outcome_results r "
+                    "ON r.market=p.market AND r.signal_session_date=p.session_date "
+                    "AND r.symbol=p.symbol AND r.horizon_code=p.horizon_code "
+                    "WHERE p.market=? AND p.asset_group=? AND p.horizon_code=? "
+                    "AND r.status='valid' ORDER BY p.session_date,p.symbol",
+                    (market, asset_group, horizon_code),
+                ).fetchall()
+            else:
+                rows = db.execute(
+                    "SELECT session_date,feature_json,realized_return_pct FROM predictions "
+                    "WHERE market=? AND asset_group=? AND horizon_code=? AND status='matured' "
+                    "ORDER BY session_date,symbol",
+                    (market, asset_group, horizon_code),
+                ).fetchall()
         return [{
             "session_date": row["session_date"],
             "features": json.loads(row["feature_json"]),
@@ -820,6 +1193,8 @@ class PredictionStore:
                 "market_sessions", "prices", "predictions", "model_versions",
                 "model_control", "model_control_events", "unit_learning_predictions",
                 "unit_trust_control", "unit_trust_events", "portfolios",
+                "forward_outcome_cohorts", "forward_outcome_candidates",
+                "forward_outcome_results",
             ):
                 tables[name] = int(db.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
             mature = int(db.execute(
