@@ -468,6 +468,7 @@ def build_guard(
     model_learning = _load(reports_dir / "model_learning.json")
     model_unit_learning = _load(reports_dir / "model_unit_learning.json")
     prediction_engine = _load(reports_dir / "prediction_engine.json")
+    forward_outcomes = _load(reports_dir / "forward_outcome_ledger.json")
     graduation = _load(reports_dir / "model_graduation.json")
     unified_evidence = _load(reports_dir / "unified_evidence.json")
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
@@ -792,6 +793,39 @@ def build_guard(
         checks.append(_check(
             "shadow_model_competition", "多期間影子自動升退版", "info",
             "獨立多期間引擎尚待完成收盤檢查點；正式流程繼續",
+        ))
+
+    forward_policy = forward_outcomes.get("policy") or {}
+    forward_markets = forward_outcomes.get("markets") or {}
+    forward_cohorts = sum(
+        int((forward_markets.get(market) or {}).get("cohort_count") or 0)
+        for market in ("TW", "US")
+    )
+    if (
+        forward_outcomes
+        and forward_policy.get("same_day_backfill_forbidden") is True
+        and forward_policy.get("future_data_forbidden") is True
+        and forward_policy.get("shadow_learning_only") is True
+        and forward_policy.get("formal_v6_modified") is False
+    ):
+        check = _check(
+            "forward_outcome_ledger", "多期間真實答案帳本", "ok",
+            f"台美股共 {forward_cohorts} 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+        )
+        check["cohort_count"] = forward_cohorts
+        check["ledger_updated_at"] = forward_outcomes.get("updated_at")
+        checks.append(check)
+    elif forward_outcomes:
+        checks.append(_check(
+            "forward_outcome_ledger", "多期間真實答案帳本", "critical",
+            "答案帳本缺少防回填、影子隔離或正式V6鎖定保證",
+            "停止將該帳本供影子訓練；正式V6與下單維持鎖定",
+        ))
+    else:
+        checks.append(_check(
+            "forward_outcome_ledger", "多期間真實答案帳本", "warning",
+            "尚未建立5／45／60／126日逐股答案帳本；正式V6不受影響",
+            "下一次台股晚報或美股早報自動建立，不回填歷史答案",
         ))
 
     if unified_evidence.get("status") == "ready" and int(unified_evidence.get("invalid_count") or 0) == 0:
