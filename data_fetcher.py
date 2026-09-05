@@ -46,18 +46,12 @@ MARKET_REGIME_BENCHMARKS = {
     "US": ("S&P 500", "^GSPC"),
 }
 
-# Listed-symbol transitions whose price history must remain continuous.  The
-# successor is the only tradable/output symbol; its predecessor is downloaded
-# only to supply observations before the effective date.  Coretronic Investment
-# Holding (3718) replaced Coretronic (5371) through a 1:1 share exchange on
-# 2026-09-03.
-HISTORY_SYMBOL_TRANSITIONS: dict[str, dict[str, Any]] = {
-    "3718.TWO": {
-        "predecessor": "5371.TWO",
-        "effective_date": "2026-09-03",
-        "ratio": 1.0,
-    },
-}
+# Newly listed TPEx securities for which Yahoo may not yet expose daily bars.
+# These are independent security identifiers: official fallback data is fetched
+# only for the requested symbol and is never stitched to another company's
+# history.  In particular, 5371 and 3718 have different legal entities and
+# security identifiers despite their 1:1 share exchange.
+TPEX_MONTHLY_FALLBACK_SYMBOLS = {"3718.TWO"}
 
 TPEX_MONTHLY_STOCK_URL = (
     "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock"
@@ -135,72 +129,18 @@ def _download_tpex_monthly_history(
     return pd.DataFrame.from_dict(rows, orient="index").sort_index()
 
 
-def _supplement_transition_histories(
+def _supplement_tpex_histories(
     result: dict[str, pd.DataFrame], requested_symbols: list[str]
 ) -> dict[str, pd.DataFrame]:
-    """Use official TPEx bars only when Yahoo omitted a transition ticker."""
-    requested = set(requested_symbols)
-    for successor, transition in HISTORY_SYMBOL_TRANSITIONS.items():
-        if successor not in requested or not successor.endswith(".TWO"):
+    """Use official TPEx bars when Yahoo omits a configured requested ticker."""
+    for symbol in requested_symbols:
+        if symbol not in TPEX_MONTHLY_FALLBACK_SYMBOLS:
             continue
-        predecessor = str(transition["predecessor"]).upper()
-        for symbol in (successor, predecessor):
-            if symbol in result and not result[symbol].empty:
-                continue
-            official = _download_tpex_monthly_history(symbol)
-            if not official.empty:
-                result[symbol] = official
-    return result
-
-
-def _expand_history_symbols(symbols: list[str]) -> list[str]:
-    """Add predecessor tickers needed to build continuous successor history."""
-    expanded = list(symbols)
-    for symbol in symbols:
-        transition = HISTORY_SYMBOL_TRANSITIONS.get(symbol)
-        if transition:
-            expanded.append(str(transition["predecessor"]).upper())
-    return list(dict.fromkeys(expanded))
-
-
-def _stitch_symbol_transition_history(
-    result: dict[str, pd.DataFrame], requested_symbols: list[str]
-) -> dict[str, pd.DataFrame]:
-    """Expose predecessor observations under the current tradable symbol.
-
-    Rows from the old ticker are accepted only before the legal transition
-    date.  Current-symbol rows win on duplicate dates.  A non-1:1 transition
-    would scale predecessor OHLC values into successor-share units.
-    """
-    requested = set(requested_symbols)
-    for successor, transition in HISTORY_SYMBOL_TRANSITIONS.items():
-        if successor not in requested:
+        if symbol in result and not result[symbol].empty:
             continue
-        predecessor = str(transition["predecessor"]).upper()
-        legacy = result.get(predecessor)
-        current = result.get(successor)
-        frames: list[pd.DataFrame] = []
-        if legacy is not None and not legacy.empty:
-            cutoff = pd.Timestamp(str(transition["effective_date"]))
-            legacy_frame = legacy.copy()
-            legacy_dates = pd.DatetimeIndex(legacy_frame.index)
-            if legacy_dates.tz is not None:
-                cutoff = cutoff.tz_localize(legacy_dates.tz)
-            legacy_frame = legacy_frame.loc[legacy_dates < cutoff]
-            ratio = float(transition.get("ratio") or 1.0)
-            if ratio != 1.0:
-                for column in ("open", "high", "low", "close", "adj close"):
-                    if column in legacy_frame:
-                        legacy_frame[column] = legacy_frame[column] / ratio
-            if not legacy_frame.empty:
-                frames.append(legacy_frame)
-        if current is not None and not current.empty:
-            frames.append(current.copy())
-        if frames:
-            stitched = pd.concat(frames).sort_index()
-            result[successor] = stitched.loc[~stitched.index.duplicated(keep="last")]
-        if predecessor not in requested:
-            result.pop(predecessor, None)
+        official = _download_tpex_monthly_history(symbol)
+        if not official.empty:
+            result[symbol] = official
     return result
 
 
@@ -376,7 +316,7 @@ def download_history(
     requested_symbols = list(dict.fromkeys(
         str(symbol).strip().upper() for symbol in symbols if symbol
     ))
-    symbols = _expand_history_symbols(requested_symbols)
+    symbols = requested_symbols
     result: dict[str, pd.DataFrame] = {}
     for chunk in _chunks(symbols, 35):
         try:
@@ -438,8 +378,7 @@ def download_history(
             "advanced stale US daily frames after individual retry: %s",
             ",".join(advanced),
         )
-    result = _supplement_transition_histories(result, requested_symbols)
-    return _stitch_symbol_transition_history(result, requested_symbols)
+    return _supplement_tpex_histories(result, requested_symbols)
 
 
 def download_intraday(symbols: list[str]) -> dict[str, pd.DataFrame]:
