@@ -59,6 +59,99 @@ HISTORY_SYMBOL_TRANSITIONS: dict[str, dict[str, Any]] = {
     },
 }
 
+TPEX_MONTHLY_STOCK_URL = (
+    "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock"
+)
+
+
+def _tpex_number(value: Any) -> float | None:
+    text = str(value or "").strip().replace(",", "").replace("+", "")
+    if text in {"", "--", "---"}:
+        return None
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _download_tpex_monthly_history(
+    symbol: str, *, month_count: int = 6, today: date | None = None
+) -> pd.DataFrame:
+    """Fetch official TPEx daily bars for a newly changed listing.
+
+    This narrowly-scoped fallback prevents a delisted Yahoo symbol from
+    leaving its successor with a stale last price.  TPEx reports volume in
+    lots, so it is converted to shares before joining Yahoo history.
+    """
+    stock_id = str(symbol).upper().removesuffix(".TWO")
+    cursor = (today or datetime.now(ZoneInfo("Asia/Taipei")).date()).replace(day=1)
+    rows: dict[pd.Timestamp, dict[str, float]] = {}
+    for _ in range(month_count):
+        try:
+            response = requests.get(
+                TPEX_MONTHLY_STOCK_URL,
+                params={
+                    "code": stock_id,
+                    "date": cursor.strftime("%Y/%m/%d"),
+                    "id": "",
+                    "response": "json",
+                },
+                timeout=SETTINGS.request_timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            tables = payload.get("tables") if isinstance(payload, dict) else None
+            data = tables[0].get("data") if isinstance(tables, list) and tables else []
+            for item in data or []:
+                if not isinstance(item, list) or len(item) < 9:
+                    continue
+                parts = str(item[0]).replace("*", "").split("/")
+                if len(parts) != 3:
+                    continue
+                try:
+                    trade_date = pd.Timestamp(
+                        year=int(parts[0]) + 1911,
+                        month=int(parts[1]),
+                        day=int(parts[2]),
+                    )
+                except (TypeError, ValueError):
+                    continue
+                values = [_tpex_number(item[index]) for index in (3, 4, 5, 6, 1)]
+                if any(value is None for value in values[:4]):
+                    continue
+                rows[trade_date] = {
+                    "open": values[0],
+                    "high": values[1],
+                    "low": values[2],
+                    "close": values[3],
+                    "adj close": values[3],
+                    "volume": (values[4] or 0.0) * 1000.0,
+                }
+        except Exception as exc:
+            LOG.warning("TPEx monthly fallback failed (%s, %s): %s", stock_id, cursor, exc)
+        cursor = (cursor - timedelta(days=1)).replace(day=1)
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame.from_dict(rows, orient="index").sort_index()
+
+
+def _supplement_transition_histories(
+    result: dict[str, pd.DataFrame], requested_symbols: list[str]
+) -> dict[str, pd.DataFrame]:
+    """Use official TPEx bars only when Yahoo omitted a transition ticker."""
+    requested = set(requested_symbols)
+    for successor, transition in HISTORY_SYMBOL_TRANSITIONS.items():
+        if successor not in requested or not successor.endswith(".TWO"):
+            continue
+        predecessor = str(transition["predecessor"]).upper()
+        for symbol in (successor, predecessor):
+            if symbol in result and not result[symbol].empty:
+                continue
+            official = _download_tpex_monthly_history(symbol)
+            if not official.empty:
+                result[symbol] = official
+    return result
+
 
 def _expand_history_symbols(symbols: list[str]) -> list[str]:
     """Add predecessor tickers needed to build continuous successor history."""
@@ -345,6 +438,7 @@ def download_history(
             "advanced stale US daily frames after individual retry: %s",
             ",".join(advanced),
         )
+    result = _supplement_transition_histories(result, requested_symbols)
     return _stitch_symbol_transition_history(result, requested_symbols)
 
 
