@@ -152,6 +152,55 @@ def test_new_trade_signal_contract_resets_only_the_stale_signal_warning(tmp_path
     assert reset["signal_health"]["TW"]["stagnant_sessions"] == 5
 
 
+def test_contract_upgrade_resets_stale_other_market_warning_on_next_close_run(
+    tmp_path: Path,
+) -> None:
+    _source(tmp_path, 9, 8, global_days=8)
+    _performance(tmp_path, "TW", days=9, direction=251, trades=0, contract_version=1)
+    warning = update_validation_progress_monitor(
+        tmp_path, _rows("TW", "2026-09-03"),
+        period="evening", updated_at="2026-09-03 20:00:00",
+    )
+    assert warning["signal_health"]["TW"]["status"] == "warning"
+
+    _source(tmp_path, 9, 9, global_days=9)
+    _write(tmp_path / "performance.json", {
+        "trade_signal_contract": {"version": 2},
+        "groups": {
+            "TW_STOCK": {
+                "horizons": {"1": {"samples": 251}},
+                "trade_signals": {"1": {"samples": 0}},
+            },
+            "US_STOCK": {
+                "horizons": {"1": {"samples": 86}},
+                "trade_signals": {"1": {"samples": 0}},
+            },
+        },
+        "ab_testing": {
+            "markets": {
+                "TW": {"trading_days_collected": 9},
+                "US": {"trading_days_collected": 9},
+            },
+        },
+    })
+    reset = update_validation_progress_monitor(
+        tmp_path, _rows("US", "2026-09-04"),
+        period="morning", updated_at="2026-09-05 06:00:00",
+    )
+
+    tw_signal = reset["signal_health"]["TW"]
+    assert tw_signal["status"] == "initializing"
+    assert tw_signal["stagnant_sessions"] == 0
+    assert tw_signal["trade_signal_contract_version"] == 2
+    assert tw_signal["last_session_date"] == "2026-09-03"
+    assert "不回填舊樣本" in tw_signal["detail"]
+    assert not any(
+        item.get("market") == "TW"
+        and item.get("type") == "trade_signal_stagnation"
+        for item in reset["pending_notifications"]
+    )
+
+
 def test_trade_signal_monitor_does_not_run_intraday(tmp_path: Path) -> None:
     _source(tmp_path, 9, 8, global_days=8)
     _performance(tmp_path, "TW", days=9, direction=100, trades=0)

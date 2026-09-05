@@ -411,6 +411,32 @@ def _observe_signal_health(
         ))
 
 
+def _sync_signal_contract_versions(
+    state: dict[str, Any],
+    performance: dict[str, Any],
+    rows: list[dict[str, Any]],
+    updated_at: str,
+) -> None:
+    """Reset stale per-market signal health when the global contract changes.
+
+    Contract metadata is global, so this synchronization must not wait for each
+    market's next close-period observer.  It only resets shadow monitoring
+    baselines; it never advances sessions or changes model outputs.
+    """
+    for market in MARKETS:
+        *_, contract_version = _signal_totals(performance, market)
+        signal = state["signal_health"][market]
+        previous_contract = int(signal.get("trade_signal_contract_version") or 1)
+        if contract_version == previous_contract:
+            continue
+        session_date = _market_session(rows, market) or str(
+            signal.get("last_session_date") or ""
+        )
+        _observe_signal_health(
+            state, performance, market, session_date, updated_at
+        )
+
+
 def _observe_market(
     state: dict[str, Any],
     validation: dict[str, Any],
@@ -617,6 +643,7 @@ def update_validation_progress_monitor(
         "eligible_samples": int(validation.get("eligible_samples") or 0),
     }
     if not intraday:
+        _sync_signal_contract_versions(state, performance, rows, updated_at)
         for market in MARKETS:
             if period == CLOSED_PERIOD[market]:
                 _observe_market(state, validation, million, rows, market, updated_at)

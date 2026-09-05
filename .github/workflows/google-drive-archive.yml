@@ -1,0 +1,59 @@
+name: Google Drive 歷史資料封存
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 測試時上傳最新幾檔；0 代表全部
+        required: true
+        default: "1"
+  schedule:
+    # Daily 21:15 Asia/Taipei, after the 20:00 briefing.
+    - cron: "15 13 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: google-drive-history-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 選擇測試或每日完整模式
+        id: mode
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "limit=${{ inputs.limit }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "limit=0" >> "$GITHUB_OUTPUT"
+          fi
+      - name: 壓縮、上傳並校驗歷史報告
+        env:
+          GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+        run: |
+          python tools/google_drive_archive.py \
+            --source-dir reports/archive \
+            --root-folder "武得AI歷史庫" \
+            --limit "${{ steps.mode.outputs.limit }}" \
+            --result-file google_drive_archive_result.json
+      - name: 保存本次校驗紀錄
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-drive-archive-result-${{ github.run_id }}
+          path: google_drive_archive_result.json
+          if-no-files-found: ignore
+          retention-days: 30
