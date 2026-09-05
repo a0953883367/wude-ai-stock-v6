@@ -42,14 +42,9 @@ def test_download_history_retries_partial_batch_omissions_individually(monkeypat
     assert calls == [["ANET", "QUBT"], "QUBT"]
 
 
-def test_download_history_stitches_coretronic_5371_into_3718(monkeypatch):
+def test_download_history_keeps_coretronic_securities_separate(monkeypatch):
     from data_fetcher import download_history
 
-    legacy = pd.DataFrame({
-        "open": [80.0, 81.0], "high": [82.0, 83.0],
-        "low": [79.0, 80.0], "close": [81.0, 82.0],
-        "volume": [1000, 1200],
-    }, index=pd.to_datetime(["2026-08-20", "2026-08-21"]))
     current = pd.DataFrame({
         "open": [83.0, 84.0], "high": [85.0, 86.0],
         "low": [82.0, 83.0], "close": [84.0, 85.0],
@@ -59,28 +54,24 @@ def test_download_history_stitches_coretronic_5371_into_3718(monkeypatch):
 
     def fake_download(*, tickers, **kwargs):
         calls.append(tickers)
-        assert tickers == ["3718.TWO", "5371.TWO"]
-        return pd.concat({"3718.TWO": current, "5371.TWO": legacy}, axis=1)
+        assert tickers == ["3718.TWO"]
+        return pd.concat({"3718.TWO": current}, axis=1)
 
     monkeypatch.setattr("data_fetcher.yf.download", fake_download)
     monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
     result = download_history(["3718.TWO"])
 
-    assert calls == [["3718.TWO", "5371.TWO"]]
+    assert calls == [["3718.TWO"]]
     assert set(result) == {"3718.TWO"}
     assert list(result["3718.TWO"].index.strftime("%Y-%m-%d")) == [
-        "2026-08-20", "2026-08-21", "2026-09-03", "2026-09-04",
+        "2026-09-03", "2026-09-04",
     ]
-    assert list(result["3718.TWO"]["close"]) == [81.0, 82.0, 84.0, 85.0]
+    assert list(result["3718.TWO"]["close"]) == [84.0, 85.0]
 
 
-def test_coretronic_uses_tpex_history_when_yahoo_omits_both_symbols(monkeypatch):
+def test_3718_uses_only_its_tpex_history_when_yahoo_omits_it(monkeypatch):
     from data_fetcher import download_history
 
-    legacy = pd.DataFrame({
-        "open": [82.0], "high": [84.0], "low": [81.0],
-        "close": [83.5], "adj close": [83.5], "volume": [2_000_000],
-    }, index=pd.to_datetime(["2026-09-02"]))
     current = pd.DataFrame({
         "open": [85.0, 80.0], "high": [86.0, 80.5],
         "low": [77.2, 75.2], "close": [78.3, 75.5],
@@ -91,14 +82,16 @@ def test_coretronic_uses_tpex_history_when_yahoo_omits_both_symbols(monkeypatch)
     monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
     monkeypatch.setattr(
         "data_fetcher._download_tpex_monthly_history",
-        lambda symbol: current if symbol == "3718.TWO" else legacy,
+        lambda symbol: current if symbol == "3718.TWO" else (_ for _ in ()).throw(
+            AssertionError("5371 must not be fetched for 3718")
+        ),
     )
 
     result = download_history(["3718.TWO"])
 
     assert set(result) == {"3718.TWO"}
     assert list(result["3718.TWO"].index.strftime("%Y-%m-%d")) == [
-        "2026-09-02", "2026-09-03", "2026-09-04",
+        "2026-09-03", "2026-09-04",
     ]
     assert result["3718.TWO"].iloc[-1]["close"] == 75.5
 
