@@ -182,20 +182,14 @@ function range(obj,a,b){var low=first(obj,[a],'—'),high=first(obj,[b],'—');i
 function lightFrom(text,score){text=String(text||'');if(text.indexOf('🟢')>=0)return '🟢';if(text.indexOf('🔴')>=0)return '🔴';if(text.indexOf('🟡')>=0)return '🟡';var n=Number(score);return n>=70?'🟢':n>=58?'🟡':'🔴';}
 function marketCode(symbol,market){symbol=String(symbol||'');return market==='TW'?symbol.split('.')[0]:symbol;}
 function sortByScore(rows){return WudeRanking.sortOverall(rows);}
-function canonicalStockIdentity(symbol,name){
-  var code=String(symbol||'').toUpperCase(),label=String(name||'');
-  if(code==='5371.TWO'||code==='5371')return {symbol:'3718.TWO',name:'中光電投控'};
-  return {symbol:symbol,name:label};
-}
 
 function normalizeLegacy(row){
   var marketText=String(first(row,['市場'],''));
   var market=marketText.indexOf('台')>=0?'TW':'US';
   var advice=first(row,['修正後操作','FINAL 操作','操作建議','AI操作建議'],'🟡 等待確認');
   var score=first(row,['V6.13.1分數','V6.13分數','AI總分','AI分數','總分','Score'],'—');
-  var identity=canonicalStockIdentity(first(row,['代號','Ticker','ticker','Symbol'],'—'),first(row,['股票','名稱','Name','公司'],'—'));
   return {
-    name:identity.name,symbol:identity.symbol,market:market,type:first(row,['類型'],'個股'),
+    name:first(row,['股票','名稱','Name','公司'],'—'),symbol:first(row,['代號','Ticker','ticker','Symbol'],'—'),market:market,type:first(row,['類型'],'個股'),
     theme:first(row,['主題'],'—'),score:score,entryScore:score,price:first(row,['現價','股價','Price','price'],'—'),change:first(row,['漲跌幅','漲跌%'],'—'),
     rsi:first(row,['RSI'],'—'),volume:first(row,['相對量能'],'—'),technical:first(row,['技術分數','technical_score'],'—'),volumeScore:first(row,['量能分數','volume_score'],50),institutionScore:first(row,['籌碼分數','institution_score'],50),creditScore:first(row,['信用分數','credit_score'],50),valuationScore:first(row,['估值分數','valuation_score'],50),growthScore:first(row,['成長分數','growth_score'],50),financialQualityScore:first(row,['財務品質分數','financial_quality_score'],50),fundamental:first(row,['基本面分數'],'—'),
     news:first(row,['新聞分數'],'—'),buy:range(row,'合理買入低','合理買入高')!=='—'?range(row,'合理買入低','合理買入高'):first(row,['合理買入'],'—'),
@@ -208,9 +202,8 @@ function normalizeLegacy(row){
   };
 }
 function normalizeReport(row){
-  var identity=canonicalStockIdentity(row.symbol||'—',row.name||'—');
   return {
-    name:identity.name,symbol:identity.symbol,market:row.market||'US',type:row.type||'個股',theme:row.theme||'—',
+    name:row.name||'—',symbol:row.symbol||'—',market:row.market||'US',type:row.type||'個股',theme:row.theme||'—',
     score:row.score,entryScore:row.entry_score,price:row.price,change:row.change_pct,rsi:row.rsi,volume:row.volume_pace,technical:row.technical_score,volumeScore:row.volume_score,institutionScore:row.institution_score,creditScore:row.credit_score,valuationScore:row.valuation_score,growthScore:row.growth_score,financialQualityScore:row.financial_quality_score,fundamental:row.fundamental_score,news:row.news_summary||'—',
     newsRiskLevel:row.news_risk_level,newsPenalty:row.news_penalty,newsVerified:row.news_verified,newsArticles:Array.isArray(row.news_articles)?row.news_articles:[],newsDataAvailable:row.news_data_available,
     entryProfile:row.entry_profile,entryCoverage:row.entry_data_coverage,entryDataTotal:row.entry_data_total,entryScoreCap:row.entry_score_cap,
@@ -1087,9 +1080,7 @@ function buildAllAnalysisPool(){
   return sortByScore(ordered.map(function(key){return merged[key];}));
 }
 function searchStock(){
-  var rawQ=document.getElementById('ticker').value.trim().toUpperCase();if(!rawQ)return;
-  var aliases={'5371':'3718','5371.TWO':'3718.TWO','中強光電':'中光電投控'};
-  var q=aliases[rawQ]||rawQ;
+  var q=document.getElementById('ticker').value.trim().toUpperCase();if(!q)return;
   var pool=buildAllAnalysisPool();
   if(q==='ALL'){
     STATE.view='ALL';
@@ -1101,7 +1092,7 @@ function searchStock(){
   }
   STATE.view='SEARCH:'+q;
   var seen={},found=pool.filter(function(s){var key=String(s.symbol).toUpperCase();if(seen[key])return false;var hit=key===q||key===q+'.TW'||key===q+'.TWO'||String(s.name).toUpperCase().indexOf(q)>=0;if(hit)seen[key]=true;return hit;});
-  document.getElementById('title').textContent='🔍 單股查詢：'+(q===rawQ?q:rawQ+' → '+q);document.getElementById('status').textContent=found.length?'找到 '+found.length+' 檔':'找不到符合資料';renderStocks(found);
+  document.getElementById('title').textContent='🔍 單股查詢：'+q;document.getElementById('status').textContent=found.length?'找到 '+found.length+' 檔':'找不到符合資料';renderStocks(found);
 }
 async function loadAll(){
   try{
