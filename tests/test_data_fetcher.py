@@ -42,6 +42,38 @@ def test_download_history_retries_partial_batch_omissions_individually(monkeypat
     assert calls == [["ANET", "QUBT"], "QUBT"]
 
 
+def test_download_history_stitches_coretronic_5371_into_3718(monkeypatch):
+    from data_fetcher import download_history
+
+    legacy = pd.DataFrame({
+        "open": [80.0, 81.0], "high": [82.0, 83.0],
+        "low": [79.0, 80.0], "close": [81.0, 82.0],
+        "volume": [1000, 1200],
+    }, index=pd.to_datetime(["2026-08-20", "2026-08-21"]))
+    current = pd.DataFrame({
+        "open": [83.0, 84.0], "high": [85.0, 86.0],
+        "low": [82.0, 83.0], "close": [84.0, 85.0],
+        "volume": [1300, 1400],
+    }, index=pd.to_datetime(["2026-09-03", "2026-09-04"]))
+    calls = []
+
+    def fake_download(*, tickers, **kwargs):
+        calls.append(tickers)
+        assert tickers == ["3718.TWO", "5371.TWO"]
+        return pd.concat({"3718.TWO": current, "5371.TWO": legacy}, axis=1)
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    result = download_history(["3718.TWO"])
+
+    assert calls == [["3718.TWO", "5371.TWO"]]
+    assert set(result) == {"3718.TWO"}
+    assert list(result["3718.TWO"].index.strftime("%Y-%m-%d")) == [
+        "2026-08-20", "2026-08-21", "2026-09-03", "2026-09-04",
+    ]
+    assert list(result["3718.TWO"]["close"]) == [81.0, 82.0, 84.0, 85.0]
+
+
 def test_core_market_does_not_request_excluded_open_market_prices(monkeypatch):
     from data_fetcher import CORE_MARKET, fetch_core_market
 
