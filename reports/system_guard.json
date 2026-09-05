@@ -1,16 +1,16 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "critical",
-  "status_label": "🔴 需要處理",
-  "checked_at": "2026-09-05T18:32:32+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-09-05T20:11:06+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-05 06:03:35",
-  "report_age_minutes": 749.0,
+  "report_updated_at": "2026-09-05 20:08:18",
+  "report_age_minutes": 2.8,
   "counts": {
-    "ok": 24,
+    "ok": 26,
     "info": 6,
-    "warning": 1,
-    "critical": 1
+    "warning": 0,
+    "critical": 0
   },
   "checks": [
     {
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 157.0 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 160.3 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -26,16 +26,16 @@
       "title": "影子證據私人備份",
       "level": "ok",
       "label": "正常",
-      "detail": "完整資料庫備份已校驗（0.5 MB）；未發布至網站，正式V6未變更",
+      "detail": "完整資料庫備份已校驗（0.6 MB）；未發布至網站，正式V6未變更",
       "action": ""
     },
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "critical",
-      "label": "異常",
-      "detail": "已 12.5 小時沒有完成新報表",
-      "action": "檢查 GitHub Actions、電腦排程及上游行情來源"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -50,7 +50,7 @@
       "title": "分析輸出",
       "level": "ok",
       "label": "正常",
-      "detail": "完成 374/374 檔；排行 228 檔",
+      "detail": "完成 373/374 檔；排行 227 檔",
       "action": ""
     },
     {
@@ -58,7 +58,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-09-04 33/33；TW_STOCK 2026-09-04 154/155；US_ETF 2026-09-04 34/35；US_STOCK 2026-09-04 151/151",
+      "detail": "TW_ETF 2026-09-04 33/33；TW_STOCK 2026-09-04 154/154；US_ETF 2026-09-04 34/35；US_STOCK 2026-09-04 151/151",
       "action": ""
     },
     {
@@ -74,7 +74,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 188、法人 187、信用 183",
+      "detail": "價格 187、法人 188、信用 184",
       "action": ""
     },
     {
@@ -98,7 +98,7 @@
       "title": "台股官方財報",
       "level": "ok",
       "label": "正常",
-      "detail": "官方財報 153/155（98.71%）",
+      "detail": "官方財報 152/155（98.06%）",
       "action": ""
     },
     {
@@ -114,7 +114,7 @@
       "title": "Tiingo 免費版覆蓋測試",
       "level": "info",
       "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "detail": "免費版分批收集中，目前已嘗試 141 檔；尚未切換半套快取",
       "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
@@ -128,10 +128,10 @@
     {
       "code": "validation_60d",
       "title": "60日向前驗證",
-      "level": "warning",
-      "label": "注意",
-      "detail": "真實交易日 10/60；TW交易訊號連續 9 日未增加",
-      "action": "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
+      "level": "ok",
+      "label": "正常",
+      "detail": "真實交易日 10/60；進度監控正常；TW 2026-09-04／10天、US 2026-09-04／10天",
+      "action": ""
     },
     {
       "code": "model_graduation",
@@ -170,17 +170,17 @@
       "title": "多期間真實答案帳本",
       "level": "ok",
       "label": "正常",
-      "detail": "台美股共 1 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+      "detail": "台美股共 2 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
-      "cohort_count": 1,
-      "ledger_updated_at": "2026-09-05 06:03:35"
+      "cohort_count": 2,
+      "ledger_updated_at": "2026-09-05 20:08:18"
     },
     {
       "code": "unified_evidence",
       "title": "統一證據格式",
       "level": "ok",
       "label": "正常",
-      "detail": "已驗證 3740 筆證據，格式錯誤 0 筆",
+      "detail": "已驗證 3730 筆證據，格式錯誤 0 筆",
       "action": ""
     },
     {
@@ -269,14 +269,11 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
-  "action_required": [
-    "檢查 GitHub Actions、電腦排程及上游行情來源",
-    "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,

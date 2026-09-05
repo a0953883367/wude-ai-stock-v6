@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-05 06:03:35",
-  "status": "warning",
+  "updated_at": "2026-09-05 20:08:18",
+  "status": "ok",
   "mode": "completed_session_observer_only",
   "current": {
     "trading_days_collected": 10,
@@ -46,15 +46,16 @@
   },
   "signal_health": {
     "TW": {
-      "status": "warning",
+      "status": "initializing",
       "last_session_date": "2026-09-04",
       "last_validation_days": 9,
       "last_trade_signal_samples": 0,
       "direction_samples": 251,
-      "stagnant_sessions": 9,
+      "stagnant_sessions": 0,
       "last_signal_growth_at": null,
-      "alert_notified": true,
-      "detail": "已有 251 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加"
+      "alert_notified": false,
+      "detail": "交易訊號契約已升級為 V2；從新契約的下一個完成交易日重新觀察，不回填舊樣本",
+      "trade_signal_contract_version": 2
     },
     "US": {
       "status": "initializing",
