@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "ok",
-  "status_label": "🟢 系統正常",
-  "checked_at": "2026-09-05T20:37:09+08:00",
+  "status": "warning",
+  "status_label": "🟡 需要注意",
+  "checked_at": "2026-09-06T01:31:52+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-05 20:08:18",
-  "report_age_minutes": 28.9,
+  "report_age_minutes": 323.6,
   "counts": {
-    "ok": 26,
+    "ok": 25,
     "info": 6,
-    "warning": 0,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -32,10 +32,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近更新距今 29 分鐘",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 5.4 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
       "code": "report_consistency",
@@ -273,7 +273,9 @@
       "action": ""
     }
   ],
-  "action_required": [],
+  "action_required": [
+    "若已跨過下一個排程時間，檢查排程是否延遲"
+  ],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,
