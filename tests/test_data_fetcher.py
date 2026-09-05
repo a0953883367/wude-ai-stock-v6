@@ -74,6 +74,35 @@ def test_download_history_stitches_coretronic_5371_into_3718(monkeypatch):
     assert list(result["3718.TWO"]["close"]) == [81.0, 82.0, 84.0, 85.0]
 
 
+def test_coretronic_uses_tpex_history_when_yahoo_omits_both_symbols(monkeypatch):
+    from data_fetcher import download_history
+
+    legacy = pd.DataFrame({
+        "open": [82.0], "high": [84.0], "low": [81.0],
+        "close": [83.5], "adj close": [83.5], "volume": [2_000_000],
+    }, index=pd.to_datetime(["2026-09-02"]))
+    current = pd.DataFrame({
+        "open": [85.0, 80.0], "high": [86.0, 80.5],
+        "low": [77.2, 75.2], "close": [78.3, 75.5],
+        "adj close": [78.3, 75.5], "volume": [3_493_000, 4_198_000],
+    }, index=pd.to_datetime(["2026-09-03", "2026-09-04"]))
+
+    monkeypatch.setattr("data_fetcher.yf.download", lambda **_: pd.DataFrame())
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    monkeypatch.setattr(
+        "data_fetcher._download_tpex_monthly_history",
+        lambda symbol: current if symbol == "3718.TWO" else legacy,
+    )
+
+    result = download_history(["3718.TWO"])
+
+    assert set(result) == {"3718.TWO"}
+    assert list(result["3718.TWO"].index.strftime("%Y-%m-%d")) == [
+        "2026-09-02", "2026-09-03", "2026-09-04",
+    ]
+    assert result["3718.TWO"].iloc[-1]["close"] == 75.5
+
+
 def test_core_market_does_not_request_excluded_open_market_prices(monkeypatch):
     from data_fetcher import CORE_MARKET, fetch_core_market
 
