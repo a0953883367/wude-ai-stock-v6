@@ -3,11 +3,10 @@
 window.WUDE_LIVE_API_BASE = window.WUDE_LIVE_API_BASE || 'https://wude-ai-stock-v6-production.up.railway.app';
 window.WUDE_LIVE_POLL_MS = window.WUDE_LIVE_POLL_MS || 5000;
 
-// 5371 stopped trading when 3718 began trading on TPEx.  Old generated
-// snapshots can remain cached until the next complete model run, so replace
-// only that retired row with a minimal official-close record.  As soon as a
-// real 3718 analysis row exists it wins and this compatibility bridge retires
-// itself automatically.
+// 5371 and 3718 are different legal entities and security identifiers.  Keep
+// all stored 5371 history/model records intact, but hide the retired security
+// from the active dashboard.  Add a separate minimal 3718 official-close row
+// until the new security has enough history for a complete model run.
 (function installCoretronicTransitionBridge(){
   var nativeFetch=window.fetch.bind(window);
   var reportRow={
@@ -28,9 +27,8 @@ window.WUDE_LIVE_POLL_MS = window.WUDE_LIVE_POLL_MS || 5000;
   function replaceRows(rows,template){
     if(!Array.isArray(rows))return rows;
     var hasCurrent=rows.some(function(row){return code(row)==='3718.TWO';});
-    var hasRetired=rows.some(function(row){return code(row)==='5371.TWO';});
     var output=rows.filter(function(row){return code(row)!=='5371.TWO';});
-    if(hasRetired&&!hasCurrent)output.push(Object.assign({},template));
+    if(!hasCurrent)output.push(Object.assign({},template));
     if(hasCurrent){
       output=output.map(function(row){
         if(code(row)!=='3718.TWO')return row;
