@@ -1,16 +1,16 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-05T10:34:15+08:00",
+  "status": "critical",
+  "status_label": "🔴 需要處理",
+  "checked_at": "2026-09-05T18:32:32+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-05 06:03:35",
-  "report_age_minutes": 270.7,
+  "report_age_minutes": 749.0,
   "counts": {
     "ok": 24,
     "info": 6,
-    "warning": 2,
-    "critical": 0
+    "warning": 1,
+    "critical": 1
   },
   "checks": [
     {
@@ -32,10 +32,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 4.5 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "critical",
+      "label": "異常",
+      "detail": "已 12.5 小時沒有完成新報表",
+      "action": "檢查 GitHub Actions、電腦排程及上游行情來源"
     },
     {
       "code": "report_consistency",
@@ -274,7 +274,7 @@
     }
   ],
   "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲",
+    "檢查 GitHub Actions、電腦排程及上游行情來源",
     "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
   ],
   "safety": {
