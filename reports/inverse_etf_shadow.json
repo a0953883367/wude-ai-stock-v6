@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-09-06 12:07:20",
+  "updated_at": "2026-09-06 20:09:03",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -32,6 +32,7 @@
             "2026-09-03",
             "2026-09-03",
             "2026-09-04",
+            "2026-09-04",
             "2026-09-04"
           ],
           "outcomes": {
@@ -52,9 +53,15 @@
               "session_date": "2026-09-04",
               "actual_etf_return_pct": -1.626,
               "price_source": "inverse_etf_own_ohlc"
+            },
+            "5": {
+              "status": "valid",
+              "session_date": "2026-09-04",
+              "actual_etf_return_pct": -1.626,
+              "price_source": "inverse_etf_own_ohlc"
             }
           },
-          "status": "tracking",
+          "status": "complete",
           "quarantine_reason": null
         },
         {
@@ -75,6 +82,7 @@
           "entry_open": 9.829999923706055,
           "observed_sessions": [
             "2026-09-04",
+            "2026-09-04",
             "2026-09-04"
           ],
           "outcomes": {
@@ -85,6 +93,12 @@
               "price_source": "inverse_etf_own_ohlc"
             },
             "2": {
+              "status": "valid",
+              "session_date": "2026-09-04",
+              "actual_etf_return_pct": -0.203,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "3": {
               "status": "valid",
               "session_date": "2026-09-04",
               "actual_etf_return_pct": -0.203,
@@ -110,7 +124,7 @@
             "median_change_pct": 1.82,
             "breakdown_pct": 1.1
           },
-          "product_session_change_pct": null,
+          "product_session_change_pct": -0.2,
           "product_opening_gap_pct": -1.7,
           "product_volume_ratio_20d": 0.75,
           "no_chase": false
@@ -129,7 +143,7 @@
             "median_change_pct": 1.83,
             "breakdown_pct": 0.0
           },
-          "product_session_change_pct": null,
+          "product_session_change_pct": -0.41,
           "product_opening_gap_pct": -1.62,
           "product_volume_ratio_20d": 1.47,
           "no_chase": false
@@ -147,14 +161,14 @@
           "average_return_pct": 0.102
         },
         "3": {
+          "samples": 2,
+          "win_rate_pct": 0.0,
+          "average_return_pct": -0.914
+        },
+        "5": {
           "samples": 1,
           "win_rate_pct": 0.0,
           "average_return_pct": -1.626
-        },
-        "5": {
-          "samples": 0,
-          "win_rate_pct": null,
-          "average_return_pct": null
         }
       }
     },
