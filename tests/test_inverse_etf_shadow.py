@@ -14,13 +14,16 @@ from inverse_etf_shadow import (
 )
 
 
-def test_current_374_rows_are_mapped_without_touching_formal_models():
+def test_current_active_rows_are_mapped_without_touching_formal_models():
     rows = json.loads(Path("reports/all_analysis.json").read_text(encoding="utf-8"))["data"]
     database = build_mapping_database(rows, updated_at="test")
-    assert database["universe_count"] == 374
-    assert database["summary"]["TW"] == 188
-    assert database["summary"]["US"] == 186
-    assert len(database["mappings"]) == len({row["symbol"] for row in rows})
+    unique_symbols = {row["symbol"] for row in rows}
+    expected_tw = len({row["symbol"] for row in rows if row.get("market") == "TW"})
+    expected_us = len({row["symbol"] for row in rows if row.get("market") == "US"})
+    assert database["universe_count"] == len(unique_symbols)
+    assert database["summary"]["TW"] == expected_tw
+    assert database["summary"]["US"] == expected_us
+    assert len(database["mappings"]) == len(unique_symbols)
     assert database["policy"]["formal_ranking_locked"] is True
     assert database["policy"]["flow_weight_shadow_unchanged"] is True
     assert database["policy"]["medium_45_day_unchanged"] is True

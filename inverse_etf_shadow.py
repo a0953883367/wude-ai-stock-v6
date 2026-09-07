@@ -1,6 +1,6 @@
 """Isolated inverse-ETF mapping database and forward-only shadow ledger.
 
-This module never changes the 374-stock universe, formal scores, rankings,
+This module never changes the active stock universe, formal scores, rankings,
 medium/long statistics, or broker state.  Returns are measured from the ETF's
 own prices because daily-reset funds cannot be modelled as index return times
 the stated leverage across several sessions.

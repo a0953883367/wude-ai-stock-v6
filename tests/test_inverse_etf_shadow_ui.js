@@ -10,6 +10,7 @@ const script=fs.readFileSync('inverse_etf_shadow.js','utf8');
 ].forEach(text=>{if(!(html+script).includes(text))throw new Error('missing inverse ETF UI: '+text);});
 new vm.Script(script,{filename:'inverse_etf_shadow.js'});
 const db=JSON.parse(fs.readFileSync('reports/inverse_etf_database.json','utf8'));
-if(db.universe_count!==374||db.mappings.length!==374)throw new Error('374 mappings are incomplete');
+if(db.universe_count!==db.mappings.length)throw new Error('active-universe mappings are incomplete');
+if(db.universe_count!==db.summary.TW+db.summary.US)throw new Error('market mapping totals are inconsistent');
 if(!db.policy.formal_ranking_locked||!db.policy.flow_weight_shadow_unchanged)throw new Error('isolation locks missing');
 console.log('inverse ETF shadow UI: all tests passed');

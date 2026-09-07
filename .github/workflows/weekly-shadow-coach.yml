@@ -1,0 +1,92 @@
+name: 每週影子教導
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: dry_run 不收費；openai 會使用 API 額度
+        required: true
+        default: dry_run
+        type: choice
+        options:
+          - dry_run
+          - openai
+  schedule:
+    # Sunday 03:00 Asia/Taipei, after Saturday's 21:15 Drive archive.
+    - cron: "0 19 * * 6"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-shadow-coach
+  cancel-in-progress: false
+
+jobs:
+  coach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: 決定免費模擬或API模式
+        id: mode
+        shell: bash
+        env:
+          SCHEDULED_OPENAI_ENABLED: ${{ vars.WEEKLY_SHADOW_OPENAI_ENABLED }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULED_OPENAI_ENABLED" = "true" ]; then
+            echo "value=openai" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=dry_run" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 重新核對Google Drive雲端歷史資料
+        env:
+          GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+        run: |
+          python tools/google_drive_archive.py \
+            --source-dir reports/archive \
+            --root-folder "武得AI歷史庫" \
+            --limit 0 \
+            --result-file google_drive_archive_result.json
+
+      - name: 產生每週影子教導報告
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-luna' }}
+        run: |
+          python weekly_shadow_coach.py \
+            --mode "${{ steps.mode.outputs.value }}" \
+            --archive-result google_drive_archive_result.json
+
+      - name: 保存影子教導紀錄
+        shell: bash
+        run: |
+          git add reports/weekly_shadow_coach.json reports/weekly_shadow_coach_history.json
+          git diff --cached --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "更新每週影子教導紀錄"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: 保存本次安全校驗紀錄
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-shadow-coach-${{ github.run_id }}
+          path: |
+            google_drive_archive_result.json
+            reports/weekly_shadow_coach.json
+          if-no-files-found: ignore
+          retention-days: 90
