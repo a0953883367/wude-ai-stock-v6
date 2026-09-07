@@ -7,6 +7,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+try:
+    from tools.publication_rows import build_publication_rows
+except ModuleNotFoundError:  # Direct execution: python tools/publish_owner_data.py
+    from publication_rows import build_publication_rows
+
 
 OWNER_INGEST_URL = "https://wude-ai-stock-owner.a0953883367.chatgpt.site/api/ingest"
 RETRY_DELAYS = (0, 3, 9)
@@ -17,9 +22,7 @@ CHUNK_SIZE = 20
 def build_payload(report_dir: Path = Path("reports")) -> tuple[bytes, int]:
     """Build the private snapshot; the owner site applies a second allowlist."""
     source = json.loads((report_dir / "all_analysis.json").read_text(encoding="utf-8"))
-    rows = source.get("data")
-    if not isinstance(rows, list) or not rows:
-        raise RuntimeError("reports/all_analysis.json has no rows")
+    rows = build_publication_rows(source, report_dir.parent)
     rotation_path = report_dir / "market_rotation_shadow.json"
     rotation = None
     if rotation_path.exists():

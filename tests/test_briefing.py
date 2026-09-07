@@ -8,9 +8,33 @@ from briefing import (
     _simulation_input_rows,
     _freeze_tw_prices_until_close,
     _institution_coverage_status,
+    _pending_publication_candidates,
     _tw_watchlist_enrichment_ids,
     _tw_intraday_enrichment,
 )
+
+
+def test_pending_publication_candidate_has_price_but_never_a_rank():
+    universe = [
+        {"symbol": "2330.TW", "name": "台積電", "market": "TW", "type": "個股"},
+        {"symbol": "3718.TWO", "name": "中光電投控", "market": "TW", "type": "個股"},
+    ]
+    ranked = [{"symbol": "2330.TW", "overall_rank": 1}]
+    history = {"3718.TWO": [1, 2, 3]}
+    prices = {"3718": {
+        "close": 70.9, "date": "2026-09-07",
+        "tw_official_price_available": True,
+        "tw_price_source": "TPEx OpenAPI", "tw_price_unit": "TWD/shares",
+    }}
+
+    rows = _pending_publication_candidates(universe, ranked, history, prices)
+
+    assert len(rows) == 1
+    assert rows[0]["symbol"] == "3718.TWO"
+    assert rows[0]["history_session_count"] == 3
+    assert rows[0]["price"] == 70.9
+    assert rows[0]["overall_rank"] is None
+    assert rows[0]["trade_guard_blocked"] is True
 
 
 def _session_rows(session_dates: list[str]) -> list[dict]:

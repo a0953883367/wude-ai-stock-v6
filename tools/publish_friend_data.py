@@ -7,6 +7,11 @@ import os
 import urllib.request
 from pathlib import Path
 
+try:
+    from tools.publication_rows import build_publication_rows
+except ModuleNotFoundError:  # Direct execution: python tools/publish_friend_data.py
+    from publication_rows import build_publication_rows
+
 
 def _number(value):
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
@@ -20,6 +25,8 @@ def _midpoint(row, low_key, high_key, fallback_key=None):
 
 
 def _trend(row):
+    if row.get("ranking_pending") is True:
+        return "資料累積中"
     action = str(row.get("action") or "")
     score = _number(row.get("score"))
     if (
@@ -46,6 +53,8 @@ def sanitize(row):
         "rankTier": _number(row.get("overall_rank_tier")),
         "rankingScore": _number(row.get("overall_ranking_score")),
         "eligible": row.get("overall_eligible") is True,
+        "rankingPending": row.get("ranking_pending") is True,
+        "rankingStatus": str(row.get("ranking_status_label") or ""),
         "name": str(row.get("name") or row.get("symbol") or "—"),
         "symbol": str(row.get("symbol") or "—"),
         "market": "台灣" if market == "TW" else "美國" if market == "US" else market,
@@ -135,9 +144,7 @@ def main():
         return 0
 
     source = json.loads(Path("reports/all_analysis.json").read_text(encoding="utf-8"))
-    rows = source.get("data") if isinstance(source, dict) else None
-    if not isinstance(rows, list) or not rows:
-        raise RuntimeError("reports/all_analysis.json has no publishable rows")
+    rows = build_publication_rows(source)
     stocks = [sanitize(row) for row in rows if isinstance(row, dict)]
     try:
         rotation = json.loads(Path("reports/market_rotation_shadow.json").read_text(encoding="utf-8"))

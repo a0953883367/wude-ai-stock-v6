@@ -965,6 +965,50 @@ def _qualified_tw_market_top(ranked: list[dict], limit: int = 5) -> list[dict]:
     ][:limit]
 
 
+def _pending_publication_candidates(
+    universe: list[dict], ranked: list[dict], history: dict, official_prices: dict
+) -> list[dict]:
+    """Expose incomplete active symbols without assigning a formal rank."""
+    ranked_symbols = {str(row.get("symbol") or "").upper() for row in ranked}
+    pending = []
+    for item in universe:
+        symbol = str(item.get("symbol") or "").upper()
+        if not symbol or symbol in ranked_symbols:
+            continue
+        daily = history.get(symbol)
+        session_count = len(daily) if daily is not None else 0
+        official = official_prices.get(symbol.split(".")[0], {})
+        if not isinstance(official, dict):
+            official = {}
+        close = official.get("close")
+        pending.append({
+            **item,
+            "price": close if isinstance(close, (int, float)) else None,
+            "history_session_count": session_count,
+            "official_session_date": official.get("date"),
+            "tw_official_price_available": official.get(
+                "tw_official_price_available"
+            ) is True,
+            "tw_price_source": official.get("tw_price_source"),
+            "tw_price_unit": official.get("tw_price_unit"),
+            "score": None,
+            "entry_score": None,
+            "overall_display_rank": None,
+            "overall_rank": None,
+            "overall_rank_tier": 0,
+            "overall_ranking_score": None,
+            "overall_eligible": False,
+            "ranking_pending": True,
+            "ranking_status": "insufficient_history",
+            "ranking_status_label": "新掛牌／歷史資料累積中",
+            "action": "⚪ 資料累積中，未滿20個交易日，暫無正式排名",
+            "risk": "資料不足，不列入正式排名或自動下單",
+            "trade_guard_blocked": True,
+            "formal_ranking_unchanged": True,
+        })
+    return pending
+
+
 def _simulation_input_rows(
     ranking_rows: list[dict], all_analysis_rows: list[dict]
 ) -> list[dict]:
@@ -1802,6 +1846,9 @@ def main() -> int:
         "unavailable_count": max(0, len(universe) - len(ranked)),
         "institution_status": institution_status,
         "data": ranked,
+        "pending_candidates": _pending_publication_candidates(
+            universe, ranked, history, tw_official.get("prices", {})
+        ),
     }
     all_analysis_path = SETTINGS.reports_dir / "all_analysis.json"
     all_analysis_tmp = SETTINGS.reports_dir / "all_analysis.tmp"
