@@ -138,8 +138,10 @@ def _healthy_reports(tmp_path: Path) -> None:
     _write(tmp_path / "corporate_actions_shadow.json", {
         "status": "ok",
         "summary": {
-            "tracked_stocks": 256,
-            "officially_matched": 256,
+            "tracked_total": 374,
+            "tracked_stocks": 306,
+            "tracked_etfs": 68,
+            "officially_matched": 374,
             "event_count": 0,
             "warning_count": 0,
             "critical_count": 0,
@@ -156,6 +158,8 @@ def _healthy_reports(tmp_path: Path) -> None:
             "places_orders": False,
             "requires_manual_approval": True,
             "missing_row_is_not_delisting": True,
+            "stocks_and_etfs_separated": True,
+            "etf_missing_row_is_not_liquidation": True,
         },
     })
 
