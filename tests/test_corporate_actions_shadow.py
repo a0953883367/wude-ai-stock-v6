@@ -4,12 +4,13 @@ from pathlib import Path
 
 from corporate_actions_shadow import (
     POLICY,
+    _fetch_text,
     _request_headers,
     build_shadow_report,
     normalize_sec_registry,
+    normalize_sec_entity_search,
     normalize_tw_announcements,
     normalize_tw_registry,
-    parse_nasdaq_halt_directory,
     parse_nasdaq_halts,
 )
 
@@ -80,10 +81,19 @@ def test_official_registries_use_stable_company_identifiers() -> None:
     })
     assert fallback[0]["entity_id"] == "US-CIK-0000320193"
 
+    search = normalize_sec_entity_search({
+        "hits": {"hits": [{
+            "_id": "1045810",
+            "_source": {"entity": "NVIDIA CORP (NVDA)", "tickers": "NVDA"},
+        }]}
+    }, "NVDA")
+    assert search[0]["entity_id"] == "US-CIK-0001045810"
+    assert search[0]["name"] == "NVIDIA CORP"
+
 
 def test_us_official_sources_receive_site_compatible_identification() -> None:
     sec = _request_headers("https://www.sec.gov/files/company_tickers_exchange.json", accept="application/json")
-    nasdaq = _request_headers("https://www.nasdaqtrader.com/dynamic/SymDir/tradinghalts.txt", accept="text/plain")
+    nasdaq = _request_headers("https://www.nasdaqtrader.com/rss.aspx", accept="text/xml")
 
     assert "@users.noreply.github.com" in sec["User-Agent"]
     assert nasdaq["User-Agent"].startswith("Mozilla/5.0")
@@ -193,13 +203,25 @@ def test_official_event_parsers_classify_halt_resume_and_merger() -> None:
     assert parsed["symbol"] == "MSFT"
     assert parsed["type"] == "TRADING_HALT"
 
-    directory = """Halt Date|Halt Time|Issue Symbol|Security Name|Market|Reason Codes|Pause Threshold Price|Resumption Date|Resumption Quote Time|Resumption Trade Time
-09/07/2026|09:30:00|NVDA|NVIDIA CORP|Q|T1||||
-09/07/2026|09:30:00|MSFT|MICROSOFT CORP|Q|T1||09/07/2026|10:00:00|10:05:00
-File Creation Time: 0907202612:00|||||||||
-"""
-    parsed_directory = parse_nasdaq_halt_directory(directory)
-    assert [row["type"] for row in parsed_directory] == ["TRADING_HALT", "TRADING_RESUMED"]
+
+
+def test_nasdaq_utf8_bom_is_decoded_before_xml_parse() -> None:
+    xml = "<rss><channel><item><title>Halt: NVDA</title></item></channel></rss>"
+
+    class Response:
+        content = b"\xef\xbb\xbf" + xml.encode("utf-8")
+        text = "unused"
+
+        @staticmethod
+        def raise_for_status() -> None:
+            return None
+
+    class Session:
+        @staticmethod
+        def get(*args, **kwargs):
+            return Response()
+
+    assert _fetch_text(Session(), "https://www.nasdaqtrader.com/rss.aspx") == xml
 
 
 def test_event_source_failure_is_visible_but_does_not_change_formal_data() -> None:
