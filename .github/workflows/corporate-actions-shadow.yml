@@ -47,6 +47,8 @@ jobs:
           report = json.loads(Path("reports/corporate_actions_shadow.json").read_text(encoding="utf-8"))
           summary = report["summary"]
           failed = [name for name, row in report["source_health"].items() if not row.get("ok")]
+          for name in failed:
+              print(f"{name}: {report['source_health'][name].get('error') or 'unknown error'}")
           print(
               f"official sources: matched={summary['officially_matched']}/"
               f"{summary['tracked_stocks']} events={summary['event_count']} failed={failed}"

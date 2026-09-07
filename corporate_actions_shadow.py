@@ -489,7 +489,7 @@ def build_shadow_report(
 def _fetch_json(session: Any, url: str) -> Any:
     response = session.get(
         url,
-        headers={"User-Agent": "wude-ai-stock-v6/1.0 (GitHub a0953883367)"},
+        headers=_request_headers(url, accept="application/json"),
         timeout=30,
     )
     response.raise_for_status()
@@ -499,11 +499,23 @@ def _fetch_json(session: Any, url: str) -> Any:
 def _fetch_text(session: Any, url: str) -> str:
     response = session.get(
         url,
-        headers={"User-Agent": "wude-ai-stock-v6/1.0 (GitHub a0953883367)"},
+        headers=_request_headers(url, accept="application/rss+xml, application/xml, text/xml"),
         timeout=30,
     )
     response.raise_for_status()
     return response.text
+
+
+def _request_headers(url: str, *, accept: str) -> dict[str, str]:
+    # SEC asks automated clients to declare an application and contact. Nasdaq
+    # rejects some generic library user agents even for its public RSS feed.
+    if "sec.gov" in url:
+        user_agent = "wude-ai-stock-v6/1.0 314874808+a0953883367@users.noreply.github.com"
+    elif "nasdaqtrader.com" in url:
+        user_agent = "Mozilla/5.0 (compatible; wude-ai-stock-v6/1.0; +https://github.com/a0953883367/wude-ai-stock-v6)"
+    else:
+        user_agent = "wude-ai-stock-v6/1.0 (+https://github.com/a0953883367/wude-ai-stock-v6)"
+    return {"User-Agent": user_agent, "Accept": accept, "Accept-Encoding": "gzip, deflate"}
 
 
 def fetch_official_sources(
