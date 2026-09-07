@@ -56,6 +56,65 @@ def _check(code: str, title: str, level: str, detail: str, action: str = "") -> 
     }
 
 
+def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
+    """Expose lifecycle monitoring without granting it production authority."""
+    if not payload:
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "info",
+            "尚未建立官方公司事件影子基準；正式名單、歷史價格與排名不受影響",
+            "下一次每日盤前影子排程建立基準；不得把官方名單暫時缺值當成下市",
+        )
+
+    policy = payload.get("policy") if isinstance(payload.get("policy"), dict) else {}
+    locked = (
+        policy.get("shadow_only") is True
+        and policy.get("updates_active_universe") is False
+        and policy.get("updates_display_names") is False
+        and policy.get("joins_price_history") is False
+        and policy.get("deletes_history") is False
+        and policy.get("changes_rankings") is False
+        and policy.get("changes_weights") is False
+        and policy.get("places_orders") is False
+        and policy.get("requires_manual_approval") is True
+        and policy.get("missing_row_is_not_delisting") is True
+    )
+    if not locked:
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "critical",
+            "公司事件報告缺少完整影子隔離或防刪除保證",
+            "停止採用該報告；禁止改名、換代號、拼接價格、刪除歷史或下單",
+        )
+
+    summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    tracked = int(summary.get("tracked_stocks") or 0)
+    matched = int(summary.get("officially_matched") or 0)
+    events = int(summary.get("event_count") or 0)
+    warnings = int(summary.get("warning_count") or 0)
+    critical = int(summary.get("critical_count") or 0)
+    source_failures = int(summary.get("source_failure_count") or 0)
+    status = str(payload.get("status") or "warning").lower()
+    detail = f"官方身分符合 {matched}/{tracked} 檔；事件 {events} 件；來源失敗 {source_failures} 個"
+    if status == "critical" or critical:
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "critical", detail,
+            "人工核對公司識別碼、市場與生效日；禁止自動接續歷史價格",
+        )
+    if status == "warning" or warnings or source_failures:
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "warning", detail,
+            "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+        )
+    if status == "baseline":
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "info",
+            detail + "；已建立第一份影子基準，等待下次比較",
+        )
+    return _check(
+        "corporate_actions_shadow", "股票更名／停復牌監控", "ok",
+        detail + "；未發現需人工處理的公司事件",
+    )
+
+
 def _http_probe(url: str, *, expect_json: bool = False, timeout: float = 10.0) -> dict[str, Any]:
     """Probe a public runtime endpoint without sending credentials."""
     checked_url = str(url or "").strip()
@@ -474,6 +533,7 @@ def build_guard(
     official_financial = _load(reports_dir / "tw_financial_official_cache.json")
     archive_health = _load(reports_dir / "history_archive_health.json")
     evidence_backup_health = _load(reports_dir / "prediction_evidence_backup_health.json")
+    corporate_actions = _load(reports_dir / "corporate_actions_shadow.json")
     checks: list[dict[str, Any]] = []
 
     if archive_health:
@@ -519,6 +579,8 @@ def build_guard(
                 "影子證據備份未通過校驗或隔離保證；正式流程仍保持鎖定",
                 "保留原始資料庫並重新建立私人備份；不得刪除歷史資料",
             ))
+
+    checks.append(_corporate_actions_check(corporate_actions))
 
     updated = _parse_taipei(latest.get("updated_at"))
     if not updated:

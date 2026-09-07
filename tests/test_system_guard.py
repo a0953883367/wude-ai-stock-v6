@@ -135,6 +135,29 @@ def _healthy_reports(tmp_path: Path) -> None:
     _write(tmp_path / "tw_financial_official_cache.json", {
         "requested_count": 67, "available_count": 66, "coverage_pct": 98.51,
     })
+    _write(tmp_path / "corporate_actions_shadow.json", {
+        "status": "ok",
+        "summary": {
+            "tracked_stocks": 256,
+            "officially_matched": 256,
+            "event_count": 0,
+            "warning_count": 0,
+            "critical_count": 0,
+            "source_failure_count": 0,
+        },
+        "policy": {
+            "shadow_only": True,
+            "updates_active_universe": False,
+            "updates_display_names": False,
+            "joins_price_history": False,
+            "deletes_history": False,
+            "changes_rankings": False,
+            "changes_weights": False,
+            "places_orders": False,
+            "requires_manual_approval": True,
+            "missing_row_is_not_delisting": True,
+        },
+    })
 
 
 def _healthy_live_probe() -> dict:
@@ -253,6 +276,47 @@ def test_unverified_private_evidence_backup_turns_guard_yellow(tmp_path: Path) -
     assert guard["status"] == "warning"
     assert guard["safety"]["changes_rankings"] is False
     assert guard["safety"]["places_orders"] is False
+
+
+def test_corporate_action_warning_is_visible_without_changing_formal_system(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    corporate = json.loads((tmp_path / "corporate_actions_shadow.json").read_text(encoding="utf-8"))
+    corporate["status"] = "warning"
+    corporate["summary"].update({"event_count": 1, "warning_count": 1})
+    _write(tmp_path / "corporate_actions_shadow.json", corporate)
+
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+    )
+
+    check = next(item for item in guard["checks"] if item["code"] == "corporate_actions_shadow")
+    assert guard["status"] == "warning"
+    assert check["level"] == "warning"
+    assert guard["safety"]["changes_rankings"] is False
+    assert guard["safety"]["places_orders"] is False
+    assert guard["safety"]["deletes_data"] is False
+
+
+def test_corporate_action_policy_violation_turns_guard_red(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    corporate = json.loads((tmp_path / "corporate_actions_shadow.json").read_text(encoding="utf-8"))
+    corporate["policy"]["joins_price_history"] = True
+    _write(tmp_path / "corporate_actions_shadow.json", corporate)
+
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+    )
+
+    check = next(item for item in guard["checks"] if item["code"] == "corporate_actions_shadow")
+    assert guard["status"] == "critical"
+    assert check["level"] == "critical"
+    assert "禁止" in check["action"]
 
 
 def test_validation_progress_stall_is_visible_without_changing_models(tmp_path: Path) -> None:
