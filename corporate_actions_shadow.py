@@ -23,6 +23,8 @@ import xml.etree.ElementTree as ET
 
 import requests
 
+from watchlist import load_watchlist
+
 
 SOURCE_URLS = {
     "twse_registry": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
@@ -33,6 +35,10 @@ SOURCE_URLS = {
     "twse_announcements": "https://openapi.twse.com.tw/v1/opendata/t187ap04_L",
     "tpex_announcements": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap04_O",
     "nasdaq_halts": "https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts",
+    "twse_securities": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+    "tpex_securities": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+    "nasdaq_listed": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
+    "other_listed": "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
 }
 
 MAX_EVENTS = 200
@@ -51,6 +57,8 @@ POLICY = {
     "places_orders": False,
     "requires_manual_approval": True,
     "missing_row_is_not_delisting": True,
+    "stocks_and_etfs_separated": True,
+    "etf_missing_row_is_not_liquidation": True,
 }
 
 EVENT_LABELS = {
@@ -63,6 +71,7 @@ EVENT_LABELS = {
     "TRADING_RESUMED": "恢復交易",
     "DELISTING": "下市／終止上市櫃",
     "MERGER_OR_SHARE_EXCHANGE": "合併／換股",
+    "ETF_LIQUIDATION": "ETF清算／終止上市",
 }
 
 
@@ -100,28 +109,51 @@ def _normalized_name(value: str) -> str:
     return re.sub(r"(?:股份有限公司|有限公司|CORPORATION|CORP\.?|INC\.?|LTD\.?)$", "", text)
 
 
-def _tracked_stocks(active_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _tracked_securities(active_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Normalize both dashboard rows and canonical fixed-watchlist rows."""
     tracked: dict[str, dict[str, Any]] = {}
     for row in active_payload.get("data") or []:
-        if not isinstance(row, dict) or str(row.get("類型") or "個股") != "個股":
+        if not isinstance(row, dict):
             continue
-        symbol = str(row.get("代號") or "").strip().upper()
-        market_text = str(row.get("市場") or "")
+        symbol = str(row.get("代號") or row.get("symbol") or "").strip().upper()
+        market_text = str(row.get("市場") or row.get("market") or "")
         if not symbol:
             continue
-        if "台灣" in market_text and symbol.endswith((".TW", ".TWO")):
+        if ("台灣" in market_text or market_text.upper() == "TW") and symbol.endswith((".TW", ".TWO")):
             market = "TW"
-        elif "美國" in market_text and not symbol.endswith((".TW", ".TWO")):
+        elif ("美國" in market_text or market_text.upper() == "US") and not symbol.endswith((".TW", ".TWO")):
             market = "US"
         else:
             continue
+        raw_type = str(row.get("類型") or row.get("type") or "個股")
+        asset_type = "ETF" if "ETF" in raw_type.upper() else "STOCK"
         tracked[symbol] = {
             "symbol": symbol,
-            "display_name": str(row.get("股票") or symbol),
+            "display_name": str(row.get("股票") or row.get("name") or symbol),
             "market": market,
-            "type": "個股",
+            "type": "ETF" if asset_type == "ETF" else "個股",
+            "asset_type": asset_type,
         }
     return tracked
+
+
+def _tracked_stocks(active_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Backward-compatible individual-stock view used by the SEC snapshot tool."""
+    return {
+        symbol: row for symbol, row in _tracked_securities(active_payload).items()
+        if row["asset_type"] == "STOCK"
+    }
+
+
+def _combined_active_payload(
+    active_payload: dict[str, Any],
+    watchlist_rows: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    """Return the exact deduplicated universe used by the formal briefing."""
+    combined = _tracked_securities(active_payload)
+    fixed = _tracked_securities({"data": list(watchlist_rows)})
+    combined.update(fixed)
+    return {"data": list(combined.values())}
 
 
 def normalize_tw_registry(rows: Iterable[dict[str, Any]], *, exchange: str) -> list[dict[str, Any]]:
@@ -186,6 +218,87 @@ def normalize_sec_registry(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return normalized
 
 
+def normalize_tw_security_registry(
+    rows: Iterable[dict[str, Any]], *, exchange: str
+) -> list[dict[str, Any]]:
+    """Normalize official all-security quotes for ETF lifecycle coverage.
+
+    These feeds prove that a security code is currently listed and expose its
+    current display name.  The generated identifier is deliberately marked as
+    symbol-scoped: unlike a company business number it must never be used to
+    splice history across a ticker change.
+    """
+    suffix = ".TW" if exchange == "TWSE" else ".TWO"
+    source = "twse_securities" if exchange == "TWSE" else "tpex_securities"
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        code = _text(
+            row,
+            "Code",
+            "SecuritiesCompanyCode",
+            "SecuritiesCode",
+            "股票代號",
+            "證券代號",
+        )
+        name = _text(
+            row,
+            "Name",
+            "CompanyName",
+            "SecuritiesCompanyName",
+            "SecuritiesName",
+            "股票名稱",
+            "證券名稱",
+        )
+        if not code:
+            continue
+        symbol = f"{code.upper()}{suffix}"
+        normalized.append({
+            "symbol": symbol,
+            "market": "TW",
+            "exchange": exchange,
+            "name": name or code,
+            "legal_name": "",
+            "entity_id": f"TW-ISSUE-{exchange}-{code.upper()}",
+            "identity_scope": "symbol",
+            "source": source,
+        })
+    return normalized
+
+
+def parse_nasdaq_symbol_directory(text: str, *, source: str) -> list[dict[str, Any]]:
+    """Normalize Nasdaq Trader's current U.S. listed-security directories."""
+    lines = [line.strip() for line in str(text or "").lstrip("\ufeff").splitlines() if line.strip()]
+    if not lines:
+        raise SourceError(f"empty Nasdaq symbol directory: {source}")
+    header = [value.strip() for value in lines[0].split("|")]
+    normalized = []
+    for line in lines[1:]:
+        values = line.split("|")
+        row = dict(zip(header, values))
+        if str(next(iter(values), "")).startswith("File Creation Time"):
+            continue
+        symbol = _text(row, "Symbol", "ACT Symbol", "NASDAQ Symbol").upper()
+        if not symbol or _text(row, "Test Issue").upper() == "Y":
+            continue
+        normalized.append({
+            "symbol": symbol,
+            "market": "US",
+            "exchange": _text(row, "Exchange", "Market Category"),
+            "name": _text(row, "Security Name") or symbol,
+            "legal_name": "",
+            "entity_id": f"US-ISSUE-{symbol}",
+            "identity_scope": "symbol",
+            "is_etf": _text(row, "ETF").upper() == "Y",
+            "financial_status": _text(row, "Financial Status"),
+            "source": source,
+        })
+    if not normalized:
+        raise SourceError(f"invalid Nasdaq symbol directory: {source}")
+    return normalized
+
+
 def normalize_sec_entity_search(payload: dict[str, Any], symbol: str) -> list[dict[str, Any]]:
     """Normalize an exact ticker hit from SEC EDGAR full-text entity search."""
     wanted = str(symbol or "").strip().upper()
@@ -226,6 +339,7 @@ def _classify_announcement(text: str) -> str:
     patterns = (
         ("TRADING_RESUMED", r"恢復(?:交易|買賣)"),
         ("TRADING_HALT", r"(?:暫停|停止)(?:交易|買賣)"),
+        ("ETF_LIQUIDATION", r"(?:ETF|基金|信託).{0,16}(?:清算|終止信託|終止上市|終止上櫃)"),
         ("DELISTING", r"(?:終止上市|終止上櫃|下市|下櫃)"),
         ("SYMBOL_CHANGE", r"(?:股票|證券)?代號.{0,8}(?:變更|改為)"),
         ("NAME_CHANGE", r"(?:公司)?(?:名稱|簡稱).{0,8}(?:變更|更名|改為)"),
@@ -351,11 +465,12 @@ def build_shadow_report(
     generated_at: str,
     event_source_health: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    tracked = _tracked_stocks(active_payload)
+    tracked = _tracked_securities(active_payload)
     previous_records = previous_registry.get("records") if isinstance(previous_registry.get("records"), dict) else {}
     previous_missing = previous_registry.get("missing_observations") if isinstance(previous_registry.get("missing_observations"), dict) else {}
     source_health = {}
-    official: dict[str, dict[str, Any]] = {}
+    official_by_source: dict[str, dict[str, dict[str, Any]]] = {}
+    stable_official: dict[str, dict[str, Any]] = {}
     for source in registry_sources:
         name = str(source.get("source") or "unknown")
         ok = source.get("ok") is True
@@ -370,9 +485,14 @@ def build_shadow_report(
             },
         }
         if ok:
+            source_records: dict[str, dict[str, Any]] = {}
             for record in records:
                 if isinstance(record, dict) and record.get("symbol"):
-                    official[str(record["symbol"]).upper()] = dict(record)
+                    symbol = str(record["symbol"]).upper()
+                    source_records[symbol] = dict(record)
+                    if str(record.get("identity_scope") or "stable") == "stable":
+                        stable_official[symbol] = dict(record)
+            official_by_source[name] = source_records
     source_health.update(event_source_health or {})
 
     events: list[dict[str, Any]] = []
@@ -385,27 +505,75 @@ def build_shadow_report(
     }
     current_by_entity = {
         str(row.get("entity_id")): row
-        for row in official.values()
+        for row in stable_official.values()
         if isinstance(row, dict) and row.get("entity_id")
     }
     is_baseline = not bool(previous_records)
 
     for symbol, tracked_row in tracked.items():
-        required_source = "sec_registry"
-        if symbol.endswith(".TWO"):
-            required_source = "tpex_registry"
-        elif symbol.endswith(".TW"):
-            required_source = "twse_registry"
-        source_ok = bool((source_health.get(required_source) or {}).get("ok"))
-        current = official.get(symbol)
+        is_etf = tracked_row["asset_type"] == "ETF"
+        if tracked_row["market"] == "US":
+            preferred_sources = (
+                ("us_symbol_directory",)
+                if is_etf else
+                ("sec_registry", "us_symbol_directory")
+            )
+        elif symbol.endswith(".TWO"):
+            preferred_sources = (
+                ("tpex_securities",)
+                if is_etf else
+                ("tpex_registry", "tpex_securities")
+            )
+        else:
+            preferred_sources = (
+                ("twse_securities",)
+                if is_etf else
+                ("twse_registry", "twse_securities")
+            )
+        required_source = preferred_sources[0]
+        source_ok = any(bool((source_health.get(name) or {}).get("ok")) for name in preferred_sources)
+        current = next(
+            (
+                (official_by_source.get(name) or {}).get(symbol)
+                for name in preferred_sources
+                if (official_by_source.get(name) or {}).get(symbol)
+            ),
+            None,
+        )
         previous = previous_records.get(symbol) if isinstance(previous_records.get(symbol), dict) else None
         if current:
-            current = {**current, "display_name": tracked_row["display_name"], "present": True}
+            # A general exchange directory proves that the symbol is active,
+            # but it must never downgrade a previously verified company ID.
+            if (
+                previous
+                and str(previous.get("identity_scope") or "stable") == "stable"
+                and str(current.get("identity_scope") or "stable") == "symbol"
+            ):
+                current = {
+                    **current,
+                    "entity_id": previous.get("entity_id"),
+                    "identity_scope": "stable",
+                    "identity_source_unavailable": True,
+                }
+            current = {
+                **current,
+                "display_name": tracked_row["display_name"],
+                "asset_type": tracked_row["asset_type"],
+                "present": True,
+            }
             current_records[symbol] = current
             if previous:
                 old_entity = str(previous.get("entity_id") or "")
                 new_entity = str(current.get("entity_id") or "")
-                if old_entity and new_entity and old_entity != new_entity:
+                old_scope = str(previous.get("identity_scope") or "stable")
+                new_scope = str(current.get("identity_scope") or "stable")
+                if (
+                    old_scope == "stable"
+                    and new_scope == "stable"
+                    and old_entity
+                    and new_entity
+                    and old_entity != new_entity
+                ):
                     events.append(_event(
                         "IDENTITY_CONFLICT", level="critical", symbol=symbol,
                         old_entity_id=old_entity, entity_id=new_entity,
@@ -437,8 +605,13 @@ def build_shadow_report(
                 event_type, symbol=symbol,
                 entity_id=(previous or {}).get("entity_id"),
                 source=required_source,
+                asset_type=tracked_row["asset_type"],
                 consecutive_observations=count,
-                action="停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
+                action=(
+                    "停止把缺值冒充今日價格並等待人工核對；不得把ETF缺值當成清算，不得刪除歷史資料"
+                    if is_etf else
+                    "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料"
+                ),
             ))
 
     if not is_baseline:
@@ -449,7 +622,12 @@ def build_shadow_report(
                 continue
             old_symbol = str(previous.get("symbol") or "").upper()
             new_symbol = str(current.get("symbol") or "").upper()
-            if old_symbol in tracked_symbols and new_symbol and old_symbol != new_symbol:
+            if (
+                old_symbol in tracked_symbols
+                and tracked[old_symbol]["asset_type"] == "STOCK"
+                and new_symbol
+                and old_symbol != new_symbol
+            ):
                 events.append(_event(
                     "SYMBOL_CHANGE", old_symbol=old_symbol, new_symbol=new_symbol,
                     symbol=old_symbol, entity_id=entity_id, source=current.get("source"),
@@ -470,11 +648,13 @@ def build_shadow_report(
             "NAME_CHANGE": "只建立顯示名稱候選；代號、歷史價格、預測與學習紀錄保持不變",
             "SYMBOL_CHANGE": "建立新舊代號候選對照；核對公司識別碼與生效日後才可人工核准",
             "MERGER_OR_SHARE_EXCHANGE": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
+            "ETF_LIQUIDATION": "停止ETF影子買進資格並等待人工核對清算日；不得刪除歷史價格或自動換成其他ETF",
         }
         events.append(_event(
             event_type,
             level="info" if event_type in {"NAME_CHANGE", "TRADING_RESUMED"} else "warning",
             symbol=str(raw.get("symbol") or "").upper(),
+            asset_type=tracked[str(raw.get("symbol") or "").upper()]["asset_type"],
             source=raw.get("source"), source_date=raw.get("source_date"),
             headline=raw.get("headline"),
             action=actions.get(event_type, "等待人工核對；正式名單、歷史資料與排名不自動變更"),
@@ -486,8 +666,12 @@ def build_shadow_report(
         key=lambda row: ({"critical": 2, "warning": 1, "info": 0}.get(str(row.get("level")), 0), str(row.get("event_id"))),
         reverse=True,
     )[:MAX_EVENTS]
+    registry_source_names = (
+        "twse_registry", "tpex_registry", "sec_registry",
+        "twse_securities", "tpex_securities", "us_symbol_directory",
+    )
     registry_source_failures = [
-        name for name in ("twse_registry", "tpex_registry", "sec_registry")
+        name for name in registry_source_names
         if name in source_health and not (source_health.get(name) or {}).get("ok")
     ]
     event_source_failures = [
@@ -509,13 +693,30 @@ def build_shadow_report(
         status = "ok"
 
     matched = sum(bool(row.get("present")) for row in current_records.values())
+    matched_stocks = sum(
+        bool(current_records.get(symbol, {}).get("present"))
+        for symbol, row in tracked.items() if row["asset_type"] == "STOCK"
+    )
+    matched_etfs = sum(
+        bool(current_records.get(symbol, {}).get("present"))
+        for symbol, row in tracked.items() if row["asset_type"] == "ETF"
+    )
+    tracked_stocks = sum(row["asset_type"] == "STOCK" for row in tracked.values())
+    tracked_etfs = len(tracked) - tracked_stocks
+    available_registry_sources = sum(
+        bool((source_health.get(name) or {}).get("ok")) for name in registry_source_names
+    )
     report = {
         "schema": "wude.corporate_actions_shadow.v1",
         "generated_at": generated_at,
         "status": status,
         "summary": {
-            "tracked_stocks": len(tracked),
+            "tracked_total": len(tracked),
+            "tracked_stocks": tracked_stocks,
+            "tracked_etfs": tracked_etfs,
             "officially_matched": matched,
+            "officially_matched_stocks": matched_stocks,
+            "officially_matched_etfs": matched_etfs,
             "unmatched": len(tracked) - matched,
             "event_count": len(events),
             "warning_count": sum(row.get("level") == "warning" for row in events),
@@ -523,6 +724,7 @@ def build_shadow_report(
             "source_failure_count": len(source_failures),
             "registry_source_failure_count": len(registry_source_failures),
             "event_source_failure_count": len(event_source_failures),
+            "available_registry_source_count": available_registry_sources,
         },
         "events": events,
         "source_health": source_health,
@@ -672,6 +874,8 @@ def fetch_official_sources(
         ("twse_registry", lambda value: normalize_tw_registry(value, exchange="TWSE")),
         ("tpex_registry", lambda value: normalize_tw_registry(value, exchange="TPEx")),
         ("sec_registry", normalize_sec_registry),
+        ("twse_securities", lambda value: normalize_tw_security_registry(value, exchange="TWSE")),
+        ("tpex_securities", lambda value: normalize_tw_security_registry(value, exchange="TPEx")),
     )
     for name, normalizer in registry_specs:
         try:
@@ -694,6 +898,32 @@ def fetch_official_sources(
             })
         except Exception as exc:
             registry_sources.append({"source": name, "ok": False, "records": [], "error": f"{type(exc).__name__}: {exc}"})
+
+    try:
+        listed = parse_nasdaq_symbol_directory(
+            _fetch_text(session, SOURCE_URLS["nasdaq_listed"]),
+            source="us_symbol_directory",
+        )
+        other = parse_nasdaq_symbol_directory(
+            _fetch_text(session, SOURCE_URLS["other_listed"]),
+            source="us_symbol_directory",
+        )
+        records = {row["symbol"]: row for row in [*listed, *other]}
+        registry_sources.append({
+            "source": "us_symbol_directory",
+            "ok": True,
+            "records": list(records.values()),
+            "url": f"{SOURCE_URLS['nasdaq_listed']} + {SOURCE_URLS['other_listed']}",
+            "mode": "live",
+            "live_ok": True,
+        })
+    except Exception as exc:
+        registry_sources.append({
+            "source": "us_symbol_directory",
+            "ok": False,
+            "records": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        })
 
     announcements = []
     event_source_health: dict[str, dict[str, Any]] = {}
@@ -745,10 +975,15 @@ def run_shadow(
     session: Any | None = None,
     generated_at: str = "",
     sec_snapshot_path: Path = Path("official_data/sec_company_tickers_snapshot.json"),
+    watchlist_rows: Iterable[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     active_payload = _read_json(universe_path, {})
     if not isinstance(active_payload, dict) or not active_payload.get("data"):
         raise RuntimeError("cannot read active stock universe")
+    active_payload = _combined_active_payload(
+        active_payload,
+        load_watchlist() if watchlist_rows is None else watchlist_rows,
+    )
     registry_path = reports_dir / "corporate_actions_registry.json"
     previous = _read_json(registry_path, {})
     if not isinstance(previous, dict):
@@ -806,11 +1041,12 @@ def main() -> int:
     print(
         "corporate actions shadow: "
         f"status={report['status']} matched={summary['officially_matched']}/"
-        f"{summary['tracked_stocks']} events={summary['event_count']}"
+        f"{summary['tracked_total']} stocks={summary['tracked_stocks']} "
+        f"etfs={summary['tracked_etfs']} events={summary['event_count']}"
     )
     # Partial official-source outages remain visible as yellow.  If every
     # identity registry failed, fail the workflow after persisting diagnostics.
-    return 1 if summary["registry_source_failure_count"] == 3 else 0
+    return 1 if summary["available_registry_source_count"] == 0 else 0
 
 
 if __name__ == "__main__":
