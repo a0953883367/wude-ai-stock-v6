@@ -1,0 +1,108 @@
+{
+  "schema": "wude.corporate_actions_shadow.v1",
+  "generated_at": "2026-09-07T21:24:19.091492+00:00",
+  "status": "baseline",
+  "summary": {
+    "tracked_total": 374,
+    "tracked_stocks": 306,
+    "tracked_etfs": 68,
+    "officially_matched": 370,
+    "officially_matched_stocks": 303,
+    "officially_matched_etfs": 67,
+    "unmatched": 4,
+    "event_count": 0,
+    "warning_count": 0,
+    "critical_count": 0,
+    "source_failure_count": 0,
+    "registry_source_failure_count": 0,
+    "event_source_failure_count": 0,
+    "available_registry_source_count": 6
+  },
+  "events": [],
+  "source_health": {
+    "twse_registry": {
+      "ok": true,
+      "record_count": 1094,
+      "error": "",
+      "url": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
+      "mode": "live",
+      "live_ok": true
+    },
+    "tpex_registry": {
+      "ok": true,
+      "record_count": 890,
+      "error": "",
+      "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
+      "mode": "live",
+      "live_ok": true
+    },
+    "sec_registry": {
+      "ok": true,
+      "record_count": 133,
+      "error": "",
+      "url": "https://www.sec.gov/files/company_tickers_exchange.json",
+      "mode": "verified_snapshot",
+      "live_ok": false,
+      "snapshot_generated_at": "2026-09-07T11:26:08.325758+00:00",
+      "snapshot_age_days": 0.415,
+      "snapshot_records_sha256": "bda80949d27315c26dfdcd0356303c1c3065f3d08ff2b90a8aecaeb7436c456f",
+      "live_error": "https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI"
+    },
+    "twse_securities": {
+      "ok": true,
+      "record_count": 1382,
+      "error": "",
+      "url": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+      "mode": "live",
+      "live_ok": true
+    },
+    "tpex_securities": {
+      "ok": true,
+      "record_count": 10984,
+      "error": "",
+      "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+      "mode": "live",
+      "live_ok": true
+    },
+    "us_symbol_directory": {
+      "ok": true,
+      "record_count": 13155,
+      "error": "",
+      "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
+      "mode": "live",
+      "live_ok": true
+    },
+    "twse_announcements": {
+      "ok": true,
+      "record_count": 6,
+      "event_count": 4,
+      "error": ""
+    },
+    "tpex_announcements": {
+      "ok": true,
+      "record_count": 4,
+      "event_count": 4,
+      "error": ""
+    },
+    "nasdaq_halts": {
+      "ok": true,
+      "record_count": 24,
+      "event_count": 24,
+      "error": ""
+    }
+  },
+  "policy": {
+    "shadow_only": true,
+    "updates_active_universe": false,
+    "updates_display_names": false,
+    "joins_price_history": false,
+    "deletes_history": false,
+    "changes_rankings": false,
+    "changes_weights": false,
+    "places_orders": false,
+    "requires_manual_approval": true,
+    "missing_row_is_not_delisting": true,
+    "stocks_and_etfs_separated": true,
+    "etf_missing_row_is_not_liquidation": true
+  }
+}
