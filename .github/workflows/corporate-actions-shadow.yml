@@ -7,6 +7,7 @@ on:
     paths:
       - "corporate_actions_shadow.py"
       - "search_data.json"
+      - "watchlist.py"
       - "tests/test_corporate_actions_shadow.py"
       - ".github/workflows/corporate-actions-shadow.yml"
   schedule:
@@ -44,8 +45,15 @@ jobs:
           import json
           from pathlib import Path
 
+          from corporate_actions_shadow import _combined_active_payload, _tracked_securities
+          from watchlist import load_watchlist
+
           report = json.loads(Path("reports/corporate_actions_shadow.json").read_text(encoding="utf-8"))
           summary = report["summary"]
+          search = json.loads(Path("search_data.json").read_text(encoding="utf-8"))
+          expected = _tracked_securities(_combined_active_payload(search, load_watchlist()))
+          expected_stocks = sum(row["asset_type"] == "STOCK" for row in expected.values())
+          expected_etfs = len(expected) - expected_stocks
           failed = [name for name, row in report["source_health"].items() if not row.get("ok")]
           modes = {
               name: row.get("mode", "live")
@@ -55,9 +63,20 @@ jobs:
               print(f"{name}: {report['source_health'][name].get('error') or 'unknown error'}")
           print(
               f"official sources: matched={summary['officially_matched']}/"
-              f"{summary['tracked_stocks']} events={summary['event_count']} "
+              f"{summary['tracked_total']} stocks={summary['tracked_stocks']} "
+              f"etfs={summary['tracked_etfs']} events={summary['event_count']} "
               f"failed={failed} modes={modes}"
           )
+          actual = (
+              summary.get("tracked_total"),
+              summary.get("tracked_stocks"),
+              summary.get("tracked_etfs"),
+          )
+          wanted = (len(expected), expected_stocks, expected_etfs)
+          if actual != wanted:
+              raise SystemExit(f"coverage mismatch: actual={actual} expected={wanted}")
+          if wanted != (374, 306, 68):
+              raise SystemExit(f"configured 374-symbol contract changed unexpectedly: {wanted}")
           if failed:
               raise SystemExit("official source verification failed: " + ", ".join(failed))
           PY
