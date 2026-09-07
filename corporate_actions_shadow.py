@@ -26,9 +26,13 @@ SOURCE_URLS = {
     "twse_registry": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
     "tpex_registry": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
     "sec_registry": "https://www.sec.gov/files/company_tickers_exchange.json",
+    "sec_registry_fallback": "https://www.sec.gov/files/company_tickers.json",
     "twse_announcements": "https://openapi.twse.com.tw/v1/opendata/t187ap04_L",
     "tpex_announcements": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap04_O",
-    "nasdaq_halts": "https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts",
+    # Nasdaq documents the pipe-delimited Symbol Directory as its machine
+    # download surface.  The human-facing RSS endpoint can return an HTML
+    # challenge to hosted CI runners, which is not valid XML.
+    "nasdaq_halts": "https://www.nasdaqtrader.com/dynamic/SymDir/tradinghalts.txt",
 }
 
 MAX_EVENTS = 200
@@ -152,6 +156,14 @@ def normalize_tw_registry(rows: Iterable[dict[str, Any]], *, exchange: str) -> l
 def normalize_sec_registry(payload: dict[str, Any]) -> list[dict[str, Any]]:
     fields = payload.get("fields") or ["cik", "name", "ticker", "exchange"]
     rows = payload.get("data") or []
+    if not rows:
+        # SEC's company_tickers.json fallback is keyed by row number rather
+        # than using the columnar fields/data form.
+        rows = [
+            [row.get("cik_str"), row.get("title"), row.get("ticker"), ""]
+            for row in payload.values()
+            if isinstance(row, dict)
+        ]
     normalized = []
     for values in rows:
         if not isinstance(values, list):
@@ -270,6 +282,40 @@ def parse_nasdaq_halts(xml_text: str) -> list[dict[str, Any]]:
             "source": "nasdaq_halts",
             "source_date": fields.get("haltdate") or fields.get("pubdate", ""),
             "headline": title.strip() or f"Nasdaq trading halt: {symbol}",
+        })
+    return events
+
+
+def parse_nasdaq_halt_directory(text: str) -> list[dict[str, Any]]:
+    """Parse Nasdaq Trader's documented pipe-delimited halt directory."""
+    lines = [line.strip("\ufeff\r") for line in str(text or "").splitlines() if line.strip()]
+    if not lines:
+        return []
+    header = [value.strip().lower() for value in lines[0].split("|")]
+    required = {"halt date", "issue symbol", "reason codes"}
+    if not required.issubset(header):
+        raise SourceError("invalid Nasdaq trading-halt directory header")
+    events = []
+    for line in lines[1:]:
+        if line.lower().startswith("file creation time"):
+            continue
+        values = line.split("|")
+        row = dict(zip(header, values))
+        symbol = str(row.get("issue symbol") or "").strip().upper()
+        if not symbol:
+            continue
+        resumed = any(
+            str(row.get(key) or "").strip().upper() not in {"", "N/A"}
+            for key in ("resumption date", "resumption quote time", "resumption trade time")
+        )
+        reason = str(row.get("reason codes") or "").strip().upper()
+        event_type = "DELISTING" if reason == "D" else "TRADING_RESUMED" if resumed else "TRADING_HALT"
+        events.append({
+            "type": event_type,
+            "symbol": symbol,
+            "source": "nasdaq_halts",
+            "source_date": str(row.get("halt date") or "").strip(),
+            "headline": f"Nasdaq trading halt {reason}: {symbol}".strip(),
         })
     return events
 
@@ -515,7 +561,22 @@ def _request_headers(url: str, *, accept: str) -> dict[str, str]:
         user_agent = "Mozilla/5.0 (compatible; wude-ai-stock-v6/1.0; +https://github.com/a0953883367/wude-ai-stock-v6)"
     else:
         user_agent = "wude-ai-stock-v6/1.0 (+https://github.com/a0953883367/wude-ai-stock-v6)"
-    return {"User-Agent": user_agent, "Accept": accept, "Accept-Encoding": "gzip, deflate"}
+    return {
+        "User-Agent": user_agent,
+        "From": "314874808+a0953883367@users.noreply.github.com",
+        "Accept": accept,
+        "Accept-Encoding": "gzip, deflate",
+    }
+
+
+def _fetch_sec_registry(session: Any) -> tuple[Any, str]:
+    errors = []
+    for key in ("sec_registry", "sec_registry_fallback"):
+        try:
+            return _fetch_json(session, SOURCE_URLS[key]), SOURCE_URLS[key]
+        except Exception as exc:
+            errors.append(f"{SOURCE_URLS[key]}: {type(exc).__name__}: {exc}")
+    raise SourceError("; ".join(errors))
 
 
 def fetch_official_sources(
@@ -535,11 +596,15 @@ def fetch_official_sources(
     )
     for name, normalizer in registry_specs:
         try:
-            payload = _fetch_json(session, SOURCE_URLS[name])
+            payload, used_url = (
+                _fetch_sec_registry(session)
+                if name == "sec_registry"
+                else (_fetch_json(session, SOURCE_URLS[name]), SOURCE_URLS[name])
+            )
             records = normalizer(payload)
             if not records:
                 raise SourceError("official registry returned no records")
-            registry_sources.append({"source": name, "ok": True, "records": records})
+            registry_sources.append({"source": name, "ok": True, "records": records, "url": used_url})
         except Exception as exc:
             registry_sources.append({"source": name, "ok": False, "records": [], "error": f"{type(exc).__name__}: {exc}"})
 
@@ -568,7 +633,7 @@ def fetch_official_sources(
                 "error": f"{type(exc).__name__}: {exc}",
             }
     try:
-        halts = parse_nasdaq_halts(_fetch_text(session, SOURCE_URLS["nasdaq_halts"]))
+        halts = parse_nasdaq_halt_directory(_fetch_text(session, SOURCE_URLS["nasdaq_halts"]))
         event_source_health["nasdaq_halts"] = {
             "ok": True,
             "record_count": len(halts),

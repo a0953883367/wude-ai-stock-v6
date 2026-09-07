@@ -9,6 +9,7 @@ from corporate_actions_shadow import (
     normalize_sec_registry,
     normalize_tw_announcements,
     normalize_tw_registry,
+    parse_nasdaq_halt_directory,
     parse_nasdaq_halts,
 )
 
@@ -74,13 +75,19 @@ def test_official_registries_use_stable_company_identifiers() -> None:
     assert us[0]["entity_id"] == "US-CIK-0000320193"
     assert us[0]["symbol"] == "AAPL"
 
+    fallback = normalize_sec_registry({
+        "0": {"cik_str": 320193, "title": "Apple Inc.", "ticker": "AAPL"}
+    })
+    assert fallback[0]["entity_id"] == "US-CIK-0000320193"
+
 
 def test_us_official_sources_receive_site_compatible_identification() -> None:
     sec = _request_headers("https://www.sec.gov/files/company_tickers_exchange.json", accept="application/json")
-    nasdaq = _request_headers("https://www.nasdaqtrader.com/rss.aspx", accept="text/xml")
+    nasdaq = _request_headers("https://www.nasdaqtrader.com/dynamic/SymDir/tradinghalts.txt", accept="text/plain")
 
     assert "@users.noreply.github.com" in sec["User-Agent"]
     assert nasdaq["User-Agent"].startswith("Mozilla/5.0")
+    assert "@users.noreply.github.com" in sec["From"]
 
 
 def test_first_run_is_a_locked_shadow_baseline() -> None:
@@ -185,6 +192,14 @@ def test_official_event_parsers_classify_halt_resume_and_merger() -> None:
     parsed = parse_nasdaq_halts(namespaced_rss)[0]
     assert parsed["symbol"] == "MSFT"
     assert parsed["type"] == "TRADING_HALT"
+
+    directory = """Halt Date|Halt Time|Issue Symbol|Security Name|Market|Reason Codes|Pause Threshold Price|Resumption Date|Resumption Quote Time|Resumption Trade Time
+09/07/2026|09:30:00|NVDA|NVIDIA CORP|Q|T1||||
+09/07/2026|09:30:00|MSFT|MICROSOFT CORP|Q|T1||09/07/2026|10:00:00|10:05:00
+File Creation Time: 0907202612:00|||||||||
+"""
+    parsed_directory = parse_nasdaq_halt_directory(directory)
+    assert [row["type"] for row in parsed_directory] == ["TRADING_HALT", "TRADING_RESUMED"]
 
 
 def test_event_source_failure_is_visible_but_does_not_change_formal_data() -> None:
