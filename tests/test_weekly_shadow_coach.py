@@ -136,6 +136,36 @@ class WeeklyShadowCoachTests(unittest.TestCase):
         self.assertTrue((self.reports / "weekly_shadow_coach.json").exists())
         self.assertTrue((self.reports / "weekly_shadow_coach_history.json").exists())
 
+    def test_coach_reads_tw_signal_confirmation_shadow_summary(self) -> None:
+        _write(self.reports / "tw_signal_confirmation_shadow.json", {
+            "status": "ok",
+            "summary": {
+                "tracked_signals": 8,
+                "confirmed": 5,
+                "rejected": 3,
+                "confirmation_rate_pct": 62.5,
+                "kd_aligned": 20,
+                "kd_divergent": 4,
+                "rsi_sideways": 7,
+            },
+            "rules": {
+                "intraday_to_close": "盤中暫定，收盤確認",
+                "kd_resonance": "日週KD只做影子比較",
+                "rsi_regime": "RSI搭配ADX、波動率與斜率",
+            },
+        })
+
+        report = build_weekly_coach(
+            self.reports,
+            mode="dry_run",
+            archive_result=self.archive,
+        )
+
+        shadow = report["source"]["tw_signal_confirmation_shadow"]
+        self.assertTrue(shadow["available"])
+        self.assertEqual(shadow["summary"]["confirmation_rate_pct"], 62.5)
+        self.assertIn("kd_resonance", shadow["rules"])
+
     def test_cloud_archive_error_blocks_coaching(self) -> None:
         broken = _archive()
         broken["counts"]["errors"] = 1
