@@ -751,9 +751,14 @@ def _fetch_json(session: Any, url: str) -> Any:
 
 
 def _fetch_text(session: Any, url: str) -> str:
+    accept = (
+        "text/plain, */*;q=0.8"
+        if url.lower().split("?", 1)[0].endswith(".txt")
+        else "application/rss+xml, application/xml, text/xml"
+    )
     response = session.get(
         url,
-        headers=_request_headers(url, accept="application/rss+xml, application/xml, text/xml"),
+        headers=_request_headers(url, accept=accept),
         timeout=30,
     )
     response.raise_for_status()
