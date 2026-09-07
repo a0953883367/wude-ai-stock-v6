@@ -197,8 +197,11 @@ def test_workflow_is_shadow_only_and_runs_before_morning_report() -> None:
 
     assert 'cron: "15 21 * * *"' in workflow
     assert 'cron: "0 18 * * 6"' in workflow
+    assert "pull_request:" in workflow
+    assert "Require every official source during pull request verification" in workflow
+    assert "github.event_name != 'pull_request'" in workflow
     assert "reports/corporate_actions_shadow.json" in workflow
     assert "reports/corporate_actions_shadow_history.json" in workflow
     assert "reports/corporate_actions_registry.json" in workflow
-    assert "search_data.json" not in workflow
-    assert "stock_data.json" not in workflow
+    assert "git add search_data.json" not in workflow
+    assert "git add stock_data.json" not in workflow

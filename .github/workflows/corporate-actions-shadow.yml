@@ -2,6 +2,13 @@ name: 股票公司事件影子監控
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "corporate_actions_shadow.py"
+      - "search_data.json"
+      - "tests/test_corporate_actions_shadow.py"
+      - ".github/workflows/corporate-actions-shadow.yml"
   schedule:
     # Daily 05:15 Asia/Taipei, before the 06:00 report.
     - cron: "15 21 * * *"
@@ -30,7 +37,25 @@ jobs:
         id: corporate_actions
         continue-on-error: true
         run: python corporate_actions_shadow.py
+      - name: Require every official source during pull request verification
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("reports/corporate_actions_shadow.json").read_text(encoding="utf-8"))
+          summary = report["summary"]
+          failed = [name for name, row in report["source_health"].items() if not row.get("ok")]
+          print(
+              f"official sources: matched={summary['officially_matched']}/"
+              f"{summary['tracked_stocks']} events={summary['event_count']} failed={failed}"
+          )
+          if failed:
+              raise SystemExit("official source verification failed: " + ", ".join(failed))
+          PY
       - name: Save shadow-only lifecycle records
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         run: |
           git add \
