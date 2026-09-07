@@ -423,6 +423,26 @@ def _update_model_learning_safely(reports_dir, *, updated_at: str) -> dict:
         return {}
 
 
+def _update_tw_signal_confirmation_shadow_safely(
+    reports_dir, rows, histories, *, period: str, updated_at: str, intraday: bool
+) -> dict:
+    """Record TW signal diagnostics in an isolated, non-scoring ledger."""
+    try:
+        from tw_signal_confirmation_shadow import update_tw_signal_confirmation_shadow
+
+        return update_tw_signal_confirmation_shadow(
+            reports_dir,
+            rows,
+            histories,
+            period=period,
+            updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception:  # noqa: BLE001 - shadow diagnostics must never stop V6
+        logging.exception("台股盤中／收盤、日週KD與RSI盤整影子診斷失敗；正式V6繼續")
+        return {}
+
+
 _NEXT_SESSION_FIELDS = (
     "next_session_model_version", "next_session_market_model",
     "next_session_direction", "next_session_confidence",
@@ -1814,6 +1834,14 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         institution_status=institution_status,
+    )
+    _update_tw_signal_confirmation_shadow_safely(
+        SETTINGS.reports_dir,
+        simulation_rows,
+        history,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
     )
     # Build the catalog after both autonomous shadow engines have published
     # their fresh ledgers, so the training center never shows yesterday's

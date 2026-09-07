@@ -151,6 +151,7 @@ def _bounded_context(
     learning: dict[str, Any],
     backup: dict[str, Any],
     archive: dict[str, Any] | None,
+    signal_confirmation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     errors = learning.get("error_learning") or {}
     progress = learning.get("progress") or {}
@@ -182,6 +183,7 @@ def _bounded_context(
         })
 
     archive_counts = (archive or {}).get("counts") or {}
+    signal_confirmation = signal_confirmation or {}
     return {
         "report_updated_at": learning.get("updated_at"),
         "trading_days_collected": int(progress.get("trading_days_collected") or 0),
@@ -203,6 +205,11 @@ def _bounded_context(
             "uploaded": int(archive_counts.get("uploaded") or 0),
             "verified_existing": int(archive_counts.get("verified_existing") or 0),
             "errors": int(archive_counts.get("errors") or 0),
+        },
+        "tw_signal_confirmation_shadow": {
+            "available": bool(signal_confirmation),
+            "summary": signal_confirmation.get("summary") or {},
+            "rules": signal_confirmation.get("rules") or {},
         },
     }
 
@@ -354,9 +361,20 @@ def build_weekly_coach(
     history = history or reports_dir / "weekly_shadow_coach_history.json"
     learning = _read_json(reports_dir / "model_learning.json")
     backup = _read_json(reports_dir / "prediction_evidence_backup_health.json")
+    try:
+        signal_confirmation = _read_json(
+            reports_dir / "tw_signal_confirmation_shadow.json"
+        )
+    except CoachBlocked:
+        signal_confirmation = {}
     archive = _read_json(archive_result) if archive_result else None
     _require_locked_inputs(learning, backup, archive)
-    context = _bounded_context(learning, backup, archive)
+    context = _bounded_context(
+        learning,
+        backup,
+        archive,
+        signal_confirmation,
+    )
 
     if mode == "openai":
         coach, api = _openai_coach(
