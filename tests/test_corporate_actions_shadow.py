@@ -310,6 +310,28 @@ def test_nasdaq_utf8_bom_is_decoded_before_xml_parse() -> None:
     assert _fetch_text(Session(), "https://www.nasdaqtrader.com/rss.aspx") == xml
 
 
+def test_nasdaq_symbol_directory_requests_plain_text() -> None:
+    requested_headers = {}
+
+    class Response:
+        content = b"Symbol|Security Name|Test Issue|ETF\nAAPL|Apple Inc.|N|N\n"
+        text = "unused"
+
+        @staticmethod
+        def raise_for_status() -> None:
+            return None
+
+    class Session:
+        @staticmethod
+        def get(*args, **kwargs):
+            requested_headers.update(kwargs["headers"])
+            return Response()
+
+    _fetch_text(Session(), "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt")
+
+    assert requested_headers["Accept"].startswith("text/plain")
+
+
 def test_sec_snapshot_requires_fresh_timestamp_and_matching_sha256(tmp_path: Path) -> None:
     rows = [[320193, "Apple Inc.", "AAPL", "Nasdaq"]]
     digest = hashlib.sha256(
