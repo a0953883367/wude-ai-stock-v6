@@ -7,16 +7,21 @@ from pathlib import Path
 
 from corporate_actions_shadow import (
     POLICY,
+    _combined_active_payload,
     _fetch_text,
     _load_sec_snapshot,
     _request_headers,
+    _tracked_securities,
     build_shadow_report,
     normalize_sec_registry,
     normalize_sec_entity_search,
     normalize_tw_announcements,
     normalize_tw_registry,
+    normalize_tw_security_registry,
+    parse_nasdaq_symbol_directory,
     parse_nasdaq_halts,
 )
+from watchlist import load_watchlist
 
 
 NOW = "2026-09-07T00:00:00+00:00"
@@ -33,6 +38,83 @@ def _universe(*rows: tuple[str, str, str]) -> dict:
 
 def _source(name: str, records: list[dict], *, ok: bool = True) -> dict:
     return {"source": name, "ok": ok, "records": records, "error": "" if ok else "timeout"}
+
+
+def test_formal_combined_universe_covers_all_374_securities() -> None:
+    search = json.loads(Path("search_data.json").read_text(encoding="utf-8"))
+    combined = _combined_active_payload(search, load_watchlist())
+    tracked = _tracked_securities(combined)
+
+    assert len(tracked) == 374
+    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 306
+    assert sum(row["asset_type"] == "ETF" for row in tracked.values()) == 68
+    assert {"2327.TW", "HUBB", "0050.TW", "VOO"} <= set(tracked)
+
+
+def test_official_security_directories_cover_etfs_without_company_identity_splicing() -> None:
+    tw = normalize_tw_security_registry(
+        [{"Code": "0050", "Name": "元大台灣50"}], exchange="TWSE"
+    )
+    us = parse_nasdaq_symbol_directory(
+        "Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF\n"
+        "SMH|VanEck Semiconductor ETF|G|N|N|100|Y\n"
+        "File Creation Time: 0907202618:00||||||\n",
+        source="us_symbol_directory",
+    )
+
+    assert tw[0]["symbol"] == "0050.TW"
+    assert tw[0]["identity_scope"] == "symbol"
+    assert us[0]["symbol"] == "SMH"
+    assert us[0]["is_etf"] is True
+    assert us[0]["identity_scope"] == "symbol"
+
+
+def test_etf_missing_registry_row_never_becomes_automatic_liquidation() -> None:
+    universe = {
+        "data": [{
+            "symbol": "0050.TW", "name": "元大台灣50", "market": "TW", "type": "ETF"
+        }]
+    }
+    previous = {
+        "records": {
+            "0050.TW": {
+                "symbol": "0050.TW",
+                "name": "元大台灣50",
+                "entity_id": "TW-ISSUE-TWSE-0050",
+                "identity_scope": "symbol",
+                "asset_type": "ETF",
+            }
+        },
+        "missing_observations": {},
+    }
+    report, registry = _build(
+        universe,
+        previous,
+        _source("twse_securities", []),
+    )
+
+    assert report["events"][0]["type"] == "MISSING_FROM_REGISTRY"
+    assert report["events"][0]["asset_type"] == "ETF"
+    assert "不得把ETF缺值當成清算" in report["events"][0]["action"]
+    assert report["policy"]["etf_missing_row_is_not_liquidation"] is True
+    assert registry["records"]["0050.TW"]["entity_id"] == "TW-ISSUE-TWSE-0050"
+
+
+def test_exchange_listing_fallback_never_downgrades_verified_company_identity() -> None:
+    old = _tw("2330.TW", "22099131", "台積電")
+    listing = normalize_tw_security_registry(
+        [{"Code": "2330", "Name": "台積電"}], exchange="TWSE"
+    )[0]
+    report, registry = _build(
+        _universe(("2330.TW", "台積電", "🇹🇼 台灣")),
+        _previous(old),
+        _source("twse_registry", []),
+        _source("twse_securities", [listing]),
+    )
+
+    assert "IDENTITY_CONFLICT" not in {event["type"] for event in report["events"]}
+    assert registry["records"]["2330.TW"]["entity_id"] == "TW-BN-22099131"
+    assert registry["records"]["2330.TW"]["identity_source_unavailable"] is True
 
 
 def _tw(symbol: str, entity: str, name: str, source: str = "twse_registry") -> dict:
@@ -277,6 +359,8 @@ def test_workflow_is_shadow_only_and_runs_before_morning_report() -> None:
     assert 'cron: "15 21 * * *"' in workflow
     assert 'cron: "0 18 * * 6"' in workflow
     assert "pull_request:" in workflow
+    assert '- "watchlist.py"' in workflow
+    assert "configured 374-symbol contract changed unexpectedly" in workflow
     assert "Require live official sources or a fresh verified SEC snapshot" in workflow
     assert "github.event_name != 'pull_request'" in workflow
     assert "reports/corporate_actions_shadow.json" in workflow
