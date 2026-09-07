@@ -14,7 +14,13 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from corporate_actions_shadow import SOURCE_URLS, _request_headers, _tracked_stocks  # noqa: E402
+from corporate_actions_shadow import (  # noqa: E402
+    SOURCE_URLS,
+    _combined_active_payload,
+    _request_headers,
+    _tracked_stocks,
+)
+from watchlist import load_watchlist  # noqa: E402
 
 
 UNIVERSE = ROOT / "search_data.json"
@@ -23,6 +29,7 @@ OUTPUT = ROOT / "official_data" / "sec_company_tickers_snapshot.json"
 
 def main() -> int:
     universe = json.loads(UNIVERSE.read_text(encoding="utf-8"))
+    universe = _combined_active_payload(universe, load_watchlist())
     wanted = {
         symbol for symbol, row in _tracked_stocks(universe).items()
         if row.get("market") == "US"
