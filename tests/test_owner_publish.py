@@ -46,6 +46,38 @@ def test_owner_payload_remains_compatible_when_rotation_is_missing(tmp_path):
     assert json.loads(encoded)["rotation"] is None
 
 
+def test_owner_payload_appends_searchable_unranked_candidate(tmp_path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "all_analysis.json").write_text(json.dumps({
+        "data": [{"symbol": "2330.TW", "overall_rank": 1}],
+        "candidate_count": 2, "analyzed_count": 1, "unavailable_count": 1,
+    }), encoding="utf-8")
+    (tmp_path / "search_data.json").write_text(json.dumps({"data": [{
+        "股票": "中光電投控", "代號": "3718.TWO", "市場": "🇹🇼 台灣",
+        "類型": "個股", "主題": "🚁 無人機", "次產業": "無人機",
+    }]}), encoding="utf-8")
+    (reports / "tw_official_cache.json").write_text(json.dumps({
+        "data": {"prices": {"3718": {
+            "close": 70.9, "date": "2026-09-07",
+            "tw_official_price_available": True,
+            "tw_price_source": "TPEx OpenAPI", "tw_price_unit": "TWD/shares",
+        }}},
+    }), encoding="utf-8")
+
+    encoded, count = build_payload(reports)
+    payload = json.loads(encoded)
+
+    assert count == 2
+    pending = payload["data"][1]
+    assert pending["symbol"] == "3718.TWO"
+    assert pending["price"] == 70.9
+    assert pending["ranking_pending"] is True
+    assert pending["overall_rank"] is None
+    assert pending["trade_guard_blocked"] is True
+    assert payload["data"][0] == {"symbol": "2330.TW", "overall_rank": 1}
+
+
 def test_owner_payload_is_chunked_and_committed_only_after_all_rows(tmp_path):
     reports = tmp_path / "reports"
     reports.mkdir()

@@ -26,6 +26,22 @@ def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
     assert "industry_lifecycle" not in json.dumps(result, ensure_ascii=False)
 
 
+def test_friend_pending_stock_is_neutral_and_has_no_rank():
+    result = sanitize({
+        "symbol": "3718.TWO", "name": "中光電投控", "market": "TW",
+        "ranking_pending": True, "overall_rank_tier": 0,
+        "trade_guard_blocked": True, "price": 70.9,
+        "ranking_status_label": "新掛牌／歷史資料累積中",
+        "action": "⚪ 資料累積中，未滿20個交易日，暫無正式排名",
+    })
+
+    assert result["rank"] is None
+    assert result["rankingPending"] is True
+    assert result["rankingStatus"] == "新掛牌／歷史資料累積中"
+    assert result["trend"] == "資料累積中"
+    assert result["price"] == 70.9
+
+
 def test_friend_accuracy_is_always_cleared():
     value = {
         "methodology_version": 5,
