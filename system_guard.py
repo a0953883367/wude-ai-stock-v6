@@ -77,6 +77,8 @@ def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
         and policy.get("places_orders") is False
         and policy.get("requires_manual_approval") is True
         and policy.get("missing_row_is_not_delisting") is True
+        and policy.get("stocks_and_etfs_separated") is True
+        and policy.get("etf_missing_row_is_not_liquidation") is True
     )
     if not locked:
         return _check(
@@ -86,14 +88,19 @@ def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
         )
 
     summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
-    tracked = int(summary.get("tracked_stocks") or 0)
+    tracked = int(summary.get("tracked_total") or summary.get("tracked_stocks") or 0)
+    tracked_stocks = int(summary.get("tracked_stocks") or 0)
+    tracked_etfs = int(summary.get("tracked_etfs") or 0)
     matched = int(summary.get("officially_matched") or 0)
     events = int(summary.get("event_count") or 0)
     warnings = int(summary.get("warning_count") or 0)
     critical = int(summary.get("critical_count") or 0)
     source_failures = int(summary.get("source_failure_count") or 0)
     status = str(payload.get("status") or "warning").lower()
-    detail = f"官方身分符合 {matched}/{tracked} 檔；事件 {events} 件；來源失敗 {source_failures} 個"
+    detail = (
+        f"官方身分符合 {matched}/{tracked} 檔（個股 {tracked_stocks}、ETF {tracked_etfs}）；"
+        f"事件 {events} 件；來源失敗 {source_failures} 個"
+    )
     source_health = payload.get("source_health") if isinstance(payload.get("source_health"), dict) else {}
     sec_health = source_health.get("sec_registry") if isinstance(source_health.get("sec_registry"), dict) else {}
     if status == "critical" or critical:
