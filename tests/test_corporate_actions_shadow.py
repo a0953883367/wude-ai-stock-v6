@@ -1,0 +1,392 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+
+from corporate_actions_shadow import (
+    POLICY,
+    _combined_active_payload,
+    _fetch_text,
+    _load_sec_snapshot,
+    _request_headers,
+    _tracked_securities,
+    build_shadow_report,
+    normalize_sec_registry,
+    normalize_sec_entity_search,
+    normalize_tw_announcements,
+    normalize_tw_registry,
+    normalize_tw_security_registry,
+    parse_nasdaq_symbol_directory,
+    parse_nasdaq_halts,
+)
+from watchlist import load_watchlist
+
+
+NOW = "2026-09-07T00:00:00+00:00"
+
+
+def _universe(*rows: tuple[str, str, str]) -> dict:
+    return {
+        "data": [
+            {"代號": symbol, "股票": name, "市場": market, "類型": "個股"}
+            for symbol, name, market in rows
+        ]
+    }
+
+
+def _source(name: str, records: list[dict], *, ok: bool = True) -> dict:
+    return {"source": name, "ok": ok, "records": records, "error": "" if ok else "timeout"}
+
+
+def test_formal_combined_universe_covers_all_374_securities() -> None:
+    search = json.loads(Path("search_data.json").read_text(encoding="utf-8"))
+    combined = _combined_active_payload(search, load_watchlist())
+    tracked = _tracked_securities(combined)
+
+    assert len(tracked) == 374
+    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 306
+    assert sum(row["asset_type"] == "ETF" for row in tracked.values()) == 68
+    assert {"2327.TW", "HUBB", "0050.TW", "VOO"} <= set(tracked)
+
+
+def test_official_security_directories_cover_etfs_without_company_identity_splicing() -> None:
+    tw = normalize_tw_security_registry(
+        [{"Code": "0050", "Name": "元大台灣50"}], exchange="TWSE"
+    )
+    us = parse_nasdaq_symbol_directory(
+        "Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF\n"
+        "SMH|VanEck Semiconductor ETF|G|N|N|100|Y\n"
+        "File Creation Time: 0907202618:00||||||\n",
+        source="us_symbol_directory",
+    )
+
+    assert tw[0]["symbol"] == "0050.TW"
+    assert tw[0]["identity_scope"] == "symbol"
+    assert us[0]["symbol"] == "SMH"
+    assert us[0]["is_etf"] is True
+    assert us[0]["identity_scope"] == "symbol"
+
+
+def test_etf_missing_registry_row_never_becomes_automatic_liquidation() -> None:
+    universe = {
+        "data": [{
+            "symbol": "0050.TW", "name": "元大台灣50", "market": "TW", "type": "ETF"
+        }]
+    }
+    previous = {
+        "records": {
+            "0050.TW": {
+                "symbol": "0050.TW",
+                "name": "元大台灣50",
+                "entity_id": "TW-ISSUE-TWSE-0050",
+                "identity_scope": "symbol",
+                "asset_type": "ETF",
+            }
+        },
+        "missing_observations": {},
+    }
+    report, registry = _build(
+        universe,
+        previous,
+        _source("twse_securities", []),
+    )
+
+    assert report["events"][0]["type"] == "MISSING_FROM_REGISTRY"
+    assert report["events"][0]["asset_type"] == "ETF"
+    assert "不得把ETF缺值當成清算" in report["events"][0]["action"]
+    assert report["policy"]["etf_missing_row_is_not_liquidation"] is True
+    assert registry["records"]["0050.TW"]["entity_id"] == "TW-ISSUE-TWSE-0050"
+
+
+def test_exchange_listing_fallback_never_downgrades_verified_company_identity() -> None:
+    old = _tw("2330.TW", "22099131", "台積電")
+    listing = normalize_tw_security_registry(
+        [{"Code": "2330", "Name": "台積電"}], exchange="TWSE"
+    )[0]
+    report, registry = _build(
+        _universe(("2330.TW", "台積電", "🇹🇼 台灣")),
+        _previous(old),
+        _source("twse_registry", []),
+        _source("twse_securities", [listing]),
+    )
+
+    assert "IDENTITY_CONFLICT" not in {event["type"] for event in report["events"]}
+    assert registry["records"]["2330.TW"]["entity_id"] == "TW-BN-22099131"
+    assert registry["records"]["2330.TW"]["identity_source_unavailable"] is True
+
+
+def _tw(symbol: str, entity: str, name: str, source: str = "twse_registry") -> dict:
+    return {
+        "symbol": symbol,
+        "market": "TW",
+        "exchange": "TWSE" if symbol.endswith(".TW") else "TPEx",
+        "name": name,
+        "legal_name": name,
+        "entity_id": f"TW-BN-{entity}",
+        "source": source,
+    }
+
+
+def _previous(*records: dict, missing: dict | None = None) -> dict:
+    return {
+        "records": {record["symbol"]: record for record in records},
+        "missing_observations": missing or {},
+    }
+
+
+def _build(universe: dict, previous: dict, *sources: dict, announcements=None, halts=None, health=None):
+    return build_shadow_report(
+        universe,
+        previous,
+        list(sources),
+        announcements or [],
+        halts or [],
+        generated_at=NOW,
+        event_source_health=health,
+    )
+
+
+def test_official_registries_use_stable_company_identifiers() -> None:
+    tw = normalize_tw_registry([
+        {"公司代號": "2330", "公司簡稱": "台積電", "營利事業統一編號": "22099131"}
+    ], exchange="TWSE")
+    us = normalize_sec_registry({
+        "fields": ["cik", "name", "ticker", "exchange"],
+        "data": [[320193, "Apple Inc.", "AAPL", "Nasdaq"]],
+    })
+
+    assert tw[0]["entity_id"] == "TW-BN-22099131"
+    assert tw[0]["symbol"] == "2330.TW"
+    assert us[0]["entity_id"] == "US-CIK-0000320193"
+    assert us[0]["symbol"] == "AAPL"
+
+    fallback = normalize_sec_registry({
+        "0": {"cik_str": 320193, "title": "Apple Inc.", "ticker": "AAPL"}
+    })
+    assert fallback[0]["entity_id"] == "US-CIK-0000320193"
+
+    search = normalize_sec_entity_search({
+        "hits": {"hits": [{
+            "_id": "1045810",
+            "_source": {"entity": "NVIDIA CORP (NVDA)", "tickers": "NVDA"},
+        }]}
+    }, "NVDA")
+    assert search[0]["entity_id"] == "US-CIK-0001045810"
+    assert search[0]["name"] == "NVIDIA CORP"
+
+
+def test_us_official_sources_receive_site_compatible_identification() -> None:
+    sec = _request_headers("https://www.sec.gov/files/company_tickers_exchange.json", accept="application/json")
+    nasdaq = _request_headers("https://www.nasdaqtrader.com/rss.aspx", accept="text/xml")
+
+    assert "@users.noreply.github.com" in sec["User-Agent"]
+    assert nasdaq["User-Agent"].startswith("Mozilla/5.0")
+    assert "@users.noreply.github.com" in sec["From"]
+
+
+def test_first_run_is_a_locked_shadow_baseline() -> None:
+    universe = _universe(("2330.TW", "台積電", "🇹🇼 台灣"))
+    report, registry = _build(
+        universe, {}, _source("twse_registry", [_tw("2330.TW", "22099131", "台積電")])
+    )
+
+    assert report["status"] == "baseline"
+    assert report["events"] == []
+    assert report["policy"] == POLICY
+    assert report["policy"]["updates_active_universe"] is False
+    assert report["policy"]["deletes_history"] is False
+    assert registry["records"]["2330.TW"]["entity_id"] == "TW-BN-22099131"
+
+
+def test_same_entity_name_change_only_creates_display_candidate() -> None:
+    old = _tw("2330.TW", "22099131", "舊名稱")
+    new = _tw("2330.TW", "22099131", "新名稱")
+    report, _ = _build(
+        _universe(("2330.TW", "舊名稱", "🇹🇼 台灣")),
+        _previous(old),
+        _source("twse_registry", [new]),
+    )
+
+    event = report["events"][0]
+    assert event["type"] == "NAME_CHANGE"
+    assert event["level"] == "info"
+    assert "顯示名稱" in event["action"]
+    assert report["policy"]["joins_price_history"] is False
+
+
+def test_ticker_change_requires_same_entity_and_never_auto_joins_history() -> None:
+    old = _tw("1234.TW", "11111111", "範例公司")
+    new = _tw("5678.TW", "11111111", "範例公司")
+    report, _ = _build(
+        _universe(("1234.TW", "範例公司", "🇹🇼 台灣")),
+        _previous(old),
+        _source("twse_registry", [new]),
+    )
+
+    types = {event["type"] for event in report["events"]}
+    assert "SYMBOL_CHANGE" in types
+    assert report["policy"]["joins_price_history"] is False
+    assert report["policy"]["requires_manual_approval"] is True
+
+
+def test_coretronic_and_aewin_different_entities_are_never_stitched() -> None:
+    old = _tw("5371.TWO", "97331723", "中光電")
+    other = _tw("3718.TWO", "12345678", "全訊")
+    report, _ = _build(
+        _universe(("5371.TWO", "中光電", "🇹🇼 台灣")),
+        _previous(old),
+        _source("tpex_registry", [other]),
+    )
+
+    assert "SYMBOL_CHANGE" not in {event["type"] for event in report["events"]}
+    assert report["policy"]["deletes_history"] is False
+
+
+def test_missing_registry_row_never_deletes_and_requires_two_observations() -> None:
+    old = _tw("2330.TW", "22099131", "台積電")
+    universe = _universe(("2330.TW", "台積電", "🇹🇼 台灣"))
+    first, registry = _build(universe, _previous(old), _source("twse_registry", []))
+    second, _ = _build(universe, registry, _source("twse_registry", []))
+
+    assert first["events"][0]["type"] == "MISSING_FROM_REGISTRY"
+    assert second["events"][0]["type"] == "CONFIRMED_ABSENT"
+    assert registry["records"]["2330.TW"]["entity_id"] == "TW-BN-22099131"
+    assert second["policy"]["missing_row_is_not_delisting"] is True
+    assert second["policy"]["deletes_history"] is False
+
+
+def test_failed_required_registry_does_not_create_false_missing_event() -> None:
+    old = _tw("2330.TW", "22099131", "台積電")
+    report, registry = _build(
+        _universe(("2330.TW", "台積電", "🇹🇼 台灣")),
+        _previous(old),
+        _source("twse_registry", [], ok=False),
+    )
+
+    assert report["events"] == []
+    assert report["status"] == "warning"
+    assert registry["records"]["2330.TW"]["source_unavailable"] is True
+
+
+def test_official_event_parsers_classify_halt_resume_and_merger() -> None:
+    events = normalize_tw_announcements([
+        {"公司代號": "2330", "主旨": "董事會通過股份轉換案", "發言日期": "20260907"}
+    ], exchange="TWSE")
+    rss = """<rss><channel><item><title>Trade Halt</title><description>
+        Issue Symbol: AAPL&lt;br/&gt;Resumption Time: N/A
+    </description></item></channel></rss>"""
+    namespaced_rss = """<rss xmlns:ndaq="urn:nasdaq"><channel><item>
+        <title>Halt - News Pending</title><ndaq:IssueSymbol>MSFT</ndaq:IssueSymbol>
+        <ndaq:HaltDate>09/07/2026</ndaq:HaltDate><ndaq:ReasonCode>T1</ndaq:ReasonCode>
+        <ndaq:ResumptionTradeTime></ndaq:ResumptionTradeTime>
+    </item></channel></rss>"""
+
+    assert events[0]["type"] == "MERGER_OR_SHARE_EXCHANGE"
+    assert parse_nasdaq_halts(rss)[0]["type"] == "TRADING_HALT"
+    parsed = parse_nasdaq_halts(namespaced_rss)[0]
+    assert parsed["symbol"] == "MSFT"
+    assert parsed["type"] == "TRADING_HALT"
+
+
+
+def test_nasdaq_utf8_bom_is_decoded_before_xml_parse() -> None:
+    xml = "<rss><channel><item><title>Halt: NVDA</title></item></channel></rss>"
+
+    class Response:
+        content = b"\xef\xbb\xbf" + xml.encode("utf-8")
+        text = "unused"
+
+        @staticmethod
+        def raise_for_status() -> None:
+            return None
+
+    class Session:
+        @staticmethod
+        def get(*args, **kwargs):
+            return Response()
+
+    assert _fetch_text(Session(), "https://www.nasdaqtrader.com/rss.aspx") == xml
+
+
+def test_nasdaq_symbol_directory_requests_plain_text() -> None:
+    requested_headers = {}
+
+    class Response:
+        content = b"Symbol|Security Name|Test Issue|ETF\nAAPL|Apple Inc.|N|N\n"
+        text = "unused"
+
+        @staticmethod
+        def raise_for_status() -> None:
+            return None
+
+    class Session:
+        @staticmethod
+        def get(*args, **kwargs):
+            requested_headers.update(kwargs["headers"])
+            return Response()
+
+    _fetch_text(Session(), "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt")
+
+    assert requested_headers["Accept"].startswith("text/plain")
+
+
+def test_sec_snapshot_requires_fresh_timestamp_and_matching_sha256(tmp_path: Path) -> None:
+    rows = [[320193, "Apple Inc.", "AAPL", "Nasdaq"]]
+    digest = hashlib.sha256(
+        json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    path = tmp_path / "sec.json"
+    path.write_text(json.dumps({
+        "schema": "wude.sec_company_tickers_snapshot.v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "fields": ["cik", "name", "ticker", "exchange"],
+        "data": rows,
+        "records_sha256": digest,
+    }), encoding="utf-8")
+
+    records, metadata = _load_sec_snapshot(path, ["AAPL"])
+    assert records[0]["entity_id"] == "US-CIK-0000320193"
+    assert metadata["mode"] == "verified_snapshot"
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["data"][0][1] = "Tampered"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    try:
+        _load_sec_snapshot(path, ["AAPL"])
+    except Exception as exc:
+        assert "SHA-256" in str(exc)
+    else:
+        raise AssertionError("tampered SEC snapshot was accepted")
+
+
+def test_event_source_failure_is_visible_but_does_not_change_formal_data() -> None:
+    record = _tw("2330.TW", "22099131", "台積電")
+    report, _ = _build(
+        _universe(("2330.TW", "台積電", "🇹🇼 台灣")),
+        _previous(record),
+        _source("twse_registry", [record]),
+        health={"twse_announcements": {"ok": False, "error": "timeout"}},
+    )
+
+    assert report["status"] == "warning"
+    assert report["summary"]["event_source_failure_count"] == 1
+    assert report["policy"]["changes_rankings"] is False
+
+
+def test_workflow_is_shadow_only_and_runs_before_morning_report() -> None:
+    workflow = Path(".github/workflows/corporate-actions-shadow.yml").read_text(encoding="utf-8")
+
+    assert 'cron: "15 21 * * *"' in workflow
+    assert 'cron: "0 18 * * 6"' in workflow
+    assert "pull_request:" in workflow
+    assert '- "watchlist.py"' in workflow
+    assert "configured 374-symbol contract changed unexpectedly" in workflow
+    assert "Require live official sources or a fresh verified SEC snapshot" in workflow
+    assert "github.event_name != 'pull_request'" in workflow
+    assert "reports/corporate_actions_shadow.json" in workflow
+    assert "reports/corporate_actions_shadow_history.json" in workflow
+    assert "reports/corporate_actions_registry.json" in workflow
+    assert "git add search_data.json" not in workflow
+    assert "git add stock_data.json" not in workflow
