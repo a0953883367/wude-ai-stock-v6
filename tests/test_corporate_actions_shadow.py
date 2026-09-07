@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import hashlib
+import json
 from pathlib import Path
 
 from corporate_actions_shadow import (
     POLICY,
     _fetch_text,
+    _load_sec_snapshot,
     _request_headers,
     build_shadow_report,
     normalize_sec_registry,
@@ -224,6 +228,35 @@ def test_nasdaq_utf8_bom_is_decoded_before_xml_parse() -> None:
     assert _fetch_text(Session(), "https://www.nasdaqtrader.com/rss.aspx") == xml
 
 
+def test_sec_snapshot_requires_fresh_timestamp_and_matching_sha256(tmp_path: Path) -> None:
+    rows = [[320193, "Apple Inc.", "AAPL", "Nasdaq"]]
+    digest = hashlib.sha256(
+        json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    path = tmp_path / "sec.json"
+    path.write_text(json.dumps({
+        "schema": "wude.sec_company_tickers_snapshot.v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "fields": ["cik", "name", "ticker", "exchange"],
+        "data": rows,
+        "records_sha256": digest,
+    }), encoding="utf-8")
+
+    records, metadata = _load_sec_snapshot(path, ["AAPL"])
+    assert records[0]["entity_id"] == "US-CIK-0000320193"
+    assert metadata["mode"] == "verified_snapshot"
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["data"][0][1] = "Tampered"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    try:
+        _load_sec_snapshot(path, ["AAPL"])
+    except Exception as exc:
+        assert "SHA-256" in str(exc)
+    else:
+        raise AssertionError("tampered SEC snapshot was accepted")
+
+
 def test_event_source_failure_is_visible_but_does_not_change_formal_data() -> None:
     record = _tw("2330.TW", "22099131", "台積電")
     report, _ = _build(
@@ -244,7 +277,7 @@ def test_workflow_is_shadow_only_and_runs_before_morning_report() -> None:
     assert 'cron: "15 21 * * *"' in workflow
     assert 'cron: "0 18 * * 6"' in workflow
     assert "pull_request:" in workflow
-    assert "Require every official source during pull request verification" in workflow
+    assert "Require live official sources or a fresh verified SEC snapshot" in workflow
     assert "github.event_name != 'pull_request'" in workflow
     assert "reports/corporate_actions_shadow.json" in workflow
     assert "reports/corporate_actions_shadow_history.json" in workflow

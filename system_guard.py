@@ -94,6 +94,8 @@ def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
     source_failures = int(summary.get("source_failure_count") or 0)
     status = str(payload.get("status") or "warning").lower()
     detail = f"官方身分符合 {matched}/{tracked} 檔；事件 {events} 件；來源失敗 {source_failures} 個"
+    source_health = payload.get("source_health") if isinstance(payload.get("source_health"), dict) else {}
+    sec_health = source_health.get("sec_registry") if isinstance(source_health.get("sec_registry"), dict) else {}
     if status == "critical" or critical:
         return _check(
             "corporate_actions_shadow", "股票更名／停復牌監控", "critical", detail,
@@ -108,6 +110,12 @@ def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
         return _check(
             "corporate_actions_shadow", "股票更名／停復牌監控", "info",
             detail + "；已建立第一份影子基準，等待下次比較",
+        )
+    if sec_health.get("mode") == "verified_snapshot":
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "info",
+            detail + f"；SEC 使用 {sec_health.get('snapshot_generated_at') or '近期'} 官方校驗快照",
+            "每日仍嘗試即時更新；快照超過 7 日會自動轉黃燈，且不據此自動更名或下市",
         )
     return _check(
         "corporate_actions_shadow", "股票更名／停復牌監控", "ok",

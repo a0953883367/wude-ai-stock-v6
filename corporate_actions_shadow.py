@@ -38,6 +38,7 @@ SOURCE_URLS = {
 MAX_EVENTS = 200
 MAX_HISTORY = 104
 MISSING_CONFIRMATION_RUNS = 2
+SEC_SNAPSHOT_MAX_AGE_DAYS = 7
 
 POLICY = {
     "shadow_only": True,
@@ -363,6 +364,10 @@ def build_shadow_report(
             "ok": ok,
             "record_count": len(records),
             "error": str(source.get("error") or ""),
+            **{
+                key: value for key, value in source.items()
+                if key not in {"source", "ok", "records", "error"}
+            },
         }
         if ok:
             for record in records:
@@ -575,13 +580,52 @@ def _request_headers(url: str, *, accept: str) -> dict[str, str]:
     }
 
 
-def _fetch_sec_registry(session: Any, symbols: Iterable[str]) -> tuple[list[dict[str, Any]], str]:
+def _load_sec_snapshot(path: Path, symbols: Iterable[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    payload = _read_json(path, {})
+    if not isinstance(payload, dict) or payload.get("schema") != "wude.sec_company_tickers_snapshot.v1":
+        raise SourceError("SEC snapshot is missing or has an invalid schema")
+    generated_at = str(payload.get("generated_at") or "")
+    try:
+        timestamp = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        age_days = (datetime.now(timezone.utc) - timestamp.astimezone(timezone.utc)).total_seconds() / 86400
+    except (TypeError, ValueError) as exc:
+        raise SourceError("SEC snapshot timestamp is invalid") from exc
+    if age_days < -1 or age_days > SEC_SNAPSHOT_MAX_AGE_DAYS:
+        raise SourceError(f"SEC snapshot age {age_days:.1f} days exceeds {SEC_SNAPSHOT_MAX_AGE_DAYS}")
+    rows = payload.get("data") or []
+    expected_hash = str(payload.get("records_sha256") or "")
+    actual_hash = hashlib.sha256(
+        json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if not expected_hash or actual_hash != expected_hash:
+        raise SourceError("SEC snapshot SHA-256 verification failed")
+    wanted = {str(value).upper() for value in symbols if value}
+    records = normalize_sec_registry({"fields": payload.get("fields"), "data": rows})
+    records = [row for row in records if row.get("symbol") in wanted]
+    if not records:
+        raise SourceError("SEC snapshot contains no tracked ticker records")
+    return records, {
+        "mode": "verified_snapshot",
+        "live_ok": False,
+        "snapshot_generated_at": generated_at,
+        "snapshot_age_days": round(age_days, 3),
+        "snapshot_records_sha256": actual_hash,
+    }
+
+
+def _fetch_sec_registry(
+    session: Any,
+    symbols: Iterable[str],
+    snapshot_path: Path,
+) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
     errors = []
     for key in ("sec_registry", "sec_registry_fallback"):
         try:
             records = normalize_sec_registry(_fetch_json(session, SOURCE_URLS[key]))
             if records:
-                return records, SOURCE_URLS[key]
+                return records, SOURCE_URLS[key], {"mode": "live", "live_ok": True}
         except Exception as exc:
             errors.append(f"{SOURCE_URLS[key]}: {type(exc).__name__}: {exc}")
     # SEC's bulk files reject some hosted-runner address ranges.  Its official
@@ -599,9 +643,15 @@ def _fetch_sec_registry(session: Any, symbols: Iterable[str]) -> tuple[list[dict
         if index + 1 < len(wanted_symbols):
             time.sleep(0.11)
     if lookup_errors:
-        raise SourceError("; ".join([*errors, *lookup_errors[:5]]))
-    if records:
-        return records, SOURCE_URLS["sec_entity_search"]
+        errors.extend(lookup_errors[:5])
+    if records and not lookup_errors:
+        return records, SOURCE_URLS["sec_entity_search"], {"mode": "live", "live_ok": True}
+    try:
+        snapshot_records, metadata = _load_sec_snapshot(snapshot_path, wanted_symbols)
+        metadata["live_error"] = "; ".join(errors)
+        return snapshot_records, SOURCE_URLS["sec_registry"], metadata
+    except Exception as snapshot_exc:
+        errors.append(f"snapshot: {type(snapshot_exc).__name__}: {snapshot_exc}")
     raise SourceError("; ".join(errors) or "SEC entity search returned no exact ticker records")
 
 
@@ -609,6 +659,7 @@ def fetch_official_sources(
     session: Any | None = None,
     *,
     us_symbols: Iterable[str] = (),
+    sec_snapshot_path: Path = Path("official_data/sec_company_tickers_snapshot.json"),
 ) -> tuple[
     list[dict[str, Any]],
     list[dict[str, Any]],
@@ -625,13 +676,22 @@ def fetch_official_sources(
     for name, normalizer in registry_specs:
         try:
             if name == "sec_registry":
-                records, used_url = _fetch_sec_registry(session, us_symbols)
+                records, used_url, metadata = _fetch_sec_registry(
+                    session, us_symbols, sec_snapshot_path
+                )
             else:
                 used_url = SOURCE_URLS[name]
                 records = normalizer(_fetch_json(session, used_url))
+                metadata = {"mode": "live", "live_ok": True}
             if not records:
                 raise SourceError("official registry returned no records")
-            registry_sources.append({"source": name, "ok": True, "records": records, "url": used_url})
+            registry_sources.append({
+                "source": name,
+                "ok": True,
+                "records": records,
+                "url": used_url,
+                **metadata,
+            })
         except Exception as exc:
             registry_sources.append({"source": name, "ok": False, "records": [], "error": f"{type(exc).__name__}: {exc}"})
 
@@ -684,6 +744,7 @@ def run_shadow(
     reports_dir: Path,
     session: Any | None = None,
     generated_at: str = "",
+    sec_snapshot_path: Path = Path("official_data/sec_company_tickers_snapshot.json"),
 ) -> dict[str, Any]:
     active_payload = _read_json(universe_path, {})
     if not isinstance(active_payload, dict) or not active_payload.get("data"):
@@ -697,7 +758,7 @@ def run_shadow(
         if row.get("market") == "US"
     ]
     registry_sources, announcements, halts, event_source_health = fetch_official_sources(
-        session, us_symbols=us_symbols
+        session, us_symbols=us_symbols, sec_snapshot_path=sec_snapshot_path
     )
     timestamp = generated_at or datetime.now(timezone.utc).isoformat()
     report, registry = build_shadow_report(
@@ -730,8 +791,17 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--universe", type=Path, default=Path("search_data.json"))
     parser.add_argument("--reports-dir", type=Path, default=Path("reports"))
+    parser.add_argument(
+        "--sec-snapshot",
+        type=Path,
+        default=Path("official_data/sec_company_tickers_snapshot.json"),
+    )
     args = parser.parse_args()
-    report = run_shadow(universe_path=args.universe, reports_dir=args.reports_dir)
+    report = run_shadow(
+        universe_path=args.universe,
+        reports_dir=args.reports_dir,
+        sec_snapshot_path=args.sec_snapshot,
+    )
     summary = report["summary"]
     print(
         "corporate actions shadow: "

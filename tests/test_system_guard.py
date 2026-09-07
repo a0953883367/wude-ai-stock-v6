@@ -300,6 +300,30 @@ def test_corporate_action_warning_is_visible_without_changing_formal_system(tmp_
     assert guard["safety"]["deletes_data"] is False
 
 
+def test_corporate_action_fresh_sec_snapshot_is_white_information(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    corporate = json.loads((tmp_path / "corporate_actions_shadow.json").read_text(encoding="utf-8"))
+    corporate["source_health"] = {
+        "sec_registry": {
+            "ok": True,
+            "mode": "verified_snapshot",
+            "snapshot_generated_at": "2026-09-07T11:26:08+00:00",
+        }
+    }
+    _write(tmp_path / "corporate_actions_shadow.json", corporate)
+
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+    )
+
+    check = next(item for item in guard["checks"] if item["code"] == "corporate_actions_shadow")
+    assert check["level"] == "info"
+    assert "官方校驗快照" in check["detail"]
+
+
 def test_corporate_action_policy_violation_turns_guard_red(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     corporate = json.loads((tmp_path / "corporate_actions_shadow.json").read_text(encoding="utf-8"))
