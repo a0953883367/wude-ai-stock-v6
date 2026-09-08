@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-08T10:36:49+08:00",
+  "checked_at": "2026-09-08T11:37:15+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-08 06:03:42",
-  "report_age_minutes": 273.1,
+  "report_age_minutes": 333.6,
   "counts": {
-    "ok": 25,
+    "ok": 26,
     "info": 6,
-    "warning": 2,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "warning",
       "label": "注意",
-      "detail": "最近更新距今 4.6 小時",
+      "detail": "最近更新距今 5.6 小時",
       "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
@@ -251,10 +251,10 @@
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近一次通知未送達：ReadTimeout；後端與串流未停止",
-      "action": "檢查專用 Bot 對話與 Railway Telegram 設定"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近一次已送達：2026-09-08T03:37:10+00:00",
+      "action": ""
     },
     {
       "code": "device_authorization",
@@ -282,8 +282,7 @@
     }
   ],
   "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲",
-    "檢查專用 Bot 對話與 Railway Telegram 設定"
+    "若已跨過下一個排程時間，檢查排程是否延遲"
   ],
   "safety": {
     "changes_rankings": false,
