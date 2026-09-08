@@ -1218,6 +1218,7 @@ def update_decision_hub(
         "graduation": _read_json(reports_dir / "model_graduation.json"),
         "tw_financial": _read_json(reports_dir / "tw_financial_official_cache.json"),
         "capital_flow": _read_json(reports_dir / "capital_flow_daily.json"),
+        "chart_pattern_validation": _read_json(reports_dir / "chart_pattern_validation.json"),
         "prediction_engine": _load_prediction_engine_contract(reports_dir),
     }
     news_cache = _read_json(reports_dir / "news_risk_cache.json") or {}
@@ -1550,6 +1551,7 @@ def update_decision_hub(
             "StockQ只在收盤後補主要來源缺少的市場指標，不覆蓋個股資料、不直接改分",
             "部位控制在中央結論後執行；風險擋下與資料不足一律配置為零",
             "多期間模型與中央證據信任只在隔離影子層受控自動升級或退版；正式V6、正式權重與合併仍須人工決定",
+            "K線型態當日只留樣，隔日收盤確認方向與量能，追蹤第1、3、5交易日；20日初評、60日後才可人工審查，驗證期間不改正式排名",
             "最終按鈕只保存你的人工選擇，不連券商、不下單",
         ],
         "source_status": {
@@ -1603,6 +1605,14 @@ def update_decision_hub(
         },
         "missing_sources": missing_sources,
         "readiness": _model_readiness(source_reports, institution_status),
+        "chart_pattern_validation": {
+            "status": (source_reports["chart_pattern_validation"] or {}).get("status", "unavailable"),
+            "model_version": (source_reports["chart_pattern_validation"] or {}).get("model_version"),
+            "summary": (source_reports["chart_pattern_validation"] or {}).get("summary") or {},
+            "report": "chart_pattern_validation.json",
+            "formal_ranking_unchanged": True,
+            "automatic_orders": False,
+        },
         "comprehensive_shadow": {
             "report": "comprehensive_shadow_ranking.json",
             "history": "comprehensive_shadow_history.json",

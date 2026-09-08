@@ -268,6 +268,54 @@ def _update_valuation_risk_shadow_safely(
     return success
 
 
+def _update_chart_pattern_validation_safely(
+    reports_dir,
+    rows,
+    *,
+    period: str,
+    updated_at: str,
+    intraday: bool,
+) -> bool:
+    """Keep chart-pattern learning isolated from every formal output."""
+    health_path = reports_dir / "chart_pattern_validation_health.json"
+    try:
+        previous = json.loads(health_path.read_text(encoding="utf-8"))
+        if not isinstance(previous, dict):
+            previous = {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        previous = {}
+    try:
+        from chart_pattern_validation import update_chart_pattern_validation
+
+        update_chart_pattern_validation(
+            reports_dir, rows, period=period, updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate shadow isolation
+        logging.exception("K線型態1/3/5日驗證失敗；正式報表繼續")
+        health = {
+            "status": "warning", "checked_at": updated_at,
+            "last_success_at": previous.get("last_success_at"),
+            "error_type": type(exc).__name__, "detail": str(exc)[:300],
+            "formal_pipeline_continues": True, "changes_rankings": False,
+            "changes_weights": False, "places_orders": False,
+        }
+        success = False
+    else:
+        health = {
+            "status": "ok", "checked_at": updated_at,
+            "last_success_at": updated_at,
+            "detail": "型態事前留樣、隔日確認及1/3/5日影子結算正常",
+            "formal_pipeline_continues": True, "changes_rankings": False,
+            "changes_weights": False, "places_orders": False,
+        }
+        success = True
+    tmp = reports_dir / "chart_pattern_validation_health.tmp"
+    tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(health_path)
+    return success
+
+
 def _update_decision_hub_safely(
     reports_dir,
     rows,
@@ -1801,6 +1849,16 @@ def main() -> int:
     _update_valuation_risk_shadow_safely(
         SETTINGS.reports_dir,
         valuation_rows,
+        period=args.period,
+        updated_at=report["updated_at"],
+        intraday=args.intraday,
+    )
+    # Record pattern occurrences before Central AI reads their aggregate
+    # evidence.  The module owns an isolated forward-only ledger and cannot
+    # mutate the already-final V6 rows.
+    _update_chart_pattern_validation_safely(
+        SETTINGS.reports_dir,
+        ranked,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
