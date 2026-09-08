@@ -12,12 +12,13 @@ function reportAge(value){return value?String(value).replace('T',' '):'未提供
 function metric(label,value,note){return'<div class="metric"><span>'+esc(label)+'</span><b>'+esc(value)+'</b><small>'+esc(note||'')+'</small></div>';}
 function money(value){var n=Number(value);return Number.isFinite(n)?'NT$'+Math.round(n).toLocaleString('zh-TW'):'—';}
 function shares(value){var n=Number(value);return Number.isFinite(n)?(n>0?'+':'')+Math.round(n).toLocaleString('zh-TW')+'股':'—';}
-function renderStatus(){var p=state.payload||{},s=p.summary||{},r=p.readiness||{},v=r.validation_60d||r.forward_validation||{},g=r.model_graduation||{},gf=g.summary||{},tf=r.tw_official_financial||{},ti=r.tw_institutional||{},sq=r.stockq_market_context||{},ue=p.unified_evidence||{},pc=p.portfolio_control||{},answer=p.single_answer||{},ns=(p.next_session_shadow||{}).summary||{},pe=(p.prediction_engine||{}).run_summary||{},ul=(p.unit_learning||{}).summary||{},sv=(state.shadow||{}).validation||{},sd=sv.valid_trading_days||{};document.getElementById('status').innerHTML=
+function renderStatus(){var p=state.payload||{},s=p.summary||{},r=p.readiness||{},v=r.validation_60d||r.forward_validation||{},g=r.model_graduation||{},gf=g.summary||{},tf=r.tw_official_financial||{},ti=r.tw_institutional||{},sq=r.stockq_market_context||{},ue=p.unified_evidence||{},pc=p.portfolio_control||{},answer=p.single_answer||{},ns=(p.next_session_shadow||{}).summary||{},pe=(p.prediction_engine||{}).run_summary||{},ul=(p.unit_learning||{}).summary||{},cp=(p.chart_pattern_validation||{}).summary||{},cpd=cp.valid_trading_days||{},sv=(state.shadow||{}).validation||{},sd=sv.valid_trading_days||{};document.getElementById('status').innerHTML=
 metric('中央判斷',(s.decision_count||0)+' 檔','涵蓋台股與美股')+
 metric('多週期預判',String(pe.symbol_count||0)+' 檔',String(pe.latest_prediction_count||0)+'筆固定答案')+
 metric('證據單元學習',(ul.dedicated_ledger_units||0)+' / 11','啟用影子信任 '+(ul.active_shadow_trust_streams||0)+' 路｜正式V6不變')+
 metric('明日預判',String(ns.data_ready_count||0)+' 檔','偏多 '+String(ns.up_count||0)+'｜可買候選 '+String(ns.buyable_candidate_count||0))+
 metric('綜合影子試走','台 '+(sd.TW||0)+'日｜美 '+(sd.US||0)+'日','20日初評｜60日人工畢業審查')+
+metric('K線型態5日驗證','台 '+(cpd.TW||0)+'日｜美 '+(cpd.US||0)+'日','留樣 '+(cp.signal_count||0)+'｜1/3/5日 '+(cp.matured_1d||0)+'/'+(cp.matured_3d||0)+'/'+(cp.matured_5d||0))+
 metric('已裁決衝突',(s.resolved_conflict_count||s.conflict_count||0)+' 檔','未裁決 '+(s.unresolved_conflict_count||0)+' 檔')+
 metric('60日向前驗證',(v.collected_trading_days||0)+' / '+(v.target_trading_days||60),'剩 '+(v.remaining_trading_days==null?'—':v.remaining_trading_days)+' 個交易日')+
 metric('台股官方財報',(tf.available||0)+' / '+(tf.requested||0),(tf.coverage_pct==null?'尚待更新':num(tf.coverage_pct,2)+'% 完整'))+
