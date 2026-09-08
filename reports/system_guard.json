@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-09T05:16:43+08:00",
+  "checked_at": "2026-09-09T06:07:07+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-08 20:11:16",
-  "report_age_minutes": 545.5,
+  "report_updated_at": "2026-09-09 06:03:59",
+  "report_age_minutes": 3.1,
   "counts": {
-    "ok": 25,
-    "info": 7,
+    "ok": 26,
+    "info": 6,
     "warning": 1,
     "critical": 0
   },
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 189.9 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 193.7 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -26,24 +26,24 @@
       "title": "影子證據私人備份",
       "level": "ok",
       "label": "正常",
-      "detail": "完整資料庫備份已校驗（0.7 MB）；未發布至網站，正式V6未變更",
+      "detail": "完整資料庫備份已校驗（0.8 MB）；未發布至網站，正式V6未變更",
       "action": ""
     },
     {
       "code": "corporate_actions_shadow",
       "title": "股票更名／停復牌監控",
-      "level": "info",
-      "label": "資訊",
-      "detail": "官方身分符合 370/374 檔（個股 306、ETF 68）；事件 0 件；來源失敗 0 個；已建立第一份影子基準，等待下次比較",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "官方身分符合 370/374 檔（個股 306、ETF 68）；事件 4 件；來源失敗 0 個",
+      "action": "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
     },
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 9.1 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -66,7 +66,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-09-08 33/33；TW_STOCK 2026-09-08 154/154；US_ETF 2026-09-04 34/35；US_STOCK 2026-09-04 151/151",
+      "detail": "TW_ETF 2026-09-08 33/33；TW_STOCK 2026-09-08 154/154；US_ETF 2026-09-08 34/35；US_STOCK 2026-09-08 151/151",
       "action": ""
     },
     {
@@ -122,7 +122,7 @@
       "title": "Tiingo 免費版覆蓋測試",
       "level": "info",
       "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 94 檔；尚未切換半套快取",
+      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
       "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
@@ -138,7 +138,7 @@
       "title": "60日向前驗證",
       "level": "ok",
       "label": "正常",
-      "detail": "真實交易日 12/60；進度監控正常；TW 2026-09-08／12天、US 2026-09-04／10天",
+      "detail": "真實交易日 12/60；進度監控正常；TW 2026-09-08／12天、US 2026-09-08／11天",
       "action": ""
     },
     {
@@ -154,7 +154,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 938 筆錯誤列合併為 248 個事件；影子候選 6 組；完整學習治理 52/52 項，正式V6鎖定",
+      "detail": "已將 967 筆錯誤列合併為 256 個事件；影子候選 6 組；完整學習治理 52/52 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -162,7 +162,7 @@
       "title": "11個證據單元獨立學習",
       "level": "ok",
       "label": "正常",
-      "detail": "專屬帳本 11/11；已成熟 2057 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
+      "detail": "專屬帳本 11/11；已成熟 4092 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
       "action": ""
     },
     {
@@ -178,10 +178,10 @@
       "title": "多期間真實答案帳本",
       "level": "ok",
       "label": "正常",
-      "detail": "台美股共 3 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+      "detail": "台美股共 4 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
-      "cohort_count": 3,
-      "ledger_updated_at": "2026-09-08 20:11:16"
+      "cohort_count": 4,
+      "ledger_updated_at": "2026-09-09 06:03:59"
     },
     {
       "code": "unified_evidence",
@@ -253,7 +253,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-09-08T20:00:08+00:00",
+      "detail": "最近一次已送達：2026-09-01T10:44:58+00:00",
       "action": ""
     },
     {
@@ -277,12 +277,12 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
   "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
   ],
   "safety": {
     "changes_rankings": false,

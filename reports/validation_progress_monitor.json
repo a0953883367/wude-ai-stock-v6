@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-08 20:11:16",
+  "updated_at": "2026-09-09 06:03:59",
   "status": "ok",
   "mode": "completed_session_observer_only",
   "current": {
     "trading_days_collected": 12,
     "target_trading_days": 60,
     "remaining_trading_days": 48,
-    "eligible_samples": 520
+    "eligible_samples": 542
   },
   "markets": {
     "TW": {
@@ -20,11 +20,11 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-09-04",
-      "last_completed_days": 10,
-      "last_progress_at": "2026-09-05 06:03:35",
+      "last_session_date": "2026-09-08",
+      "last_completed_days": 11,
+      "last_progress_at": "2026-09-09 06:03:59",
       "stalled_sessions": 0,
-      "detail": "2026-09-04 正常增加至 10 天"
+      "detail": "2026-09-08 正常增加至 11 天"
     }
   },
   "weekly_baseline": {
@@ -58,15 +58,15 @@
       "trade_signal_contract_version": 2
     },
     "US": {
-      "status": "initializing",
-      "last_session_date": "2026-09-04",
-      "last_validation_days": 10,
+      "status": "ok",
+      "last_session_date": "2026-09-08",
+      "last_validation_days": 11,
       "last_trade_signal_samples": 0,
-      "direction_samples": 86,
-      "stagnant_sessions": 0,
+      "direction_samples": 96,
+      "stagnant_sessions": 1,
       "last_signal_growth_at": null,
       "alert_notified": false,
-      "detail": "交易訊號契約已升級為 V2；從新契約的下一個完成交易日重新觀察，不回填舊樣本",
+      "detail": "已有 96 筆方向結果；完整交易訊號 0 筆，連續 1 個有效交易日未增加",
       "trade_signal_contract_version": 2
     }
   },
