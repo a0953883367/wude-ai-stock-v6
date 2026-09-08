@@ -282,6 +282,150 @@ def _candlestick_features(
     }
 
 
+def _chart_pattern_shadow_features(
+    high: pd.Series, low: pd.Series, close: pd.Series, volume: pd.Series,
+) -> dict[str, Any]:
+    """Detect auditable chart structures without changing the formal score."""
+    empty = {
+        "chart_pattern_shadow_name": "未偵測",
+        "chart_pattern_shadow_direction": "neutral",
+        "chart_pattern_shadow_status": "無明顯型態",
+        "chart_pattern_shadow_confidence": 0,
+        "chart_pattern_shadow_upper": None,
+        "chart_pattern_shadow_lower": None,
+        "chart_pattern_shadow_entry": None,
+        "chart_pattern_shadow_stop": None,
+        "chart_pattern_shadow_target": None,
+        "chart_pattern_shadow_volume_confirmed": False,
+        "chart_pattern_shadow_pivots": [],
+        "chart_pattern_shadow_affects_formal": False,
+    }
+    frame = pd.DataFrame({
+        "high": pd.to_numeric(high, errors="coerce"),
+        "low": pd.to_numeric(low, errors="coerce"),
+        "close": pd.to_numeric(close, errors="coerce"),
+        "volume": pd.to_numeric(volume, errors="coerce").fillna(0),
+    }).dropna(subset=["high", "low", "close"]).tail(80).reset_index(drop=True)
+    if len(frame) < 25:
+        return empty
+
+    highs = frame["high"].to_numpy(dtype=float)
+    lows = frame["low"].to_numpy(dtype=float)
+    closes = frame["close"].to_numpy(dtype=float)
+    volumes = frame["volume"].to_numpy(dtype=float)
+    radius = 2
+
+    def pivots(values: np.ndarray, peak: bool) -> list[int]:
+        result: list[int] = []
+        for index in range(radius, len(values)-radius):
+            window = values[index-radius:index+radius+1]
+            edge = float(np.max(window) if peak else np.min(window))
+            if values[index] == edge and np.count_nonzero(window == edge) == 1:
+                result.append(index)
+        return result
+
+    peak_indices = pivots(highs, True)[-5:]
+    trough_indices = pivots(lows, False)[-5:]
+    latest = len(closes)-1
+    average_volume = float(np.mean(volumes[max(0, latest-20):latest]))
+    volume_confirmed = bool(average_volume > 0 and volumes[-1]/average_volume >= 1.3)
+    candidates: list[dict[str, Any]] = []
+
+    def add_candidate(
+        name: str, direction: str, upper: float, lower: float,
+        confirmed: bool, confidence: float, used: list[tuple[int, float]],
+    ) -> None:
+        height = max(upper-lower, closes[-1]*.02)
+        bullish = direction == "bullish"
+        directional = direction in {"bullish", "bearish"}
+        candidates.append({
+            "name": name, "direction": direction, "upper": upper, "lower": lower,
+            "entry": (upper if bullish else lower) if directional else None,
+            "stop": (lower if bullish else upper) if directional else None,
+            "target": (upper+height if bullish else max(lower-height, 0.0)) if directional else None,
+            "confirmed": bool(confirmed),
+            "confidence": _clamp(confidence+(8 if confirmed else 0)+(5 if confirmed and volume_confirmed else 0)),
+            "pivots": [{"index": int(index), "price": round(float(price), 2)} for index, price in used],
+        })
+
+    # Two comparable extremes are not enough: require an intervening move of
+    # at least 4%, adequate spacing and a recent second pivot.
+    if len(peak_indices) >= 2:
+        first, second = peak_indices[-2:]
+        p1, p2 = highs[first], highs[second]
+        similarity = abs(p1-p2)/max((p1+p2)/2, .01)
+        valley = float(np.min(lows[first:second+1]))
+        depth = min(p1, p2)/max(valley, .01)-1
+        if 4 <= second-first <= 40 and similarity <= .035 and depth >= .04 and latest-second <= 15:
+            add_candidate("雙重頂", "bearish", float(max(p1, p2)), valley,
+                          closes[-1] < valley*.997, 72-similarity*300, [(first, p1), (second, p2)])
+    if len(trough_indices) >= 2:
+        first, second = trough_indices[-2:]
+        p1, p2 = lows[first], lows[second]
+        similarity = abs(p1-p2)/max((p1+p2)/2, .01)
+        rebound = float(np.max(highs[first:second+1]))
+        depth = rebound/max(p1, p2, .01)-1
+        if 4 <= second-first <= 40 and similarity <= .035 and depth >= .04 and latest-second <= 15:
+            add_candidate("雙重底", "bullish", rebound, float(min(p1, p2)),
+                          closes[-1] > rebound*1.003, 72-similarity*300, [(first, p1), (second, p2)])
+
+    if len(peak_indices) >= 3 and len(trough_indices) >= 3:
+        top_x = np.asarray(peak_indices[-3:], dtype=float)
+        bottom_x = np.asarray(trough_indices[-3:], dtype=float)
+        top_y, bottom_y = highs[top_x.astype(int)], lows[bottom_x.astype(int)]
+        top_slope, top_intercept = np.polyfit(top_x, top_y, 1)
+        bottom_slope, bottom_intercept = np.polyfit(bottom_x, bottom_y, 1)
+        scale = max(float(np.mean(closes[-20:])), .01)
+        top_rate, bottom_rate = top_slope/scale, bottom_slope/scale
+        upper = float(top_intercept+top_slope*latest)
+        lower = float(bottom_intercept+bottom_slope*latest)
+        prior = max(0, min(peak_indices[-3], trough_indices[-3]))
+        old_upper = float(top_intercept+top_slope*prior)
+        old_lower = float(bottom_intercept+bottom_slope*prior)
+        converging = upper > lower and old_upper > old_lower and (upper-lower) < (old_upper-old_lower)*.85
+        recent = latest-max(peak_indices[-1], trough_indices[-1]) <= 15
+        used = [(i, highs[i]) for i in peak_indices[-3:]]+[(i, lows[i]) for i in trough_indices[-3:]]
+        name = direction = None
+        if converging and recent:
+            if top_rate < -.0005 and abs(bottom_rate) <= .0015:
+                name, direction = "下降三角形", "bearish"
+            elif bottom_rate > .0005 and abs(top_rate) <= .0015:
+                name, direction = "上升三角形", "bullish"
+            elif top_rate < -.0005 and bottom_rate > .0005:
+                name = "對稱三角形"
+                direction = "bullish" if closes[-1] > upper*1.003 else "bearish" if closes[-1] < lower*.997 else "neutral"
+            elif top_rate > .0004 and bottom_rate > top_rate+.0002:
+                name, direction = "上升楔形", "bearish"
+            elif bottom_rate < -.0004 and top_rate < bottom_rate-.0002:
+                name, direction = "下降楔形", "bullish"
+        if name:
+            confirmed = closes[-1] > upper*1.003 if direction == "bullish" else closes[-1] < lower*.997 if direction == "bearish" else False
+            geometry = min(88.0, 62+(1-(upper-lower)/max(old_upper-old_lower, .01))*30)
+            add_candidate(name, direction, upper, lower, confirmed, geometry, used)
+
+    if not candidates:
+        return empty
+    chosen = max(candidates, key=lambda item: (int(item["confirmed"]), item["confidence"]))
+    if chosen["confirmed"]:
+        status = "收盤確認突破" if chosen["direction"] == "bullish" else "收盤確認跌破"
+    else:
+        status = "疑似形成，等待收盤確認"
+    return {
+        "chart_pattern_shadow_name": chosen["name"],
+        "chart_pattern_shadow_direction": chosen["direction"],
+        "chart_pattern_shadow_status": status,
+        "chart_pattern_shadow_confidence": round(chosen["confidence"], 1),
+        "chart_pattern_shadow_upper": round(chosen["upper"], 2),
+        "chart_pattern_shadow_lower": round(chosen["lower"], 2),
+        "chart_pattern_shadow_entry": None if chosen["entry"] is None else round(chosen["entry"], 2),
+        "chart_pattern_shadow_stop": None if chosen["stop"] is None else round(chosen["stop"], 2),
+        "chart_pattern_shadow_target": None if chosen["target"] is None else round(chosen["target"], 2),
+        "chart_pattern_shadow_volume_confirmed": bool(chosen["confirmed"] and volume_confirmed),
+        "chart_pattern_shadow_pivots": chosen["pivots"],
+        "chart_pattern_shadow_affects_formal": False,
+    }
+
+
 def _tw_head_shoulders_features(
     high: pd.Series,
     low: pd.Series,
@@ -677,6 +821,7 @@ def build_features(
     avg10 = _finite(completed_volume.tail(10).mean(), avg5)
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
+    candle.update(_chart_pattern_shadow_features(high, low, close, volume))
     if market == "TW":
         candle.update(_tw_head_shoulders_features(high, low, close, volume))
         candle.update(_tw_daily_momentum_features(high, low, close, volume))

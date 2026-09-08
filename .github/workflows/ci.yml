@@ -58,6 +58,8 @@ jobs:
         run: node tests/test_valuation_risk_shadow_ui.js
       - name: 檢查中央 AI 決策中樞
         run: node tests/test_decision_hub_ui.js
+      - name: 檢查 K 線型態影子核對站
+        run: node tests/test_chart_pattern_shadow_ui.js
       - name: 檢查強勢股漏選驗證
         run: node tests/test_missed_strength_validation_ui.js
       - name: 檢查自動即時判斷
