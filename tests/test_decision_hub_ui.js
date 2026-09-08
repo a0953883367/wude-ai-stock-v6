@@ -40,6 +40,7 @@ assert(js.includes("state.mode==='compare'"));
 assert(js.includes('影子覆蓋'));
 assert(html.includes('decision_hub.js?v=10'));
 assert(js.includes('K線型態5日驗證'));
+assert(js.includes("fetchJSON('chart_pattern_validation.json'"));
 assert(html.includes('.compare-filters[hidden]'));
 assert(js.includes("if(state.mode!=='decision')return;"));
 assert(js.includes("compareFilter:'up'"));
