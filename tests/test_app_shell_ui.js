@@ -6,6 +6,7 @@ const pages = [
   'index.html',
   'live-flow.html',
   'decision-hub.html',
+  'chart-pattern-shadow.html',
   'inverse-etf-shadow.html',
   'valuation-risk-shadow.html',
 ];
@@ -22,6 +23,7 @@ for (const expected of [
   "label: '總覽'",
   "label: '大量買賣'",
   "label: 'AI 決策'",
+  "label: '型態核對'",
   "label: '反向 ETF'",
   "label: '估值雷達'",
   "aria-current",
@@ -58,7 +60,7 @@ for (const current of pages) {
     window: { location: { pathname: `/wude-ai-stock-v6/${current}` } },
   });
   assert.strictEqual(body.children.length, 1, `${current} 應建立一個底部導覽`);
-  assert.strictEqual(body.children[0].children.length, 5, `${current} 應顯示五個功能按鈕`);
+  assert.strictEqual(body.children[0].children.length, 6, `${current} 應顯示六個功能按鈕`);
   const active = body.children[0].children.filter(link => link.attributes['aria-current'] === 'page');
   assert.strictEqual(active.length, 1, `${current} 應只有一個目前頁面`);
   if (current === 'index.html') assert.ok(rootClasses.includes('app-shell-overview'));

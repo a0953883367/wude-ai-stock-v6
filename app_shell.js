@@ -5,6 +5,7 @@
     { file: 'index.html', href: './', icon: '📊', label: '總覽' },
     { file: 'live-flow.html', href: 'live-flow.html', icon: '🚨', label: '大量買賣' },
     { file: 'decision-hub.html', href: 'decision-hub.html', icon: '🧠', label: 'AI 決策' },
+    { file: 'chart-pattern-shadow.html', href: 'chart-pattern-shadow.html', icon: '📐', label: '型態核對' },
     { file: 'inverse-etf-shadow.html', href: 'inverse-etf-shadow.html', icon: '↘️', label: '反向 ETF' },
     { file: 'valuation-risk-shadow.html', href: 'valuation-risk-shadow.html', icon: '🧮', label: '估值雷達' }
   ];
