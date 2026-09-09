@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from strategy import _apply_tw_accumulation_short_ranking, _assign_group_ranks, _assign_tw_accumulation_ranks, _available_weighted_score, _candlestick_features, _chart_pattern_shadow_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _promote_completed_us_intraday_session, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
+from strategy import _apply_tw_accumulation_short_ranking, _assign_group_ranks, _assign_tw_accumulation_ranks, _available_weighted_score, _candlestick_features, _chart_pattern_momentum_features, _chart_pattern_shadow_features, _complete_price_plan, _entry_plan, _etf_score_bundle, _market_flow_score, _market_outlook, _next_day_scenario, _positioning_radar, _promote_completed_us_intraday_session, _ranking_sort_key, _short_term_plan, _mid_long_term_plan, _trade_safety_guard, _tw_daily_momentum_features, _tw_head_shoulders_features, _tw_institutional_accumulation, _tw_intraday_momentum_features, apply_tw_buy_candidate_ranking, build_features, market_session_fraction, score_candidates
 
 
 def test_tw_institutional_accumulation_requires_complete_history_and_is_shadow_only():
@@ -428,6 +428,16 @@ def test_chart_pattern_shadow_requires_enough_completed_daily_bars():
     result = _chart_pattern_shadow_features(close+1, close-1, close, close*0+100)
     assert result["chart_pattern_shadow_name"] == "未偵測"
     assert result["chart_pattern_shadow_affects_formal"] is False
+
+
+def test_chart_pattern_momentum_publishes_daily_weekly_kd_and_macd():
+    close = pd.Series([100+i*.4+(-1)**i for i in range(70)])
+    result = _chart_pattern_momentum_features(close+2, close-2, close)
+    assert result["chart_pattern_daily_k"] is not None
+    assert result["chart_pattern_daily_d"] is not None
+    assert result["chart_pattern_weekly_k"] is not None
+    assert result["chart_pattern_weekly_d"] is not None
+    assert result["chart_pattern_macd_histogram"] is not None
 
 
 def test_tw_volume_contraction_breakout_rewards_only_confirmed_expansion():

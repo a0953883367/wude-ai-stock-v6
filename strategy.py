@@ -426,6 +426,68 @@ def _chart_pattern_shadow_features(
     }
 
 
+def _chart_pattern_momentum_features(
+    high: pd.Series, low: pd.Series, close: pd.Series,
+) -> dict[str, Any]:
+    """Publish daily/weekly KD and MACD for the isolated pattern audit.
+
+    These values are evidence for the chart-pattern page only.  The formal V6
+    score does not read any key returned here.
+    """
+    defaults = {
+        "chart_pattern_daily_k": None,
+        "chart_pattern_daily_d": None,
+        "chart_pattern_weekly_k": None,
+        "chart_pattern_weekly_d": None,
+        "chart_pattern_macd": None,
+        "chart_pattern_macd_signal": None,
+        "chart_pattern_macd_histogram": None,
+    }
+    frame = pd.DataFrame({
+        "high": pd.to_numeric(high, errors="coerce"),
+        "low": pd.to_numeric(low, errors="coerce"),
+        "close": pd.to_numeric(close, errors="coerce"),
+    }).dropna(subset=["high", "low", "close"])
+    if len(frame) < 26:
+        return defaults
+
+    def stochastic(source: pd.DataFrame) -> tuple[float | None, float | None]:
+        if len(source) < 9:
+            return None, None
+        lowest = source["low"].rolling(9, min_periods=9).min()
+        highest = source["high"].rolling(9, min_periods=9).max()
+        spread = (highest-lowest).replace(0, float("nan"))
+        rsv = ((source["close"]-lowest)/spread*100).clip(0, 100)
+        k = rsv.ewm(alpha=1/3, adjust=False, min_periods=1).mean()
+        d = k.ewm(alpha=1/3, adjust=False, min_periods=1).mean()
+        return _finite(k.iloc[-1], None), _finite(d.iloc[-1], None)
+
+    daily_k, daily_d = stochastic(frame)
+    if isinstance(frame.index, pd.DatetimeIndex):
+        weekly = frame.resample("W-FRI").agg({
+            "high": "max", "low": "min", "close": "last",
+        }).dropna()
+    else:
+        groups = pd.Series(range(len(frame)), index=frame.index)//5
+        weekly = frame.groupby(groups).agg({
+            "high": "max", "low": "min", "close": "last",
+        })
+    weekly_k, weekly_d = stochastic(weekly)
+    closes = frame["close"]
+    macd = closes.ewm(span=12, adjust=False).mean()-closes.ewm(span=26, adjust=False).mean()
+    signal = macd.ewm(span=9, adjust=False).mean()
+    histogram = macd-signal
+    return {
+        "chart_pattern_daily_k": None if daily_k is None else round(daily_k, 2),
+        "chart_pattern_daily_d": None if daily_d is None else round(daily_d, 2),
+        "chart_pattern_weekly_k": None if weekly_k is None else round(weekly_k, 2),
+        "chart_pattern_weekly_d": None if weekly_d is None else round(weekly_d, 2),
+        "chart_pattern_macd": round(_finite(macd.iloc[-1]), 6),
+        "chart_pattern_macd_signal": round(_finite(signal.iloc[-1]), 6),
+        "chart_pattern_macd_histogram": round(_finite(histogram.iloc[-1]), 6),
+    }
+
+
 def _tw_head_shoulders_features(
     high: pd.Series,
     low: pd.Series,
@@ -822,6 +884,7 @@ def build_features(
     avg20 = _finite(completed_volume.tail(20).mean(), avg10)
     candle = _candlestick_features(open_, high, low, close, volume, avg20)
     candle.update(_chart_pattern_shadow_features(high, low, close, volume))
+    candle.update(_chart_pattern_momentum_features(high, low, close))
     if market == "TW":
         candle.update(_tw_head_shoulders_features(high, low, close, volume))
         candle.update(_tw_daily_momentum_features(high, low, close, volume))
