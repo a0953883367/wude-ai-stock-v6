@@ -275,7 +275,7 @@ def _update_chart_pattern_validation_safely(
     period: str,
     updated_at: str,
     intraday: bool,
-) -> bool:
+) -> dict:
     """Keep chart-pattern learning isolated from every formal output."""
     health_path = reports_dir / "chart_pattern_validation_health.json"
     try:
@@ -287,7 +287,7 @@ def _update_chart_pattern_validation_safely(
     try:
         from chart_pattern_validation import update_chart_pattern_validation
 
-        update_chart_pattern_validation(
+        validation_report = update_chart_pattern_validation(
             reports_dir, rows, period=period, updated_at=updated_at,
             intraday=intraday,
         )
@@ -300,7 +300,7 @@ def _update_chart_pattern_validation_safely(
             "formal_pipeline_continues": True, "changes_rankings": False,
             "changes_weights": False, "places_orders": False,
         }
-        success = False
+        validation_report = {}
     else:
         health = {
             "status": "ok", "checked_at": updated_at,
@@ -309,11 +309,22 @@ def _update_chart_pattern_validation_safely(
             "formal_pipeline_continues": True, "changes_rankings": False,
             "changes_weights": False, "places_orders": False,
         }
-        success = True
     tmp = reports_dir / "chart_pattern_validation_health.tmp"
     tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(health_path)
-    return success
+    return validation_report
+
+
+def _attach_chart_pattern_confidence_safely(rows, validation_report) -> bool:
+    """Add pattern-only ranks after formal ranking has already been frozen."""
+    try:
+        from chart_pattern_confidence import attach_chart_pattern_confidence
+
+        attach_chart_pattern_confidence(rows, validation_report or {})
+    except Exception:  # noqa: BLE001 - shadow ranking must never stop V6
+        logging.exception("K線型態可信度排名失敗；正式V6與既有報表繼續")
+        return False
+    return True
 
 
 def _update_decision_hub_safely(
@@ -1856,13 +1867,14 @@ def main() -> int:
     # Record pattern occurrences before Central AI reads their aggregate
     # evidence.  The module owns an isolated forward-only ledger and cannot
     # mutate the already-final V6 rows.
-    _update_chart_pattern_validation_safely(
+    chart_pattern_validation = _update_chart_pattern_validation_safely(
         SETTINGS.reports_dir,
         ranked,
         period=args.period,
         updated_at=report["updated_at"],
         intraday=args.intraday,
     )
+    _attach_chart_pattern_confidence_safely(ranked, chart_pattern_validation)
     _update_central_controls_safely(
         SETTINGS.reports_dir,
         updated_at=report["updated_at"],

@@ -121,12 +121,29 @@ def _settle_signal(signal: dict[str, Any], session_index: int,
             or (observation["relative_volume"] is not None
                 and observation["relative_volume"] >= 1.0)
         )
+        entry = _finite(signal.get("entry"))
+        retest_status = "not_available"
+        retest_confirmed = None
+        if entry is not None and entry > 0:
+            if signal["direction"] == "bullish":
+                touched = observation["low"] <= entry*1.02
+                held = observation["close"] >= entry*.997
+            else:
+                touched = observation["high"] >= entry*.98
+                held = observation["close"] <= entry*1.003
+            if touched:
+                retest_confirmed = bool(held)
+                retest_status = "held" if held else "failed"
+            else:
+                retest_status = "not_retested"
         signal["next_session_confirmation"] = {
             "status": "confirmed" if same_direction and price_direction else "not_confirmed",
             "direction_confirmed": same_direction and price_direction,
             "volume_confirmed": volume_confirmed,
             "same_pattern": observation["pattern"] == signal["pattern"],
             "actual_return_pct": raw,
+            "retest_status": retest_status,
+            "retest_confirmed": retest_confirmed,
         }
     if distance in HORIZONS:
         outcomes = signal.setdefault("outcomes", {})

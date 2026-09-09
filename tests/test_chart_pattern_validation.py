@@ -46,6 +46,8 @@ def test_forward_only_confirmation_and_1_3_5_day_outcomes(tmp_path: Path):
     assert report["summary"]["signal_count"] == 1  # continuous pattern is not duplicated
     assert signal["next_session_confirmation"]["direction_confirmed"] is True
     assert signal["next_session_confirmation"]["volume_confirmed"] is True
+    assert signal["next_session_confirmation"]["retest_status"] == "held"
+    assert signal["next_session_confirmation"]["retest_confirmed"] is True
     assert set(signal["outcomes"]) == {"1", "3", "5"}
     assert signal["outcomes"]["5"]["raw_return_pct"] == 6.0
     assert report["summary"]["matured_5d"] == 1
