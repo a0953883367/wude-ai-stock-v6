@@ -18,6 +18,7 @@ from typing import Any
 from history_archive import iter_archive_documents, read_json_document
 
 from .evidence_backup import open_store_with_private_backup
+from .factor_discovery import build_factor_discovery, explain_prediction
 from .features import extract_features, group_name, session_date
 from .industry_lifecycle import analyze_industry_lifecycle
 from .models import (
@@ -197,6 +198,9 @@ def _make_predictions(
             evidence = dict(extracted["evidence"])
             evidence["active_model_version"] = selection["model_version"]
             evidence["model_selected_before_session"] = True
+            evidence["factor_explanation"] = explain_prediction(
+                features, code, weights=selection.get("weights")
+            )
             if code == "UP_60D" and group.endswith("_STOCK"):
                 evidence["industry_lifecycle"] = copy.deepcopy(lifecycle)
             predictions.append({
@@ -370,6 +374,7 @@ def _compact_prediction(row: dict[str, Any]) -> dict[str, Any]:
         "chase_risk_points": evidence.get("chase_risk_points", 0),
         "trade_blocked": bool(row.get("trade_blocked")),
         "ranking_score": round(_ranking_score(row), 2),
+        "factor_explanation": copy.deepcopy(evidence.get("factor_explanation") or {}),
     }
     if row.get("horizon_code") == "UP_60D" and isinstance(evidence.get("industry_lifecycle"), dict):
         compact["industry_lifecycle"] = copy.deepcopy(evidence["industry_lifecycle"])
@@ -390,6 +395,7 @@ def _build_public_contract(
     maintenance: dict[str, Any],
     input_symbol_count: int,
     forward_outcomes: dict[str, Any],
+    factor_discovery: dict[str, Any],
 ) -> dict[str, Any]:
     compact = [_compact_prediction(row) for row in predictions]
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {
@@ -407,7 +413,7 @@ def _build_public_contract(
             key: row[key] for key in (
                 "target_side", "probability_pct", "expected_return_pct", "buyability_score",
                 "downside_risk_pct", "data_quality_pct", "chase_risk_points", "trade_blocked",
-                "ranking_score", "model_version",
+                "ranking_score", "model_version", "factor_explanation",
             )
         }
         if isinstance(row.get("industry_lifecycle"), dict):
@@ -488,6 +494,7 @@ def _build_public_contract(
             "archive_bootstrap": archive_bootstrap,
         },
         "forward_outcome_ledger": forward_outcomes,
+        "factor_discovery": factor_discovery,
         "rankings": rankings,
         "symbols": symbols,
         "learning": learning,
@@ -741,6 +748,7 @@ def run_prediction_engine(
     _ensure_latest_paper_portfolios(store, latest, created_at=updated_at)
     maintenance = store.maintain_capacity()
     forward_outcomes = store.forward_outcome_summary(FORWARD_OUTCOME_HORIZONS)
+    factor_discovery = build_factor_discovery(store.training_rows, GROUPS)
     forward_outcomes.update({
         "version": 1,
         "title": "台股／美股多期間真實答案帳本",
@@ -782,6 +790,7 @@ def run_prediction_engine(
         archive_bootstrap=archive_bootstrap,
         maintenance=maintenance,
         forward_outcomes=forward_outcomes,
+        factor_discovery=factor_discovery,
         input_symbol_count=len({
             (str(row.get("market") or "").upper(), str(row.get("symbol") or "").upper())
             for row in frozen_rows if row.get("symbol")

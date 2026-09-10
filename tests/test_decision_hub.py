@@ -171,7 +171,11 @@ def test_central_hub_reads_private_engine_compact_contract_only(tmp_path):
                 "asset_group": "TW_STOCK", "session_date": "2026-09-02",
                 "horizons": {
                     "NEXT_1D": {"target_side": "UP", "probability_pct": 63.0,
-                                "expected_return_pct": 1.2, "buyability_score": 61.0},
+                                "expected_return_pct": 1.2, "buyability_score": 61.0,
+                                "factor_explanation": {
+                                    "upward_drivers": [{"factor": "trend", "label": "價格趨勢"}],
+                                    "downward_drivers": [],
+                                }},
                 },
             },
         },
@@ -182,6 +186,10 @@ def test_central_hub_reads_private_engine_compact_contract_only(tmp_path):
                 "probability_pct": 63.0, "expected_return_pct": 1.2,
                 "buyability_score": 61.0, "downside_risk_pct": 3.0,
                 "data_quality_pct": 90.0, "ranking_score": 65.0,
+                "factor_explanation": {
+                    "upward_drivers": [{"factor": "trend", "label": "價格趨勢"}],
+                    "downward_drivers": [{"factor": "valuation", "label": "估值"}],
+                },
             }]},
             "TW_ETF": {}, "US_STOCK": {}, "US_ETF": {},
         },
@@ -193,7 +201,9 @@ def test_central_hub_reads_private_engine_compact_contract_only(tmp_path):
     )
     engine = report["decisions"][0]["prediction_engine"]
     assert engine["horizons"]["NEXT_1D"]["probability_pct"] == 63.0
+    assert engine["horizons"]["NEXT_1D"]["factor_explanation"]["upward_drivers"][0]["factor"] == "trend"
     assert report["prediction_engine_answer"]["by_market"]["TW"]["NEXT_1D"]["symbol"] == "TEST.TW"
+    assert report["prediction_engine_answer"]["by_market"]["TW"]["NEXT_1D"]["factor_explanation"]["upward_drivers"][0]["factor"] == "trend"
     assert report["prediction_engine"]["database_health"]["public_database_exposed"] is False
     assert report["policy"]["prediction_engine_read_only"] is True
 

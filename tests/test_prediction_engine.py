@@ -12,6 +12,7 @@ from prediction_engine.engine import (
     MAX_PUBLIC_REPORT_BYTES,
     run_prediction_engine,
 )
+from prediction_engine.factor_discovery import build_factor_discovery, explain_prediction
 from prediction_engine.features import extract_features
 from prediction_engine.models import (
     HORIZONS,
@@ -74,6 +75,69 @@ def test_future_fields_cannot_change_point_in_time_forecast() -> None:
     )
 
 
+def test_factor_explanation_names_upward_and_downward_ranking_drivers() -> None:
+    explanation = explain_prediction({
+        "trend": 0.90, "volume": 0.80, "capital_flow": 0.20,
+        "positioning": 0.50, "sector": 0.50, "market_regime": 0.50,
+        "fundamental": 0.50, "valuation": 0.50, "news": 0.50,
+        "entry": 0.50, "shadow_consensus": 0.50,
+        "industry_lifecycle": 0.50,
+    }, "UP_5D")
+    assert explanation["upward_drivers"][0]["factor"] == "trend"
+    assert explanation["downward_drivers"][0]["factor"] == "capital_flow"
+    assert explanation["available_factor_count"] == 3
+    assert "不代表因果" in explanation["wording"]
+
+    learned = explain_prediction({"trend": 0.9}, "UP_5D", weights={"trend": 2.0, "_intercept": 1.0})
+    assert learned["upward_drivers"][0]["expected_return_contribution_pct"] == 0.8
+
+
+def test_factor_discovery_hides_associations_until_time_and_sample_gate() -> None:
+    rows = [{
+        "session_date": "2026-01-01",
+        "features": {"trend": 0.8 if index >= 20 else 0.2},
+        "realized_return_pct": 2.0 if index >= 20 else -1.0,
+    } for index in range(40)]
+    result = build_factor_discovery(
+        lambda market, group, horizon: rows,
+        ("TW_STOCK",),
+    )["groups"]["TW_STOCK"]["UP_5D"]
+    assert result["status"] == "collecting_matured_outcomes"
+    assert result["rising_associations"] == []
+
+
+def test_factor_discovery_uses_matured_rows_and_separates_groups() -> None:
+    rows = []
+    for session in range(20):
+        for index in range(5):
+            high = index >= 2
+            rows.append({
+                "session_date": f"2026-01-{session + 1:02d}",
+                "features": {
+                    name: (0.8 if high else 0.2) if name == "trend" else 0.5
+                    for name in (
+                        "trend", "volume", "capital_flow", "positioning", "sector",
+                        "market_regime", "fundamental", "valuation", "news", "entry",
+                        "shadow_consensus", "industry_lifecycle", "quality",
+                    )
+                },
+                "realized_return_pct": 3.0 if high else -2.0,
+            })
+
+    def training_rows(market, group, horizon):
+        return rows if (market, group, horizon) == ("TW", "TW_STOCK", "UP_5D") else []
+
+    result = build_factor_discovery(training_rows, ("TW_STOCK", "US_STOCK"))
+    tw = result["groups"]["TW_STOCK"]["UP_5D"]
+    us = result["groups"]["US_STOCK"]["UP_5D"]
+    assert tw["status"] == "preliminary_associations_ready"
+    assert tw["rising_associations"][0]["factor"] == "trend"
+    assert tw["rising_associations"][0]["high_minus_low_return_pct"] == 5.0
+    assert us["status"] == "collecting_matured_outcomes"
+    assert result["formal_v6_unchanged"] is True
+    assert result["automatic_orders"] is False
+
+
 def test_same_session_gain_is_not_a_directional_bonus_but_continuation_is_allowed() -> None:
     quiet = _row("A")
     quiet.update({"technical_score": 50.0, "change_pct": 0.0})
@@ -122,12 +186,16 @@ def test_engine_is_immutable_compact_and_preserves_old_ledgers(tmp_path: Path) -
     chunk_files = list(reports.glob("prediction_engine_data_*.json"))
     assert len(chunk_files) == 4 * len(HORIZONS)
     assert max(path.stat().st_size for path in chunk_files) < MAX_PUBLIC_CHUNK_BYTES
+    tw_chunk = json.loads((reports / second["data_files"]["TW_STOCK"]["UP_5D"]).read_text())
+    assert tw_chunk["rankings"][0]["factor_explanation"]["upward_drivers"]
     assert not (reports / "prediction_engine.sqlite3").exists()
     assert second["policy"]["network_requests"] == 0
     assert second["policy"]["controlled_shadow_auto_promotion"] is True
     assert second["policy"]["formal_v6_auto_promotion"] is False
     assert second["policy"]["promotion_requires_distinct_session_wins"] == 3
     assert second["policy"]["automatic_shadow_rollback_after_failures"] == 2
+    assert second["factor_discovery"]["markets_separate"] is True
+    assert second["factor_discovery"]["formal_rankings_unchanged"] is True
     assert all(
         item["automatic_shadow_promotion"] is True
         and item["changes_formal_v6"] is False
