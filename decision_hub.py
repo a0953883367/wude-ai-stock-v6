@@ -180,6 +180,7 @@ def _prediction_engine_answer(payload: dict[str, Any] | None) -> dict[str, Any]:
                         "symbol", "name", "asset_group", "session_date", "target_side",
                         "probability_pct", "expected_return_pct", "buyability_score",
                         "downside_risk_pct", "data_quality_pct", "ranking_score",
+                        "factor_explanation",
                     )
                 }
     return {
@@ -1635,6 +1636,7 @@ def update_decision_hub(
             "model_version": (source_reports["prediction_engine"] or {}).get("model_version"),
             "market_status": (source_reports["prediction_engine"] or {}).get("market_status") or {},
             "run_summary": (source_reports["prediction_engine"] or {}).get("run_summary") or {},
+            "factor_discovery": (source_reports["prediction_engine"] or {}).get("factor_discovery") or {},
             "database_health": (source_reports["prediction_engine"] or {}).get("database") or {},
             "formal_v6_unchanged": True,
             "automatic_orders": False,
