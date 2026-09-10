@@ -198,6 +198,8 @@ test('five-day flow weight experiment is isolated and visible', () => {
   assert.match(script, /訊號後60分鐘/);
   assert.match(script, /第1交易日/);
   assert.match(script, /第3交易日/);
+  assert.match(script, /待結算/);
+  assert.match(script, /容量期間未追蹤/);
   assert.match(script, /第5交易日/);
   assert.match(html, /官方 TWSE／TPEx 與 Alpaca 市場日曆/);
   assert.match(html, /不會拿下一日遞補/);

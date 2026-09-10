@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import flow_weight_shadow
 from flow_weight_shadow import FlowWeightShadow
 
 
@@ -269,6 +270,7 @@ def test_missing_report_is_quarantined_without_shifting_day_one(tmp_path: Path):
     assert snapshot["markets"]["TW"]["signal_performance"]["horizons"]["day1"] == {
         "samples": 0,
         "quarantined": 1,
+        "pending": 0,
         "success_rate_pct": None,
         "meaningful_move_rate_pct": None,
         "average_directional_return_pct": None,
@@ -320,3 +322,63 @@ def test_calendar_unavailable_stops_daily_settlement(tmp_path: Path):
     assert snapshot["markets"]["TW"]["summary"]["valid_trading_days"] == 0
     assert model._state["markets"]["TW"]["intraday_signals"][0]["daily_results"] == []
     assert snapshot["policy"]["google_calendar_connected"] is False
+
+
+def test_capacity_never_evicts_unfinished_day5_signals(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(flow_weight_shadow, "MAX_TRACKED_SIGNALS", 3)
+    report = tmp_path / "all_analysis.json"
+    state = tmp_path / "state.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = _model(report, state)
+    for sequence in (101, 102, 103):
+        alert = _alert("T01")
+        alert["sequence"] = sequence
+        model.record_alert(alert)
+
+    overflow = _alert("T01")
+    overflow["sequence"] = 104
+    model.record_alert(overflow)
+    performance = model.snapshot({})["markets"]["TW"]["signal_performance"]
+
+    assert [item["signal_id"] for item in model._state["markets"]["TW"]["intraday_signals"]] == [
+        "TW:T01:101", "TW:T01:102", "TW:T01:103",
+    ]
+    assert performance["tracked_signals"] == 3
+    assert performance["untracked_capacity"] == 1
+    assert performance["horizons"]["day5"]["pending"] == 3
+
+
+def test_completed_signals_are_archived_without_losing_horizon_metrics(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(flow_weight_shadow, "MAX_TRACKED_SIGNALS", 3)
+    report = tmp_path / "all_analysis.json"
+    state = tmp_path / "state.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = _model(report, state)
+    for sequence in (201, 202, 203):
+        alert = _alert("T01")
+        alert["sequence"] = sequence
+        model.record_alert(alert)
+    model.snapshot({})
+
+    for session_date in ("2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"):
+        _write_report(report, session_date, "evening", next_prices=True)
+        model = _model(report, state)
+        model.snapshot({})
+
+    replacement = _alert("T02")
+    replacement["sequence"] = 204
+    replacement["detected_at_epoch"] = datetime(2026, 9, 4, 13, 30, tzinfo=TAIPEI).timestamp()
+    replacement["detected_at"] = "2026-09-04T05:30:00Z"
+    model.record_alert(replacement)
+    performance = model.snapshot({})["markets"]["TW"]["signal_performance"]
+    assert performance["tracked_signals"] == 3
+    assert performance["archived_signals"] == 1
+    assert performance["horizons"]["day3"]["samples"] == 3
+    assert performance["horizons"]["day5"]["samples"] == 3
+    assert performance["horizons"]["day5"]["pending"] == 1
+
+    restored = _model(report, state)
+    restored_performance = restored.snapshot({})["markets"]["TW"]["signal_performance"]
+    assert restored_performance["archived_signals"] == 1
+    assert restored_performance["horizons"]["day5"]["samples"] == 3
+    assert restored_performance["horizons"]["day5"]["pending"] == 1

@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 from market_calendar import OfficialMarketCalendar
 
 
-VERSION = 2
+VERSION = 3
 MARKETS = ("TW", "US")
 MARKET_ZONE = {"TW": ZoneInfo("Asia/Taipei"), "US": ZoneInfo("America/New_York")}
 CLOSED_PERIOD = {"TW": "evening", "US": "morning"}
@@ -109,6 +109,9 @@ class FlowWeightShadow:
             "sessions": [],
             "outcomes": [],
             "intraday_signals": [],
+            "performance_archive": {},
+            "archived_signals": 0,
+            "untracked_capacity": 0,
         }
 
     def _load_state(self) -> dict[str, Any]:
@@ -135,6 +138,12 @@ class FlowWeightShadow:
                     saved.get("intraday_signals")
                     if isinstance(saved.get("intraday_signals"), list) else []
                 )
+                clean["performance_archive"] = (
+                    saved.get("performance_archive")
+                    if isinstance(saved.get("performance_archive"), dict) else {}
+                )
+                clean["archived_signals"] = max(0, int(saved.get("archived_signals") or 0))
+                clean["untracked_capacity"] = max(0, int(saved.get("untracked_capacity") or 0))
             state["markets"][market] = clean
         return state
 
@@ -155,6 +164,65 @@ class FlowWeightShadow:
                 if any(label not in horizons for label in INTRADAY_HORIZONS):
                     key = (market, str(signal.get("symbol") or "").upper())
                     self._pending_intraday.setdefault(key, []).append(signal)
+
+    @staticmethod
+    def _results_by_horizon(signal: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Return the materialized result for each horizon of one signal."""
+        results: dict[str, dict[str, Any]] = {}
+        intraday = signal.get("intraday") if isinstance(signal.get("intraday"), dict) else {}
+        for label in INTRADAY_HORIZONS:
+            if isinstance(intraday.get(label), dict):
+                results[label] = intraday[label]
+        if isinstance(signal.get("eod"), dict):
+            results["eod"] = signal["eod"]
+        daily = signal.get("daily_results") if isinstance(signal.get("daily_results"), list) else []
+        by_index = {
+            int(item.get("trading_day_index") or 0): item
+            for item in daily if isinstance(item, dict)
+        }
+        for label, index in DAILY_HORIZONS.items():
+            if index and isinstance(by_index.get(index), dict):
+                results[label] = by_index[index]
+        return results
+
+    @classmethod
+    def _day5_complete(cls, signal: dict[str, Any]) -> bool:
+        return "day5" in cls._results_by_horizon(signal)
+
+    @staticmethod
+    def _archive_result(bucket: dict[str, Any], result: dict[str, Any] | None) -> None:
+        if not isinstance(result, dict) or result.get("status") != "valid":
+            bucket["quarantined"] = int(bucket.get("quarantined") or 0) + 1
+            return
+        value = _number(result.get("directional_return_pct"))
+        bucket["samples"] = int(bucket.get("samples") or 0) + 1
+        bucket["successes"] = int(bucket.get("successes") or 0) + int(value > 0)
+        bucket["meaningful_moves"] = int(bucket.get("meaningful_moves") or 0) + int(value >= 0.5)
+        bucket["directional_return_sum"] = _number(bucket.get("directional_return_sum")) + value
+
+    def _prune_completed_for_capacity(self, market: str, *, reserve: int = 1) -> bool:
+        """Archive only day-5-complete signals; unresolved signals are never evicted."""
+        market_state = self._state["markets"][market]
+        tracked = market_state["intraday_signals"]
+        required = max(0, len(tracked) - MAX_TRACKED_SIGNALS + reserve)
+        if required <= 0:
+            return True
+        removable = [signal for signal in tracked if self._day5_complete(signal)][:required]
+        if len(removable) < required:
+            return False
+        archive = market_state["performance_archive"]
+        for signal in removable:
+            results = self._results_by_horizon(signal)
+            for label in (*INTRADAY_HORIZONS, *DAILY_HORIZONS):
+                bucket = archive.setdefault(label, {})
+                self._archive_result(bucket, results.get(label))
+        removable_ids = {id(signal) for signal in removable}
+        market_state["intraday_signals"] = [
+            signal for signal in tracked if id(signal) not in removable_ids
+        ]
+        market_state["archived_signals"] = int(market_state.get("archived_signals") or 0) + len(removable)
+        self._rebuild_pending_intraday()
+        return True
 
     def _refresh_report(self, *, force: bool = False) -> None:
         try:
@@ -221,12 +289,13 @@ class FlowWeightShadow:
                     "eod": None,
                     "daily_results": [],
                 }
-                tracked.append(tracked_signal)
-                if len(tracked) > MAX_TRACKED_SIGNALS:
-                    del tracked[:-MAX_TRACKED_SIGNALS]
-                    self._rebuild_pending_intraday()
-                else:
+                if self._prune_completed_for_capacity(market):
+                    tracked = self._state["markets"][market]["intraday_signals"]
+                    tracked.append(tracked_signal)
                     self._pending_intraday.setdefault((market, symbol), []).append(tracked_signal)
+                else:
+                    market_state = self._state["markets"][market]
+                    market_state["untracked_capacity"] = int(market_state.get("untracked_capacity") or 0) + 1
             self._save()
 
     @staticmethod
@@ -537,48 +606,57 @@ class FlowWeightShadow:
         return changed
 
     @staticmethod
-    def _metric(results: list[dict[str, Any]]) -> dict[str, Any]:
+    def _metric(
+        results: list[dict[str, Any]],
+        *,
+        archive: dict[str, Any] | None = None,
+        pending: int = 0,
+    ) -> dict[str, Any]:
+        archive = archive or {}
         valid = [item for item in results if item.get("status") == "valid"]
         returns = [_number(item.get("directional_return_pct")) for item in valid]
+        samples = int(archive.get("samples") or 0) + len(valid)
+        successes = int(archive.get("successes") or 0) + sum(value > 0 for value in returns)
+        meaningful = int(archive.get("meaningful_moves") or 0) + sum(value >= 0.5 for value in returns)
+        return_sum = _number(archive.get("directional_return_sum")) + sum(returns)
         return {
-            "samples": len(valid),
-            "quarantined": sum(item.get("status") != "valid" for item in results),
+            "samples": samples,
+            "quarantined": int(archive.get("quarantined") or 0) + sum(
+                item.get("status") != "valid" for item in results
+            ),
+            "pending": max(0, int(pending)),
             "success_rate_pct": (
-                round(sum(value > 0 for value in returns) / len(returns) * 100, 2)
-                if returns else None
+                round(successes / samples * 100, 2) if samples else None
             ),
             "meaningful_move_rate_pct": (
-                round(sum(value >= 0.5 for value in returns) / len(returns) * 100, 2)
-                if returns else None
+                round(meaningful / samples * 100, 2) if samples else None
             ),
             "average_directional_return_pct": (
-                round(sum(returns) / len(returns), 4) if returns else None
+                round(return_sum / samples, 4) if samples else None
             ),
         }
 
     def _signal_performance(self, market: str) -> dict[str, Any]:
-        signals = self._state["markets"][market]["intraday_signals"]
+        market_state = self._state["markets"][market]
+        signals = market_state["intraday_signals"]
+        archive = market_state.get("performance_archive") or {}
         horizon_results: dict[str, list[dict[str, Any]]] = {
             label: [] for label in (*INTRADAY_HORIZONS, *DAILY_HORIZONS)
         }
         for signal in signals:
-            intraday = signal.get("intraday") or {}
-            for label in INTRADAY_HORIZONS:
-                if isinstance(intraday.get(label), dict):
-                    horizon_results[label].append(intraday[label])
-            if isinstance(signal.get("eod"), dict):
-                horizon_results["eod"].append(signal["eod"])
-            daily = signal.get("daily_results") or []
-            by_index = {int(item.get("trading_day_index") or 0): item for item in daily}
-            for label, index in DAILY_HORIZONS.items():
-                if not index:
-                    continue
-                if isinstance(by_index.get(index), dict):
-                    horizon_results[label].append(by_index[index])
+            for label, result in self._results_by_horizon(signal).items():
+                horizon_results[label].append(result)
         return {
             "tracked_signals": len(signals),
+            "capacity": MAX_TRACKED_SIGNALS,
+            "archived_signals": int(market_state.get("archived_signals") or 0),
+            "untracked_capacity": int(market_state.get("untracked_capacity") or 0),
             "horizons": {
-                label: self._metric(horizon_results[label])
+                label: self._metric(
+                    horizon_results[label],
+                    archive=archive.get(label) if isinstance(archive.get(label), dict) else {},
+                    pending=len(signals) - len(horizon_results[label]),
+                )
                 for label in horizon_results
             },
             "interpretation": "directional_return: buy expects up; sell expects down",
