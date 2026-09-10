@@ -18,6 +18,11 @@
   function buildNav() {
     if (!document.body || document.getElementById('appShellNav')) return;
     var current = currentFile();
+    var parentPages = {
+      'next-session-shadow.html': 'decision-hub.html',
+      'prediction-engine.html': 'decision-hub.html'
+    };
+    var activeFile = parentPages[current] || current;
     var nav = document.createElement('nav');
     nav.id = 'appShellNav';
     nav.className = 'app-shell-nav';
@@ -35,7 +40,7 @@
       label.textContent = page.label;
       link.appendChild(icon);
       link.appendChild(label);
-      if (page.file === current) link.setAttribute('aria-current', 'page');
+      if (page.file === activeFile) link.setAttribute('aria-current', 'page');
       nav.appendChild(link);
     });
 

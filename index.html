@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07111f">
@@ -47,6 +47,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 @media(min-width:700px){.million-grid,.million-strategies,.holding-layout,.training-grid,.guard-grid{grid-template-columns:repeat(2,1fr)}.holding-card.long{grid-column:1/-1}}
 @media(max-width:520px){.radar-wrap{grid-template-columns:1fr}.radar{display:block;margin:auto}.accuracy-grid{grid-template-columns:1fr}}
 </style>
+<link rel="stylesheet" href="human_ui.css?v=1">
 </head>
 <body>
 <div class="shell">
@@ -1230,6 +1231,7 @@ document.getElementById('searchButton').addEventListener('click',searchStock);
 document.getElementById('ticker').addEventListener('keydown',function(e){if(e.key==='Enter')searchStock();});
 loadAll();
 </script>
-<script src="app_shell.js?v=1"></script>
+<script src="human_ui.js?v=1"></script>
+<script src="app_shell.js?v=2"></script>
 </body>
 </html>
