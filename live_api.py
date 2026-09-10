@@ -802,8 +802,16 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                             "valid_trading_days": (details.get("summary") or {}).get("valid_trading_days"),
                             "valid_signals": (details.get("summary") or {}).get("valid_signals"),
                             "tracked_alert_signals": (details.get("signal_performance") or {}).get("tracked_signals"),
+                            "archived_alert_signals": (details.get("signal_performance") or {}).get("archived_signals"),
+                            "untracked_capacity": (details.get("signal_performance") or {}).get("untracked_capacity"),
                             "horizon_samples": {
                                 label: (metric or {}).get("samples")
+                                for label, metric in (
+                                    (details.get("signal_performance") or {}).get("horizons") or {}
+                                ).items()
+                            },
+                            "horizon_pending": {
+                                label: (metric or {}).get("pending")
                                 for label, metric in (
                                     (details.get("signal_performance") or {}).get("horizons") or {}
                                 ).items()
