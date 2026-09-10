@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-09-09T23:13:22.287986+00:00",
+  "generated_at": "2026-09-10T23:08:40.049683+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 374,
@@ -10,8 +10,8 @@
     "officially_matched_stocks": 303,
     "officially_matched_etfs": 67,
     "unmatched": 4,
-    "event_count": 6,
-    "warning_count": 6,
+    "event_count": 9,
+    "warning_count": 9,
     "critical_count": 0,
     "source_failure_count": 0,
     "registry_source_failure_count": 0,
@@ -27,22 +27,48 @@
       "entity_id": null,
       "source": "tpex_registry",
       "asset_type": "STOCK",
-      "consecutive_observations": 3,
+      "consecutive_observations": 4,
       "action": "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
       "event_id": "d2ffb452c7459e6b8b48",
+      "requires_manual_approval": true
+    },
+    {
+      "type": "DELISTING",
+      "label": "下市／終止上市櫃",
+      "level": "warning",
+      "symbol": "2357.TW",
+      "asset_type": "STOCK",
+      "source": "twse_announcements",
+      "source_date": "1150910",
+      "headline": "",
+      "action": "停止該股影子即時價格與買進資格，移入人工審核；歷史資料不得刪除",
+      "event_id": "cf108bf7a9ea87d1840a",
       "requires_manual_approval": true
     },
     {
       "type": "MERGER_OR_SHARE_EXCHANGE",
       "label": "合併／換股",
       "level": "warning",
-      "symbol": "2308.TW",
+      "symbol": "2330.TW",
       "asset_type": "STOCK",
       "source": "twse_announcements",
-      "source_date": "1150909",
+      "source_date": "1150910",
       "headline": "",
       "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
-      "event_id": "afc8475a307873f6baca",
+      "event_id": "cd81620b19bd438b0da3",
+      "requires_manual_approval": true
+    },
+    {
+      "type": "MERGER_OR_SHARE_EXCHANGE",
+      "label": "合併／換股",
+      "level": "warning",
+      "symbol": "2454.TW",
+      "asset_type": "STOCK",
+      "source": "twse_announcements",
+      "source_date": "1150910",
+      "headline": "",
+      "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
+      "event_id": "a101fee33bf5bdbe12ac",
       "requires_manual_approval": true
     },
     {
@@ -53,7 +79,7 @@
       "entity_id": null,
       "source": "us_symbol_directory",
       "asset_type": "ETF",
-      "consecutive_observations": 3,
+      "consecutive_observations": 4,
       "action": "停止把缺值冒充今日價格並等待人工核對；不得把ETF缺值當成清算，不得刪除歷史資料",
       "event_id": "67c405e31d261c138eaa",
       "requires_manual_approval": true
@@ -66,9 +92,22 @@
       "entity_id": null,
       "source": "sec_registry",
       "asset_type": "STOCK",
-      "consecutive_observations": 3,
+      "consecutive_observations": 4,
       "action": "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
       "event_id": "62a1e2b260b275ad5781",
+      "requires_manual_approval": true
+    },
+    {
+      "type": "MERGER_OR_SHARE_EXCHANGE",
+      "label": "合併／換股",
+      "level": "warning",
+      "symbol": "6781.TW",
+      "asset_type": "STOCK",
+      "source": "twse_announcements",
+      "source_date": "1150910",
+      "headline": "",
+      "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
+      "event_id": "58248254c11c2c188b19",
       "requires_manual_approval": true
     },
     {
@@ -79,7 +118,7 @@
       "entity_id": null,
       "source": "tpex_registry",
       "asset_type": "STOCK",
-      "consecutive_observations": 3,
+      "consecutive_observations": 4,
       "action": "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
       "event_id": "4e76d05e16fc17c58b43",
       "requires_manual_approval": true
@@ -88,13 +127,13 @@
       "type": "MERGER_OR_SHARE_EXCHANGE",
       "label": "合併／換股",
       "level": "warning",
-      "symbol": "6271.TW",
+      "symbol": "3231.TW",
       "asset_type": "STOCK",
       "source": "twse_announcements",
-      "source_date": "1150909",
+      "source_date": "1150910",
       "headline": "",
       "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
-      "event_id": "1912817017a53ba41ff4",
+      "event_id": "0928532440683ab44ab2",
       "requires_manual_approval": true
     }
   ],
@@ -109,7 +148,7 @@
     },
     "tpex_registry": {
       "ok": true,
-      "record_count": 890,
+      "record_count": 891,
       "error": "",
       "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
       "mode": "live",
@@ -123,13 +162,13 @@
       "mode": "verified_snapshot",
       "live_ok": false,
       "snapshot_generated_at": "2026-09-07T11:26:08.325758+00:00",
-      "snapshot_age_days": 2.491,
+      "snapshot_age_days": 3.488,
       "snapshot_records_sha256": "bda80949d27315c26dfdcd0356303c1c3065f3d08ff2b90a8aecaeb7436c456f",
       "live_error": "https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI"
     },
     "twse_securities": {
       "ok": true,
-      "record_count": 1382,
+      "record_count": 1379,
       "error": "",
       "url": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
       "mode": "live",
@@ -137,7 +176,7 @@
     },
     "tpex_securities": {
       "ok": true,
-      "record_count": 11020,
+      "record_count": 11179,
       "error": "",
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
       "mode": "live",
@@ -145,7 +184,7 @@
     },
     "us_symbol_directory": {
       "ok": true,
-      "record_count": 13160,
+      "record_count": 13176,
       "error": "",
       "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
       "mode": "live",
@@ -153,20 +192,20 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 106,
-      "event_count": 20,
+      "record_count": 92,
+      "event_count": 27,
       "error": ""
     },
     "tpex_announcements": {
       "ok": true,
-      "record_count": 47,
-      "event_count": 17,
+      "record_count": 41,
+      "event_count": 9,
       "error": ""
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 57,
-      "event_count": 57,
+      "record_count": 62,
+      "event_count": 62,
       "error": ""
     }
   },
