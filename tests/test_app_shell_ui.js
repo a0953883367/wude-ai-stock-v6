@@ -9,16 +9,23 @@ const pages = [
   'chart-pattern-shadow.html',
   'inverse-etf-shadow.html',
   'valuation-risk-shadow.html',
+  'next-session-shadow.html',
+  'prediction-engine.html',
 ];
 
 for (const page of pages) {
   const html = fs.readFileSync(page, 'utf8');
   assert.match(html, /app_shell\.css\?v=1/, `${page} 缺少共用 App 樣式`);
-  assert.match(html, /app_shell\.js\?v=1/, `${page} 缺少共用 App 導覽`);
+  assert.match(html, /human_ui\.css\?v=1/, `${page} 缺少人性化共用樣式`);
+  assert.match(html, /human_ui\.js\?v=1/, `${page} 缺少人性化操作輔助`);
+  assert.match(html, /app_shell\.js\?v=2/, `${page} 缺少共用 App 導覽`);
   assert.match(html, /manifest\.webmanifest/, `${page} 缺少主畫面 App manifest`);
+  assert.doesNotMatch(html, /user-scalable\s*=\s*no/i, `${page} 不應禁止手機手勢縮放`);
 }
 
 const shell = fs.readFileSync('app_shell.js', 'utf8');
+const humanCss = fs.readFileSync('human_ui.css', 'utf8');
+const humanJs = fs.readFileSync('human_ui.js', 'utf8');
 for (const expected of [
   "label: '總覽'",
   "label: '大量買賣'",
@@ -29,6 +36,26 @@ for (const expected of [
   "aria-current",
 ]) {
   assert.ok(shell.includes(expected), `共用 App 導覽缺少 ${expected}`);
+}
+
+for (const expected of [
+  'min-height: 46px',
+  ':focus-visible',
+  '.human-guide',
+  '.human-scroll-hint',
+  'prefers-reduced-motion',
+]) {
+  assert.ok(humanCss.includes(expected), `人性化樣式缺少 ${expected}`);
+}
+
+for (const expected of [
+  '本頁怎麼操作',
+  '表格可左右滑動',
+  "'next-session-shadow.html'",
+  "'prediction-engine.html'",
+  "setAttribute('aria-live', 'polite')",
+]) {
+  assert.ok(humanJs.includes(expected), `人性化操作缺少 ${expected}`);
 }
 
 const manifest = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
