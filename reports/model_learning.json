@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-09-11 23:44:48",
+  "updated_at": "2026-09-12 07:41:16",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -11,14 +11,14 @@
     "remaining_to_promotion_review": 45
   },
   "error_learning": {
-    "raw_error_rows": 1465,
-    "independent_events": 334,
-    "unique_symbols": 233,
-    "duplicate_rows_collapsed": 1131,
+    "raw_error_rows": 1499,
+    "independent_events": 336,
+    "unique_symbols": 234,
+    "duplicate_rows_collapsed": 1163,
     "cause_counts": {
-      "event_gap_risk": 10,
+      "event_gap_risk": 11,
       "missed_strength_rotation": 25,
-      "direction_calibration": 259,
+      "direction_calibration": 260,
       "etf_model_separation": 39,
       "intraday_reversal": 1
     },
@@ -238,6 +238,32 @@
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
         "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
+        "classification_status": "自動初判、等待前向驗證",
+        "affects_formal_model": false
+      },
+      {
+        "event_id": "US:LEU:2026-09-04:2026-09-11",
+        "market": "US",
+        "symbol": "LEU",
+        "name": "Centrus Energy",
+        "cohort": "US_STOCK",
+        "source_start_date": "2026-09-04",
+        "evaluated_end_date": "2026-09-11",
+        "row_count": 4,
+        "horizons": [
+          1,
+          2,
+          3
+        ],
+        "predicted_directions": [
+          "UP"
+        ],
+        "worst_directional_return_pct": -17.9055,
+        "largest_actual_move_pct": 17.9055,
+        "primary_cause": "event_gap_risk",
+        "cause_label": "突發事件／跳空風險",
+        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
+        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。",
         "classification_status": "自動初判、等待前向驗證",
         "affects_formal_model": false
       },
@@ -540,33 +566,6 @@
         "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。",
         "classification_status": "自動初判、等待前向驗證",
         "affects_formal_model": false
-      },
-      {
-        "event_id": "US:CRWD:2026-08-31:2026-09-08",
-        "market": "US",
-        "symbol": "CRWD",
-        "name": "CrowdStrike",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-08-31",
-        "evaluated_end_date": "2026-09-08",
-        "row_count": 4,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -11.9394,
-        "largest_actual_move_pct": 11.9394,
-        "primary_cause": "direction_calibration",
-        "cause_label": "一般方向校準",
-        "diagnosis": "目前資料只能確認方向判斷錯誤，尚不足以歸因為單一事件或特定因子。",
-        "learning_action": "保留為校準樣本，累積相同盤勢與市場後再提出影子權重候選。",
-        "classification_status": "自動初判、等待前向驗證",
-        "affects_formal_model": false
       }
     ]
   },
@@ -587,17 +586,17 @@
     },
     "US_STOCK": {
       "label": "美股個股",
-      "direction_samples": 112,
+      "direction_samples": 114,
       "trade_signal_samples": 0,
       "status": "no_trade_signal_yet",
-      "detail": "已有 112 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
+      "detail": "已有 114 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
     },
     "US_ETF": {
       "label": "美國ETF",
-      "direction_samples": 83,
+      "direction_samples": 84,
       "trade_signal_samples": 0,
       "status": "no_trade_signal_yet",
-      "detail": "已有 83 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
+      "detail": "已有 84 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
     }
   },
   "shadow_candidates": [
@@ -605,7 +604,7 @@
       "candidate_id": "shadow:direction_calibration:v1",
       "name": "方向門檻校準影子候選",
       "cause": "direction_calibration",
-      "evidence_event_count": 259,
+      "evidence_event_count": 260,
       "purpose": "在固定資料上比較共識門檻，不回頭改寫正式V6預測。",
       "required_evidence": "相同市場、盤勢與期間的獨立前向事件",
       "stage": "collecting_before_20d",
@@ -618,7 +617,7 @@
       "candidate_id": "shadow:trade_threshold_diagnostic:v1",
       "name": "交易門檻診斷影子候選",
       "cause": "zero_trade_signal",
-      "evidence_event_count": 196,
+      "evidence_event_count": 199,
       "affected_cohorts": [
         "TW_ETF",
         "US_STOCK",
@@ -662,7 +661,7 @@
       "candidate_id": "shadow:event_gap_risk:v1",
       "name": "事件風險防護影子候選",
       "cause": "event_gap_risk",
-      "evidence_event_count": 10,
+      "evidence_event_count": 11,
       "purpose": "遇到預測當時已存在的重大新聞或盤前異常跳空時，降低方向信心或棄權。",
       "required_evidence": "具時間戳的事前新聞、公告與盤前異常資料",
       "stage": "collecting_before_20d",
@@ -871,14 +870,14 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 112,
+              "samples": 114,
               "detail": {
-                "samples": 112,
-                "eligible_samples": 238,
-                "abstain_samples": 126,
-                "coverage_pct": 47.1,
-                "win_rate_pct": 48.2,
-                "avg_return_pct": 0.67,
+                "samples": 114,
+                "eligible_samples": 258,
+                "abstain_samples": 144,
+                "coverage_pct": 44.2,
+                "win_rate_pct": 49.1,
+                "avg_return_pct": 0.7,
                 "worst_return_pct": -7.44,
                 "lowest_actual_return_pct": -7.44,
                 "highest_actual_return_pct": 23.68,
@@ -921,14 +920,14 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 83,
+              "samples": 84,
               "detail": {
-                "samples": 83,
-                "eligible_samples": 225,
-                "abstain_samples": 142,
-                "coverage_pct": 36.9,
-                "win_rate_pct": 38.6,
-                "avg_return_pct": -0.16,
+                "samples": 84,
+                "eligible_samples": 245,
+                "abstain_samples": 161,
+                "coverage_pct": 34.3,
+                "win_rate_pct": 39.3,
+                "avg_return_pct": -0.15,
                 "worst_return_pct": -5.75,
                 "lowest_actual_return_pct": -5.75,
                 "highest_actual_return_pct": 8.82,
@@ -979,7 +978,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 850,
+              "samples": 855,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 588,
@@ -1006,24 +1005,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 147,
-                  "eligible_samples": 238,
-                  "abstain_samples": 91,
-                  "coverage_pct": 61.8,
-                  "win_rate_pct": 49.0,
-                  "avg_return_pct": 0.45,
+                  "samples": 151,
+                  "eligible_samples": 258,
+                  "abstain_samples": 107,
+                  "coverage_pct": 58.5,
+                  "win_rate_pct": 49.7,
+                  "avg_return_pct": 0.48,
                   "worst_return_pct": -9.61,
                   "lowest_actual_return_pct": -9.61,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 112,
-                  "eligible_samples": 225,
-                  "abstain_samples": 113,
-                  "coverage_pct": 49.8,
-                  "win_rate_pct": 34.8,
-                  "avg_return_pct": -0.33,
+                  "samples": 113,
+                  "eligible_samples": 245,
+                  "abstain_samples": 132,
+                  "coverage_pct": 46.1,
+                  "win_rate_pct": 35.4,
+                  "avg_return_pct": -0.32,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 8.82,
@@ -1075,7 +1074,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 881,
+              "samples": 887,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 684,
@@ -1102,24 +1101,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 114,
-                  "eligible_samples": 238,
-                  "abstain_samples": 124,
-                  "coverage_pct": 47.9,
-                  "win_rate_pct": 46.5,
-                  "avg_return_pct": -0.0,
+                  "samples": 117,
+                  "eligible_samples": 258,
+                  "abstain_samples": 141,
+                  "coverage_pct": 45.3,
+                  "win_rate_pct": 47.0,
+                  "avg_return_pct": 0.03,
                   "worst_return_pct": -9.61,
                   "lowest_actual_return_pct": -9.61,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 83,
-                  "eligible_samples": 225,
-                  "abstain_samples": 142,
-                  "coverage_pct": 36.9,
-                  "win_rate_pct": 31.3,
-                  "avg_return_pct": -0.82,
+                  "samples": 86,
+                  "eligible_samples": 245,
+                  "abstain_samples": 159,
+                  "coverage_pct": 35.1,
+                  "win_rate_pct": 30.2,
+                  "avg_return_pct": -0.83,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 3.13,
@@ -1171,7 +1170,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 766,
+              "samples": 773,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 571,
@@ -1198,24 +1197,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 113,
-                  "eligible_samples": 238,
-                  "abstain_samples": 125,
-                  "coverage_pct": 47.5,
-                  "win_rate_pct": 51.3,
-                  "avg_return_pct": 0.82,
+                  "samples": 118,
+                  "eligible_samples": 258,
+                  "abstain_samples": 140,
+                  "coverage_pct": 45.7,
+                  "win_rate_pct": 50.8,
+                  "avg_return_pct": 0.79,
                   "worst_return_pct": -7.44,
                   "lowest_actual_return_pct": -7.44,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 81,
-                  "eligible_samples": 225,
-                  "abstain_samples": 144,
-                  "coverage_pct": 36.0,
-                  "win_rate_pct": 46.9,
-                  "avg_return_pct": 0.17,
+                  "samples": 83,
+                  "eligible_samples": 245,
+                  "abstain_samples": 162,
+                  "coverage_pct": 33.9,
+                  "win_rate_pct": 48.2,
+                  "avg_return_pct": 0.22,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 8.82,
@@ -1267,7 +1266,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 899,
+              "samples": 908,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 705,
@@ -1294,24 +1293,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 109,
-                  "eligible_samples": 238,
-                  "abstain_samples": 129,
-                  "coverage_pct": 45.8,
-                  "win_rate_pct": 47.7,
-                  "avg_return_pct": 0.66,
+                  "samples": 117,
+                  "eligible_samples": 258,
+                  "abstain_samples": 141,
+                  "coverage_pct": 45.3,
+                  "win_rate_pct": 49.6,
+                  "avg_return_pct": 0.72,
                   "worst_return_pct": -6.9,
                   "lowest_actual_return_pct": -6.9,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 81,
-                  "eligible_samples": 225,
-                  "abstain_samples": 144,
-                  "coverage_pct": 36.0,
-                  "win_rate_pct": 43.2,
-                  "avg_return_pct": -0.01,
+                  "samples": 82,
+                  "eligible_samples": 245,
+                  "abstain_samples": 163,
+                  "coverage_pct": 33.5,
+                  "win_rate_pct": 43.9,
+                  "avg_return_pct": -0.0,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 8.82,
@@ -1363,7 +1362,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 970,
+              "samples": 971,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 645,
@@ -1390,12 +1389,12 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 169,
-                  "eligible_samples": 238,
-                  "abstain_samples": 69,
-                  "coverage_pct": 71.0,
-                  "win_rate_pct": 48.5,
-                  "avg_return_pct": 0.28,
+                  "samples": 170,
+                  "eligible_samples": 258,
+                  "abstain_samples": 88,
+                  "coverage_pct": 65.9,
+                  "win_rate_pct": 48.2,
+                  "avg_return_pct": 0.27,
                   "worst_return_pct": -9.61,
                   "lowest_actual_return_pct": -9.61,
                   "highest_actual_return_pct": 23.68,
@@ -1403,9 +1402,9 @@
                 },
                 "US_ETF": {
                   "samples": 156,
-                  "eligible_samples": 225,
-                  "abstain_samples": 69,
-                  "coverage_pct": 69.3,
+                  "eligible_samples": 245,
+                  "abstain_samples": 89,
+                  "coverage_pct": 63.7,
                   "win_rate_pct": 41.0,
                   "avg_return_pct": -0.14,
                   "worst_return_pct": -5.75,
@@ -1459,7 +1458,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 747,
+              "samples": 759,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 467,
@@ -1486,24 +1485,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 120,
-                  "eligible_samples": 238,
-                  "abstain_samples": 118,
-                  "coverage_pct": 50.4,
-                  "win_rate_pct": 48.3,
-                  "avg_return_pct": 0.59,
+                  "samples": 129,
+                  "eligible_samples": 258,
+                  "abstain_samples": 129,
+                  "coverage_pct": 50.0,
+                  "win_rate_pct": 47.3,
+                  "avg_return_pct": 0.54,
                   "worst_return_pct": -7.44,
                   "lowest_actual_return_pct": -7.44,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 157,
-                  "eligible_samples": 225,
-                  "abstain_samples": 68,
-                  "coverage_pct": 69.8,
-                  "win_rate_pct": 42.7,
-                  "avg_return_pct": -0.11,
+                  "samples": 160,
+                  "eligible_samples": 245,
+                  "abstain_samples": 85,
+                  "coverage_pct": 65.3,
+                  "win_rate_pct": 43.8,
+                  "avg_return_pct": -0.08,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 8.82,
@@ -1555,7 +1554,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 455,
+              "samples": 462,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 314,
@@ -1582,24 +1581,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 69,
-                  "eligible_samples": 238,
-                  "abstain_samples": 169,
-                  "coverage_pct": 29.0,
-                  "win_rate_pct": 55.1,
-                  "avg_return_pct": 0.96,
+                  "samples": 73,
+                  "eligible_samples": 258,
+                  "abstain_samples": 185,
+                  "coverage_pct": 28.3,
+                  "win_rate_pct": 54.8,
+                  "avg_return_pct": 0.93,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 21.39,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 69,
-                  "eligible_samples": 225,
-                  "abstain_samples": 156,
-                  "coverage_pct": 30.7,
-                  "win_rate_pct": 43.5,
-                  "avg_return_pct": -0.02,
+                  "samples": 72,
+                  "eligible_samples": 245,
+                  "abstain_samples": 173,
+                  "coverage_pct": 29.4,
+                  "win_rate_pct": 45.8,
+                  "avg_return_pct": 0.05,
                   "worst_return_pct": -4.38,
                   "lowest_actual_return_pct": -4.38,
                   "highest_actual_return_pct": 8.82,
@@ -1651,7 +1650,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 893,
+              "samples": 900,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 696,
@@ -1678,24 +1677,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 118,
-                  "eligible_samples": 238,
-                  "abstain_samples": 120,
-                  "coverage_pct": 49.6,
-                  "win_rate_pct": 47.5,
-                  "avg_return_pct": 0.59,
+                  "samples": 122,
+                  "eligible_samples": 258,
+                  "abstain_samples": 136,
+                  "coverage_pct": 47.3,
+                  "win_rate_pct": 48.4,
+                  "avg_return_pct": 0.64,
                   "worst_return_pct": -7.44,
                   "lowest_actual_return_pct": -7.44,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 78,
-                  "eligible_samples": 225,
-                  "abstain_samples": 147,
-                  "coverage_pct": 34.7,
-                  "win_rate_pct": 33.3,
-                  "avg_return_pct": -0.37,
+                  "samples": 81,
+                  "eligible_samples": 245,
+                  "abstain_samples": 164,
+                  "coverage_pct": 33.1,
+                  "win_rate_pct": 32.1,
+                  "avg_return_pct": -0.42,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 8.82,
@@ -1747,7 +1746,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 747,
+              "samples": 751,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 616,
@@ -1774,24 +1773,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 88,
-                  "eligible_samples": 238,
-                  "abstain_samples": 150,
-                  "coverage_pct": 37.0,
-                  "win_rate_pct": 51.1,
-                  "avg_return_pct": 0.41,
+                  "samples": 89,
+                  "eligible_samples": 258,
+                  "abstain_samples": 169,
+                  "coverage_pct": 34.5,
+                  "win_rate_pct": 50.6,
+                  "avg_return_pct": 0.36,
                   "worst_return_pct": -9.61,
                   "lowest_actual_return_pct": -9.61,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 42,
-                  "eligible_samples": 225,
-                  "abstain_samples": 183,
-                  "coverage_pct": 18.7,
-                  "win_rate_pct": 31.0,
-                  "avg_return_pct": -0.63,
+                  "samples": 45,
+                  "eligible_samples": 245,
+                  "abstain_samples": 200,
+                  "coverage_pct": 18.4,
+                  "win_rate_pct": 28.9,
+                  "avg_return_pct": -0.68,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 3.02,
@@ -1843,7 +1842,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 726,
+              "samples": 730,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 553,
@@ -1870,24 +1869,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 106,
-                  "eligible_samples": 238,
-                  "abstain_samples": 132,
-                  "coverage_pct": 44.5,
-                  "win_rate_pct": 49.1,
-                  "avg_return_pct": 0.67,
+                  "samples": 109,
+                  "eligible_samples": 258,
+                  "abstain_samples": 149,
+                  "coverage_pct": 42.2,
+                  "win_rate_pct": 49.5,
+                  "avg_return_pct": 0.69,
                   "worst_return_pct": -7.44,
                   "lowest_actual_return_pct": -7.44,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 65,
-                  "eligible_samples": 225,
-                  "abstain_samples": 160,
-                  "coverage_pct": 28.9,
-                  "win_rate_pct": 38.5,
-                  "avg_return_pct": -0.23,
+                  "samples": 66,
+                  "eligible_samples": 245,
+                  "abstain_samples": 179,
+                  "coverage_pct": 26.9,
+                  "win_rate_pct": 39.4,
+                  "avg_return_pct": -0.21,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 8.82,
@@ -2228,11 +2227,11 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 7,
-              "samples": 16,
+              "sessions": 8,
+              "samples": 17,
               "by_market": {
                 "TW": 9,
-                "US": 7
+                "US": 8
               }
             },
             "stage": "collecting",
@@ -2275,7 +2274,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 1183,
+              "samples": 1341,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -2302,28 +2301,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 393,
-                  "session_count": 3,
-                  "direction_hit_pct": 57.25,
-                  "holdout_hit_pct": 57.25,
-                  "holdout_samples": 393,
-                  "average_return_pct": -0.5454,
-                  "average_strength": 68.97,
-                  "average_confidence": 68.97,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 604,
+                  "scored_samples": 524,
+                  "session_count": 4,
+                  "direction_hit_pct": 51.34,
+                  "holdout_hit_pct": 51.34,
+                  "holdout_samples": 524,
+                  "average_return_pct": -0.0997,
+                  "average_strength": 69.17,
+                  "average_confidence": 69.17,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 78,
-                  "session_count": 3,
-                  "direction_hit_pct": 61.54,
-                  "holdout_hit_pct": 61.54,
-                  "holdout_samples": 78,
-                  "average_return_pct": -0.8035,
-                  "average_strength": 66.32,
-                  "average_confidence": 66.32,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 136,
+                  "scored_samples": 105,
+                  "session_count": 4,
+                  "direction_hit_pct": 53.33,
+                  "holdout_hit_pct": 53.33,
+                  "holdout_samples": 105,
+                  "average_return_pct": -0.4403,
+                  "average_strength": 66.4,
+                  "average_confidence": 66.4,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -2375,7 +2374,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 1092,
+              "samples": 1250,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -2402,28 +2401,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 370,
-                  "session_count": 3,
-                  "direction_hit_pct": 52.97,
-                  "holdout_hit_pct": 52.97,
-                  "holdout_samples": 370,
-                  "average_return_pct": -0.5433,
-                  "average_strength": 57.61,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 604,
+                  "scored_samples": 502,
+                  "session_count": 4,
+                  "direction_hit_pct": 46.81,
+                  "holdout_hit_pct": 46.81,
+                  "holdout_samples": 502,
+                  "average_return_pct": -0.0585,
+                  "average_strength": 58.83,
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 79,
-                  "session_count": 3,
-                  "direction_hit_pct": 59.49,
-                  "holdout_hit_pct": 59.49,
-                  "holdout_samples": 79,
-                  "average_return_pct": -0.7571,
-                  "average_strength": 53.94,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 136,
+                  "scored_samples": 105,
+                  "session_count": 4,
+                  "direction_hit_pct": 50.48,
+                  "holdout_hit_pct": 50.48,
+                  "holdout_samples": 105,
+                  "average_return_pct": -0.3486,
+                  "average_strength": 54.51,
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -2469,7 +2468,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 853,
+              "samples": 959,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -2496,28 +2495,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 245,
-                  "session_count": 3,
-                  "direction_hit_pct": 55.51,
-                  "holdout_hit_pct": 55.51,
-                  "holdout_samples": 245,
-                  "average_return_pct": -0.5273,
-                  "average_strength": 36.46,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 604,
+                  "scored_samples": 332,
+                  "session_count": 4,
+                  "direction_hit_pct": 52.41,
+                  "holdout_hit_pct": 52.41,
+                  "holdout_samples": 332,
+                  "average_return_pct": -0.0955,
+                  "average_strength": 36.62,
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 60,
-                  "session_count": 3,
-                  "direction_hit_pct": 53.33,
-                  "holdout_hit_pct": 53.33,
-                  "holdout_samples": 60,
-                  "average_return_pct": -0.7569,
-                  "average_strength": 39.7,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 136,
+                  "scored_samples": 79,
+                  "session_count": 4,
+                  "direction_hit_pct": 54.43,
+                  "holdout_hit_pct": 54.43,
+                  "holdout_samples": 79,
+                  "average_return_pct": -0.443,
+                  "average_strength": 39.06,
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -2563,7 +2562,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 140,
+              "samples": 160,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -2590,28 +2589,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 36,
-                  "session_count": 3,
-                  "direction_hit_pct": 50.0,
-                  "holdout_hit_pct": 50.0,
-                  "holdout_samples": 36,
-                  "average_return_pct": -0.8371,
-                  "average_strength": 5.93,
-                  "average_confidence": 5.93,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 604,
+                  "scored_samples": 53,
+                  "session_count": 4,
+                  "direction_hit_pct": 60.38,
+                  "holdout_hit_pct": 60.38,
+                  "holdout_samples": 53,
+                  "average_return_pct": -0.1303,
+                  "average_strength": 6.51,
+                  "average_confidence": 6.51,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 24,
-                  "session_count": 3,
-                  "direction_hit_pct": 54.17,
-                  "holdout_hit_pct": 54.17,
-                  "holdout_samples": 24,
-                  "average_return_pct": -0.4677,
-                  "average_strength": 17.98,
-                  "average_confidence": 17.98,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 136,
+                  "scored_samples": 27,
+                  "session_count": 4,
+                  "direction_hit_pct": 59.26,
+                  "holdout_hit_pct": 59.26,
+                  "holdout_samples": 27,
+                  "average_return_pct": -0.53,
+                  "average_strength": 15.29,
+                  "average_confidence": 15.29,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -2727,28 +2726,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
+                  "matured_rows": 604,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
+                  "matured_rows": 136,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -2821,28 +2820,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
+                  "matured_rows": 604,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
+                  "matured_rows": 136,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -2887,7 +2886,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 731
+              "samples": 734
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -2929,8 +2928,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 9,
-              "samples": 20
+              "sessions": 10,
+              "samples": 21
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -2974,7 +2973,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 0,
+              "samples": 185,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -3001,28 +3000,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 0,
-                  "session_count": 3,
-                  "direction_hit_pct": null,
-                  "holdout_hit_pct": null,
-                  "holdout_samples": 0,
-                  "average_return_pct": null,
-                  "average_strength": 6.0,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 604,
+                  "scored_samples": 151,
+                  "session_count": 4,
+                  "direction_hit_pct": 29.14,
+                  "holdout_hit_pct": 29.14,
+                  "holdout_samples": 151,
+                  "average_return_pct": 1.2443,
+                  "average_strength": 19.75,
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 0,
-                  "session_count": 3,
-                  "direction_hit_pct": null,
-                  "holdout_hit_pct": null,
-                  "holdout_samples": 0,
-                  "average_return_pct": null,
-                  "average_strength": 6.0,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 136,
+                  "scored_samples": 34,
+                  "session_count": 4,
+                  "direction_hit_pct": 23.53,
+                  "holdout_hit_pct": 23.53,
+                  "holdout_samples": 34,
+                  "average_return_pct": 0.6353,
+                  "average_strength": 19.75,
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -3095,28 +3094,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
+                  "matured_rows": 604,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
                   "average_confidence": 30.0,
-                  "latest_session": "2026-09-09"
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
+                  "matured_rows": 136,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
                   "average_confidence": 30.0,
-                  "latest_session": "2026-09-09"
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -3162,7 +3161,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 871,
+              "samples": 998,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -3189,28 +3188,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 381,
-                  "session_count": 3,
-                  "direction_hit_pct": 36.22,
-                  "holdout_hit_pct": 36.22,
-                  "holdout_samples": 381,
-                  "average_return_pct": -0.5059,
-                  "average_strength": 55.75,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 604,
+                  "scored_samples": 508,
+                  "session_count": 4,
+                  "direction_hit_pct": 44.69,
+                  "holdout_hit_pct": 44.69,
+                  "holdout_samples": 508,
+                  "average_return_pct": -0.0057,
+                  "average_strength": 55.74,
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
+                  "matured_rows": 136,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -3255,7 +3254,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 9,
-              "samples": 2747
+              "samples": 2748
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3299,7 +3298,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 153,
+              "samples": 180,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -3326,28 +3325,28 @@
                   "latest_session": "2026-09-10"
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
+                  "matured_rows": 604,
                   "scored_samples": 0,
-                  "session_count": 3,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
                   "holdout_samples": 0,
                   "average_return_pct": null,
                   "average_strength": 0.0,
-                  "average_confidence": 79.37,
-                  "latest_session": "2026-09-09"
+                  "average_confidence": 79.5,
+                  "latest_session": "2026-09-10"
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 67,
-                  "session_count": 3,
-                  "direction_hit_pct": 67.16,
-                  "holdout_hit_pct": 67.16,
-                  "holdout_samples": 67,
-                  "average_return_pct": -0.4626,
-                  "average_strength": 46.68,
-                  "average_confidence": 79.61,
-                  "latest_session": "2026-09-09"
+                  "matured_rows": 136,
+                  "scored_samples": 94,
+                  "session_count": 4,
+                  "direction_hit_pct": 54.26,
+                  "holdout_hit_pct": 54.26,
+                  "holdout_samples": 94,
+                  "average_return_pct": -0.1409,
+                  "average_strength": 48.24,
+                  "average_confidence": 79.67,
+                  "latest_session": "2026-09-10"
                 }
               }
             },
@@ -3393,7 +3392,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 4,
-              "samples": 1303,
+              "samples": 1488,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 616,
@@ -3422,29 +3421,29 @@
                   "source_reliability_pct": 100.0
                 },
                 "US_STOCK": {
-                  "matured_rows": 453,
-                  "scored_samples": 453,
-                  "session_count": 3,
+                  "matured_rows": 604,
+                  "scored_samples": 604,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
-                  "holdout_samples": 453,
+                  "holdout_samples": 604,
                   "average_return_pct": null,
-                  "average_strength": 79.37,
+                  "average_strength": 79.5,
                   "average_confidence": 100.0,
-                  "latest_session": "2026-09-09",
+                  "latest_session": "2026-09-10",
                   "source_reliability_pct": 100.0
                 },
                 "US_ETF": {
-                  "matured_rows": 102,
-                  "scored_samples": 102,
-                  "session_count": 3,
+                  "matured_rows": 136,
+                  "scored_samples": 136,
+                  "session_count": 4,
                   "direction_hit_pct": null,
                   "holdout_hit_pct": null,
-                  "holdout_samples": 102,
+                  "holdout_samples": 136,
                   "average_return_pct": null,
-                  "average_strength": 79.61,
+                  "average_strength": 79.67,
                   "average_confidence": 100.0,
-                  "latest_session": "2026-09-09",
+                  "latest_session": "2026-09-10",
                   "source_reliability_pct": 100.0
                 }
               }
@@ -3495,7 +3494,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 731
+              "samples": 734
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3537,7 +3536,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 731
+              "samples": 734
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3705,7 +3704,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 20,
-              "samples": 28
+              "samples": 29
             },
             "stage": "manual_review_available",
             "uses_future_data": false,
@@ -3789,7 +3788,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 731
+              "samples": 734
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3830,8 +3829,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 13,
-              "samples": 28
+              "sessions": 14,
+              "samples": 29
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3918,8 +3917,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 10,
-              "samples": 211
+              "sessions": 11,
+              "samples": 230
             },
             "stage": "manual_review_available",
             "uses_future_data": false,
@@ -3960,7 +3959,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 15,
-              "samples": 731
+              "samples": 734
             },
             "stage": "manual_review_available",
             "uses_future_data": false,
