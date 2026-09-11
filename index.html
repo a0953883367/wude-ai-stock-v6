@@ -24,7 +24,7 @@ body{margin:0;padding:16px;background:var(--bg);color:var(--white);font-family:-
 button{border:1px solid #344155;border-radius:15px;padding:14px 8px;background:#263247;color:white;font-size:15px;font-weight:800;cursor:pointer;touch-action:manipulation}
 button.active{background:var(--blue);border-color:#4f7cff}.report button.active{background:#7c3aed;border-color:#9f67ff}
 .refresh-panel{margin:14px 0;background:#10261e;border:1px solid #24553d;border-radius:15px;padding:12px}.refresh-button{width:100%;background:var(--green);border-color:#35dc77;font-size:17px}.refresh-help{color:#bbf7d0;font-size:12px;line-height:1.6;margin-top:8px;text-align:center}.searchbox{display:flex;gap:8px;margin:16px 0}input{flex:1;min-width:0;padding:15px;border-radius:14px;border:1px solid #374151;background:#111827;color:white;font-size:16px}.search{background:var(--green);border-color:#35dc77;min-width:64px}
-.section{font-size:22px;font-weight:900;margin:20px 3px 7px}.status{color:var(--muted);font-size:13px;margin:0 3px 12px;line-height:1.6}
+.section{font-size:22px;font-weight:900;margin:20px 3px 7px;scroll-margin-top:16px}.status{color:var(--muted);font-size:13px;margin:0 3px 12px;line-height:1.6}
 .market-strip{display:flex;gap:8px;overflow:auto;padding:2px 0 10px;scrollbar-width:none}.market-pill{min-width:145px;background:#0e192a;border:1px solid var(--line);border-radius:14px;padding:11px}.market-pill b{display:block;margin-top:5px}.up{color:#4ade80}.down{color:#fb7185}
 .performance{background:#10261e;border:1px solid #24553d;border-radius:14px;padding:12px;margin:2px 0 12px;color:#d1fae5;line-height:1.7;font-size:13px}.performance b{color:#4ade80}
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;margin-bottom:13px;box-shadow:0 10px 28px rgba(0,0,0,.12)}.card-head{display:flex;justify-content:space-between;gap:10px}.rank{color:var(--yellow);font-size:13px;font-weight:900}.light{font-size:24px}.stock{font-size:22px;font-weight:900;margin-top:5px}.ticker{color:var(--muted);font-size:14px;margin-top:4px}.score{color:#4ade80;font-size:19px;font-weight:900;margin-top:9px}
@@ -896,6 +896,11 @@ function showSystemGuard(){
   var safetyHtml='<div class="guard-safety">🔒 '+esc(safety.note||'只監控與診斷')+'<br>自動改排名：關閉｜自動下單：關閉｜自動刪除：關閉｜自動修復：關閉</div>';
   document.getElementById('results').innerHTML=hero+'<div class="guard-grid">'+cards+'</div>'+safetyHtml;
 }
+function revealTrainingContent(){
+  var target=document.getElementById('title');
+  if(!target)return;
+  window.setTimeout(function(){target.scrollIntoView({behavior:'auto',block:'start'});},0);
+}
 function showMarket(view){
   STATE.view=view;setActive('#marketButtons button','data-view',view);clearOtherNav('#marketButtons button');
   var map={TW:['🇹🇼 台股買進候選排名',STATE.tw],US:['🇺🇸 美股綜合風控排名',STATE.us],ETF:['📊 ETF 買進／風控排名',STATE.etf]};
@@ -906,7 +911,7 @@ function showMarket(view){
   if(view==='HISTORY'){showHistoricalLab();return;}
   if(view==='INVERSE'){showInverseExperiment();return;}
   if(view==='MISSED_STRENGTH'){showMissedStrengthValidation();return;}
-  if(view==='TRAINING'){showTrainingCenter();return;}
+  if(view==='TRAINING'){showTrainingCenter();revealTrainingContent();return;}
   if(view==='GUARD'){showSystemGuard();return;}
   if(view==='TEST'){
     var testRows=STATE.normalized.filter(function(stock){return capitalTestResult(stock).eligible;}).sort(function(a,b){return Number(b.entryScore||0)-Number(a.entryScore||0);});
