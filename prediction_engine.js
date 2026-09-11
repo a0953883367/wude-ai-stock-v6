@@ -1,5 +1,6 @@
 (function(){'use strict';
-var REPORT=null,GROUP='TW_STOCK',HORIZON='NEXT_1D',CACHE={};
+var params=new URLSearchParams(window.location.search),requestedGroup=params.get('group'),requestedHorizon=params.get('horizon');
+var GROUP=['TW_STOCK','TW_ETF','US_STOCK','US_ETF'].indexOf(requestedGroup)>=0?requestedGroup:'TW_STOCK',HORIZON=['NEXT_1D','UP_5D','DOWN_14D','DOWN_21D','UP_45D','UP_60D','UP_126D'].indexOf(requestedHorizon)>=0?requestedHorizon:'NEXT_1D',REPORT=null,CACHE={};
 function esc(v){return String(v==null?'—':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function num(v,d){var n=Number(v);return Number.isFinite(n)?n.toLocaleString('zh-TW',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}):'—'}
 function metric(t,v,n){return'<div class="metric"><span>'+esc(t)+'</span><b>'+esc(v)+'</b><small>'+esc(n||'')+'</small></div>'}
@@ -17,5 +18,7 @@ function renderPortfolios(){var rows=((((REPORT||{}).paper_portfolios||{}).recen
 function render(){if(!REPORT)return;renderSummary();loadRankings();renderPortfolios()}
 document.querySelectorAll('#groupTabs button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#groupTabs button').forEach(function(x){x.classList.remove('active')});b.classList.add('active');GROUP=b.dataset.group;loadRankings()})});
 document.querySelectorAll('#horizonTabs button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#horizonTabs button').forEach(function(x){x.classList.remove('active')});b.classList.add('active');HORIZON=b.dataset.horizon;loadRankings()})});
+document.querySelectorAll('#groupTabs button').forEach(function(b){b.classList.toggle('active',b.dataset.group===GROUP)});
+document.querySelectorAll('#horizonTabs button').forEach(function(b){b.classList.toggle('active',b.dataset.horizon===HORIZON)});
 fetch('reports/prediction_engine.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(function(data){REPORT=data;render()}).catch(function(error){document.getElementById('status').textContent='預判引擎尚未產生：'+error.message});
 })();

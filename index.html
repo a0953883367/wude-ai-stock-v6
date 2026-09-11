@@ -1132,7 +1132,7 @@ async function loadAll(){
     STATE.tw=sortByScore(normalized.filter(function(x){return x.market==='TW'&&String(x.type).toUpperCase().indexOf('ETF')<0;})).slice(0,20);
     STATE.us=sortByScore(normalized.filter(function(x){return x.market==='US'&&String(x.type).toUpperCase().indexOf('ETF')<0;})).slice(0,20);
     STATE.etf=sortByScore(normalized.filter(function(x){return String(x.type).toUpperCase().indexOf('ETF')>=0;})).slice(0,20);
-    renderMarketStrip(STATE.latest);renderPerformance(STATE.latest);showMarket('TW');
+    renderMarketStrip(STATE.latest);renderPerformance(STATE.latest);var requestedView=new URLSearchParams(window.location.search).get('view');showMarket(['TW','US','ETF','WATCH','TEST','MILLION','WEIGHT','ROTATION','HOLDING','HISTORY','TRAINING','GUARD'].indexOf(requestedView)>=0?requestedView:'TW');
     if(live&&live.updated_at)document.getElementById('status').textContent+='｜排名更新 '+live.updated_at;
   }catch(error){document.getElementById('status').textContent='❌ 資料讀取失敗';document.getElementById('results').innerHTML='<div class="error">無法讀取股票資料：'+esc(error.message)+'</div>';}
 }
