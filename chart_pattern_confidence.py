@@ -32,6 +32,14 @@ def _directional(value: float, direction: str) -> float:
     return value if direction == "bullish" else 100.0-value
 
 
+def _direction_arrow(value: float, reference: float) -> str:
+    if value > reference:
+        return "▲"
+    if value < reference:
+        return "▼"
+    return "—"
+
+
 def _latest_signal(report: dict[str, Any], row: dict[str, Any]) -> dict[str, Any] | None:
     candidates = [
         item for item in report.get("signals", [])
@@ -96,10 +104,12 @@ def _component_scores(row: dict[str, Any], report: dict[str, Any]) -> list[dict[
     kd_score = None
     kd_text = "日／週KD資料累積中"
     if None not in (daily_k, daily_d, weekly_k, weekly_d):
+        daily_arrow = _direction_arrow(daily_k, daily_d)
+        weekly_arrow = _direction_arrow(weekly_k, weekly_d)
         daily_ok = daily_k >= daily_d if direction == "bullish" else daily_k <= daily_d
         weekly_ok = weekly_k >= weekly_d if direction == "bullish" else weekly_k <= weekly_d
         kd_score = 100.0 if daily_ok and weekly_ok else 62.0 if daily_ok or weekly_ok else 20.0
-        kd_text = f"日KD{'同向' if daily_ok else '背離'}／週KD{'同向' if weekly_ok else '背離'}"
+        kd_text = f"日KD{daily_arrow}／週KD{weekly_arrow}"
 
     rsi = _number(row.get("rsi"))
     histogram = _number(row.get("chart_pattern_macd_histogram"))
@@ -107,9 +117,10 @@ def _component_scores(row: dict[str, Any], report: dict[str, Any]) -> list[dict[
     rsi_macd_text = "RSI／MACD資料不足"
     if rsi is not None and histogram is not None:
         rsi_ok = 50 <= rsi <= 70 if direction == "bullish" else 30 <= rsi <= 50
+        macd_arrow = _direction_arrow(histogram, 0.0)
         macd_ok = histogram >= 0 if direction == "bullish" else histogram <= 0
         rsi_macd_score = 100.0 if rsi_ok and macd_ok else 60.0 if rsi_ok or macd_ok else 20.0
-        rsi_macd_text = f"RSI {rsi:.1f}／MACD{'同向' if macd_ok else '背離'}"
+        rsi_macd_text = f"RSI {rsi:.1f}／MACD{macd_arrow}"
 
     context_values = []
     macro = _number(row.get("macro_score"))

@@ -66,3 +66,22 @@ def test_missing_evidence_is_explicit_and_never_filled_with_neutral_50():
     assert components["kd"]["score"] is None
     assert components["rsi_macd"]["score"] is None
     assert row["chart_pattern_rank_coverage_pct"] < 100
+
+
+def test_direction_status_uses_arrows_without_removing_indicator_names():
+    bullish = _row("UP")
+    attach_chart_pattern_confidence([bullish], {})
+    components = {item["key"]: item for item in bullish["chart_pattern_rank_components"]}
+    assert components["kd"]["status"] == "日KD▲／週KD▲"
+    assert components["rsi_macd"]["status"] == "RSI 61.0／MACD▲"
+
+    bearish = _row("DOWN", direction="bearish")
+    bearish.update({
+        "chart_pattern_daily_k": 35, "chart_pattern_daily_d": 45,
+        "chart_pattern_weekly_k": 30, "chart_pattern_weekly_d": 40,
+        "chart_pattern_macd_histogram": -.4,
+    })
+    attach_chart_pattern_confidence([bearish], {})
+    components = {item["key"]: item for item in bearish["chart_pattern_rank_components"]}
+    assert components["kd"]["status"] == "日KD▼／週KD▼"
+    assert components["rsi_macd"]["status"] == "RSI 61.0／MACD▼"
