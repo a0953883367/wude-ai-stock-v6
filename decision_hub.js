@@ -9,25 +9,25 @@ function saveChoices(){localStorage.setItem('decision_hub_user_choices_v1',JSON.
 function saveTokenFromHash(){var access=new URLSearchParams(location.hash.replace(/^#/,'' )).get('live_token');if(!access)return;localStorage.setItem('wude-live-access-token',access);localStorage.setItem('wude_live_token',access);history.replaceState(null,'',location.pathname+location.search);}
 function token(){return String(localStorage.getItem('wude-live-access-token')||localStorage.getItem('wude_live_token')||'').trim();}
 function reportAge(value){return value?String(value).replace('T',' '):'未提供';}
-function metric(label,value,note){return'<div class="metric"><span>'+esc(label)+'</span><b>'+esc(value)+'</b><small>'+esc(note||'')+'</small></div>';}
+function metric(label,value,note,action){return'<button type="button" class="metric" data-status-action="'+esc(action)+'" aria-label="查看'+esc(label)+'"><span>'+esc(label)+'</span><b>'+esc(value)+'</b><small>'+esc(note||'')+'</small><em>點一下查看 ›</em></button>';}
 function money(value){var n=Number(value);return Number.isFinite(n)?'NT$'+Math.round(n).toLocaleString('zh-TW'):'—';}
 function shares(value){var n=Number(value);return Number.isFinite(n)?(n>0?'+':'')+Math.round(n).toLocaleString('zh-TW')+'股':'—';}
 function renderStatus(){var p=state.payload||{},s=p.summary||{},r=p.readiness||{},v=r.validation_60d||r.forward_validation||{},g=r.model_graduation||{},gf=g.summary||{},tf=r.tw_official_financial||{},ti=r.tw_institutional||{},sq=r.stockq_market_context||{},ue=p.unified_evidence||{},pc=p.portfolio_control||{},answer=p.single_answer||{},ns=(p.next_session_shadow||{}).summary||{},pe=(p.prediction_engine||{}).run_summary||{},ul=(p.unit_learning||{}).summary||{},cp=((p.chart_pattern_validation||{}).summary)||((state.patternValidation||{}).summary)||{},cpd=cp.valid_trading_days||{},sv=(state.shadow||{}).validation||{},sd=sv.valid_trading_days||{};document.getElementById('status').innerHTML=
-metric('中央判斷',(s.decision_count||0)+' 檔','涵蓋台股與美股')+
-metric('多週期預判',String(pe.symbol_count||0)+' 檔',String(pe.latest_prediction_count||0)+'筆固定答案')+
-metric('證據單元學習',(ul.dedicated_ledger_units||0)+' / 11','啟用影子信任 '+(ul.active_shadow_trust_streams||0)+' 路｜正式V6不變')+
-metric('明日預判',String(ns.data_ready_count||0)+' 檔','偏多 '+String(ns.up_count||0)+'｜可買候選 '+String(ns.buyable_candidate_count||0))+
-metric('綜合影子試走','台 '+(sd.TW||0)+'日｜美 '+(sd.US||0)+'日','20日初評｜60日人工畢業審查')+
-metric('K線型態5日驗證','台 '+(cpd.TW||0)+'日｜美 '+(cpd.US||0)+'日','留樣 '+(cp.signal_count||0)+'｜1/3/5日 '+(cp.matured_1d||0)+'/'+(cp.matured_3d||0)+'/'+(cp.matured_5d||0))+
-metric('已裁決衝突',(s.resolved_conflict_count||s.conflict_count||0)+' 檔','未裁決 '+(s.unresolved_conflict_count||0)+' 檔')+
-metric('60日向前驗證',(v.collected_trading_days||0)+' / '+(v.target_trading_days||60),'剩 '+(v.remaining_trading_days==null?'—':v.remaining_trading_days)+' 個交易日')+
-metric('台股官方財報',(tf.available||0)+' / '+(tf.requested||0),(tf.coverage_pct==null?'尚待更新':num(tf.coverage_pct,2)+'% 完整'))+
-metric('台股法人連動',(s.institution_linked_count||0)+' 檔',(ti.available?'覆蓋 '+num(ti.coverage_pct,1)+'%｜只計入一次':'覆蓋未達標｜中央隔離'))+
-metric('統一證據',(ue.evidence_count||0)+' 筆','格式錯誤 '+(ue.invalid_count||0)+' 筆')+
-metric('反向 ETF 連動',(s.inverse_linked_count||0)+' 檔','已通過驗證 '+(s.inverse_validated_count||0)+' 檔')+
-metric('模型畢業','可審查 '+(gf.eligible_for_manual_graduation||0),'累積中 '+(gf.collecting||0)+'｜需複核 '+(gf.review_required||0))+
-metric('StockQ 收盤後備援',esc(((sq.market_signal||{}).regime)||'尚待更新'),'指標 '+(sq.indicator_count||0)+'｜只補缺值、不改正式排名')+
-metric('部位控制',money(pc.suggested_invested_twd||0),'等待買點不計入已投資');
+metric('中央判斷',(s.decision_count||0)+' 檔','涵蓋台股與美股','decision')+
+metric('多週期預判',String(pe.symbol_count||0)+' 檔',String(pe.latest_prediction_count||0)+'筆固定答案','prediction_45d')+
+metric('證據單元學習',(ul.dedicated_ledger_units||0)+' / 11','啟用影子信任 '+(ul.active_shadow_trust_streams||0)+' 路｜正式V6不變','training')+
+metric('明日預判',String(ns.data_ready_count||0)+' 檔','偏多 '+String(ns.up_count||0)+'｜可買候選 '+String(ns.buyable_candidate_count||0),'next_session')+
+metric('綜合影子試走','台 '+(sd.TW||0)+'日｜美 '+(sd.US||0)+'日','20日初評｜60日人工畢業審查','shadow_45d')+
+metric('K線型態5日驗證','台 '+(cpd.TW||0)+'日｜美 '+(cpd.US||0)+'日','留樣 '+(cp.signal_count||0)+'｜1/3/5日 '+(cp.matured_1d||0)+'/'+(cp.matured_3d||0)+'/'+(cp.matured_5d||0),'chart_pattern')+
+metric('已裁決衝突',(s.resolved_conflict_count||s.conflict_count||0)+' 檔','未裁決 '+(s.unresolved_conflict_count||0)+' 檔','conflict')+
+metric('60日向前驗證',(v.collected_trading_days||0)+' / '+(v.target_trading_days||60),'剩 '+(v.remaining_trading_days==null?'—':v.remaining_trading_days)+' 個交易日','training')+
+metric('台股官方財報',(tf.available||0)+' / '+(tf.requested||0),(tf.coverage_pct==null?'尚待更新':num(tf.coverage_pct,2)+'% 完整'),'tw_financial')+
+metric('台股法人連動',(s.institution_linked_count||0)+' 檔',(ti.available?'覆蓋 '+num(ti.coverage_pct,1)+'%｜只計入一次':'覆蓋未達標｜中央隔離'),'tw_institutional')+
+metric('統一證據',(ue.evidence_count||0)+' 筆','格式錯誤 '+(ue.invalid_count||0)+' 筆','evidence')+
+metric('反向 ETF 連動',(s.inverse_linked_count||0)+' 檔','已通過驗證 '+(s.inverse_validated_count||0)+' 檔','inverse_etf')+
+metric('模型畢業','可審查 '+(gf.eligible_for_manual_graduation||0),'累積中 '+(gf.collecting||0)+'｜需複核 '+(gf.review_required||0),'training')+
+metric('StockQ 收盤後備援',esc(((sq.market_signal||{}).regime)||'尚待更新'),'指標 '+(sq.indicator_count||0)+'｜只補缺值、不改正式排名','stockq')+
+metric('部位控制',money(pc.suggested_invested_twd||0),'等待買點不計入已投資','portfolio');
 var answerBox=document.getElementById('singleAnswer');answerBox.className='single-answer '+esc(answer.code||'hold_cash');answerBox.innerHTML='<span>中央唯一答案</span><b>'+esc(answer.headline||'尚無結論')+'</b><p>'+esc(answer.detail||'等待完整資料')+'</p>';
 document.getElementById('updatedChip').textContent='更新 '+reportAge(p.updated_at);
 var missing=p.missing_sources||[],warnings=(((r.system_guard||{}).warnings)||[]),notice=document.getElementById('notice'),messages=[];
@@ -60,6 +60,26 @@ function selectedShadowMarkets(){return state.market==='TW'||state.market==='US'
 function shadowRows(){if(!state.shadow)return[];var q=state.query.trim().toUpperCase(),rows=[];selectedShadowMarkets().forEach(function(market){var source=state.shadowCache[market+':'+state.horizon]||[];source.forEach(function(row){if(state.market==='ETF'&&!isETF(row))return;if(q&&String(row.symbol+' '+row.name+' '+(row.industry||'')).toUpperCase().indexOf(q)<0)return;rows.push(row);});});if(state.mode==='compare'){rows=rows.filter(function(row){var change=Number(row.rank_change)||0;return state.compareFilter==='up'?change>0:state.compareFilter==='down'?change<0:change===0;});rows.sort(function(a,b){var first=Number(a.rank_change)||0,second=Number(b.rank_change)||0;if(first!==second)return state.compareFilter==='down'?first-second:second-first;return(Number(a.shadow_rank)||9999)-(Number(b.shadow_rank)||9999);});}return rows;}
 function loadShadowSelection(){if(!state.shadow)return Promise.resolve();var stamp=Date.now(),files=state.shadow.ranking_files||{},jobs=[];selectedShadowMarkets().forEach(function(market){var key=market+':'+state.horizon,path=((files[market]||{})[state.horizon]);if(state.shadowCache[key]||!path)return;jobs.push(fetchJSON(path,stamp).then(function(chunk){state.shadowCache[key]=chunk.rankings||[];}));});return Promise.all(jobs).then(function(){state.shadowError='';}).catch(function(error){state.shadowError=error&&error.message||'影子排名資料無法讀取';});}
 function refreshShadowView(){if(state.mode==='decision'){render();return;}document.getElementById('cards').innerHTML='<div class="empty">正在載入綜合影子排名…</div>';loadShadowSelection().then(render);}
+function activate(container,attribute,value){document.querySelectorAll(container+' button').forEach(function(button){button.classList.toggle('active',button.getAttribute(attribute)===value);});}
+function statusFeedback(message){var box=document.getElementById('statusFeedback');box.hidden=false;box.textContent=message;}
+function scrollToCards(){window.setTimeout(function(){document.querySelector('.section-title').scrollIntoView({behavior:'smooth',block:'start'});},0);}
+function showDecisionFromStatus(filter,market,message){state.mode='decision';state.filter=filter||'all';state.market=market||'ALL';activate('#viewModes','data-mode','decision');activate('#filters','data-filter',state.filter);activate('#markets','data-market',state.market);render();statusFeedback(message);scrollToCards();}
+function showShadowFromStatus(horizon){state.mode='shadow';state.horizon=horizon||'medium';state.market='ALL';activate('#viewModes','data-mode','shadow');activate('#shadowHorizons','data-horizon',state.horizon);activate('#markets','data-market','ALL');statusFeedback('已直接顯示綜合影子45日排名；正式V6與權重不變。');refreshShadowView();scrollToCards();}
+function openStatusAction(action){
+  if(action==='prediction_45d'){window.location.href='prediction-engine.html?horizon=UP_45D';return;}
+  if(action==='training'){window.location.href='index.html?view=TRAINING';return;}
+  if(action==='next_session'){window.location.href='next-session-shadow.html';return;}
+  if(action==='chart_pattern'){window.location.href='chart-pattern-shadow.html';return;}
+  if(action==='inverse_etf'){window.location.href='inverse-etf-shadow.html';return;}
+  if(action==='shadow_45d'){showShadowFromStatus('medium');return;}
+  if(action==='conflict'){showDecisionFromStatus('conflict','ALL','已直接顯示有衝突的股票與中央裁決結果。');return;}
+  if(action==='tw_financial'){showDecisionFromStatus('all','TW','已直接顯示台股決策卡；每檔的官方財報證據可在「查看全部證據與日期」展開。');return;}
+  if(action==='tw_institutional'){showDecisionFromStatus('all','TW','已直接顯示台股決策卡與官方法人連動資料。');return;}
+  if(action==='evidence'){showDecisionFromStatus('all','ALL','已直接顯示全部中央決策卡；可展開每檔的全部證據與日期。');return;}
+  if(action==='portfolio'){showDecisionFromStatus('can_scale','ALL','已直接顯示目前可配置部位的候選；沒有卡片就代表目前配置為0。');return;}
+  if(action==='stockq'){showDecisionFromStatus('all','ALL','已直接顯示中央決策卡；StockQ只在缺值時提供市場背景，不會重複加分。');return;}
+  showDecisionFromStatus('all','ALL','已直接顯示全部中央判斷。');
+}
 function renderLiveStatus(){var box=document.getElementById('liveLink');if(!box)return;if(state.live){var streams=state.live.streams||{},tw=streams.TW||{},us=streams.US||{};box.className='live-link ok';box.innerHTML='<b>🚨 即時資金已連動 AI 決策</b><span>台股 '+esc(tw.state||'等待')+' '+esc(tw.subscribed||0)+'檔｜美股 '+esc(us.state||'等待')+' '+esc(us.subscribed||0)+'檔｜符合訊號的個股卡會顯示即時影子結論</span>';return;}box.className='live-link warn';box.innerHTML='<b>即時資金連動：'+(token()?'等待重新連線':'尚未取得本機授權')+'</b><span>'+esc(state.liveError||'靜態 AI 決策與反向 ETF 收盤資料仍可正常使用')+'</span>'+(!token()?'<a href="live-flow.html">前往大量買賣頁完成一次性手機授權</a>':'');}
 function render(){if(!state.payload)return;renderStatus();renderLiveStatus();var shadowMode=state.mode!=='decision',filters=document.getElementById('filters'),shadowControls=document.getElementById('shadowHorizons'),compareFilters=document.getElementById('compareFilters'),shadowNote=document.getElementById('shadowNote');filters.hidden=shadowMode;shadowControls.hidden=!shadowMode;compareFilters.hidden=state.mode!=='compare';shadowNote.hidden=!shadowMode;if(state.mode==='compare')shadowNote.innerHTML='<b>比較方式：</b>預設先看「影子上調最多」；可切換查看下調或名次不變。「時段基準」和「正式 V6 整體排名」是兩種不同排名。';else shadowNote.innerHTML='<b>獨立試走：</b>全部影子證據依時段分開排名；正式 V6 不變，20日初評、60日後才可人工決定是否整合。';var compareTitles={up:'正式基準／影子比較（上調最多）',down:'正式基準／影子比較（下調最多）',flat:'正式基準／影子比較（名次不變）'};document.querySelector('.section-title h2').textContent=state.mode==='decision'?'個股決策卡':state.mode==='shadow'?'綜合影子排名':compareTitles[state.compareFilter];var rows=shadowMode?shadowRows():filtered(),emptyCompare={up:'目前沒有影子上調的股票。',down:'目前沒有影子下調的股票。',flat:'目前沒有名次不變的股票。'};document.getElementById('count').textContent=rows.length+' 檔';document.getElementById('cards').innerHTML=rows.length?(shadowMode?rows.map(shadowCard).join(''):rows.map(card).join('')):'<div class="empty">'+(shadowMode&&(state.shadowError||!state.shadow)?esc(state.shadowError||'綜合影子排名暫時無法讀取，正式 V6 不受影響。'):state.mode==='compare'?emptyCompare[state.compareFilter]:'目前篩選條件沒有資料。')+'</div>';}
 function fetchJSON(path,stamp){return fetch('reports/'+path+'?v='+stamp,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(path+' HTTP '+r.status);return r.json();});}
@@ -67,6 +87,7 @@ function load(){document.getElementById('cards').innerHTML='<div class="empty">�
 async function fetchLive(){if(state.liveInFlight||!apiBase)return;var access=token();if(!access){state.live=null;state.liveError='請由已授權的報表入口開啟一次；授權只保存在這支手機。';renderLiveStatus();return;}state.liveInFlight=true;try{var response=await fetch(apiBase+'/api/large-buy-alerts?after=0&limit=100',{cache:'no-store',headers:{Accept:'application/json','X-Live-Token':access}}),data=await response.json().catch(function(){return{};});if(!response.ok||!data.ok)throw new Error(data.error||'即時資金資料無法取得');state.live=data;state.liveError='';render();}catch(error){state.live=null;state.liveError=error&&error.message||'即時資金資料無法取得';renderLiveStatus();}finally{state.liveInFlight=false;}}
 function scheduleLive(){clearInterval(state.liveTimer);state.liveTimer=setInterval(function(){if(document.visibilityState==='visible')void fetchLive();},10000);}
 document.getElementById('refresh').addEventListener('click',load);
+document.getElementById('status').addEventListener('click',function(e){var button=e.target.closest('button[data-status-action]');if(button)openStatusAction(button.dataset.statusAction);});
 document.getElementById('search').addEventListener('input',function(e){state.query=e.target.value;render();});
 document.getElementById('viewModes').addEventListener('click',function(e){var b=e.target.closest('button[data-mode]');if(!b)return;state.mode=b.dataset.mode;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b);});refreshShadowView();});
 document.getElementById('shadowHorizons').addEventListener('click',function(e){var b=e.target.closest('button[data-horizon]');if(!b)return;state.horizon=b.dataset.horizon;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b);});refreshShadowView();});
