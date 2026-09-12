@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-13T01:18:11+08:00",
+  "checked_at": "2026-09-13T03:34:23+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-12 22:52:53",
-  "report_age_minutes": 145.3,
+  "report_age_minutes": 281.5,
   "counts": {
-    "ok": 25,
+    "ok": 24,
     "info": 7,
-    "warning": 1,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -34,16 +34,16 @@
       "title": "股票更名／停復牌監控",
       "level": "warning",
       "label": "注意",
-      "detail": "官方身分符合 370/374 檔（個股 306、ETF 68）；事件 6 件；來源失敗 0 個",
+      "detail": "官方身分符合 337/374 檔（個股 306、ETF 68）；事件 1 件；來源失敗 4 個",
       "action": "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
     },
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近更新距今 145 分鐘",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 4.7 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
       "code": "report_consistency",
@@ -282,7 +282,8 @@
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "若已跨過下一個排程時間，檢查排程是否延遲"
   ],
   "safety": {
     "changes_rankings": false,
