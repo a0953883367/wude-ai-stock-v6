@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-12T22:14:34+08:00",
+  "checked_at": "2026-09-12T22:55:45+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-12 16:18:36",
-  "report_age_minutes": 356.0,
+  "report_updated_at": "2026-09-12 22:52:53",
+  "report_age_minutes": 2.9,
   "counts": {
-    "ok": 24,
+    "ok": 25,
     "info": 7,
-    "warning": 2,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 235.9 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 238.8 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -40,10 +40,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 5.9 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -82,7 +82,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 187、法人 187、信用 187（沿用最近完整收盤）",
+      "detail": "價格 187、法人 163、信用 159",
       "action": ""
     },
     {
@@ -122,7 +122,7 @@
       "title": "Tiingo 免費版覆蓋測試",
       "level": "info",
       "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 92 檔；尚未切換半套快取",
+      "detail": "免費版分批收集中，目前已嘗試 139 檔；尚未切換半套快取",
       "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
@@ -181,7 +181,7 @@
       "detail": "台美股共 10 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 10,
-      "ledger_updated_at": "2026-09-12 16:18:36"
+      "ledger_updated_at": "2026-09-12 22:52:53"
     },
     {
       "code": "unified_evidence",
@@ -277,13 +277,12 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "若已跨過下一個排程時間，檢查排程是否延遲"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
   ],
   "safety": {
     "changes_rankings": false,
