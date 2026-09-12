@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-09-12T18:08:37.185752+00:00",
+  "generated_at": "2026-09-12T23:02:30.721544+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 374,
@@ -10,29 +10,15 @@
     "officially_matched_stocks": 270,
     "officially_matched_etfs": 67,
     "unmatched": 37,
-    "event_count": 1,
-    "warning_count": 1,
+    "event_count": 0,
+    "warning_count": 0,
     "critical_count": 0,
     "source_failure_count": 4,
     "registry_source_failure_count": 3,
     "event_source_failure_count": 1,
     "available_registry_source_count": 5
   },
-  "events": [
-    {
-      "type": "MERGER_OR_SHARE_EXCHANGE",
-      "label": "合併／換股",
-      "level": "warning",
-      "symbol": "4958.TW",
-      "asset_type": "STOCK",
-      "source": "twse_announcements",
-      "source_date": "1150911",
-      "headline": "代子公司慶鼎精密電子(淮安)有限公司及宏恒勝電子科技(淮安)\r\n有限公司公告董事會決議通過吸收合併案",
-      "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
-      "event_id": "abf5d96290035be25bdf",
-      "requires_manual_approval": true
-    }
-  ],
+  "events": [],
   "source_health": {
     "twse_registry": {
       "ok": true,
@@ -55,7 +41,7 @@
       "mode": "verified_snapshot",
       "live_ok": false,
       "snapshot_generated_at": "2026-09-07T11:26:08.325758+00:00",
-      "snapshot_age_days": 5.279,
+      "snapshot_age_days": 5.484,
       "snapshot_records_sha256": "bda80949d27315c26dfdcd0356303c1c3065f3d08ff2b90a8aecaeb7436c456f",
       "live_error": "https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI"
     },
@@ -97,8 +83,8 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 94,
-      "event_count": 4,
+      "record_count": 3,
+      "event_count": 0,
       "error": ""
     },
     "tpex_announcements": {
