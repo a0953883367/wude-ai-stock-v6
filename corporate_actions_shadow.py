@@ -37,6 +37,7 @@ SOURCE_URLS = {
     "nasdaq_halts": "https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts",
     "twse_securities": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
     "tpex_securities": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+    "tpex_emerging_securities": "https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics",
     "nasdaq_listed": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
     "other_listed": "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
 }
@@ -141,10 +142,14 @@ def _tracked_securities(active_payload: dict[str, Any]) -> dict[str, dict[str, A
         asset_type = "ETF" if "ETF" in raw_type.upper() else "STOCK"
         tracked[symbol] = {
             "symbol": symbol,
-            "display_name": str(row.get("股票") or row.get("name") or symbol),
+            "display_name": str(
+                row.get("股票") or row.get("name") or row.get("display_name") or symbol
+            ),
             "market": market,
             "type": "ETF" if asset_type == "ETF" else "個股",
             "asset_type": asset_type,
+            "ranking_mode": str(row.get("排名模式") or row.get("ranking_mode") or "formal"),
+            "primary_symbol": str(row.get("主要標的") or row.get("primary_symbol") or "").upper(),
         }
     return tracked
 
@@ -241,7 +246,12 @@ def normalize_tw_security_registry(
     splice history across a ticker change.
     """
     suffix = ".TW" if exchange == "TWSE" else ".TWO"
-    source = "twse_securities" if exchange == "TWSE" else "tpex_securities"
+    if exchange == "TWSE":
+        source = "twse_securities"
+    elif exchange == "TPEx Emerging":
+        source = "tpex_emerging_securities"
+    else:
+        source = "tpex_securities"
     normalized = []
     for row in rows:
         if not isinstance(row, dict):
@@ -527,7 +537,10 @@ def build_shadow_report(
 
     for symbol, tracked_row in tracked.items():
         is_etf = tracked_row["asset_type"] == "ETF"
-        if tracked_row["market"] == "US":
+        is_reference_only = tracked_row.get("ranking_mode") == "reference_only"
+        if is_reference_only:
+            preferred_sources = ("otc_reference_registry",)
+        elif tracked_row["market"] == "US":
             preferred_sources = (
                 ("us_symbol_directory",)
                 if is_etf else
@@ -537,7 +550,7 @@ def build_shadow_report(
             preferred_sources = (
                 ("tpex_securities",)
                 if is_etf else
-                ("tpex_registry", "tpex_securities")
+                ("tpex_registry", "tpex_securities", "tpex_emerging_securities")
             )
         else:
             preferred_sources = (
@@ -683,7 +696,8 @@ def build_shadow_report(
     )[:MAX_EVENTS]
     registry_source_names = (
         "twse_registry", "tpex_registry", "sec_registry",
-        "twse_securities", "tpex_securities", "us_symbol_directory",
+        "twse_securities", "tpex_securities", "tpex_emerging_securities",
+        "us_symbol_directory", "otc_reference_registry",
     )
     registry_source_failures = [
         name for name in registry_source_names
@@ -882,6 +896,7 @@ def fetch_official_sources(
     *,
     us_symbols: Iterable[str] = (),
     sec_snapshot_path: Path = Path("official_data/sec_company_tickers_snapshot.json"),
+    reference_registry_path: Path = Path("official_data/reference_security_identities.json"),
 ) -> tuple[
     list[dict[str, Any]],
     list[dict[str, Any]],
@@ -896,6 +911,7 @@ def fetch_official_sources(
         ("sec_registry", normalize_sec_registry),
         ("twse_securities", lambda value: normalize_tw_security_registry(value, exchange="TWSE")),
         ("tpex_securities", lambda value: normalize_tw_security_registry(value, exchange="TPEx")),
+        ("tpex_emerging_securities", lambda value: normalize_tw_security_registry(value, exchange="TPEx Emerging")),
     )
     for name, normalizer in registry_specs:
         try:
@@ -918,6 +934,29 @@ def fetch_official_sources(
             })
         except Exception as exc:
             registry_sources.append({"source": name, "ok": False, "records": [], "error": f"{type(exc).__name__}: {exc}"})
+
+    try:
+        reference_payload = _read_json(reference_registry_path, {})
+        reference_records = reference_payload.get("records") if isinstance(reference_payload, dict) else None
+        if not isinstance(reference_records, list) or not reference_records:
+            raise SourceError("verified reference registry returned no records")
+        registry_sources.append({
+            "source": "otc_reference_registry",
+            "ok": True,
+            "records": reference_records,
+            "url": str(reference_registry_path),
+            "mode": "manually_verified_reference",
+            "live_ok": False,
+            "verified_at": reference_payload.get("verified_at"),
+            "review_after": reference_payload.get("review_after"),
+        })
+    except Exception as exc:
+        registry_sources.append({
+            "source": "otc_reference_registry",
+            "ok": False,
+            "records": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        })
 
     try:
         listed = parse_nasdaq_symbol_directory(

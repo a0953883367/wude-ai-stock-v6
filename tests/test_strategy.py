@@ -390,6 +390,25 @@ def test_candidate_scoring_has_prices_and_ranking():
     assert ranked[0]["scenario_no_chase_low"] <= ranked[0]["scenario_no_chase_high"]
     assert "不追" in ranked[0]["scenario_no_chase"]
 
+    reference = dict(row)
+    reference.update({
+        "symbol": "HNHPF",
+        "ranking_mode": "reference_only",
+        "primary_symbol": "2317.TW",
+    })
+    reference_result = score_candidates([reference])[0]
+    assert reference_result["overall_eligible"] is False
+    assert reference_result["overall_rank_tier"] == 0
+    assert reference_result["short_term_rank_tier"] == 0
+    assert reference_result["mid_long_rank_tier"] == 0
+    assert reference_result["short_term_eligible"] is False
+    assert reference_result["mid_long_eligible"] is False
+    assert reference_result["formal_ranking_excluded"] is True
+    assert reference_result["formal_ranking_exclusion_reason"] == (
+        "reference_only_duplicate_listing"
+    )
+    assert "正式排名使用主要掛牌" in reference_result["action"]
+
 
 def test_candlestick_detects_volume_breakout():
     close = pd.Series([100 + i * 0.1 for i in range(20)] + [110.0])

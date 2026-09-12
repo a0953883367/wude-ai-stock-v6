@@ -49,6 +49,8 @@ def test_formal_combined_universe_covers_all_374_securities() -> None:
     assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 306
     assert sum(row["asset_type"] == "ETF" for row in tracked.values()) == 68
     assert {"2327.TW", "HUBB", "0050.TW", "VOO"} <= set(tracked)
+    assert tracked["HNHPF"]["display_name"] == "鴻海 OTC"
+    assert tracked["HNHPF"]["ranking_mode"] == "reference_only"
 
 
 def test_official_security_directories_cover_etfs_without_company_identity_splicing() -> None:
@@ -67,6 +69,66 @@ def test_official_security_directories_cover_etfs_without_company_identity_splic
     assert us[0]["symbol"] == "SMH"
     assert us[0]["is_etf"] is True
     assert us[0]["identity_scope"] == "symbol"
+
+
+def test_tpex_emerging_directory_covers_active_emerging_stocks() -> None:
+    emerging = normalize_tw_security_registry(
+        [
+            {"SecuritiesCompanyCode": "7415", "CompanyName": "元澄半導體"},
+            {"SecuritiesCompanyCode": "7815", "CompanyName": "新特"},
+        ],
+        exchange="TPEx Emerging",
+    )
+    report, registry = _build(
+        _universe(
+            ("7415.TWO", "元澄半導體", "🇹🇼 台灣"),
+            ("7815.TWO", "新特", "🇹🇼 台灣"),
+        ),
+        _previous(*emerging),
+        _source("tpex_registry", []),
+        _source("tpex_securities", []),
+        _source("tpex_emerging_securities", emerging),
+    )
+
+    assert report["summary"]["officially_matched"] == 2
+    assert not {"MISSING_FROM_REGISTRY", "CONFIRMED_ABSENT"} & {
+        event["type"] for event in report["events"]
+    }
+    assert registry["records"]["7415.TWO"]["source"] == "tpex_emerging_securities"
+    assert registry["records"]["7815.TWO"]["exchange"] == "TPEx Emerging"
+
+
+def test_reference_only_otc_symbol_uses_verified_reference_registry() -> None:
+    universe = {
+        "data": [{
+            "symbol": "HNHPF",
+            "name": "鴻海 OTC",
+            "market": "US",
+            "type": "個股",
+            "ranking_mode": "reference_only",
+            "primary_symbol": "2317.TW",
+        }]
+    }
+    record = {
+        "symbol": "HNHPF",
+        "market": "US",
+        "exchange": "OTC",
+        "name": "Hon Hai Precision Industry Co., Ltd.",
+        "entity_id": "US-OTC-HNHPF",
+        "identity_scope": "symbol",
+        "source": "otc_reference_registry",
+    }
+    report, registry = _build(
+        universe,
+        _previous(record),
+        _source("sec_registry", []),
+        _source("us_symbol_directory", []),
+        _source("otc_reference_registry", [record]),
+    )
+
+    assert report["summary"]["officially_matched"] == 1
+    assert report["events"] == []
+    assert registry["records"]["HNHPF"]["present"] is True
 
 
 def test_etf_missing_registry_row_never_becomes_automatic_liquidation() -> None:

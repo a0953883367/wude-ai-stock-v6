@@ -3238,7 +3238,10 @@ def score_candidates(
         market_quality = _finite(row.get("market_data_quality_score"), overall_confidence)
         confidence_factor = 0.65 + 0.20 * overall_confidence / 100 + 0.15 * market_quality / 100
         contract_valid = row.get("market_contract_valid") is not False
-        overall_blocked = bool(row.get("trade_guard_blocked") or not contract_valid)
+        reference_only = str(row.get("ranking_mode") or "formal") == "reference_only"
+        overall_blocked = bool(
+            row.get("trade_guard_blocked") or not contract_valid or reference_only
+        )
         overall_eligible = bool(
             not overall_blocked and entry_data_complete
             and overall_confidence >= 70 and market_quality >= 50
@@ -3246,6 +3249,12 @@ def score_candidates(
         )
         row["overall_eligible"] = overall_eligible
         row["overall_rank_tier"] = 0 if overall_blocked else 2 if overall_eligible else 1
+        if reference_only:
+            row["formal_ranking_excluded"] = True
+            row["formal_ranking_exclusion_reason"] = "reference_only_duplicate_listing"
+            row["short_term_eligible"] = False
+            row["mid_long_eligible"] = False
+            row["action"] = "⚪ 參考報價｜正式排名使用主要掛牌"
 
         # 「最值得買」必須同時考慮公司／ETF品質與目前進場時機；
         # 避免高歷史總分但現價、籌碼或風險不合格者仍排第一。
@@ -3262,7 +3271,10 @@ def score_candidates(
         )
 
         short_data_complete = entry_data_complete and _finite(row.get("short_term_confidence")) >= 75
-        short_blocked = bool(row.get("trade_guard_blocked") or not contract_valid or not short_data_complete)
+        short_blocked = bool(
+            row.get("trade_guard_blocked") or not contract_valid
+            or not short_data_complete or reference_only
+        )
         row["short_term_rank_tier"] = (
             0 if short_blocked else 2 if row.get("short_term_eligible") else 1
         )
@@ -3274,7 +3286,7 @@ def score_candidates(
 
         long_blocked = bool(
             row.get("trade_guard_severe") or not contract_valid
-            or _finite(row.get("news_penalty")) >= 10
+            or _finite(row.get("news_penalty")) >= 10 or reference_only
         )
         row["mid_long_rank_tier"] = (
             0 if long_blocked else 2 if row.get("mid_long_eligible") else 1

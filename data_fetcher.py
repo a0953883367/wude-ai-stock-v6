@@ -172,6 +172,10 @@ def load_search_universe(path: Path = SETTINGS.search_data_path) -> list[dict[st
             "type": row.get("類型", "個股"),
             "theme": row.get("主題", "其他"),
             "industry": row.get("次產業", "其他"),
+            "ranking_mode": row.get("排名模式", "formal"),
+            "primary_symbol": str(row.get("主要標的", "")).strip().upper(),
+            "legacy_symbol": str(row.get("舊代號", "")).strip().upper(),
+            "symbol_effective_date": row.get("代號生效日"),
         })
     if not rows:
         raise RuntimeError("search_data.json 沒有可用的股票候選清單")

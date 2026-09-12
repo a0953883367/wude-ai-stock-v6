@@ -41,6 +41,8 @@ def test_user_requested_us_listings_and_screenshot_symbols_are_in_fixed_watchlis
     assert by_symbol["SKHY"]["theme"] == "AI記憶體／HBM"
     assert by_symbol["UMC"]["name"] == "聯電 ADR"
     assert by_symbol["HNHPF"]["name"] == "鴻海 OTC"
+    assert by_symbol["HNHPF"]["ranking_mode"] == "reference_only"
+    assert by_symbol["HNHPF"]["primary_symbol"] == "2317.TW"
     assert by_symbol["PATH"]["industry"] == "RPA軟體"
     assert by_symbol["GLW"]["theme"] == "光通訊／CPO"
     assert all(by_symbol[symbol]["market"] == "US" for symbol in screenshot_symbols | {"HNHPF"})

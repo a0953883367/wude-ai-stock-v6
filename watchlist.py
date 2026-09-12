@@ -814,6 +814,17 @@ WATCHLIST.extend(
     in enumerate(_POWER_AND_FRIEND_ADDITIONS, start=1)
 )
 
+# HNHPF is an OTC foreign ordinary-share line for the same issuer represented
+# by 2317.TW.  Keep it available for price/reference checks, but never let the
+# lower-quality duplicate compete with the primary Taiwan listing in rankings.
+for _watchlist_row in WATCHLIST:
+    if _watchlist_row["symbol"] == "HNHPF":
+        _watchlist_row.update({
+            "ranking_mode": "reference_only",
+            "primary_symbol": "2317.TW",
+            "listing_venue": "OTC",
+        })
+
 
 def load_watchlist() -> list[dict[str, Any]]:
     """Return a defensive copy so scoring can safely add derived fields."""
