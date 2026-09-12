@@ -499,6 +499,29 @@ def test_telegram_failure_and_phone_setup_do_not_stop_backend_or_rankings(tmp_pa
     assert guard["safety"]["changes_rankings"] is False
 
 
+def test_stale_telegram_success_is_information_instead_of_false_green(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    probe = _healthy_live_probe()
+    probe["payload"]["large_buy_monitor"]["telegram_delivery"]["last_success_at"] = (
+        "2026-09-01T08:01:00+00:00"
+    )
+    now = datetime(2026, 9, 12, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+
+    guard = build_guard(
+        tmp_path,
+        now=now,
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=probe,
+    )
+
+    telegram = next(item for item in guard["checks"] if item["code"] == "telegram_delivery")
+    assert telegram["level"] == "info"
+    assert "已超過 7 天" in telegram["detail"]
+    assert "不再顯示為目前正常" in telegram["action"]
+
+
 def test_stale_and_inconsistent_reports_are_red(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     rankings = json.loads((tmp_path / "rankings.json").read_text(encoding="utf-8"))
