@@ -1,89 +1,24 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-09-11T23:15:13.839920+00:00",
+  "generated_at": "2026-09-12T18:08:37.185752+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 374,
     "tracked_stocks": 306,
     "tracked_etfs": 68,
-    "officially_matched": 370,
-    "officially_matched_stocks": 303,
+    "officially_matched": 337,
+    "officially_matched_stocks": 270,
     "officially_matched_etfs": 67,
-    "unmatched": 4,
-    "event_count": 6,
-    "warning_count": 6,
+    "unmatched": 37,
+    "event_count": 1,
+    "warning_count": 1,
     "critical_count": 0,
-    "source_failure_count": 0,
-    "registry_source_failure_count": 0,
-    "event_source_failure_count": 0,
-    "available_registry_source_count": 6
+    "source_failure_count": 4,
+    "registry_source_failure_count": 3,
+    "event_source_failure_count": 1,
+    "available_registry_source_count": 5
   },
   "events": [
-    {
-      "type": "DELISTING",
-      "label": "下市／終止上市櫃",
-      "level": "warning",
-      "symbol": "4958.TW",
-      "asset_type": "STOCK",
-      "source": "twse_announcements",
-      "source_date": "1150911",
-      "headline": "",
-      "action": "停止該股影子即時價格與買進資格，移入人工審核；歷史資料不得刪除",
-      "event_id": "e26f217f66eb01ccd34b",
-      "requires_manual_approval": true
-    },
-    {
-      "type": "CONFIRMED_ABSENT",
-      "label": "連續缺少官方名單",
-      "level": "warning",
-      "symbol": "7415.TWO",
-      "entity_id": null,
-      "source": "tpex_registry",
-      "asset_type": "STOCK",
-      "consecutive_observations": 5,
-      "action": "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
-      "event_id": "d2ffb452c7459e6b8b48",
-      "requires_manual_approval": true
-    },
-    {
-      "type": "CONFIRMED_ABSENT",
-      "label": "連續缺少官方名單",
-      "level": "warning",
-      "symbol": "IRBO",
-      "entity_id": null,
-      "source": "us_symbol_directory",
-      "asset_type": "ETF",
-      "consecutive_observations": 5,
-      "action": "停止把缺值冒充今日價格並等待人工核對；不得把ETF缺值當成清算，不得刪除歷史資料",
-      "event_id": "67c405e31d261c138eaa",
-      "requires_manual_approval": true
-    },
-    {
-      "type": "CONFIRMED_ABSENT",
-      "label": "連續缺少官方名單",
-      "level": "warning",
-      "symbol": "HNHPF",
-      "entity_id": null,
-      "source": "sec_registry",
-      "asset_type": "STOCK",
-      "consecutive_observations": 5,
-      "action": "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
-      "event_id": "62a1e2b260b275ad5781",
-      "requires_manual_approval": true
-    },
-    {
-      "type": "CONFIRMED_ABSENT",
-      "label": "連續缺少官方名單",
-      "level": "warning",
-      "symbol": "7815.TWO",
-      "entity_id": null,
-      "source": "tpex_registry",
-      "asset_type": "STOCK",
-      "consecutive_observations": 5,
-      "action": "停止把缺值冒充今日價格並等待人工核對；不得刪除股票或歷史資料",
-      "event_id": "4e76d05e16fc17c58b43",
-      "requires_manual_approval": true
-    },
     {
       "type": "MERGER_OR_SHARE_EXCHANGE",
       "label": "合併／換股",
@@ -92,9 +27,9 @@
       "asset_type": "STOCK",
       "source": "twse_announcements",
       "source_date": "1150911",
-      "headline": "",
+      "headline": "代子公司慶鼎精密電子(淮安)有限公司及宏恒勝電子科技(淮安)\r\n有限公司公告董事會決議通過吸收合併案",
       "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
-      "event_id": "247d14a34c9751818ded",
+      "event_id": "abf5d96290035be25bdf",
       "requires_manual_approval": true
     }
   ],
@@ -108,12 +43,9 @@
       "live_ok": true
     },
     "tpex_registry": {
-      "ok": true,
-      "record_count": 891,
-      "error": "",
-      "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
-      "mode": "live",
-      "live_ok": true
+      "ok": false,
+      "record_count": 0,
+      "error": "SSLError: HTTPSConnectionPool(host='www.tpex.org.tw', port=443): Max retries exceeded with url: /openapi/v1/mopsfin_t187ap03_O (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)')))"
     },
     "sec_registry": {
       "ok": true,
@@ -123,7 +55,7 @@
       "mode": "verified_snapshot",
       "live_ok": false,
       "snapshot_generated_at": "2026-09-07T11:26:08.325758+00:00",
-      "snapshot_age_days": 4.492,
+      "snapshot_age_days": 5.279,
       "snapshot_records_sha256": "bda80949d27315c26dfdcd0356303c1c3065f3d08ff2b90a8aecaeb7436c456f",
       "live_error": "https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI"
     },
@@ -136,12 +68,24 @@
       "live_ok": true
     },
     "tpex_securities": {
+      "ok": false,
+      "record_count": 0,
+      "error": "SSLError: HTTPSConnectionPool(host='www.tpex.org.tw', port=443): Max retries exceeded with url: /openapi/v1/tpex_mainboard_daily_close_quotes (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)')))"
+    },
+    "tpex_emerging_securities": {
+      "ok": false,
+      "record_count": 0,
+      "error": "SSLError: HTTPSConnectionPool(host='www.tpex.org.tw', port=443): Max retries exceeded with url: /openapi/v1/tpex_esb_latest_statistics (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)')))"
+    },
+    "otc_reference_registry": {
       "ok": true,
-      "record_count": 11193,
+      "record_count": 1,
       "error": "",
-      "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
-      "mode": "live",
-      "live_ok": true
+      "url": "official_data/reference_security_identities.json",
+      "mode": "manually_verified_reference",
+      "live_ok": false,
+      "verified_at": "2026-09-12",
+      "review_after": "2026-12-11"
     },
     "us_symbol_directory": {
       "ok": true,
@@ -154,19 +98,19 @@
     "twse_announcements": {
       "ok": true,
       "record_count": 94,
-      "event_count": 10,
+      "event_count": 4,
       "error": ""
     },
     "tpex_announcements": {
-      "ok": true,
-      "record_count": 46,
-      "event_count": 13,
-      "error": ""
+      "ok": false,
+      "record_count": 0,
+      "event_count": 0,
+      "error": "SSLError: HTTPSConnectionPool(host='www.tpex.org.tw', port=443): Max retries exceeded with url: /openapi/v1/mopsfin_t187ap04_O (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)')))"
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 59,
-      "event_count": 59,
+      "record_count": 23,
+      "event_count": 23,
       "error": ""
     }
   },
