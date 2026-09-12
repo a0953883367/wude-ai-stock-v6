@@ -101,6 +101,18 @@ def _text(row: dict[str, Any], *keys: str) -> str:
         value = row.get(key)
         if value is not None and str(value).strip():
             return str(value).strip()
+    # Some official MOPS feeds occasionally publish field names with trailing
+    # whitespace (for example ``"主旨 "``).  Treat those as the documented key
+    # instead of silently discarding the headline and classifying boilerplate.
+    normalized = {
+        str(raw_key).strip(): value
+        for raw_key, value in row.items()
+        if isinstance(raw_key, str)
+    }
+    for key in keys:
+        value = normalized.get(key.strip())
+        if value is not None and str(value).strip():
+            return str(value).strip()
     return ""
 
 
@@ -362,8 +374,11 @@ def normalize_tw_announcements(
             continue
         code = _text(row, "公司代號", "SecuritiesCompanyCode", "CompanyCode")
         subject = _text(row, "主旨", "Subject")
-        description = _text(row, "說明", "Description")
-        event_type = _classify_announcement(subject + " " + description)
+        # The description contains a standard MOPS questionnaire whose generic
+        # wording mentions delisting, mergers and other outcomes even when they
+        # are explicitly marked "not applicable".  The announcement headline
+        # is the event assertion; the questionnaire is supporting detail only.
+        event_type = _classify_announcement(subject)
         if not code or not event_type:
             continue
         events.append({
