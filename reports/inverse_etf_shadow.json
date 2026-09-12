@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-09-12 22:52:53",
+  "updated_at": "2026-09-13 07:34:27",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -459,10 +459,17 @@
           "signal_close": 46.7400016784668,
           "entry_open": 44.689998626708984,
           "observed_sessions": [
+            "2026-09-11",
             "2026-09-11"
           ],
           "outcomes": {
             "1": {
+              "status": "valid",
+              "session_date": "2026-09-11",
+              "actual_etf_return_pct": -1.231,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
               "status": "valid",
               "session_date": "2026-09-11",
               "actual_etf_return_pct": -1.231,
@@ -488,7 +495,7 @@
             "median_change_pct": -0.48,
             "breakdown_pct": 12.5
           },
-          "product_session_change_pct": 1.68,
+          "product_session_change_pct": 1.69,
           "product_opening_gap_pct": -0.82,
           "product_volume_ratio_20d": 1.87,
           "no_chase": false
@@ -517,14 +524,14 @@
           "inverse_symbol": "TECS",
           "inverse_name": "Direxion Daily Technology Bear 3X",
           "daily_target": -3,
-          "bear_score": 18.7,
+          "bear_score": 17.4,
           "status": "waiting",
           "constituent_count": 63,
           "evidence": {
             "coverage": 63,
-            "negative_breadth_pct": 31.7,
-            "median_change_pct": 0.73,
-            "breakdown_pct": 4.8
+            "negative_breadth_pct": 30.2,
+            "median_change_pct": 0.81,
+            "breakdown_pct": 3.2
           },
           "product_session_change_pct": -0.35,
           "product_opening_gap_pct": -3.43,
@@ -547,7 +554,7 @@
           },
           "product_session_change_pct": -1.23,
           "product_opening_gap_pct": -4.39,
-          "product_volume_ratio_20d": 1.27,
+          "product_volume_ratio_20d": 1.28,
           "no_chase": false
         },
         {
@@ -581,8 +588,8 @@
             "median_change_pct": 0.96,
             "breakdown_pct": 0.0
           },
-          "product_session_change_pct": 0.21,
-          "product_opening_gap_pct": -2.78,
+          "product_session_change_pct": 0.26,
+          "product_opening_gap_pct": -2.83,
           "product_volume_ratio_20d": 1.22,
           "no_chase": false
         },
@@ -611,9 +618,9 @@
           "average_return_pct": -1.313
         },
         "2": {
-          "samples": 5,
-          "win_rate_pct": 20.0,
-          "average_return_pct": -1.765
+          "samples": 6,
+          "win_rate_pct": 16.7,
+          "average_return_pct": -1.676
         },
         "3": {
           "samples": 5,
