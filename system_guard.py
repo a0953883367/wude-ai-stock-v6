@@ -24,6 +24,7 @@ LEVEL_ORDER = {"ok": 0, "info": 0, "warning": 1, "critical": 2}
 LEVEL_LABEL = {"ok": "正常", "info": "資訊", "warning": "注意", "critical": "異常"}
 DEFAULT_PRIMARY_APP_URL = "https://a0953883367.github.io/wude-ai-stock-v6/"
 DEFAULT_LIVE_HEALTH_URL = "https://wude-ai-stock-v6-production.up.railway.app/health"
+TELEGRAM_SUCCESS_MAX_AGE_HOURS = 7 * 24
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -232,6 +233,8 @@ def _primary_app_check(
 def _live_runtime_checks(
     runtime_probe: dict[str, Any] | None,
     previous: dict[str, Any] | None = None,
+    *,
+    now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """Keep Railway, each stream, Telegram and device pairing independent."""
     titles = {"TW": "台股即時串流", "US": "美股即時串流"}
@@ -343,6 +346,13 @@ def _live_runtime_checks(
     telegram_state = str(telegram.get("state") or "")
     last_success = str(telegram.get("last_success_at") or "")
     last_error = str(telegram.get("last_error") or "")
+    last_success_at = _parse_taipei(last_success)
+    checked_at = now or datetime.now(TAIPEI)
+    success_age_hours = (
+        max(0.0, (checked_at - last_success_at).total_seconds() / 3600)
+        if last_success_at is not None
+        else None
+    )
     if not configured:
         checks.append(_check(
             "telegram_delivery", "Telegram 即時通知", "warning",
@@ -354,6 +364,12 @@ def _live_runtime_checks(
             "telegram_delivery", "Telegram 即時通知", "warning",
             f"最近一次通知未送達：{last_error or '未知錯誤'}；後端與串流未停止",
             "檢查專用 Bot 對話與 Railway Telegram 設定",
+        ))
+    elif success_age_hours is not None and success_age_hours > TELEGRAM_SUCCESS_MAX_AGE_HOURS:
+        checks.append(_check(
+            "telegram_delivery", "Telegram 即時通知", "info",
+            f"最近一次送達為 {last_success}，已超過 7 天；期間若無警報，不代表傳送失敗",
+            "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常",
         ))
     elif telegram_state == "delivered" or last_success:
         checks.append(_check(
@@ -1026,7 +1042,7 @@ def build_guard(
         ))
 
     checks.append(_primary_app_check(reports_dir, primary_app_probe))
-    checks.extend(_live_runtime_checks(live_runtime_probe, previous))
+    checks.extend(_live_runtime_checks(live_runtime_probe, previous, now=now))
     checks.append(_publish_check("friend", friend_publish, previous))
     checks.append(_publish_check("owner", owner_publish, previous))
     severity = max((LEVEL_ORDER.get(item["level"], 0) for item in checks), default=0)
