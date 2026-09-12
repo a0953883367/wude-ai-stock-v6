@@ -290,6 +290,27 @@ def test_official_event_parsers_classify_halt_resume_and_merger() -> None:
     assert parsed["type"] == "TRADING_HALT"
 
 
+def test_twse_trailing_subject_space_does_not_classify_questionnaire_boilerplate() -> None:
+    events = normalize_tw_announcements([
+        {
+            "公司代號": "4958",
+            "主旨 ": "代子公司公告董事會決議通過吸收合併案",
+            "說明": "併購完成後是否發生解散、下市(櫃)：不適用",
+            "發言日期": "20260911",
+        },
+        {
+            "公司代號": "4958",
+            "主旨 ": "代子公司公告董事會通過各項議案",
+            "說明": "全資子公司之間吸收合併；是否下市(櫃)：不適用",
+            "發言日期": "20260911",
+        },
+    ], exchange="TWSE")
+
+    assert len(events) == 1
+    assert events[0]["type"] == "MERGER_OR_SHARE_EXCHANGE"
+    assert events[0]["headline"] == "代子公司公告董事會決議通過吸收合併案"
+
+
 
 def test_nasdaq_utf8_bom_is_decoded_before_xml_parse() -> None:
     xml = "<rss><channel><item><title>Halt: NVDA</title></item></channel></rss>"
