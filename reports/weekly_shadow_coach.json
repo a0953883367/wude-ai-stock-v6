@@ -1,10 +1,10 @@
 {
   "schema": "wude.weekly_shadow_coach.v1",
-  "generated_at": "2026-09-12T19:03:20.061016+00:00",
+  "generated_at": "2026-09-13T15:56:13.407747+00:00",
   "status": "ok",
-  "mode": "dry_run",
+  "mode": "openai",
   "source": {
-    "report_updated_at": "2026-09-12 22:52:53",
+    "report_updated_at": "2026-09-13 23:30:08",
     "trading_days_collected": 15,
     "promotion_review_days": 60,
     "raw_error_rows": 1499,
@@ -341,20 +341,20 @@
       }
     ],
     "backup": {
-      "created_at": "2026-09-12 22:52:53",
+      "created_at": "2026-09-13 23:30:08",
       "verified": true,
       "table_counts": {
         "metadata": 1,
         "market_sessions": 33,
-        "prices": 3226,
-        "predictions": 22582,
+        "prices": 3227,
+        "predictions": 22589,
         "model_versions": 0,
         "portfolios": 33,
         "portfolio_positions": 165,
         "source_usage": 25,
         "model_control": 0,
         "model_control_events": 0,
-        "unit_learning_predictions": 20460,
+        "unit_learning_predictions": 20471,
         "unit_trust_control": 44,
         "unit_trust_events": 176,
         "forward_outcome_cohorts": 10,
@@ -364,9 +364,9 @@
     },
     "cloud_archive": {
       "verified": true,
-      "total": 77,
+      "total": 80,
       "uploaded": 0,
-      "verified_existing": 77,
+      "verified_existing": 80,
       "errors": 0
     },
     "tw_signal_confirmation_shadow": {
@@ -379,8 +379,8 @@
         "settled": 0,
         "confirmation_rate_pct": null,
         "diagnostic_rows": 187,
-        "kd_aligned": 67,
-        "kd_divergent": 120,
+        "kd_aligned": 63,
+        "kd_divergent": 124,
         "rsi_sideways": 90
       },
       "rules": {
@@ -391,63 +391,91 @@
     }
   },
   "coach": {
-    "headline": "模擬教練已整理 336 個獨立錯誤事件；尚未呼叫付費API。",
+    "headline": "方向校準是主因；台股輪動與美股事件跳空需優先影子驗證。",
     "root_causes": [
       {
-        "cause": "direction_calibration",
+        "cause": "方向校準偏差",
         "evidence_events": 260,
-        "explanation": "沿用既有事件級分類，等待生成式教練補充可驗證原因。",
-        "shadow_experiment": "只建立候選假設並做前向回測，不變更正式模型。",
-        "risk": "樣本仍在60個交易日驗證期，禁止依單週結果升級。"
+        "explanation": "占獨立事件約77%，為目前最大成熟錯誤類別，但缺少分市場與多空拆分。",
+        "shadow_experiment": "按市場、多空及持有期分層，前向追蹤方向命中率、校準誤差與最大不利報酬。",
+        "risk": "樣本可能集中於單一市場或行情階段，不能直接調整正式權重。"
       },
       {
-        "cause": "etf_model_separation",
-        "evidence_events": 39,
-        "explanation": "沿用既有事件級分類，等待生成式教練補充可驗證原因。",
-        "shadow_experiment": "只建立候選假設並做前向回測，不變更正式模型。",
-        "risk": "樣本仍在60個交易日驗證期，禁止依單週結果升級。"
-      },
-      {
-        "cause": "missed_strength_rotation",
+        "cause": "漏抓強勢與族群輪動",
         "evidence_events": 25,
-        "explanation": "沿用既有事件級分類，等待生成式教練補充可驗證原因。",
-        "shadow_experiment": "只建立候選假設並做前向回測，不變更正式模型。",
-        "risk": "樣本仍在60個交易日驗證期，禁止依單週結果升級。"
+        "explanation": "多筆台股由看跌轉強，涉及量能、突破及族群共振訊號遺漏。",
+        "shadow_experiment": "僅用當時可得資料，記錄攻擊量、突破、族群廣度，觀察反轉辨識率與誤報率。",
+        "risk": "容易事後挑選贏家；須固定門檻並保留全部候選。"
       },
       {
-        "cause": "event_gap_risk",
+        "cause": "突發事件與跳空風險",
         "evidence_events": 11,
-        "explanation": "沿用既有事件級分類，等待生成式教練補充可驗證原因。",
-        "shadow_experiment": "只建立候選假設並做前向回測，不變更正式模型。",
-        "risk": "樣本仍在60個交易日驗證期，禁止依單週結果升級。"
-      },
-      {
-        "cause": "intraday_reversal",
-        "evidence_events": 1,
-        "explanation": "沿用既有事件級分類，等待生成式教練補充可驗證原因。",
-        "shadow_experiment": "只建立候選假設並做前向回測，不變更正式模型。",
-        "risk": "樣本仍在60個交易日驗證期，禁止依單週結果升級。"
+        "explanation": "美股多筆出現異常幅度，普通量價方向模型不宜與一般錯誤混同。",
+        "shadow_experiment": "建立事件風險標記，前向比較降信心、棄權與原方向的尾端損失及覆蓋率。",
+        "risk": "新聞與盤前資料可能不完整，棄權過多會降低可用訊號。"
       }
     ],
     "priority_actions": [
-      "先比較事件級錯誤，不把同一股票的多個觀察窗重複計分。",
-      "只把改善建議送入影子前向回測。",
-      "滿60個交易日後仍須人工決定是否影響正式V6。"
+      "先完成方向錯誤的市場、多空、持有期分層診斷。",
+      "優先驗證台股強勢輪動與美股事件風險兩項影子防護。",
+      "檢查TW_ETF、US_STOCK、US_ETF完整交易訊號缺失的資料契約。"
     ],
     "data_gaps": [
-      "TW_ETF",
-      "US_STOCK",
-      "US_ETF"
+      "TW_ETF僅1筆方向結果且無交易訊號，無法評估交易門檻。",
+      "US_STOCK與US_ETF無完整交易訊號，交易層績效尚不可判定。",
+      "目前forward_outcome_results為0，且方向校準缺少分層明細。"
     ],
     "confidence_notes": [
-      "目前為 15/60 個交易日。",
-      "模擬模式只驗證資料與安全流程，不代表API分析品質。"
+      "共336個獨立事件，已折疊1163筆重複列；僅使用已成熟事件。",
+      "台股個股已有535筆方向結果，但完整交易結果僅5筆，結論仍偏早期。",
+      "盤中確認影子尚無已追蹤訊號，KD背離與RSI資料只能作診斷。"
+    ],
+    "candidate_proposals": [
+      {
+        "rule_id": "direction_calibration",
+        "cohort": "ALL",
+        "hypothesis": "方向錯誤主要集中於特定市場、多空或持有期，分層校準可降低系統性偏差。",
+        "measurement": "以前向資料按市場、多空、持有期計算命中率、校準誤差、尾端損失及樣本數。",
+        "risk_control": "只產生影子分數與報表；達到預設樣本量前不影響正式排名或權重。"
+      },
+      {
+        "rule_id": "missed_strength_rotation",
+        "cohort": "TW_STOCK",
+        "hypothesis": "量能放大、突破與族群廣度共振可較早識別看跌後的強勢反轉。",
+        "measurement": "固定規則追蹤反轉辨識率、誤報率、提前期與五期最大不利報酬。",
+        "risk_control": "使用預測時點資料及全體候選，禁止事後納入贏家或改寫正式排名。"
+      },
+      {
+        "rule_id": "event_gap_risk",
+        "cohort": "US_STOCK",
+        "hypothesis": "新聞可得性與盤前異常可識別部分跳空尾端風險，降低極端錯誤。",
+        "measurement": "比較原方向、降信心與棄權的尾端損失、覆蓋率及方向命中率。",
+        "risk_control": "僅作影子標記；資料缺漏時不推定無事件，並限制棄權比例。"
+      }
     ]
   },
+  "candidate_registry": {
+    "report": "shadow_candidate_registry.json",
+    "candidate_count": 3,
+    "new_proposals": 3
+  },
   "api": {
-    "called": false,
+    "called": true,
     "model": "gpt-5.6-luna",
-    "reason": "dry_run",
+    "response_id": "resp_0ac69b0dc6945038016aa6c792cfd887d19e4ddec377cb9af2",
+    "usage": {
+      "input_tokens": 3593,
+      "input_tokens_details": {
+        "cache_write_tokens": 3590,
+        "cached_tokens": 0
+      },
+      "output_tokens": 1101,
+      "output_tokens_details": {
+        "reasoning_tokens": 149
+      },
+      "total_tokens": 4694
+    },
+    "attempts": 1,
     "store": false
   },
   "policy": {
