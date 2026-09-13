@@ -4,6 +4,7 @@ from prediction_engine.storage import PredictionStore
 
 
 HORIZONS = {"UP_5D": 5, "UP_45D": 45, "UP_60D": 60, "UP_126D": 126}
+EARLY_HORIZONS = {"EARLY_1D": 1, "EARLY_3D": 3, "UP_5D": 5}
 
 
 def rows(day: str, *, market: str = "US", session: int = 0, split: bool = False):
@@ -89,6 +90,28 @@ def test_forward_ledger_uses_next_open_and_only_matures_after_five_sessions(tmp_
     assert winner["excess_return_pct"] == -3
     assert winner["frozen_rank"] == 21
     assert winner["captured_top20"] is False
+
+
+def test_forward_ledger_records_one_and_three_day_early_diagnostics(tmp_path):
+    store = PredictionStore(tmp_path / "engine.sqlite3")
+    store.record_forward_cohort("US", "2026-09-01", rows("2026-09-01"), "t0")
+    first = store.advance_forward_outcomes(
+        "US", "2026-09-02", rows("2026-09-02", session=1), "t1",
+        horizons=EARLY_HORIZONS, round_trip_cost_pct=0.20,
+    )
+    assert first == 30
+    third = 0
+    for session in (2, 3):
+        day = f"2026-09-{session + 1:02d}"
+        third = store.advance_forward_outcomes(
+            "US", day, rows(day, session=session), f"t{session}",
+            horizons=EARLY_HORIZONS, round_trip_cost_pct=0.20,
+        )
+    assert third == 30
+    summary = store.forward_outcome_summary(EARLY_HORIZONS)["markets"]["US"]["horizons"]
+    assert summary["EARLY_1D"]["valid_samples"] == 30
+    assert summary["EARLY_3D"]["valid_samples"] == 30
+    assert summary["UP_5D"]["valid_samples"] == 0
 
 
 def test_forward_ledger_adjusts_entry_and_extrema_for_split(tmp_path):
