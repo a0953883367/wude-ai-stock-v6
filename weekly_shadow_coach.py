@@ -22,6 +22,7 @@ DEFAULT_MODEL = "gpt-5.6-luna"
 MAX_EVENTS = 12
 MAX_HISTORY = 104
 MAX_CANDIDATE_PROPOSALS = 3
+OPENAI_OUTPUT_TOKEN_BUDGETS = (5000, 7000)
 
 RULE_CATALOG = {
     "direction_calibration": "方向信心門檻校準",
@@ -442,55 +443,69 @@ def _openai_coach(
         "提出的每項改善都必須是可前向驗證的影子實驗；樣本不足時明確說明。"
         "每週最多提出3個candidate_proposals，而且rule_id與cohort只能使用格式列出的選項。"
         "候選只可描述假設、衡量方式與風險控制，不可輸出程式碼、指令或自動下單內容。"
+        "請保持精簡：每個陣列最多3項，每段說明最多80個中文字，避免輸出被截斷。"
     )
-    request_body = {
-        "model": model,
-        "store": False,
-        "max_output_tokens": 1800,
-        "input": [
-            {"role": "developer", "content": instructions},
-            {
-                "role": "user",
-                "content": "請根據以下凍結資料產生本週教導報告：\n"
-                + json.dumps(context, ensure_ascii=False, separators=(",", ":")),
-            },
-        ],
-        "text": {
-            "format": {
-                "type": "json_schema",
-                "name": "weekly_shadow_coach",
-                "strict": True,
-                "schema": COACH_SCHEMA,
-            }
-        },
-    }
     if session is None:
         import requests
 
         client = requests.Session()
     else:
         client = session
-    response = client.post(
-        OPENAI_RESPONSES_URL,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json=request_body,
-        timeout=120,
-    )
-    response.raise_for_status()
-    raw = response.json()
-    coach = json.loads(_response_output_text(raw))
-    if not isinstance(coach, dict):
-        raise CoachBlocked("OpenAI structured output is not an object")
-    return coach, {
-        "called": True,
-        "model": model,
-        "response_id": str(raw.get("id") or ""),
-        "usage": raw.get("usage") or {},
-        "store": False,
-    }
+    last_error: json.JSONDecodeError | None = None
+    for attempt, token_budget in enumerate(OPENAI_OUTPUT_TOKEN_BUDGETS, start=1):
+        request_body = {
+            "model": model,
+            "store": False,
+            "max_output_tokens": token_budget,
+            "input": [
+                {"role": "developer", "content": instructions},
+                {
+                    "role": "user",
+                    "content": "請根據以下凍結資料產生本週教導報告：\n"
+                    + json.dumps(context, ensure_ascii=False, separators=(",", ":")),
+                },
+            ],
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "weekly_shadow_coach",
+                    "strict": True,
+                    "schema": COACH_SCHEMA,
+                }
+            },
+        }
+        response = client.post(
+            OPENAI_RESPONSES_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=request_body,
+            timeout=120,
+        )
+        response.raise_for_status()
+        raw = response.json()
+        try:
+            coach = json.loads(_response_output_text(raw))
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            if attempt < len(OPENAI_OUTPUT_TOKEN_BUDGETS):
+                continue
+            break
+        if not isinstance(coach, dict):
+            raise CoachBlocked("OpenAI structured output is not an object")
+        return coach, {
+            "called": True,
+            "model": model,
+            "response_id": str(raw.get("id") or ""),
+            "usage": raw.get("usage") or {},
+            "attempts": attempt,
+            "store": False,
+        }
+
+    raise CoachBlocked(
+        "OpenAI structured output remained incomplete after one safe retry"
+    ) from last_error
 
 
 def _append_history(path: Path, report: dict[str, Any]) -> None:
