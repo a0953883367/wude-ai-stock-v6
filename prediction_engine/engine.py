@@ -37,6 +37,8 @@ REPORT_VERSION = "WUDE-PREDICTION-CONTRACT-V2"
 GROUPS = ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF")
 PORTFOLIO_HORIZONS = ("UP_5D", "UP_45D", "UP_126D")
 FORWARD_OUTCOME_HORIZONS = {
+    "EARLY_1D": 1,
+    "EARLY_3D": 3,
     "UP_5D": 5,
     "UP_45D": 45,
     "UP_60D": 60,
@@ -764,6 +766,8 @@ def run_prediction_engine(
             "markets_separated": True,
             "minimum_learning_sessions": 20,
             "minimum_learning_samples": 100,
+            "early_diagnostic_sessions": [1, 3, 5],
+            "early_diagnostics_never_promote_models": True,
             "shadow_learning_only": True,
             "industry_lifecycle_60d_only": True,
             "industry_lifecycle_preliminary_review_sessions": 20,
