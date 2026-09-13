@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from weekly_shadow_coach import CoachBlocked, build_weekly_coach
+from weekly_shadow_coach import CoachBlocked, build_weekly_coach, update_candidate_registry
 
 
 def _write(path: Path, value: object) -> None:
@@ -79,6 +79,13 @@ class _Response:
             "priority_actions": ["繼續前向驗證"],
             "data_gaps": [],
             "confidence_notes": ["樣本不足"],
+            "candidate_proposals": [{
+                "rule_id": "direction_calibration",
+                "cohort": "TW_STOCK",
+                "hypothesis": "降低過度自信的方向訊號",
+                "measurement": "比較建立後的1／3／5日命中率",
+                "risk_control": "只做影子驗證",
+            }],
         }
         return {
             "id": "resp_test",
@@ -205,6 +212,13 @@ class WeeklyShadowCoachTests(unittest.TestCase):
         self.assertNotIn("test-key", json.dumps(body))
         self.assertTrue(report["api"]["called"])
         self.assertEqual(report["api"]["response_id"], "resp_test")
+        self.assertEqual(report["candidate_registry"]["new_proposals"], 1)
+        registry = json.loads(
+            (self.reports / "shadow_candidate_registry.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(registry["candidates"][0]["stage"], "collecting_before_5d")
+        self.assertFalse(registry["candidates"][0]["affects_formal_v6"])
+        self.assertFalse(registry["candidates"][0]["arbitrary_code_allowed"])
 
     def test_workflow_defaults_to_free_mode_and_commits_only_shadow_reports(self) -> None:
         workflow = Path(".github/workflows/weekly-shadow-coach.yml").read_text(
@@ -216,10 +230,40 @@ class WeeklyShadowCoachTests(unittest.TestCase):
         self.assertIn("secrets.OPENAI_API_KEY", workflow)
         self.assertIn("--archive-result google_drive_archive_result.json", workflow)
         self.assertIn(
-            "git add reports/weekly_shadow_coach.json reports/weekly_shadow_coach_history.json",
+            "git add reports/weekly_shadow_coach.json reports/weekly_shadow_coach_history.json reports/shadow_candidate_registry.json",
             workflow,
         )
         self.assertNotIn("git add reports/\n", workflow)
+
+    def test_candidate_lifecycle_uses_5_10_20_60_trading_session_gates(self) -> None:
+        path = self.reports / "shadow_candidate_registry.json"
+        proposal = [{
+            "rule_id": "direction_calibration",
+            "cohort": "TW_STOCK",
+            "hypothesis": "降低過度自信",
+            "measurement": "比較新資料",
+            "risk_control": "影子模式",
+        }]
+        update_candidate_registry(
+            path, proposals=proposal,
+            context={"trading_days_collected": 10, "cause_counts": {"direction_calibration": 2}},
+            generated_at="t0", activate_new=True,
+        )
+        expected = {
+            14: "collecting_before_5d",
+            15: "passed_5d_safety_screen",
+            20: "experimental_reference_only",
+            30: "preliminary_review_only",
+            70: "eligible_for_manual_review_only",
+        }
+        for day, stage in expected.items():
+            report = update_candidate_registry(
+                path, proposals=[],
+                context={"trading_days_collected": day, "cause_counts": {"direction_calibration": 2}},
+                generated_at=f"t{day}", activate_new=False,
+            )
+            self.assertEqual(report["candidates"][0]["stage"], stage)
+        self.assertFalse(report["candidates"][0]["automatic_formal_promotion"])
 
 
 if __name__ == "__main__":
