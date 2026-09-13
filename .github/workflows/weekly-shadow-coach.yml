@@ -72,7 +72,7 @@ jobs:
       - name: 保存影子教導紀錄
         shell: bash
         run: |
-          git add reports/weekly_shadow_coach.json reports/weekly_shadow_coach_history.json
+          git add reports/weekly_shadow_coach.json reports/weekly_shadow_coach_history.json reports/shadow_candidate_registry.json
           git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

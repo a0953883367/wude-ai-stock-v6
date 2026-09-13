@@ -229,6 +229,26 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
         ),
     }
     _write(reports_dir / "model_learning.json", payload)
+    # Advance OpenAI-proposed candidate stages on every completed daily
+    # checkpoint without making another API call. This makes the 5/10/20/60
+    # trading-session gates depend on market sessions rather than Sundays.
+    try:
+        from weekly_shadow_coach import update_candidate_registry
+
+        update_candidate_registry(
+            reports_dir / "shadow_candidate_registry.json",
+            proposals=[],
+            context={
+                "trading_days_collected": days,
+                "cause_counts": payload["error_learning"]["cause_counts"],
+            },
+            generated_at=generated_at,
+            activate_new=False,
+        )
+    except Exception:
+        # The registry is an isolated explanatory layer. Its failure must not
+        # interrupt the formal report or mutate V6 outputs.
+        pass
     return payload
 
 
