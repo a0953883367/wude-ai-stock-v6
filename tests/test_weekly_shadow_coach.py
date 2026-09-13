@@ -106,6 +106,27 @@ class _Session:
         return _Response()
 
 
+class _TruncatedThenValidSession:
+    def __init__(self) -> None:
+        self.requests = []
+
+    def post(self, url: str, **kwargs):
+        self.requests.append({"url": url, **kwargs})
+        if len(self.requests) == 1:
+            response = _Response()
+            response.json = lambda: {
+                "id": "resp_truncated",
+                "status": "incomplete",
+                "incomplete_details": {"reason": "max_output_tokens"},
+                "output": [{
+                    "type": "message",
+                    "content": [{"type": "output_text", "text": '{"headline":"截斷'}],
+                }],
+            }
+            return response
+        return _Response()
+
+
 class WeeklyShadowCoachTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -219,6 +240,23 @@ class WeeklyShadowCoachTests(unittest.TestCase):
         self.assertEqual(registry["candidates"][0]["stage"], "collecting_before_5d")
         self.assertFalse(registry["candidates"][0]["affects_formal_v6"])
         self.assertFalse(registry["candidates"][0]["arbitrary_code_allowed"])
+
+    def test_openai_mode_retries_once_when_structured_json_is_truncated(self) -> None:
+        session = _TruncatedThenValidSession()
+        report = build_weekly_coach(
+            self.reports,
+            mode="openai",
+            archive_result=self.archive,
+            api_key="test-key",
+            model="test-model",
+            session=session,
+        )
+
+        self.assertEqual(report["status"], "ok")
+        self.assertEqual(report["api"]["attempts"], 2)
+        self.assertEqual(len(session.requests), 2)
+        self.assertEqual(session.requests[0]["json"]["max_output_tokens"], 5000)
+        self.assertEqual(session.requests[1]["json"]["max_output_tokens"], 7000)
 
     def test_workflow_defaults_to_free_mode_and_commits_only_shadow_reports(self) -> None:
         workflow = Path(".github/workflows/weekly-shadow-coach.yml").read_text(
