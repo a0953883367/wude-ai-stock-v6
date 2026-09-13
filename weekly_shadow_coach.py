@@ -21,6 +21,17 @@ OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.6-luna"
 MAX_EVENTS = 12
 MAX_HISTORY = 104
+MAX_CANDIDATE_PROPOSALS = 3
+
+RULE_CATALOG = {
+    "direction_calibration": "方向信心門檻校準",
+    "trade_threshold_diagnostic": "交易門檻資料契約診斷",
+    "etf_model_separation": "ETF與個股模型分離",
+    "missed_strength_rotation": "強勢反轉與族群輪動確認",
+    "event_gap_risk": "事件與跳空風險棄權",
+    "intraday_reversal": "開盤後確認",
+}
+COHORTS = ("ALL", "TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF")
 
 LOCKED_POLICY = {
     "shadow_only": True,
@@ -75,6 +86,24 @@ COACH_SCHEMA: dict[str, Any] = {
             "maxItems": 5,
             "items": {"type": "string"},
         },
+        "candidate_proposals": {
+            "type": "array",
+            "maxItems": MAX_CANDIDATE_PROPOSALS,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "rule_id": {"type": "string", "enum": list(RULE_CATALOG)},
+                    "cohort": {"type": "string", "enum": list(COHORTS)},
+                    "hypothesis": {"type": "string"},
+                    "measurement": {"type": "string"},
+                    "risk_control": {"type": "string"},
+                },
+                "required": [
+                    "rule_id", "cohort", "hypothesis", "measurement", "risk_control"
+                ],
+            },
+        },
     },
     "required": [
         "headline",
@@ -82,6 +111,7 @@ COACH_SCHEMA: dict[str, Any] = {
         "priority_actions",
         "data_gaps",
         "confidence_notes",
+        "candidate_proposals",
     ],
 }
 
@@ -227,6 +257,19 @@ def _dry_run_coach(context: dict[str, Any]) -> dict[str, Any]:
             "shadow_experiment": "只建立候選假設並做前向回測，不變更正式模型。",
             "risk": "樣本仍在60個交易日驗證期，禁止依單週結果升級。",
         })
+    proposals = []
+    for cause, count in sorted(
+        causes.items(), key=lambda item: (-int(item[1] or 0), str(item[0]))
+    ):
+        if cause not in RULE_CATALOG or len(proposals) >= MAX_CANDIDATE_PROPOSALS:
+            continue
+        proposals.append({
+            "rule_id": cause,
+            "cohort": "ALL",
+            "hypothesis": f"{RULE_CATALOG[cause]}可降低同類方向錯誤。",
+            "measurement": "只比較建立候選後新增的1／3／5日完整前向結果。",
+            "risk_control": "只做影子觀察，不改正式V6、排名、權重或下單。",
+        })
     return {
         "headline": (
             f"模擬教練已整理 {context['independent_events']} 個獨立錯誤事件；"
@@ -248,7 +291,129 @@ def _dry_run_coach(context: dict[str, Any]) -> dict[str, Any]:
             f"{context['promotion_review_days']} 個交易日。",
             "模擬模式只驗證資料與安全流程，不代表API分析品質。",
         ],
+        "candidate_proposals": proposals,
     }
+
+
+def _validate_candidate_proposals(coach: dict[str, Any]) -> list[dict[str, str]]:
+    proposals = coach.get("candidate_proposals") or []
+    if not isinstance(proposals, list) or len(proposals) > MAX_CANDIDATE_PROPOSALS:
+        raise CoachBlocked("candidate proposals exceed the weekly safety limit")
+    result: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for raw in proposals:
+        if not isinstance(raw, dict):
+            raise CoachBlocked("candidate proposal is not an object")
+        rule_id = str(raw.get("rule_id") or "")
+        cohort = str(raw.get("cohort") or "")
+        key = (rule_id, cohort)
+        if rule_id not in RULE_CATALOG or cohort not in COHORTS:
+            raise CoachBlocked("candidate proposal is outside the allowlist")
+        if key in seen:
+            continue
+        normalized = {name: str(raw.get(name) or "").strip() for name in (
+            "rule_id", "cohort", "hypothesis", "measurement", "risk_control"
+        )}
+        if any(not normalized[name] for name in ("hypothesis", "measurement", "risk_control")):
+            raise CoachBlocked("candidate proposal contains an empty explanation")
+        seen.add(key)
+        result.append(normalized)
+    coach["candidate_proposals"] = result
+    return result
+
+
+def _candidate_stage(age: int, *, rejected: bool) -> str:
+    if rejected:
+        return "rejected_at_5d_screen"
+    if age < 5:
+        return "collecting_before_5d"
+    if age < 10:
+        return "passed_5d_safety_screen"
+    if age < 20:
+        return "experimental_reference_only"
+    if age < 60:
+        return "preliminary_review_only"
+    return "eligible_for_manual_review_only"
+
+
+def update_candidate_registry(
+    path: Path,
+    *,
+    proposals: list[dict[str, str]],
+    context: dict[str, Any],
+    generated_at: str,
+    activate_new: bool,
+) -> dict[str, Any]:
+    try:
+        previous = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        previous = {}
+    prior_candidates = previous.get("candidates") if isinstance(previous, dict) else []
+    candidates = {
+        str(item.get("candidate_id")): dict(item)
+        for item in prior_candidates or []
+        if isinstance(item, dict) and item.get("candidate_id")
+    }
+    trading_day = int(context.get("trading_days_collected") or 0)
+    cause_counts = context.get("cause_counts") or {}
+    if activate_new:
+        for proposal in proposals:
+            candidate_id = f"openai:{proposal['rule_id']}:{proposal['cohort']}:v1"
+            candidates.setdefault(candidate_id, {
+                "candidate_id": candidate_id,
+                "rule_id": proposal["rule_id"],
+                "rule_name": RULE_CATALOG[proposal["rule_id"]],
+                "cohort": proposal["cohort"],
+                "created_at": generated_at,
+                "started_trading_day": trading_day,
+                "version": 1,
+                "automatic_rejection_reason": None,
+            })
+            candidates[candidate_id].update({
+                "hypothesis": proposal["hypothesis"],
+                "measurement": proposal["measurement"],
+                "risk_control": proposal["risk_control"],
+                "last_proposed_at": generated_at,
+            })
+
+    active = []
+    for candidate in candidates.values():
+        age = max(trading_day - int(candidate.get("started_trading_day") or trading_day), 0)
+        evidence = int(cause_counts.get(candidate.get("rule_id")) or 0)
+        rejected = bool(candidate.get("automatic_rejection_reason"))
+        # The five-day automatic screen rejects only obvious, auditable
+        # failures (no matching evidence). Predictive promotion still needs
+        # forward results and can never happen from prose alone.
+        if age >= 5 and evidence <= 0 and not rejected:
+            candidate["automatic_rejection_reason"] = "5日後仍無對應的獨立錯誤事件證據"
+            rejected = True
+        candidate.update({
+            "age_trading_sessions": age,
+            "evidence_event_count": evidence,
+            "stage": _candidate_stage(age, rejected=rejected),
+            "visible_in_predictions": age >= 10 and not rejected,
+            "preliminary_review_available": age >= 20 and not rejected,
+            "manual_review_eligible": age >= 60 and not rejected,
+            "affects_formal_v6": False,
+            "affects_formal_rankings": False,
+            "affects_formal_weights": False,
+            "automatic_orders": False,
+            "arbitrary_code_allowed": False,
+            "automatic_formal_promotion": False,
+        })
+        active.append(candidate)
+    active.sort(key=lambda item: (str(item.get("stage")), str(item.get("candidate_id"))))
+    registry = {
+        "schema": "wude.shadow_candidate_registry.v1",
+        "updated_at": generated_at,
+        "trading_days_collected": trading_day,
+        "weekly_new_candidate_limit": MAX_CANDIDATE_PROPOSALS,
+        "stages": {"reject_obvious_failure": 5, "reference_only": 10, "preliminary_review": 20, "manual_review": 60},
+        "candidates": active,
+        "policy": dict(LOCKED_POLICY, arbitrary_code_allowed=False),
+    }
+    _write_json(path, registry)
+    return registry
 
 
 def _response_output_text(payload: dict[str, Any]) -> str:
@@ -275,6 +440,8 @@ def _openai_coach(
         "將重複觀察窗視為同一事件，禁止使用未來資料，禁止提出個股買賣指令，"
         "禁止修改正式V6、正式排名、正式權重、歷史資料或下單。"
         "提出的每項改善都必須是可前向驗證的影子實驗；樣本不足時明確說明。"
+        "每週最多提出3個candidate_proposals，而且rule_id與cohort只能使用格式列出的選項。"
+        "候選只可描述假設、衡量方式與風險控制，不可輸出程式碼、指令或自動下單內容。"
     )
     request_body = {
         "model": model,
@@ -389,13 +556,28 @@ def build_weekly_coach(
     else:
         raise CoachBlocked(f"unsupported mode: {mode}")
 
+    proposals = _validate_candidate_proposals(coach)
+    generated = generated_at or datetime.now(timezone.utc).isoformat()
+    registry = update_candidate_registry(
+        reports_dir / "shadow_candidate_registry.json",
+        proposals=proposals,
+        context=context,
+        generated_at=generated,
+        activate_new=mode == "openai",
+    )
+
     report = {
         "schema": "wude.weekly_shadow_coach.v1",
-        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
+        "generated_at": generated,
         "status": "ok",
         "mode": mode,
         "source": context,
         "coach": coach,
+        "candidate_registry": {
+            "report": "shadow_candidate_registry.json",
+            "candidate_count": len(registry["candidates"]),
+            "new_proposals": len(proposals) if mode == "openai" else 0,
+        },
         "api": api,
         "policy": dict(LOCKED_POLICY),
     }
