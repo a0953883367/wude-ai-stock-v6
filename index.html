@@ -877,11 +877,13 @@ function currentSystemGuard(guard){
   checks=checks.filter(function(item){return item.code!=='guard_heartbeat';});
   if(!runs.length){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'info',label:'資訊',detail:'目前無法取得 GitHub Actions 即時狀態；保留上一份巡檢結果，不誤判為停止',action:''});}
   else if(runStatus==='completed'&&conclusion!=='success'){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'critical',label:'異常',detail:'最近一次值班巡檢結束狀態：'+(conclusion||'未知'),action:'檢查 AI 系統值班員 workflow 的失敗步驟；不要把手機授權當成原因'});}
-  else if(age>180){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'critical',label:'異常',detail:'已 '+Math.floor(age/60)+' 小時沒有新的 GitHub Actions 巡檢',action:'檢查 AI 系統值班員 workflow 是否停用或積壓；不要把手機授權當成原因'});}
+  else if(age>360){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'critical',label:'異常',detail:'已 '+Math.floor(age/60)+' 小時沒有新的 GitHub Actions 巡檢',action:'檢查 AI 系統值班員 workflow 是否停用或積壓；不要把手機授權當成原因'});}
+  else if(age>180){checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'warning',label:'延遲',detail:'距離最近一次成功巡檢已 '+Math.floor(age/60)+' 小時；股票報表與後端狀態仍分開判斷',action:'先等待下一次排程；超過6小時或巡檢失敗才升為紅燈'});}
   else{checks.push({code:'guard_heartbeat',title:'GitHub Actions 值班巡檢',level:'ok',label:'正常',detail:runStatus==='in_progress'||runStatus==='queued'?'目前正在執行':'最近一次成功巡檢在 '+Math.max(0,Math.round(age))+' 分鐘前',action:''});}
   var counts={ok:0,info:0,warning:0,critical:0};checks.forEach(function(item){var level=String(item.level||'info');counts[level]=(counts[level]||0)+1;});
-  var status=counts.critical?'critical':counts.warning?'warning':'ok';
-  return {checks:checks,counts:counts,status:status,statusLabel:status==='critical'?'🔴 需要處理':status==='warning'?'🟡 需要注意':'🟢 系統正常'};
+  var status=counts.critical?'critical':counts.warning?'warning':'ok',heartbeat=checks.find(function(item){return item.code==='guard_heartbeat';})||{};
+  var statusLabel=status==='critical'?(heartbeat.level==='critical'?'🔴 巡檢排程需要處理':'🔴 系統需要處理'):status==='warning'?(heartbeat.level==='warning'?'🟡 巡檢排程延遲':'🟡 需要注意'):'🟢 系統正常';
+  return {checks:checks,counts:counts,status:status,statusLabel:statusLabel};
 }
 function showSystemGuard(){
   STATE.view='GUARD';setActive('#marketButtons button','data-view','GUARD');clearOtherNav('#marketButtons button');

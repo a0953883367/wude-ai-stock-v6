@@ -7,7 +7,10 @@ assert.match(html, /function showSystemGuard\(\)/);
 assert.match(html, /function currentSystemGuard\(guard\)/);
 assert.match(html, /reports\/system_guard\.json/);
 assert.match(html, /guard_heartbeat/);
+assert.match(html, /age>360/);
 assert.match(html, /age>180/);
+assert.match(html, /巡檢排程延遲/);
+assert.match(html, /巡檢排程需要處理/);
 assert.match(html, /actions\/workflows\/system-guard\.yml\/runs\?per_page=1/);
 assert.match(html, /無法取得 GitHub Actions 即時狀態；保留上一份巡檢結果，不誤判為停止/);
 assert.match(html, /App、Railway、台／美股串流、Telegram、手機授權與正式報表分開判斷/);
@@ -36,6 +39,15 @@ STATE.guardWorkflow = {workflow_runs: [{
   status: 'completed', conclusion: 'success', updated_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
 }]};
 runtime = currentSystemGuard(baseGuard);
+assert.strictEqual(runtime.status, 'warning');
+assert.strictEqual(runtime.statusLabel, '🟡 巡檢排程延遲');
+assert.strictEqual(runtime.checks[0].level, 'warning');
+
+STATE.guardWorkflow = {workflow_runs: [{
+  status: 'completed', conclusion: 'success', updated_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+}]};
+runtime = currentSystemGuard(baseGuard);
 assert.strictEqual(runtime.status, 'critical');
+assert.strictEqual(runtime.statusLabel, '🔴 巡檢排程需要處理');
 
 console.log('system guard UI tests passed');
