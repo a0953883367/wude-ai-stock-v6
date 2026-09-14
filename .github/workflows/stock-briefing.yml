@@ -74,16 +74,40 @@ jobs:
         run: |
           commit_message=""
           no_telegram="false"
+          save_prediction="false"
+          taiwan_hour="$(TZ=Asia/Taipei date +%H)"
+          taiwan_weekday="$(TZ=Asia/Taipei date +%u)"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             period="${{ inputs.period }}"
+            save_prediction="true"
             commit_message="更新 AI 股票${period}報"
           else
             case "${{ github.event.schedule }}" in
-              "0 22 * * *") period="morning"; commit_message="更新 AI 股票morning報" ;;
-              "0 4 * * *") period="noon"; commit_message="更新 AI 股票noon報" ;;
+              "0 22 * * *")
+                period="morning"
+                save_prediction="true"
+                commit_message="更新 AI 股票morning報"
+                ;;
+              "0 4 * * *")
+                # GitHub scheduled runs can be delayed for hours.  If the noon
+                # run starts after Taiwan market close, use it as the missing
+                # silent close settlement instead of publishing a stale noon
+                # snapshot.  The normal 20:00 run can still send the evening
+                # notification later.
+                if [ "$taiwan_weekday" -le 5 ] && [ "$taiwan_hour" -ge 16 ]; then
+                  period="evening"
+                  no_telegram="true"
+                  save_prediction="true"
+                  commit_message="補跑延遲的台股收盤結算"
+                else
+                  period="noon"
+                  commit_message="更新 AI 股票noon報"
+                fi
+                ;;
               "0 9 * * 1-5")
                 period="evening"
                 no_telegram="true"
+                save_prediction="true"
                 commit_message="更新台股17:00收盤結算"
                 ;;
               "0 12 * * *") period="evening"; commit_message="更新 AI 股票evening報" ;;
@@ -93,8 +117,10 @@ jobs:
                 ;;
             esac
           fi
+          echo "Taiwan actual time: weekday=$taiwan_weekday hour=$taiwan_hour; selected=$period; silent=$no_telegram"
           echo "value=$period" >> "$GITHUB_OUTPUT"
           echo "no_telegram=$no_telegram" >> "$GITHUB_OUTPUT"
+          echo "save_prediction=$save_prediction" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
       - name: Generate report
         id: generate
@@ -158,9 +184,7 @@ jobs:
       - name: Save private AI prediction database
         if: >-
           ${{ always() && steps.generate.outcome == 'success' &&
-          (github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '0 22 * * *' ||
-          github.event.schedule == '0 9 * * 1-5') }}
+          steps.period.outputs.save_prediction == 'true' }}
         uses: actions/cache/save@v4
         with:
           path: .prediction_engine

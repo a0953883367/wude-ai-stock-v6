@@ -22,10 +22,22 @@ def test_stock_briefing_keeps_reports_and_adds_silent_taiwan_close_settlement():
     assert "args+=(--no-telegram)" in text
 
 
+def test_delayed_noon_run_becomes_silent_close_settlement():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert 'taiwan_hour="$(TZ=Asia/Taipei date +%H)"' in text
+    assert 'taiwan_weekday="$(TZ=Asia/Taipei date +%u)"' in text
+    assert '[ "$taiwan_weekday" -le 5 ] && [ "$taiwan_hour" -ge 16 ]' in text
+    assert 'commit_message="補跑延遲的台股收盤結算"' in text
+    assert 'echo "save_prediction=$save_prediction"' in text
+    assert "steps.period.outputs.save_prediction == 'true'" in text
+
+
 def test_us_close_settlement_schedule_is_unchanged():
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    assert '"0 22 * * *") period="morning"' in text
+    assert '"0 22 * * *")' in text
+    assert 'period="morning"' in text
     assert text.count('"0 22 * * *"') == 2
 
 
