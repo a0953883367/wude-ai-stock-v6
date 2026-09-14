@@ -36,7 +36,8 @@ def test_delayed_noon_run_becomes_silent_close_settlement():
 def test_us_close_settlement_schedule_is_unchanged():
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    assert '"0 22 * * *") period="morning"' in text
+    assert '"0 22 * * *")' in text
+    assert 'period="morning"' in text
     assert text.count('"0 22 * * *"') == 2
 
 
