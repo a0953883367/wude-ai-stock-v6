@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-15T08:08:27+08:00",
+  "checked_at": "2026-09-15T09:36:41+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-15 08:05:29",
-  "report_age_minutes": 3.0,
+  "report_age_minutes": 91.2,
   "counts": {
-    "ok": 24,
-    "info": 7,
+    "ok": 26,
+    "info": 5,
     "warning": 2,
     "critical": 0
   },
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 3 分鐘",
+      "detail": "最近更新距今 91 分鐘",
       "action": ""
     },
     {
@@ -235,9 +235,9 @@
     {
       "code": "stream_tw",
       "title": "台股即時串流",
-      "level": "info",
-      "label": "資訊",
-      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "level": "ok",
+      "label": "正常",
+      "detail": "正式盤已連線，訂閱 187 檔",
       "action": ""
     },
     {
@@ -251,10 +251,10 @@
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
-      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近一次已送達：2026-09-15T01:36:30+00:00",
+      "action": ""
     },
     {
       "code": "device_authorization",
@@ -277,7 +277,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     }
   ],
