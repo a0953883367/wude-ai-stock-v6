@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-09-15T23:31:49.570055+00:00",
+  "generated_at": "2026-09-16T23:39:12.961202+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 374,
@@ -10,7 +10,7 @@
     "officially_matched_stocks": 306,
     "officially_matched_etfs": 68,
     "unmatched": 0,
-    "event_count": 0,
+    "event_count": 1,
     "warning_count": 0,
     "critical_count": 0,
     "source_failure_count": 1,
@@ -18,7 +18,21 @@
     "event_source_failure_count": 0,
     "available_registry_source_count": 7
   },
-  "events": [],
+  "events": [
+    {
+      "type": "TRADING_RESUMED",
+      "label": "恢復交易",
+      "level": "info",
+      "symbol": "CIEN",
+      "asset_type": "STOCK",
+      "source": "nasdaq_halts",
+      "source_date": "09/16/2026",
+      "headline": "CIEN",
+      "action": "只解除影子暫停標記；下一個有效交易日重新抓取，不回填不存在的成交價",
+      "event_id": "e59ce64b96b0a3a87b31",
+      "requires_manual_approval": true
+    }
+  ],
   "source_health": {
     "twse_registry": {
       "ok": true,
@@ -30,7 +44,7 @@
     },
     "tpex_registry": {
       "ok": true,
-      "record_count": 891,
+      "record_count": 892,
       "error": "",
       "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
       "mode": "live",
@@ -39,7 +53,7 @@
     "sec_registry": {
       "ok": false,
       "record_count": 0,
-      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 8.5 days exceeds 7"
+      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 9.5 days exceeds 7"
     },
     "twse_securities": {
       "ok": true,
@@ -51,7 +65,7 @@
     },
     "tpex_securities": {
       "ok": true,
-      "record_count": 11358,
+      "record_count": 11415,
       "error": "",
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
       "mode": "live",
@@ -77,7 +91,7 @@
     },
     "us_symbol_directory": {
       "ok": true,
-      "record_count": 13199,
+      "record_count": 13204,
       "error": "",
       "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
       "mode": "live",
@@ -85,20 +99,20 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 108,
-      "event_count": 6,
+      "record_count": 99,
+      "event_count": 1,
       "error": ""
     },
     "tpex_announcements": {
       "ok": true,
-      "record_count": 54,
-      "event_count": 1,
+      "record_count": 52,
+      "event_count": 4,
       "error": ""
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 83,
-      "event_count": 83,
+      "record_count": 128,
+      "event_count": 128,
       "error": ""
     }
   },
