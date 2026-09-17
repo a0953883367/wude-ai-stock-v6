@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-18T02:22:48+08:00",
+  "checked_at": "2026-09-18T05:36:46+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-17 22:03:24",
-  "report_age_minutes": 259.4,
+  "report_age_minutes": 453.4,
   "counts": {
-    "ok": 27,
-    "info": 4,
-    "warning": 2,
+    "ok": 25,
+    "info": 5,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -40,10 +40,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近更新距今 259 分鐘",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 7.6 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
       "code": "report_consistency",
@@ -243,9 +243,9 @@
     {
       "code": "stream_us",
       "title": "美股即時串流",
-      "level": "ok",
-      "label": "正常",
-      "detail": "正式盤已連線，訂閱 186 檔",
+      "level": "info",
+      "label": "資訊",
+      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
       "action": ""
     },
     {
@@ -253,7 +253,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-09-17T18:22:05+00:00",
+      "detail": "最近一次已送達：2026-09-17T20:00:01+00:00",
       "action": ""
     },
     {
@@ -283,6 +283,7 @@
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "若已跨過下一個排程時間，檢查排程是否延遲",
     "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
   ],
   "safety": {
