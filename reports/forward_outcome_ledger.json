@@ -1,32 +1,615 @@
 {
   "markets": {
     "TW": {
-      "cohort_count": 9,
+      "cohort_count": 10,
       "waiting_entry_cohorts": 1,
-      "tracking_cohorts": 8,
+      "tracking_cohorts": 9,
       "horizons": {
         "EARLY_1D": {
           "horizon_sessions": 1,
-          "matured_cohorts": 4,
-          "valid_samples": 616,
+          "matured_cohorts": 5,
+          "valid_samples": 770,
           "incomplete_samples": 0,
-          "top10_capture_rate_pct": 5.0,
-          "top20_capture_rate_pct": 16.25,
-          "latest_signal_session_date": "2026-09-16",
+          "top10_capture_rate_pct": 8.0,
+          "top20_capture_rate_pct": 18.0,
+          "latest_signal_session_date": "2026-09-17",
           "latest_winners": [
+            {
+              "symbol": "3443.TW",
+              "name": "創意",
+              "max_return_pct": 8.3333,
+              "close_return_pct": 8.3333,
+              "net_close_return_pct": 7.6483,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -1.3636,
+              "frozen_rank": 109,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 8.1052,
+              "industry_lifecycle": {
+                "industry_position": "ASIC",
+                "stage": "成長期",
+                "evidence": "營收年增 +111.0%、營收月增 +1.2%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 111.0204,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 1.2294,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "6829.TWO",
+              "name": "千附精密",
+              "max_return_pct": 8.1395,
+              "close_return_pct": 4.4186,
+              "net_close_return_pct": 3.7336,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -0.4651,
+              "frozen_rank": 127,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 4.1905,
+              "industry_lifecycle": {
+                "industry_position": "航太零組件",
+                "stage": "成長期",
+                "evidence": "營收年增 +56.5%、營收月增 +35.0%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 56.5192,
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 35.025,
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "4541.TWO",
+              "name": "晟田",
+              "max_return_pct": 7.9447,
+              "close_return_pct": 7.0812,
+              "net_close_return_pct": 6.3962,
+              "peak_session_no": 1,
+              "max_drawdown_pct": 0.0,
+              "frozen_rank": 100,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 6.8531,
+              "industry_lifecycle": {
+                "industry_position": "航太零組件",
+                "stage": "成長期",
+                "evidence": "營收年增 +23.6%、營收月增 -10.1%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 23.5718,
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": -10.1215,
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "成長放慢",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "2464.TW",
+              "name": "盟立",
+              "max_return_pct": 7.3569,
+              "close_return_pct": 7.3569,
+              "net_close_return_pct": 6.6719,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -2.4523,
+              "frozen_rank": 138,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 7.1288,
+              "industry_lifecycle": {
+                "industry_position": "工業自動化",
+                "stage": "成長期",
+                "evidence": "營收年增 +73.7%、營收月增 +7.6%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 73.7078,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 7.5614,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3665.TW",
+              "name": "貿聯-KY",
+              "max_return_pct": 7.2816,
+              "close_return_pct": 7.2816,
+              "net_close_return_pct": 6.5966,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -0.7282,
+              "frozen_rank": 48,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 7.0535,
+              "industry_lifecycle": {
+                "industry_position": "AI高速連接｜車用連接",
+                "stage": "成長期",
+                "evidence": "營收年增 +54.0%、營收月增 -7.7%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 53.9915,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": -7.6672,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "成長放慢",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "2360.TW",
+              "name": "致茂",
+              "max_return_pct": 7.26,
+              "close_return_pct": 7.26,
+              "net_close_return_pct": 6.575,
+              "peak_session_no": 1,
+              "max_drawdown_pct": 0.0,
+              "frozen_rank": 65,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 7.0319,
+              "industry_lifecycle": {
+                "industry_position": "自動化測試",
+                "stage": "成長期",
+                "evidence": "營收年增 +156.3%、營收月增 +3.6%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 156.2965,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 3.6465,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3264.TWO",
+              "name": "欣銓",
+              "max_return_pct": 6.9721,
+              "close_return_pct": 6.9721,
+              "net_close_return_pct": 6.2871,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -0.1992,
+              "frozen_rank": 8,
+              "captured_top10": true,
+              "captured_top20": true,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 6.744,
+              "industry_lifecycle": {
+                "industry_position": "IC測試",
+                "stage": "成長期",
+                "evidence": "營收年增 +46.6%、營收月增 +1.6%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 46.573,
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 1.5734,
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-17",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "8150.TW",
+              "name": "南茂",
+              "max_return_pct": 6.8539,
+              "close_return_pct": 5.618,
+              "net_close_return_pct": 4.933,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -0.2247,
+              "frozen_rank": 85,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 5.3899,
+              "industry_lifecycle": {
+                "industry_position": "半導體封測",
+                "stage": "成長期",
+                "evidence": "營收年增 +33.3%、營收月增 -1.3%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 33.2654,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": -1.3216,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "8996.TW",
+              "name": "高力",
+              "max_return_pct": 5.9259,
+              "close_return_pct": 5.9259,
+              "net_close_return_pct": 5.2409,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -1.4815,
+              "frozen_rank": 52,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 5.6978,
+              "industry_lifecycle": {
+                "industry_position": "液冷",
+                "stage": "成長期",
+                "evidence": "營收年增 +112.8%、營收月增 +30.5%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 112.8354,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 30.4842,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "6257.TW",
+              "name": "矽格",
+              "max_return_pct": 5.8442,
+              "close_return_pct": 5.8442,
+              "net_close_return_pct": 5.1592,
+              "peak_session_no": 1,
+              "max_drawdown_pct": -1.5152,
+              "frozen_rank": 3,
+              "captured_top10": true,
+              "captured_top20": true,
+              "benchmark_return_pct": 0.2281,
+              "excess_return_pct": 5.6161,
+              "industry_lifecycle": {
+                "industry_position": "半導體封測",
+                "stage": "成長期",
+                "evidence": "營收年增 +28.6%、營收月增 +2.7%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 28.5841,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 2.7182,
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-17",
+                "sources": [
+                  {
+                    "date": "2026-09-16",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-16",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            }
+          ]
+        },
+        "EARLY_3D": {
+          "horizon_sessions": 3,
+          "matured_cohorts": 5,
+          "valid_samples": 770,
+          "incomplete_samples": 0,
+          "top10_capture_rate_pct": 6.0,
+          "top20_capture_rate_pct": 15.0,
+          "latest_signal_session_date": "2026-09-15",
+          "latest_winners": [
+            {
+              "symbol": "3264.TWO",
+              "name": "欣銓",
+              "max_return_pct": 21.219,
+              "close_return_pct": 21.219,
+              "net_close_return_pct": 20.534,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -0.6772,
+              "frozen_rank": 68,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 17.7333,
+              "industry_lifecycle": {
+                "industry_position": "IC測試",
+                "stage": "成長期",
+                "evidence": "營收年增 +46.6%、營收月增 +1.6%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 46.573,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 1.5734,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
             {
               "symbol": "1560.TW",
               "name": "中砂",
-              "max_return_pct": 8.6667,
-              "close_return_pct": 8.6667,
-              "net_close_return_pct": 7.9817,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 107,
+              "max_return_pct": 21.0811,
+              "close_return_pct": 21.0811,
+              "net_close_return_pct": 20.3961,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -0.1351,
+              "frozen_rank": 75,
               "captured_top10": false,
               "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 8.5276,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 17.5954,
               "industry_lifecycle": {
                 "industry_position": "半導體材料",
                 "stage": "成長期",
@@ -36,27 +619,391 @@
                     "kind": "revenue_yoy",
                     "label": "營收年增",
                     "value_pct": 30.3779,
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "kind": "revenue_mom",
                     "label": "營收月增",
                     "value_pct": 1.4433,
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "MOPS via TWSE OpenAPI"
                   }
                 ],
                 "stage_reason": "營收年增達20%以上",
                 "risk": "估值偏高",
-                "judged_at": "2026-09-16",
+                "judged_at": "2026-09-15",
                 "sources": [
                   {
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
+                    "date": "2026-09-14",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3324.TWO",
+              "name": "雙鴻",
+              "max_return_pct": 18.8235,
+              "close_return_pct": 16.0784,
+              "net_close_return_pct": 15.3934,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -1.5686,
+              "frozen_rank": 16,
+              "captured_top10": false,
+              "captured_top20": true,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 12.5928,
+              "industry_lifecycle": {
+                "industry_position": "AI散熱",
+                "stage": "成長期",
+                "evidence": "營收年增 +67.2%、營收月增 -16.6%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 67.1794,
                     "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": -16.5774,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "成長放慢",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "4979.TWO",
+              "name": "華星光",
+              "max_return_pct": 18.4109,
+              "close_return_pct": 18.4109,
+              "net_close_return_pct": 17.7259,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -1.1628,
+              "frozen_rank": 129,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 14.9252,
+              "industry_lifecycle": {
+                "industry_position": "光通訊",
+                "stage": "成長期",
+                "evidence": "營收年增 +37.4%、營收月增 +7.3%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 37.4489,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 7.2898,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3443.TW",
+              "name": "創意",
+              "max_return_pct": 17.7924,
+              "close_return_pct": 17.7924,
+              "net_close_return_pct": 17.1074,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -0.3295,
+              "frozen_rank": 78,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 14.3068,
+              "industry_lifecycle": {
+                "industry_position": "ASIC",
+                "stage": "成長期",
+                "evidence": "營收年增 +111.0%、營收月增 +1.2%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 111.0204,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 1.2294,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "6257.TW",
+              "name": "矽格",
+              "max_return_pct": 16.7064,
+              "close_return_pct": 16.7064,
+              "net_close_return_pct": 16.0214,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -0.716,
+              "frozen_rank": 11,
+              "captured_top10": false,
+              "captured_top20": true,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 13.2208,
+              "industry_lifecycle": {
+                "industry_position": "半導體封測",
+                "stage": "成長期",
+                "evidence": "營收年增 +28.6%、營收月增 +2.7%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 28.5841,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 2.7182,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "8996.TW",
+              "name": "高力",
+              "max_return_pct": 16.2602,
+              "close_return_pct": 16.2602,
+              "net_close_return_pct": 15.5752,
+              "peak_session_no": 3,
+              "max_drawdown_pct": 0.0,
+              "frozen_rank": 110,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 12.7745,
+              "industry_lifecycle": {
+                "industry_position": "液冷",
+                "stage": "成長期",
+                "evidence": "營收年增 +112.8%、營收月增 +30.5%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 112.8354,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 30.4842,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "4908.TWO",
+              "name": "前鼎",
+              "max_return_pct": 15.9292,
+              "close_return_pct": 7.7434,
+              "net_close_return_pct": 7.0584,
+              "peak_session_no": 2,
+              "max_drawdown_pct": -1.1062,
+              "frozen_rank": 12,
+              "captured_top10": false,
+              "captured_top20": true,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 4.2577,
+              "industry_lifecycle": {
+                "industry_position": "光通訊",
+                "stage": "成長期",
+                "evidence": "營收年增 +28.9%、營收月增 -1.5%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 28.9322,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": -1.4778,
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-15",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3532.TW",
+              "name": "台勝科",
+              "max_return_pct": 15.8924,
+              "close_return_pct": 9.4132,
+              "net_close_return_pct": 8.7282,
+              "peak_session_no": 2,
+              "max_drawdown_pct": 0.0,
+              "frozen_rank": 65,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 5.9276,
+              "industry_lifecycle": {
+                "industry_position": "矽晶圓",
+                "stage": "成長期",
+                "evidence": "營收年增 +29.3%、營收月增 +2.2%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 29.2777,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 2.2119,
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-15",
+                "sources": [
+                  {
+                    "date": "2026-09-14",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-14",
                     "source": "TWSE OpenAPI BWIBBU_ALL"
                   }
                 ],
@@ -69,16 +1016,16 @@
             {
               "symbol": "4916.TW",
               "name": "事欣科",
-              "max_return_pct": 8.5353,
-              "close_return_pct": 8.5353,
-              "net_close_return_pct": 7.8503,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 57,
+              "max_return_pct": 15.5914,
+              "close_return_pct": 13.4409,
+              "net_close_return_pct": 12.7559,
+              "peak_session_no": 3,
+              "max_drawdown_pct": -0.5376,
+              "frozen_rank": 136,
               "captured_top10": false,
               "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 8.3963,
+              "benchmark_return_pct": 3.4856,
+              "excess_return_pct": 9.9552,
               "industry_lifecycle": {
                 "industry_position": "國防電子",
                 "stage": "成長期",
@@ -88,684 +1035,60 @@
                     "kind": "revenue_yoy",
                     "label": "營收年增",
                     "value_pct": 82.9598,
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "kind": "revenue_mom",
                     "label": "營收月增",
                     "value_pct": 6.286,
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "MOPS via TWSE OpenAPI"
                   }
                 ],
                 "stage_reason": "營收年增達20%以上",
                 "risk": "資料不足",
-                "judged_at": "2026-09-16",
+                "judged_at": "2026-09-15",
                 "sources": [
                   {
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
-                    "date": "2026-09-15",
+                    "date": "2026-09-14",
                     "source": "TWSE OpenAPI BWIBBU_ALL"
                   }
                 ],
                 "status": "point_in_time_frozen",
                 "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "5443.TWO",
-              "name": "均豪",
-              "max_return_pct": 7.5472,
-              "close_return_pct": 1.8868,
-              "net_close_return_pct": 1.2018,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 28,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 1.7478,
-              "industry_lifecycle": {
-                "industry_position": "半導體設備",
-                "stage": "成熟期",
-                "evidence": "營收年增 +14.4%、營收月增 -25.9%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 14.3828,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -25.9334,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "6640.TWO",
-              "name": "均華",
-              "max_return_pct": 7.1429,
-              "close_return_pct": 0.0,
-              "net_close_return_pct": -0.685,
-              "peak_session_no": 1,
-              "max_drawdown_pct": -0.4464,
-              "frozen_rank": 50,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": -0.139,
-              "industry_lifecycle": {
-                "industry_position": "先進封裝設備",
-                "stage": "成熟期",
-                "evidence": "營收年增 +18.7%、營收月增 -32.1%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 18.6864,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -32.1025,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "估值偏高、成長放慢",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "4908.TWO",
-              "name": "前鼎",
-              "max_return_pct": 6.9388,
-              "close_return_pct": -2.8571,
-              "net_close_return_pct": -3.5421,
-              "peak_session_no": 1,
-              "max_drawdown_pct": -5.102,
-              "frozen_rank": 100,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": -2.9962,
-              "industry_lifecycle": {
-                "industry_position": "光通訊",
-                "stage": "成長期",
-                "evidence": "營收年增 +28.9%、營收月增 -1.5%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 28.9322,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -1.4778,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3264.TWO",
-              "name": "欣銓",
-              "max_return_pct": 6.7538,
-              "close_return_pct": 6.5359,
-              "net_close_return_pct": 5.8509,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 111,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 6.3969,
-              "industry_lifecycle": {
-                "industry_position": "IC測試",
-                "stage": "成長期",
-                "evidence": "營收年增 +46.6%、營收月增 +1.6%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 46.573,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 1.5734,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "資料不足",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3533.TW",
-              "name": "嘉澤",
-              "max_return_pct": 6.5789,
-              "close_return_pct": 2.3026,
-              "net_close_return_pct": 1.6176,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 138,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 2.1636,
-              "industry_lifecycle": {
-                "industry_position": "AI連接器",
-                "stage": "成熟期",
-                "evidence": "營收年增 +19.6%、營收月增 -5.1%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 19.5806,
-                    "date": "2026-09-15",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -5.0631,
-                    "date": "2026-09-15",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-15",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "6869.TW",
-              "name": "雲豹能源",
-              "max_return_pct": 6.3272,
-              "close_return_pct": 4.9383,
-              "net_close_return_pct": 4.2533,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 63,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 4.7993,
-              "industry_lifecycle": {
-                "industry_position": "綠能售電",
-                "stage": "成長期",
-                "evidence": "營收年增 +63.1%、營收月增 -9.4%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 63.1251,
-                    "date": "2026-09-15",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -9.4414,
-                    "date": "2026-09-15",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-15",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3324.TWO",
-              "name": "雙鴻",
-              "max_return_pct": 6.1818,
-              "close_return_pct": 0.7273,
-              "net_close_return_pct": 0.0423,
-              "peak_session_no": 1,
-              "max_drawdown_pct": -2.9091,
-              "frozen_rank": 99,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 0.5883,
-              "industry_lifecycle": {
-                "industry_position": "AI散熱",
-                "stage": "成長期",
-                "evidence": "營收年增 +67.2%、營收月增 -16.6%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 67.1794,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -16.5774,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3265.TWO",
-              "name": "台星科",
-              "max_return_pct": 6.079,
-              "close_return_pct": 2.1277,
-              "net_close_return_pct": 1.4427,
-              "peak_session_no": 1,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 140,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.139,
-              "excess_return_pct": 1.9886,
-              "industry_lifecycle": {
-                "industry_position": "半導體封測",
-                "stage": "成熟期",
-                "evidence": "營收年增 +3.4%、營收月增 -4.6%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 3.3632,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -4.6393,
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-16",
-                "sources": [
-                  {
-                    "date": "2026-09-16",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-15",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
                 "affects_horizon": "UP_60D",
                 "formal_v6_unchanged": true
               }
             }
           ]
         },
-        "EARLY_3D": {
-          "horizon_sessions": 3,
-          "matured_cohorts": 4,
-          "valid_samples": 616,
+        "UP_5D": {
+          "horizon_sessions": 5,
+          "matured_cohorts": 5,
+          "valid_samples": 770,
           "incomplete_samples": 0,
-          "top10_capture_rate_pct": 7.5,
-          "top20_capture_rate_pct": 13.75,
-          "latest_signal_session_date": "2026-09-14",
+          "top10_capture_rate_pct": 10.0,
+          "top20_capture_rate_pct": 17.0,
+          "latest_signal_session_date": "2026-09-11",
           "latest_winners": [
-            {
-              "symbol": "4908.TWO",
-              "name": "前鼎",
-              "max_return_pct": 17.4888,
-              "close_return_pct": 6.7265,
-              "net_close_return_pct": 6.0415,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -2.2422,
-              "frozen_rank": 46,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 5.5087,
-              "industry_lifecycle": {
-                "industry_position": "光通訊",
-                "stage": "成長期",
-                "evidence": "營收年增 +28.9%、營收月增 -1.5%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 28.9322,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -1.4778,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "4971.TWO",
-              "name": "IET-KY",
-              "max_return_pct": 15.6489,
-              "close_return_pct": 5.916,
-              "net_close_return_pct": 5.231,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -0.7634,
-              "frozen_rank": 62,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 4.6982,
-              "industry_lifecycle": {
-                "industry_position": "光通訊半導體",
-                "stage": "成長期",
-                "evidence": "營收年增 +33.0%、營收月增 +0.9%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 33.0331,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 0.9069,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3532.TW",
-              "name": "台勝科",
-              "max_return_pct": 13.9423,
-              "close_return_pct": 6.1298,
-              "net_close_return_pct": 5.4448,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -3.125,
-              "frozen_rank": 10,
-              "captured_top10": true,
-              "captured_top20": true,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 4.912,
-              "industry_lifecycle": {
-                "industry_position": "矽晶圓",
-                "stage": "成長期",
-                "evidence": "營收年增 +29.3%、營收月增 +2.2%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 29.2777,
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 2.2119,
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-11",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "6182.TWO",
-              "name": "合晶",
-              "max_return_pct": 13.5266,
-              "close_return_pct": 6.7633,
-              "net_close_return_pct": 6.0783,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -0.4831,
-              "frozen_rank": 80,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 5.5455,
-              "industry_lifecycle": {
-                "industry_position": "矽晶圓",
-                "stage": "成熟期",
-                "evidence": "營收年增 +20.0%、營收月增 +1.0%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 19.9699,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 1.0161,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
             {
               "symbol": "6147.TWO",
               "name": "頎邦",
-              "max_return_pct": 12.5964,
-              "close_return_pct": 7.7121,
-              "net_close_return_pct": 7.0271,
-              "peak_session_no": 3,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 2,
-              "captured_top10": true,
-              "captured_top20": true,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 6.4943,
+              "max_return_pct": 30.1136,
+              "close_return_pct": 30.1136,
+              "net_close_return_pct": 29.4286,
+              "peak_session_no": 5,
+              "max_drawdown_pct": -2.8409,
+              "frozen_rank": 100,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 26.774,
               "industry_lifecycle": {
                 "industry_position": "半導體封測",
                 "stage": "成長期",
@@ -775,563 +1098,32 @@
                     "kind": "revenue_yoy",
                     "label": "營收年增",
                     "value_pct": 43.6119,
-                    "date": "2026-09-14",
+                    "date": "2026-09-11",
                     "source": "MOPS via TPEx OpenAPI"
                   },
                   {
                     "kind": "revenue_mom",
                     "label": "營收月增",
                     "value_pct": 3.8456,
-                    "date": "2026-09-14",
+                    "date": "2026-09-11",
                     "source": "MOPS via TPEx OpenAPI"
                   }
                 ],
                 "stage_reason": "營收年增達20%以上",
                 "risk": "資料不足",
-                "judged_at": "2026-09-14",
+                "judged_at": "2026-09-11",
                 "sources": [
                   {
-                    "date": "2026-09-14",
+                    "date": "2026-09-11",
                     "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3450.TW",
-              "name": "聯鈞",
-              "max_return_pct": 11.4625,
-              "close_return_pct": 3.7549,
-              "net_close_return_pct": 3.0699,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -2.7668,
-              "frozen_rank": 111,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 2.5371,
-              "industry_lifecycle": {
-                "industry_position": "光通訊",
-                "stage": "成長期",
-                "evidence": "營收年增 +109.8%、營收月增 +2.4%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 109.7581,
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 2.4167,
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "date": "2026-09-11",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3324.TWO",
-              "name": "雙鴻",
-              "max_return_pct": 11.4504,
-              "close_return_pct": 5.7252,
-              "net_close_return_pct": 5.0402,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -5.3435,
-              "frozen_rank": 102,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 4.5074,
-              "industry_lifecycle": {
-                "industry_position": "AI散熱",
-                "stage": "成長期",
-                "evidence": "營收年增 +67.2%、營收月增 -16.6%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 67.1794,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -16.5774,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
                     "source": "TPEx OpenAPI"
                   }
                 ],
                 "status": "point_in_time_frozen",
                 "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3491.TWO",
-              "name": "昇達科",
-              "max_return_pct": 10.7914,
-              "close_return_pct": 6.8345,
-              "net_close_return_pct": 6.1495,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -3.5971,
-              "frozen_rank": 34,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 5.6167,
-              "industry_lifecycle": {
-                "industry_position": "衛星通訊",
-                "stage": "成長期",
-                "evidence": "營收年增 +93.2%、營收月增 +39.6%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 93.1863,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 39.5591,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "2344.TW",
-              "name": "華邦電",
-              "max_return_pct": 10.7692,
-              "close_return_pct": 4.6154,
-              "net_close_return_pct": 3.9304,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -2.4615,
-              "frozen_rank": 149,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 3.3976,
-              "industry_lifecycle": {
-                "industry_position": "記憶體",
-                "stage": "成長期",
-                "evidence": "營收年增 +289.4%、營收月增 +2.0%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 289.4276,
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 2.0003,
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "資料不足",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-13",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-11",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "5443.TWO",
-              "name": "均豪",
-              "max_return_pct": 10.6796,
-              "close_return_pct": 4.8544,
-              "net_close_return_pct": 4.1694,
-              "peak_session_no": 3,
-              "max_drawdown_pct": -0.9709,
-              "frozen_rank": 114,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 1.2178,
-              "excess_return_pct": 3.6366,
-              "industry_lifecycle": {
-                "industry_position": "半導體設備",
-                "stage": "成熟期",
-                "evidence": "營收年增 +14.4%、營收月增 -25.9%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 14.3828,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -25.9334,
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-14",
-                "sources": [
-                  {
-                    "date": "2026-09-14",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-14",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            }
-          ]
-        },
-        "UP_5D": {
-          "horizon_sessions": 5,
-          "matured_cohorts": 4,
-          "valid_samples": 616,
-          "incomplete_samples": 0,
-          "top10_capture_rate_pct": 7.5,
-          "top20_capture_rate_pct": 18.75,
-          "latest_signal_session_date": "2026-09-10",
-          "latest_winners": [
-            {
-              "symbol": "3491.TWO",
-              "name": "昇達科",
-              "max_return_pct": 17.5573,
-              "close_return_pct": 13.3588,
-              "net_close_return_pct": 12.6738,
-              "peak_session_no": 5,
-              "max_drawdown_pct": 0.0,
-              "frozen_rank": 121,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 12.7536,
-              "industry_lifecycle": {
-                "industry_position": "衛星通訊",
-                "stage": "成長期",
-                "evidence": "營收年增 +82.0%、營收月增 -10.4%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 82.0158,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -10.3551,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高、成長放慢",
-                "judged_at": "2026-09-10",
-                "sources": [
-                  {
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-10",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "6147.TWO",
-              "name": "頎邦",
-              "max_return_pct": 17.4263,
-              "close_return_pct": 12.3324,
-              "net_close_return_pct": 11.6474,
-              "peak_session_no": 5,
-              "max_drawdown_pct": -8.311,
-              "frozen_rank": 80,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 11.7272,
-              "industry_lifecycle": {
-                "industry_position": "半導體封測",
-                "stage": "成長期",
-                "evidence": "營收年增 +39.2%、營收月增 +10.2%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 39.1782,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 10.2447,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "資料不足",
-                "judged_at": "2026-09-10",
-                "sources": [
-                  {
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-10",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3532.TW",
-              "name": "台勝科",
-              "max_return_pct": 15.7509,
-              "close_return_pct": 7.8144,
-              "net_close_return_pct": 7.1294,
-              "peak_session_no": 5,
-              "max_drawdown_pct": -2.3199,
-              "frozen_rank": 86,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 7.2092,
-              "industry_lifecycle": {
-                "industry_position": "矽晶圓",
-                "stage": "成長期",
-                "evidence": "營收年增 +28.8%、營收月增 +6.5%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 28.7715,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 6.4506,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-10",
-                "sources": [
-                  {
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-09",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "3450.TW",
-              "name": "聯鈞",
-              "max_return_pct": 11.6832,
-              "close_return_pct": 3.9604,
-              "net_close_return_pct": 3.2754,
-              "peak_session_no": 5,
-              "max_drawdown_pct": -3.1683,
-              "frozen_rank": 88,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 3.3552,
-              "industry_lifecycle": {
-                "industry_position": "光通訊",
-                "stage": "成長期",
-                "evidence": "營收年增 +98.0%、營收月增 +7.0%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 98.0018,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 7.017,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增達20%以上",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-10",
-                "sources": [
-                  {
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-09",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 75.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "6182.TWO",
-              "name": "合晶",
-              "max_return_pct": 11.3744,
-              "close_return_pct": 4.7393,
-              "net_close_return_pct": 4.0543,
-              "peak_session_no": 5,
-              "max_drawdown_pct": -5.2133,
-              "frozen_rank": 48,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 4.1341,
-              "industry_lifecycle": {
-                "industry_position": "矽晶圓",
-                "stage": "成熟期",
-                "evidence": "營收年增 +18.9%、營收月增 +2.9%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": 18.8982,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": 2.9022,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  }
-                ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "估值偏高",
-                "judged_at": "2026-09-10",
-                "sources": [
-                  {
-                    "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-10",
-                    "source": "TPEx OpenAPI"
-                  }
-                ],
-                "status": "point_in_time_frozen",
-                "shadow_score": 52.0,
                 "affects_horizon": "UP_60D",
                 "formal_v6_unchanged": true
               }
@@ -1339,16 +1131,16 @@
             {
               "symbol": "3665.TW",
               "name": "貿聯-KY",
-              "max_return_pct": 10.9043,
-              "close_return_pct": 6.9149,
-              "net_close_return_pct": 6.2299,
+              "max_return_pct": 21.0959,
+              "close_return_pct": 21.0959,
+              "net_close_return_pct": 20.4109,
               "peak_session_no": 5,
-              "max_drawdown_pct": -3.7234,
-              "frozen_rank": 149,
+              "max_drawdown_pct": -0.8219,
+              "frozen_rank": 150,
               "captured_top10": false,
               "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 6.3097,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 17.7563,
               "industry_lifecycle": {
                 "industry_position": "AI高速連接｜車用連接",
                 "stage": "成長期",
@@ -1371,14 +1163,14 @@
                 ],
                 "stage_reason": "營收年增達20%以上",
                 "risk": "資料不足",
-                "judged_at": "2026-09-10",
+                "judged_at": "2026-09-11",
                 "sources": [
                   {
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
-                    "date": "2026-09-09",
+                    "date": "2026-09-10",
                     "source": "TWSE OpenAPI BWIBBU_ALL"
                   }
                 ],
@@ -1389,48 +1181,152 @@
               }
             },
             {
-              "symbol": "6213.TW",
-              "name": "聯茂",
-              "max_return_pct": 10.338,
-              "close_return_pct": -1.5905,
-              "net_close_return_pct": -2.2755,
-              "peak_session_no": 4,
-              "max_drawdown_pct": -4.175,
-              "frozen_rank": 40,
+              "symbol": "4979.TWO",
+              "name": "華星光",
+              "max_return_pct": 19.8039,
+              "close_return_pct": 19.8039,
+              "net_close_return_pct": 19.1189,
+              "peak_session_no": 5,
+              "max_drawdown_pct": -1.7647,
+              "frozen_rank": 71,
               "captured_top10": false,
               "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": -2.1957,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 16.4643,
               "industry_lifecycle": {
-                "industry_position": "AI CCL",
+                "industry_position": "光通訊",
                 "stage": "成長期",
-                "evidence": "營收年增 +96.9%、營收月增 +12.7%",
+                "evidence": "營收年增 +37.4%、營收月增 +7.3%",
                 "evidence_items": [
                   {
                     "kind": "revenue_yoy",
                     "label": "營收年增",
-                    "value_pct": 96.8796,
+                    "value_pct": 37.4489,
+                    "date": "2026-09-11",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 7.2898,
+                    "date": "2026-09-11",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-11",
+                "sources": [
+                  {
+                    "date": "2026-09-11",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-11",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3264.TWO",
+              "name": "欣銓",
+              "max_return_pct": 19.3333,
+              "close_return_pct": 19.3333,
+              "net_close_return_pct": 18.6483,
+              "peak_session_no": 5,
+              "max_drawdown_pct": -2.2222,
+              "frozen_rank": 86,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 15.9937,
+              "industry_lifecycle": {
+                "industry_position": "IC測試",
+                "stage": "成長期",
+                "evidence": "營收年增 +46.6%、營收月增 +1.6%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 46.573,
+                    "date": "2026-09-11",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 1.5734,
+                    "date": "2026-09-11",
+                    "source": "MOPS via TPEx OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-11",
+                "sources": [
+                  {
+                    "date": "2026-09-11",
+                    "source": "MOPS via TPEx OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-11",
+                    "source": "TPEx OpenAPI"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3443.TW",
+              "name": "創意",
+              "max_return_pct": 19.2661,
+              "close_return_pct": 19.2661,
+              "net_close_return_pct": 18.5811,
+              "peak_session_no": 5,
+              "max_drawdown_pct": -2.4187,
+              "frozen_rank": 77,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 15.9265,
+              "industry_lifecycle": {
+                "industry_position": "ASIC",
+                "stage": "成長期",
+                "evidence": "營收年增 +158.4%、營收月增 +17.1%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 158.3814,
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "kind": "revenue_mom",
                     "label": "營收月增",
-                    "value_pct": 12.7087,
+                    "value_pct": 17.057,
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   }
                 ],
                 "stage_reason": "營收年增達20%以上",
                 "risk": "估值偏高",
-                "judged_at": "2026-09-10",
+                "judged_at": "2026-09-11",
                 "sources": [
                   {
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
-                    "date": "2026-09-09",
+                    "date": "2026-09-10",
                     "source": "TWSE OpenAPI BWIBBU_ALL"
                   }
                 ],
@@ -1441,49 +1337,101 @@
               }
             },
             {
-              "symbol": "6488.TWO",
-              "name": "環球晶",
-              "max_return_pct": 10.1466,
-              "close_return_pct": 2.8185,
-              "net_close_return_pct": 2.1335,
+              "symbol": "6257.TW",
+              "name": "矽格",
+              "max_return_pct": 18.6893,
+              "close_return_pct": 18.6893,
+              "net_close_return_pct": 18.0043,
               "peak_session_no": 5,
-              "max_drawdown_pct": -1.6911,
-              "frozen_rank": 143,
+              "max_drawdown_pct": -0.9709,
+              "frozen_rank": 106,
               "captured_top10": false,
               "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 2.2133,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 15.3497,
               "industry_lifecycle": {
-                "industry_position": "矽晶圓",
-                "stage": "成熟期",
-                "evidence": "營收年增 +19.6%、營收月增 -11.5%",
+                "industry_position": "半導體封測",
+                "stage": "成長期",
+                "evidence": "營收年增 +26.6%、營收月增 +2.8%",
                 "evidence_items": [
                   {
                     "kind": "revenue_yoy",
                     "label": "營收年增",
-                    "value_pct": 19.5921,
+                    "value_pct": 26.6196,
                     "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
+                    "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "kind": "revenue_mom",
                     "label": "營收月增",
-                    "value_pct": -11.4967,
+                    "value_pct": 2.8424,
                     "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
+                    "source": "MOPS via TWSE OpenAPI"
                   }
                 ],
-                "stage_reason": "營收年增介於-5%至20%",
-                "risk": "成長放慢",
-                "judged_at": "2026-09-10",
+                "stage_reason": "營收年增達20%以上",
+                "risk": "資料不足",
+                "judged_at": "2026-09-11",
                 "sources": [
                   {
                     "date": "2026-08-17",
-                    "source": "MOPS via TPEx OpenAPI"
+                    "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "date": "2026-09-10",
-                    "source": "TPEx OpenAPI"
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "2303.TW",
+              "name": "聯電",
+              "max_return_pct": 17.5824,
+              "close_return_pct": 14.2857,
+              "net_close_return_pct": 13.6007,
+              "peak_session_no": 5,
+              "max_drawdown_pct": -1.0989,
+              "frozen_rank": 21,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 10.9461,
+              "industry_lifecycle": {
+                "industry_position": "半導體",
+                "stage": "成熟期",
+                "evidence": "營收年增 +19.0%、營收月增 +3.1%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 18.982,
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 3.1096,
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增介於-5%至20%",
+                "risk": "資料不足",
+                "judged_at": "2026-09-11",
+                "sources": [
+                  {
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-10",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
                   }
                 ],
                 "status": "point_in_time_frozen",
@@ -1493,105 +1441,157 @@
               }
             },
             {
-              "symbol": "2314.TW",
-              "name": "台揚",
-              "max_return_pct": 9.5238,
-              "close_return_pct": 0.4762,
-              "net_close_return_pct": -0.2088,
-              "peak_session_no": 2,
-              "max_drawdown_pct": -1.4286,
-              "frozen_rank": 64,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": -0.129,
-              "industry_lifecycle": {
-                "industry_position": "衛星通訊",
-                "stage": "資料不足",
-                "evidence": "營收年增 -32.2%、營收月增 -44.1%",
-                "evidence_items": [
-                  {
-                    "kind": "revenue_yoy",
-                    "label": "營收年增",
-                    "value_pct": -32.2343,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "kind": "revenue_mom",
-                    "label": "營收月增",
-                    "value_pct": -44.1175,
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  }
-                ],
-                "stage_reason": "現有可對齊證據不足以判斷產業生命週期",
-                "risk": "估值偏高、成長放慢",
-                "judged_at": "2026-09-10",
-                "sources": [
-                  {
-                    "date": "2026-08-17",
-                    "source": "MOPS via TWSE OpenAPI"
-                  },
-                  {
-                    "date": "2026-09-09",
-                    "source": "TWSE OpenAPI BWIBBU_ALL"
-                  }
-                ],
-                "status": "data_insufficient",
-                "shadow_score": 50.0,
-                "affects_horizon": "UP_60D",
-                "formal_v6_unchanged": true
-              }
-            },
-            {
-              "symbol": "2308.TW",
-              "name": "台達電",
-              "max_return_pct": 9.4044,
-              "close_return_pct": 5.6426,
-              "net_close_return_pct": 4.9576,
+              "symbol": "1560.TW",
+              "name": "中砂",
+              "max_return_pct": 15.6129,
+              "close_return_pct": 15.6129,
+              "net_close_return_pct": 14.9279,
               "peak_session_no": 5,
-              "max_drawdown_pct": -2.1944,
-              "frozen_rank": 125,
-              "captured_top10": false,
-              "captured_top20": false,
-              "benchmark_return_pct": 0.6052,
-              "excess_return_pct": 5.0374,
+              "max_drawdown_pct": -5.1613,
+              "frozen_rank": 4,
+              "captured_top10": true,
+              "captured_top20": true,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 12.2733,
               "industry_lifecycle": {
-                "industry_position": "電源管理",
+                "industry_position": "半導體材料",
                 "stage": "成長期",
-                "evidence": "營收年增 +47.7%、營收月增 +2.2%",
+                "evidence": "營收年增 +26.6%、營收月增 +6.4%",
                 "evidence_items": [
                   {
                     "kind": "revenue_yoy",
                     "label": "營收年增",
-                    "value_pct": 47.7479,
+                    "value_pct": 26.5628,
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
                     "kind": "revenue_mom",
                     "label": "營收月增",
-                    "value_pct": 2.2417,
+                    "value_pct": 6.4066,
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   }
                 ],
                 "stage_reason": "營收年增達20%以上",
                 "risk": "估值偏高",
-                "judged_at": "2026-09-10",
+                "judged_at": "2026-09-11",
                 "sources": [
                   {
                     "date": "2026-08-17",
                     "source": "MOPS via TWSE OpenAPI"
                   },
                   {
-                    "date": "2026-09-09",
+                    "date": "2026-09-10",
                     "source": "TWSE OpenAPI BWIBBU_ALL"
                   }
                 ],
                 "status": "point_in_time_frozen",
                 "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3532.TW",
+              "name": "台勝科",
+              "max_return_pct": 15.6098,
+              "close_return_pct": 9.1463,
+              "net_close_return_pct": 8.4613,
+              "peak_session_no": 4,
+              "max_drawdown_pct": -2.439,
+              "frozen_rank": 9,
+              "captured_top10": true,
+              "captured_top20": true,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 5.8067,
+              "industry_lifecycle": {
+                "industry_position": "矽晶圓",
+                "stage": "成長期",
+                "evidence": "營收年增 +28.8%、營收月增 +6.5%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 28.7715,
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": 6.4506,
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增達20%以上",
+                "risk": "估值偏高",
+                "judged_at": "2026-09-11",
+                "sources": [
+                  {
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-10",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 75.0,
+                "affects_horizon": "UP_60D",
+                "formal_v6_unchanged": true
+              }
+            },
+            {
+              "symbol": "3035.TW",
+              "name": "智原",
+              "max_return_pct": 15.5689,
+              "close_return_pct": 14.0719,
+              "net_close_return_pct": 13.3869,
+              "peak_session_no": 5,
+              "max_drawdown_pct": -1.1976,
+              "frozen_rank": 133,
+              "captured_top10": false,
+              "captured_top20": false,
+              "benchmark_return_pct": 3.3396,
+              "excess_return_pct": 10.7323,
+              "industry_lifecycle": {
+                "industry_position": "ASIC",
+                "stage": "成熟期",
+                "evidence": "營收年增 +10.0%、營收月增 -25.0%",
+                "evidence_items": [
+                  {
+                    "kind": "revenue_yoy",
+                    "label": "營收年增",
+                    "value_pct": 9.9688,
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "kind": "revenue_mom",
+                    "label": "營收月增",
+                    "value_pct": -25.0364,
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  }
+                ],
+                "stage_reason": "營收年增介於-5%至20%",
+                "risk": "估值偏高、成長放慢",
+                "judged_at": "2026-09-11",
+                "sources": [
+                  {
+                    "date": "2026-08-17",
+                    "source": "MOPS via TWSE OpenAPI"
+                  },
+                  {
+                    "date": "2026-09-10",
+                    "source": "TWSE OpenAPI BWIBBU_ALL"
+                  }
+                ],
+                "status": "point_in_time_frozen",
+                "shadow_score": 52.0,
                 "affects_horizon": "UP_60D",
                 "formal_v6_unchanged": true
               }
@@ -2561,7 +2561,7 @@
   },
   "version": 1,
   "title": "台股／美股多期間真實答案帳本",
-  "updated_at": "2026-09-18 07:47:46",
+  "updated_at": "2026-09-18 16:41:13",
   "mode": "forward_only_shadow_answers",
   "horizons": {
     "EARLY_1D": 1,
@@ -2599,7 +2599,7 @@
     }
   },
   "run": {
-    "inserted_candidates": 151,
-    "settled_results": 453
+    "inserted_candidates": 154,
+    "settled_results": 462
   }
 }
