@@ -17,6 +17,7 @@ from agent_control import AGENTS, UsageLedger, authorize_task
 from artifact_validation import verify_artifact
 from context_audit import audit_catalog
 from context_governance import build_context_plan
+from presentation_delivery import verify_presentation_delivery
 
 
 RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V1"
@@ -98,12 +99,22 @@ def execute_safe_task(
         if action == "draft_report":
             validation_spec = payload.get("artifact_validation") if isinstance(payload, Mapping) else None
             if isinstance(validation_spec, dict):
-                validation = verify_artifact(validation_spec, root=root)
+                artifact_name = str(validation_spec.get("artifact") or "")
+                validation = (
+                    verify_presentation_delivery(validation_spec, root=root)
+                    if Path(artifact_name).suffix.casefold() == ".pptx"
+                    else verify_artifact(validation_spec, root=root)
+                )
                 result["artifact_validation"] = {
                     "status": validation["status"],
                     "verified": validation["verified"],
                     "failure_count": len(validation["failures"]),
                 }
+                if "slide_count" in validation:
+                    result["artifact_validation"].update(
+                        slide_count=validation["slide_count"],
+                        rendered_slide_count=validation["rendered_slide_count"],
+                    )
                 if validation["verified"]:
                     result.update(
                         status="completed",
