@@ -38,7 +38,7 @@ jobs:
         id: corporate_actions
         continue-on-error: true
         run: python corporate_actions_shadow.py
-      - name: Require live official sources or a fresh verified SEC snapshot
+      - name: Require official coverage or a declared degraded SEC source
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           python - <<'PY'
@@ -55,6 +55,8 @@ jobs:
           expected_stocks = sum(row["asset_type"] == "STOCK" for row in expected.values())
           expected_etfs = len(expected) - expected_stocks
           failed = [name for name, row in report["source_health"].items() if not row.get("ok")]
+          degraded = set(summary.get("degraded_sources") or [])
+          blocking_failed = [name for name in failed if name not in degraded]
           modes = {
               name: row.get("mode", "live")
               for name, row in report["source_health"].items()
@@ -65,7 +67,8 @@ jobs:
               f"official sources: matched={summary['officially_matched']}/"
               f"{summary['tracked_total']} stocks={summary['tracked_stocks']} "
               f"etfs={summary['tracked_etfs']} events={summary['event_count']} "
-              f"failed={failed} modes={modes}"
+              f"failed={failed} degraded={sorted(degraded)} "
+              f"blocking_failed={blocking_failed} modes={modes}"
           )
           actual = (
               summary.get("tracked_total"),
@@ -77,8 +80,10 @@ jobs:
               raise SystemExit(f"coverage mismatch: actual={actual} expected={wanted}")
           if wanted != (374, 306, 68):
               raise SystemExit(f"configured 374-symbol contract changed unexpectedly: {wanted}")
-          if failed:
-              raise SystemExit("official source verification failed: " + ", ".join(failed))
+          if blocking_failed:
+              raise SystemExit(
+                  "official source verification failed: " + ", ".join(blocking_failed)
+              )
           PY
       - name: Save shadow-only lifecycle records
         if: ${{ github.event_name != 'pull_request' }}

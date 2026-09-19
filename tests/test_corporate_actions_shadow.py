@@ -509,7 +509,9 @@ def test_workflow_is_shadow_only_and_runs_before_morning_report() -> None:
     assert "pull_request:" in workflow
     assert '- "watchlist.py"' in workflow
     assert "configured 374-symbol contract changed unexpectedly" in workflow
-    assert "Require live official sources or a fresh verified SEC snapshot" in workflow
+    assert "Require official coverage or a declared degraded SEC source" in workflow
+    assert 'degraded = set(summary.get("degraded_sources") or [])' in workflow
+    assert "if blocking_failed:" in workflow
     assert "github.event_name != 'pull_request'" in workflow
     assert "reports/corporate_actions_shadow.json" in workflow
     assert "reports/corporate_actions_shadow_history.json" in workflow
