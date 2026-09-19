@@ -1,6 +1,12 @@
 import json
 
-from tools.publish_friend_data import sanitize, sanitize_accuracy, sanitize_rotation
+from tools.publish_friend_data import (
+    sanitize,
+    sanitize_accuracy,
+    sanitize_institutions,
+    sanitize_patterns,
+    sanitize_rotation,
+)
 
 
 def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
@@ -110,3 +116,61 @@ def test_friend_rotation_only_contains_sector_summary():
     assert "pending" not in encoded
     assert "outcomes" not in encoded
     assert "net_profit" not in encoded
+
+
+def test_friend_patterns_exclude_shadow_ledger_and_formula_fields():
+    secret = "OWNER_ONLY_PATTERN_SECRET"
+    result = sanitize_patterns([{
+        "symbol": "2330.TW", "name": "台積電", "market": "TW", "type": "個股",
+        "industry": "半導體", "chart_pattern_shadow_name": "雙重底",
+        "chart_pattern_shadow_direction": "bullish",
+        "chart_pattern_shadow_status": "收盤確認突破",
+        "chart_pattern_shadow_confidence": 88.2,
+        "chart_pattern_shadow_volume_confirmed": True,
+        "chart_pattern_shadow_entry": 1000, "chart_pattern_shadow_stop": 960,
+        "chart_pattern_shadow_target": 1080,
+        "chart_pattern_rank_components": [{"formula": secret}],
+        "chart_pattern_shadow_pivots": [secret],
+        "formal_score_at_signal": secret,
+    }], "2026-09-19 20:00:00")
+    encoded = json.dumps(result, ensure_ascii=False)
+    assert result["items"][0]["pattern"] == "雙重底"
+    assert result["items"][0]["direction"] == "bullish"
+    assert secret not in encoded
+    assert "rank" not in encoded
+    assert "pivots" not in encoded
+    assert "formula" not in encoded
+
+
+def test_friend_institution_rankings_only_publish_official_public_fields():
+    secret = "OWNER_ACCOUNT_OR_TOKEN"
+    rows = [{
+        "symbol": "2330.TW", "name": "台積電", "market": "TW", "type": "個股",
+        "industry": "半導體", "institution_available": True,
+        "institution_official": True, "institution_date": "2026-09-18",
+        "institution_source": "TWSE T86", "institution_net": 1000,
+        "foreign_net": 900, "trust_net": 50, "dealer_net": 50,
+        "institution_score": 99, "institution_5d": 9999,
+        "account": secret, "api_key": secret,
+    }, {
+        "symbol": "2317.TW", "name": "鴻海", "market": "TW", "type": "個股",
+        "industry": "電子", "institution_available": True,
+        "institution_official": True, "institution_date": "2026-09-18",
+        "institution_source": "TWSE T86", "institution_net": -500,
+        "foreign_net": -450, "trust_net": -25, "dealer_net": -25,
+    }, {
+        "symbol": "QQQ", "name": "Not Taiwan", "market": "US",
+        "institution_available": True, "institution_official": True,
+        "institution_net": 999999,
+    }]
+    status = {"official": {"ranking_eligible": True, "session_date": "2026-09-18", "coverage_pct": 98.9}}
+    result = sanitize_institutions(rows, status, "2026-09-19 20:00:00")
+    encoded = json.dumps(result, ensure_ascii=False)
+    assert result["ready"] is True
+    assert result["groups"]["total"]["buy"][0]["netShares"] == 1000
+    assert result["groups"]["total"]["sell"][0]["netShares"] == -500
+    assert result["groups"]["foreign"]["buy"][0]["source"] == "TWSE T86"
+    assert "QQQ" not in encoded
+    assert secret not in encoded
+    assert "institution_score" not in encoded
+    assert "institution_5d" not in encoded
