@@ -11,7 +11,7 @@ import json
 import os
 from collections import Counter
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -97,11 +97,14 @@ def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
     warnings = int(summary.get("warning_count") or 0)
     critical = int(summary.get("critical_count") or 0)
     source_failures = int(summary.get("source_failure_count") or 0)
+    degraded_sources = int(summary.get("degraded_source_count") or 0)
     status = str(payload.get("status") or "warning").lower()
     detail = (
         f"官方身分符合 {matched}/{tracked} 檔（個股 {tracked_stocks}、ETF {tracked_etfs}）；"
         f"事件 {events} 件；來源失敗 {source_failures} 個"
     )
+    if degraded_sources:
+        detail += f"；已有替代來源覆蓋 {degraded_sources} 個受限來源"
     source_health = payload.get("source_health") if isinstance(payload.get("source_health"), dict) else {}
     sec_health = source_health.get("sec_registry") if isinstance(source_health.get("sec_registry"), dict) else {}
     if status == "critical" or critical:
@@ -124,6 +127,12 @@ def _corporate_actions_check(payload: dict[str, Any]) -> dict[str, Any]:
             "corporate_actions_shadow", "股票更名／停復牌監控", "info",
             detail + f"；SEC 使用 {sec_health.get('snapshot_generated_at') or '近期'} 官方校驗快照",
             "每日仍嘗試即時更新；快照超過 7 日會自動轉黃燈，且不據此自動更名或下市",
+        )
+    if degraded_sources:
+        return _check(
+            "corporate_actions_shadow", "股票更名／停復牌監控", "info",
+            detail + "；替代官方名單已確認代號仍有效，正式資料維持鎖定",
+            "持續重試受限來源；不得據此自動更名、下市或拼接歷史價格",
         )
     return _check(
         "corporate_actions_shadow", "股票更名／停復牌監控", "ok",
@@ -565,6 +574,11 @@ def build_guard(
     archive_health = _load(reports_dir / "history_archive_health.json")
     evidence_backup_health = _load(reports_dir / "prediction_evidence_backup_health.json")
     corporate_actions = _load(reports_dir / "corporate_actions_shadow.json")
+    analysis_rows = (
+        all_analysis.get("data")
+        if isinstance(all_analysis.get("data"), list)
+        else []
+    )
     checks: list[dict[str, Any]] = []
 
     if archive_health:
@@ -619,8 +633,27 @@ def build_guard(
         checks.append(_check("report_freshness", "股票資料更新", "critical", "找不到可辨識的最新報表時間", "重新執行股票報告排程"))
     else:
         age_minutes = round((now - updated).total_seconds() / 60, 1)
+        expected_session = now.date()
+        while expected_session.weekday() >= 5:
+            expected_session -= timedelta(days=1)
+        completed_sessions = sorted({
+            str(row.get("official_session_date") or "")
+            for row in analysis_rows
+            if isinstance(row, dict) and row.get("official_session_date")
+        })
+        latest_session = completed_sessions[-1] if completed_sessions else ""
+        weekend_session_current = bool(
+            now.weekday() >= 5
+            and latest_session
+            and latest_session >= expected_session.isoformat()
+        )
         if age_minutes < -10:
             checks.append(_check("report_freshness", "股票資料更新", "warning", "報表時間晚於系統時間", "檢查執行設備的日期、時區與時間同步"))
+        elif weekend_session_current:
+            checks.append(_check(
+                "report_freshness", "股票資料更新", "ok",
+                f"週末休市；最近完成交易日 {latest_session} 已正確入帳，報表距今 {max(0, age_minutes) / 60:.1f} 小時",
+            ))
         elif age_minutes > 720:
             checks.append(_check("report_freshness", "股票資料更新", "critical", f"已 {age_minutes / 60:.1f} 小時沒有完成新報表", "檢查 GitHub Actions、電腦排程及上游行情來源"))
         elif age_minutes > 270:
@@ -646,7 +679,6 @@ def build_guard(
     universe = int(all_analysis.get("candidate_count") or latest.get("universe_count") or 0)
     analyzed = int(latest.get("analyzed_count") or all_analysis.get("analyzed_count") or 0)
     ranking_rows = rankings.get("data") if isinstance(rankings.get("data"), list) else []
-    analysis_rows = all_analysis.get("data") if isinstance(all_analysis.get("data"), list) else []
     ratio = analyzed / universe if universe > 0 else 0
     if analyzed <= 0 or not ranking_rows or not analysis_rows:
         checks.append(_check("analysis_output", "分析輸出", "critical", "排名或完整分析結果為空", "不要使用本次結果；檢查行情抓取與 briefing.py 執行紀錄"))

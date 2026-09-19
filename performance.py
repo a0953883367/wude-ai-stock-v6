@@ -426,6 +426,81 @@ def _trade_metric_bundle(
     return result
 
 
+def _trade_signal_diagnostics(
+    snapshots: list[dict[str, Any]],
+    predicate: Callable[[dict[str, Any]], bool],
+) -> dict[str, Any]:
+    """Explain why complete entry signals do or do not exist.
+
+    A direction outcome is not automatically a buy setup.  In particular, a
+    zero trigger count is healthy when no frozen setup qualified or when a
+    qualified entry zone simply was not traded.  Only malformed frozen zones
+    or missing completed-session OHLC are data-contract errors.
+    """
+    status_counts: dict[str, int] = {}
+    qualified_setups = 0
+    evaluated_setups = 0
+    triggered_setups = 0
+    pending_setups = 0
+    source_ineligible = 0
+    guard_blocked = 0
+    for snapshot in snapshots:
+        for row in snapshot.get("predictions", []):
+            if not predicate(row) or not _is_validation_eligible(row):
+                continue
+            if _trade_contract_version(row) < TRADE_SIGNAL_CONTRACT_VERSION:
+                continue
+            if row.get("trade_guard_blocked") is True:
+                guard_blocked += 1
+            if row.get("trade_setup_eligible") is not True:
+                source_ineligible += 1
+                continue
+            qualified_setups += 1
+            outcome = (row.get("outcomes") or {}).get("1")
+            if not isinstance(outcome, dict):
+                pending_setups += 1
+                continue
+            status = str(outcome.get("entry_evaluation_status") or "unknown")
+            status_counts[status] = status_counts.get(status, 0) + 1
+            evaluated_setups += 1
+            if outcome.get("entry_triggered") is True:
+                triggered_setups += 1
+
+    contract_error_statuses = {
+        "invalid_frozen_entry_zone",
+        "missing_completed_session_ohlc",
+        "unknown",
+    }
+    contract_errors = sum(
+        count for status, count in status_counts.items()
+        if status in contract_error_statuses
+    )
+    untouched = int(status_counts.get("entry_zone_not_touched") or 0)
+    if contract_errors:
+        diagnosis = "data_contract_error"
+    elif triggered_setups:
+        diagnosis = "healthy_triggered"
+    elif qualified_setups:
+        diagnosis = "healthy_waiting_for_zone"
+    else:
+        diagnosis = "healthy_no_qualified_setup"
+    return {
+        "contract_version": TRADE_SIGNAL_CONTRACT_VERSION,
+        "diagnosis": diagnosis,
+        "qualified_setups": qualified_setups,
+        "evaluated_setups": evaluated_setups,
+        "triggered_setups": triggered_setups,
+        "pending_setups": pending_setups,
+        "untouched_entry_zones": untouched,
+        "source_ineligible_rows": source_ineligible,
+        "guard_blocked_rows": guard_blocked,
+        "data_contract_errors": contract_errors,
+        "evaluation_status_counts": status_counts,
+        "affects_formal_v6": False,
+        "places_orders": False,
+    }
+
+
 def _track_bundle(
     snapshots: list[dict[str, Any]],
     predicate: Callable[[dict[str, Any]], bool],
@@ -1029,6 +1104,9 @@ def _summary(snapshots: list[dict[str, Any]], legacy_reset: bool = False) -> dic
             "horizons": _metric_bundle(current_snapshots, predicate, _consensus_direction),
             "tracks": _track_bundle(current_snapshots, predicate, _track_consensus_direction),
             "trade_signals": _trade_metric_bundle(current_snapshots, predicate),
+            "trade_signal_diagnostics": _trade_signal_diagnostics(
+                current_snapshots, predicate
+            ),
             "trade_tracks": _track_bundle(current_snapshots, predicate, _track_trade_direction),
             "models": {
                 name: {
