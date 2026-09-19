@@ -14,6 +14,7 @@ assert(html.includes('agent_control.css?v=1'));
 assert(js.includes("reports/agent_control.json"));
 assert(js.includes('正式 V6 權重'));
 assert(js.includes('ERP／PLC／設備寫入'));
+assert(js.includes("warning:'注意'"));
 assert(css.includes('.agent-grid'));
 assert.strictEqual(report.agents.length,4);
 assert.strictEqual(new Set(report.agents.map(row=>row.namespace)).size,4);
