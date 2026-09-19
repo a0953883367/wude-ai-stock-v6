@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-09-19 23:13:35",
+  "updated_at": "2026-09-20 00:05:58",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -576,28 +576,97 @@
       "direction_samples": 837,
       "trade_signal_samples": 7,
       "status": "collecting_trade_outcomes",
-      "detail": "已有 7 筆完整交易訊號結果，繼續前向驗證。"
+      "detail": "已有 7 筆完整交易訊號結果，繼續前向驗證。",
+      "requires_diagnostic": false,
+      "trade_signal_diagnostics": {
+        "contract_version": 2,
+        "diagnosis": "healthy_triggered",
+        "qualified_setups": 15,
+        "evaluated_setups": 11,
+        "triggered_setups": 7,
+        "pending_setups": 4,
+        "untouched_entry_zones": 4,
+        "source_ineligible_rows": 1470,
+        "guard_blocked_rows": 652,
+        "data_contract_errors": 0,
+        "evaluation_status_counts": {
+          "entry_zone_not_touched": 4,
+          "completed_session_zone_touch": 7
+        },
+        "affects_formal_v6": false,
+        "places_orders": false
+      }
     },
     "TW_ETF": {
       "label": "台灣ETF",
       "direction_samples": 1,
       "trade_signal_samples": 0,
-      "status": "no_trade_signal_yet",
-      "detail": "已有 1 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
+      "status": "no_qualified_setup",
+      "detail": "已有 1 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
+      "requires_diagnostic": false,
+      "trade_signal_diagnostics": {
+        "contract_version": 2,
+        "diagnosis": "healthy_no_qualified_setup",
+        "qualified_setups": 0,
+        "evaluated_setups": 0,
+        "triggered_setups": 0,
+        "pending_setups": 0,
+        "untouched_entry_zones": 0,
+        "source_ineligible_rows": 0,
+        "guard_blocked_rows": 0,
+        "data_contract_errors": 0,
+        "evaluation_status_counts": {},
+        "affects_formal_v6": false,
+        "places_orders": false
+      }
     },
     "US_STOCK": {
       "label": "美股個股",
       "direction_samples": 162,
       "trade_signal_samples": 0,
-      "status": "no_trade_signal_yet",
-      "detail": "已有 162 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
+      "status": "waiting_for_entry_zone",
+      "detail": "已有 162 筆方向結果；1 筆合格買點中已檢查 1 筆，1 筆價格尚未進入買進區，另有 0 筆等待結算。這是正常等待，不是缺資料。",
+      "requires_diagnostic": false,
+      "trade_signal_diagnostics": {
+        "contract_version": 2,
+        "diagnosis": "healthy_waiting_for_zone",
+        "qualified_setups": 1,
+        "evaluated_setups": 1,
+        "triggered_setups": 0,
+        "pending_setups": 0,
+        "untouched_entry_zones": 1,
+        "source_ineligible_rows": 199,
+        "guard_blocked_rows": 0,
+        "data_contract_errors": 0,
+        "evaluation_status_counts": {
+          "entry_zone_not_touched": 1
+        },
+        "affects_formal_v6": false,
+        "places_orders": false
+      }
     },
     "US_ETF": {
       "label": "美國ETF",
       "direction_samples": 112,
       "trade_signal_samples": 0,
-      "status": "no_trade_signal_yet",
-      "detail": "已有 112 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
+      "status": "no_qualified_setup",
+      "detail": "已有 112 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
+      "requires_diagnostic": false,
+      "trade_signal_diagnostics": {
+        "contract_version": 2,
+        "diagnosis": "healthy_no_qualified_setup",
+        "qualified_setups": 0,
+        "evaluated_setups": 0,
+        "triggered_setups": 0,
+        "pending_setups": 0,
+        "untouched_entry_zones": 0,
+        "source_ineligible_rows": 200,
+        "guard_blocked_rows": 0,
+        "data_contract_errors": 0,
+        "evaluation_status_counts": {},
+        "affects_formal_v6": false,
+        "places_orders": false
+      }
     }
   },
   "shadow_candidates": [
@@ -608,24 +677,6 @@
       "evidence_event_count": 340,
       "purpose": "在固定資料上比較共識門檻，不回頭改寫正式V6預測。",
       "required_evidence": "相同市場、盤勢與期間的獨立前向事件",
-      "stage": "preliminary_review_only",
-      "uses_future_data": false,
-      "affects_formal_v6": false,
-      "automatic_promotion": false,
-      "broker_orders": false
-    },
-    {
-      "candidate_id": "shadow:trade_threshold_diagnostic:v1",
-      "name": "交易門檻診斷影子候選",
-      "cause": "zero_trade_signal",
-      "evidence_event_count": 275,
-      "affected_cohorts": [
-        "TW_ETF",
-        "US_STOCK",
-        "US_ETF"
-      ],
-      "purpose": "比較資料契約缺欄與門檻過嚴兩種原因；只做影子門檻試算，不放寬正式買進條件。",
-      "required_evidence": "方向樣本、買點觸發欄位、15／30分鐘確認與交易成本",
       "stage": "preliminary_review_only",
       "uses_future_data": false,
       "affects_formal_v6": false,
