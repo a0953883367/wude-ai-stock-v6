@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V1",
-  "generated_at": "2026-09-19T18:14:20+00:00",
+  "generated_at": "2026-09-19T18:16:59+00:00",
   "status": "passed",
   "status_label": "四個 Agent 安全驗收通過",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -24,9 +24,20 @@
       "task_key": "8dc6a67d37a0421735e2569d8e9fb8e385ef15ab7ba148922ffd0b312f13b7ac",
       "payload_stored": false,
       "external_side_effect": false,
+      "context_plan": {
+        "profile": "research",
+        "layers": [
+          "reference",
+          "research"
+        ],
+        "files": 11,
+        "bytes": 191671,
+        "truncated": true,
+        "cross_domain_reads": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
     },
     {
       "agent_id": "zhiying_company",
@@ -37,9 +48,20 @@
       "task_key": "d7a9cc5d56c11cd503085a7a085c53514c7cf9fbffc62c578d546e7a20797856",
       "payload_stored": false,
       "external_side_effect": false,
+      "context_plan": {
+        "profile": "formal_answer",
+        "layers": [
+          "canonical",
+          "reference"
+        ],
+        "files": 1,
+        "bytes": 1844,
+        "truncated": false,
+        "cross_domain_reads": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
     },
     {
       "agent_id": "wt_fasteners",
@@ -50,9 +72,20 @@
       "task_key": "53228ac069136d1a30d4ad98afe79960c0527ca054e617cf668da3f025286112",
       "payload_stored": false,
       "external_side_effect": false,
+      "context_plan": {
+        "profile": "formal_answer",
+        "layers": [
+          "canonical",
+          "reference"
+        ],
+        "files": 2,
+        "bytes": 9477,
+        "truncated": false,
+        "cross_domain_reads": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
     },
     {
       "agent_id": "packaging_startup",
@@ -63,9 +96,20 @@
       "task_key": "080bb51a20855e316817dc5eabbb0d7e6d44895875f7d8f278ac2ac457b60dd4",
       "payload_stored": false,
       "external_side_effect": false,
+      "context_plan": {
+        "profile": "formal_answer",
+        "layers": [
+          "canonical",
+          "reference"
+        ],
+        "files": 2,
+        "bytes": 9061,
+        "truncated": false,
+        "cross_domain_reads": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
     }
   ],
   "approval_gate_checks": [

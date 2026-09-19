@@ -1,0 +1,68 @@
+name: 五層資料與輸出驗收
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - agent_control.py
+      - agent_runtime.py
+      - artifact_validation.py
+      - context_audit.py
+      - context_governance.py
+      - agent_workspaces/context_catalog.json
+      - agent_workspaces/輸出驗收規格範本.json
+      - tests/test_agent_control.py
+      - tests/test_agent_runtime.py
+      - tests/test_artifact_validation.py
+      - tests/test_context_audit.py
+      - tests/test_context_governance.py
+      - .github/workflows/context-governance.yml
+  push:
+    branches: [main]
+    paths:
+      - agent_control.py
+      - agent_runtime.py
+      - artifact_validation.py
+      - context_audit.py
+      - context_governance.py
+      - agent_workspaces/context_catalog.json
+      - agent_workspaces/輸出驗收規格範本.json
+      - tests/test_agent_control.py
+      - tests/test_agent_runtime.py
+      - tests/test_artifact_validation.py
+      - tests/test_context_audit.py
+      - tests/test_context_governance.py
+      - .github/workflows/context-governance.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: 安裝測試工具
+        run: python -m pip install "pytest>=8,<10"
+      - name: 驗證五層清冊及輸出契約
+        run: >-
+          python -m pytest -q
+          tests/test_agent_control.py
+          tests/test_agent_runtime.py
+          tests/test_context_governance.py
+          tests/test_context_audit.py
+          tests/test_artifact_validation.py
+      - name: 產生並核對資料治理稽核
+        run: |
+          python context_audit.py --output /tmp/context_governance.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('/tmp/context_governance.json').read_text())
+          assert report['status'] == 'passed', report
+          assert report['cross_domain_conflicts'] == [], report
+          assert report['cross_layer_conflicts'] == [], report
+          PY

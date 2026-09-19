@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from agent_control import AGENTS, UsageLedger, authorize_task
+from artifact_validation import verify_artifact
 from context_audit import audit_catalog
+from context_governance import build_context_plan
 
 
 RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V1"
@@ -33,6 +35,14 @@ BOUNDARY_CHECKS = (
     ("packaging_startup", "payment", "包裝創業付款保持鎖定"),
 )
 
+ACTION_CONTEXT_PROFILES = {
+    "read_status": "status",
+    "analyze": "formal_answer",
+    "shadow_validate": "research",
+    "draft_report": "output",
+    "simulate_workflow": "formal_answer",
+}
+
 
 def _read_json(path: Path) -> dict[str, Any]:
     try:
@@ -48,6 +58,8 @@ def execute_safe_task(
     title: str,
     payload: Mapping[str, Any] | None = None,
     ledger: UsageLedger | None = None,
+    *,
+    root: Path = Path("."),
 ) -> dict[str, Any]:
     decision = authorize_task(
         agent_id,
@@ -68,10 +80,53 @@ def execute_safe_task(
         "external_side_effect": False,
     }
     if decision["executable"]:
+        profile = ACTION_CONTEXT_PROFILES.get(action, "formal_answer")
+        plan = build_context_plan(
+            title,
+            profile=profile,
+            explicit_agent=agent_id,
+            root=root,
+        )
+        result["context_plan"] = {
+            "profile": profile,
+            "layers": plan["layers"],
+            "files": plan["usage"]["files"],
+            "bytes": plan["usage"]["bytes"],
+            "truncated": plan["usage"]["truncated"],
+            "cross_domain_reads": plan["cross_domain_reads"],
+        }
+        if action == "draft_report":
+            validation_spec = payload.get("artifact_validation") if isinstance(payload, Mapping) else None
+            if isinstance(validation_spec, dict):
+                validation = verify_artifact(validation_spec, root=root)
+                result["artifact_validation"] = {
+                    "status": validation["status"],
+                    "verified": validation["verified"],
+                    "failure_count": len(validation["failures"]),
+                }
+                if validation["verified"]:
+                    result.update(
+                        status="completed",
+                        status_label="輸出驗收通過",
+                        summary="必要資料已依清冊載入，且輸出證據驗收通過。",
+                    )
+                else:
+                    result.update(
+                        status="draft",
+                        status_label="草稿；等待輸出驗收",
+                        summary="輸出尚未通過完整證據驗收，不可標示正式完成。",
+                    )
+            else:
+                result.update(
+                    status="draft",
+                    status_label="草稿；尚未提供輸出驗收",
+                    summary="報告已保留草稿狀態；完成來源、數字、跨頁及渲染檢查後才可交付。",
+                )
+            return result
         result.update(
             status="completed",
             status_label="安全驗收通過",
-            summary="獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。",
+            summary="獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。",
         )
     else:
         result.update(
