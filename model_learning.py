@@ -84,18 +84,63 @@ def _signal_health(performance: dict[str, Any]) -> dict[str, Any]:
         group = groups.get(cohort) or {}
         direction = _metric(group, "horizons")
         trades = _metric(group, "trade_signals")
+        diagnostics = group.get("trade_signal_diagnostics") or {}
+        if not isinstance(diagnostics, dict):
+            diagnostics = {}
         trade_samples = int(trades.get("samples") or 0)
         direction_samples = int(direction.get("samples") or 0)
+        diagnosis = str(diagnostics.get("diagnosis") or "")
+        contract_errors = int(diagnostics.get("data_contract_errors") or 0)
+        qualified = int(diagnostics.get("qualified_setups") or 0)
+        evaluated = int(diagnostics.get("evaluated_setups") or 0)
+        pending = int(diagnostics.get("pending_setups") or 0)
+        untouched = int(diagnostics.get("untouched_entry_zones") or 0)
+
+        if trade_samples:
+            status = "collecting_trade_outcomes"
+            detail = f"已有 {trade_samples} 筆完整交易訊號結果，繼續前向驗證。"
+            requires_diagnostic = False
+        elif contract_errors or diagnosis == "data_contract_error":
+            status = "data_contract_error"
+            detail = (
+                f"已有 {direction_samples} 筆方向結果；發現 {contract_errors} 筆資料契約錯誤，"
+                "需先修正缺欄或完成交易日行情。"
+            )
+            requires_diagnostic = True
+        elif diagnosis == "healthy_waiting_for_zone":
+            status = "waiting_for_entry_zone"
+            detail = (
+                f"已有 {direction_samples} 筆方向結果；{qualified} 筆合格買點中"
+                f"已檢查 {evaluated} 筆，{untouched} 筆價格尚未進入買進區"
+                f"，另有 {pending} 筆等待結算。這是正常等待，不是缺資料。"
+            )
+            requires_diagnostic = False
+        elif diagnosis == "healthy_no_qualified_setup":
+            status = "no_qualified_setup"
+            detail = (
+                f"已有 {direction_samples} 筆方向結果，但目前沒有符合正式買進條件的設定；"
+                "完整交易訊號為 0 筆屬正常，不需放寬門檻。"
+            )
+            requires_diagnostic = False
+        elif direction_samples:
+            status = "no_trade_signal_yet"
+            detail = (
+                f"已有 {direction_samples} 筆方向結果，但舊資料未提供零交易訊號原因；"
+                "需檢查門檻或資料契約。"
+            )
+            requires_diagnostic = True
+        else:
+            status = "waiting_direction_outcomes"
+            detail = "尚無完成的方向結果，等待下一個有效交易日結算。"
+            requires_diagnostic = False
         health[cohort] = {
             "label": label,
             "direction_samples": direction_samples,
             "trade_signal_samples": trade_samples,
-            "status": "collecting_trade_outcomes" if trade_samples else "no_trade_signal_yet",
-            "detail": (
-                f"已有 {trade_samples} 筆完整交易訊號結果，繼續前向驗證。"
-                if trade_samples
-                else f"已有 {direction_samples} 筆方向結果，但尚無完整交易訊號；需檢查門檻或資料契約。"
-            ),
+            "status": status,
+            "detail": detail,
+            "requires_diagnostic": requires_diagnostic,
+            "trade_signal_diagnostics": diagnostics,
         }
     return health
 
@@ -139,6 +184,7 @@ def _candidate_registry(
         key for key, value in signal_health.items()
         if int(value.get("trade_signal_samples") or 0) == 0
         and int(value.get("direction_samples") or 0) > 0
+        and value.get("requires_diagnostic") is True
     ]
     if zero_signal_cohorts:
         candidates.append({
