@@ -14,6 +14,10 @@ def test_all_four_agents_execute_one_safe_validation(tmp_path: Path):
     assert len(report["validations"]) == len(BOOTSTRAP_TASKS)
     assert len({row["namespace"] for row in report["validations"]}) == 4
     assert all(row["external_side_effect"] is False for row in report["validations"])
+    assert report["context_governance"]["status"] == "passed"
+    assert report["context_governance"]["cross_domain_conflicts"] == 0
+    assert report["context_governance"]["dynamic_loading"] is True
+    assert report["output_validation"]["draft_until_verified"] is True
 
 
 def test_runtime_never_persists_payload_content():

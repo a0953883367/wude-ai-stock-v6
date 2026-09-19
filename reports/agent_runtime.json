@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V1",
-  "generated_at": "2026-09-19T17:27:27+00:00",
+  "generated_at": "2026-09-19T18:09:34+00:00",
   "status": "passed",
   "status_label": "四個 Agent 安全驗收通過",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -127,6 +127,34 @@
     "customer_data_stored": false,
     "cross_domain_writes": false,
     "public_output": "只含任務摘要、雜湊、結果與授權狀態"
+  },
+  "context_governance": {
+    "status": "passed",
+    "status_label": "五層資料清冊驗收通過",
+    "classified_files": 43,
+    "cross_domain_conflicts": 0,
+    "cross_layer_conflicts": 0,
+    "dynamic_loading": true,
+    "archive_requires_explicit_request": true
+  },
+  "output_validation": {
+    "status": "enforced_by_contract",
+    "draft_until_verified": true,
+    "formats": [
+      "PPTX",
+      "PDF",
+      "DOCX",
+      "XLSX",
+      "HTML",
+      "Markdown",
+      "JSON"
+    ],
+    "required_checks": [
+      "來源版本",
+      "數字日期單位",
+      "跨頁一致",
+      "實際渲染檢查"
+    ]
   },
   "next_authorized_steps": {
     "stock_shadow": "繼續既有影子前向驗證與 GPT 教導，不改正式 V6。",

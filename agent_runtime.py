@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from agent_control import AGENTS, UsageLedger, authorize_task
+from context_audit import audit_catalog
 
 
 RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V1"
@@ -95,6 +96,7 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
     ]
     completed = sum(task["status"] == "completed" for task in validations)
     protected = sum(task["status"] == "waiting_for_approval" for task in gates)
+    governance = audit_catalog(root=Path("."))
     return {
         "schema": "wude.central_agent_runtime.v1",
         "version": RUNTIME_VERSION,
@@ -118,6 +120,21 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
             "customer_data_stored": False,
             "cross_domain_writes": False,
             "public_output": "只含任務摘要、雜湊、結果與授權狀態",
+        },
+        "context_governance": {
+            "status": governance["status"],
+            "status_label": governance["status_label"],
+            "classified_files": governance["summary"]["classified_files"],
+            "cross_domain_conflicts": len(governance["cross_domain_conflicts"]),
+            "cross_layer_conflicts": len(governance["cross_layer_conflicts"]),
+            "dynamic_loading": True,
+            "archive_requires_explicit_request": True,
+        },
+        "output_validation": {
+            "status": "enforced_by_contract",
+            "draft_until_verified": True,
+            "formats": ["PPTX", "PDF", "DOCX", "XLSX", "HTML", "Markdown", "JSON"],
+            "required_checks": ["來源版本", "數字日期單位", "跨頁一致", "實際渲染檢查"],
         },
         "next_authorized_steps": {
             "stock_shadow": "繼續既有影子前向驗證與 GPT 教導，不改正式 V6。",

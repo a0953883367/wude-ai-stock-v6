@@ -1,0 +1,75 @@
+{
+  "schema": "wude.context_catalog.v1",
+  "version": "CONTEXT-CATALOG-V1",
+  "policy": {
+    "default_max_files": 12,
+    "default_max_bytes": 200000,
+    "cross_domain_reads": false,
+    "archive_load_requires_explicit_request": true,
+    "research_can_change_formal_outputs": false,
+    "temporary_can_change_formal_outputs": false
+  },
+  "layers": {
+    "canonical": {"label": "正式規則", "answer_eligible": true},
+    "reference": {"label": "長期參考", "answer_eligible": true},
+    "research": {"label": "研究候選", "answer_eligible": false},
+    "temporary": {"label": "暫存資料", "answer_eligible": false},
+    "archive": {"label": "歷史封存", "answer_eligible": false}
+  },
+  "domains": {
+    "stock_shadow": {
+      "label": "武得 AI 股票助理",
+      "canonical": ["watchlist.py", "strategy.py", "reports/all_analysis.json", "reports/rankings.json"],
+      "reference": ["README.md", "inverse_etf_catalog.json", "reports/unified_evidence.json"],
+      "research": [
+        "reports/comprehensive_shadow_TW_*.json",
+        "reports/comprehensive_shadow_US_*.json",
+        "reports/comprehensive_shadow_ranking.json",
+        "reports/corporate_actions_shadow.json",
+        "reports/inverse_etf_shadow.json",
+        "reports/market_rotation_shadow.json",
+        "reports/next_session_shadow_ranking.json",
+        "reports/tw_signal_confirmation_shadow.json",
+        "reports/valuation_risk_shadow.json",
+        "reports/weekly_shadow_coach.json",
+        "reports/model_learning.json",
+        "reports/validation_60d.json",
+        "reports/*experiment*.json"
+      ],
+      "temporary": ["reports/morning.json", "reports/noon.json", "reports/evening.json", "reports/latest.json"],
+      "archive": ["reports/*history*.json", "archive/**/*.json", "archive/**/*.json.gz"]
+    },
+    "zhiying_company": {
+      "label": "至盈助理",
+      "canonical": ["agent_workspaces/zhiying_company/連線模擬與驗收規格.json"],
+      "reference": [],
+      "research": [],
+      "temporary": [],
+      "archive": []
+    },
+    "wt_fasteners": {
+      "label": "WT 助理",
+      "canonical": ["agent_workspaces/wt_fasteners/商品資料輸入規格.json"],
+      "reference": ["agent_workspaces/wt_fasteners/WT商品與毛利輸入表.xlsx"],
+      "research": [],
+      "temporary": [],
+      "archive": []
+    },
+    "packaging_startup": {
+      "label": "包裝創業助理",
+      "canonical": ["agent_workspaces/packaging_startup/包裝創業試算輸入.json"],
+      "reference": ["agent_workspaces/packaging_startup/包裝創業產能與損益試算.xlsx"],
+      "research": [],
+      "temporary": [],
+      "archive": []
+    }
+  },
+  "task_profiles": {
+    "status": ["canonical", "temporary"],
+    "formal_answer": ["canonical", "reference"],
+    "research": ["reference", "research"],
+    "output": ["canonical", "reference", "temporary"],
+    "audit": ["canonical", "reference", "research", "temporary"],
+    "archive_review": ["archive"]
+  }
+}

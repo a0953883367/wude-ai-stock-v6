@@ -1,0 +1,64 @@
+{
+  "schema": "wude.context_audit.v1",
+  "generated_at": "2026-09-19T18:08:35+00:00",
+  "status": "passed",
+  "status_label": "五層資料清冊驗收通過",
+  "summary": {
+    "domains": 4,
+    "classified_files": 43,
+    "errors": 0,
+    "warnings": 2
+  },
+  "counts": {
+    "stock_shadow": {
+      "canonical": 4,
+      "reference": 3,
+      "research": 19,
+      "temporary": 4,
+      "archive": 8
+    },
+    "zhiying_company": {
+      "canonical": 1,
+      "reference": 0,
+      "research": 0,
+      "temporary": 0,
+      "archive": 0
+    },
+    "wt_fasteners": {
+      "canonical": 1,
+      "reference": 1,
+      "research": 0,
+      "temporary": 0,
+      "archive": 0
+    },
+    "packaging_startup": {
+      "canonical": 1,
+      "reference": 1,
+      "research": 0,
+      "temporary": 0,
+      "archive": 0
+    }
+  },
+  "missing_layers": [],
+  "cross_domain_conflicts": [],
+  "cross_layer_conflicts": [],
+  "unmatched_patterns": [
+    {
+      "domain": "stock_shadow",
+      "layer": "archive",
+      "pattern": "archive/**/*.json"
+    },
+    {
+      "domain": "stock_shadow",
+      "layer": "archive",
+      "pattern": "archive/**/*.json.gz"
+    }
+  ],
+  "safety": {
+    "files_moved": 0,
+    "files_deleted": 0,
+    "formal_outputs_changed": false,
+    "weights_changed": false,
+    "shadow_records_changed": false
+  }
+}
