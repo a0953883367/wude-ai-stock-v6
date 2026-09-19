@@ -1,0 +1,19 @@
+{
+  "artifact": "請填入輸出檔案，例如 outputs/簡報.pptx",
+  "domain": "請選一個：stock_shadow、zhiying_company、wt_fasteners、packaging_startup",
+  "sources": [
+    "請填入正式來源檔案"
+  ],
+  "checks": {
+    "source_version": {"passed": false, "evidence": "填入來源版本、日期與核對結果"},
+    "numbers_dates_units": {"passed": false, "evidence": "填入數字、日期及單位核對結果"},
+    "cross_page_consistency": {"passed": false, "evidence": "填入跨頁標題、表格及結論一致性核對結果"},
+    "visual_render_review": {"passed": false, "evidence": "填入逐頁實際渲染與目視檢查結果"}
+  },
+  "presentation": {
+    "expected_slide_count": 0,
+    "rendered_slides": [
+      "請逐頁填入渲染圖片，例如 outputs/rendered/slide-1.png"
+    ]
+  }
+}
