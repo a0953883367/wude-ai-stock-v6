@@ -1,4 +1,5 @@
 import json
+import zipfile
 from pathlib import Path
 
 from agent_control import UsageLedger
@@ -93,3 +94,47 @@ def test_report_becomes_complete_only_after_artifact_validation(tmp_path: Path):
     assert row["status"] == "completed"
     assert row["artifact_validation"]["verified"] is True
     assert row["payload_stored"] is False
+
+
+def test_ppt_report_requires_every_slide_render_before_completion(tmp_path: Path):
+    (tmp_path / "agent_workspaces").mkdir()
+    catalog = {
+        "schema": "wude.context_catalog.v1",
+        "policy": {"default_max_files": 12, "default_max_bytes": 200000},
+        "layers": {},
+        "domains": {
+            key: {layer: [] for layer in ("canonical", "reference", "research", "temporary", "archive")}
+            for key in ("stock_shadow", "zhiying_company", "wt_fasteners", "packaging_startup")
+        },
+        "task_profiles": {"output": ["canonical", "reference", "temporary"]},
+    }
+    (tmp_path / "agent_workspaces" / "context_catalog.json").write_text(json.dumps(catalog), encoding="utf-8")
+    (tmp_path / "source.json").write_text("{}", encoding="utf-8")
+    with zipfile.ZipFile(tmp_path / "report.pptx", "w") as package:
+        package.writestr("[Content_Types].xml", "<Types/>")
+        package.writestr("ppt/slides/slide1.xml", "<slide/>")
+    (tmp_path / "slide-1.png").write_bytes(b"\x89PNG\r\n\x1a\nrender-evidence")
+    checks = {
+        key: {"passed": True, "evidence": "測試證據"}
+        for key in ("source_version", "numbers_dates_units", "cross_page_consistency", "visual_render_review")
+    }
+    spec = {
+        "artifact": "report.pptx",
+        "domain": "zhiying_company",
+        "sources": ["source.json"],
+        "checks": checks,
+        "presentation": {"expected_slide_count": 1, "rendered_slides": ["slide-1.png"]},
+    }
+
+    row = execute_safe_task(
+        "zhiying_company",
+        "draft_report",
+        "製作至盈簡報",
+        {"artifact_validation": spec},
+        UsageLedger(),
+        root=tmp_path,
+    )
+
+    assert row["status"] == "completed"
+    assert row["artifact_validation"]["slide_count"] == 1
+    assert row["artifact_validation"]["rendered_slide_count"] == 1
