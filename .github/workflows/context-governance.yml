@@ -8,6 +8,7 @@ on:
       - agent_runtime.py
       - artifact_validation.py
       - presentation_delivery.py
+      - artifact_registry.py
       - context_audit.py
       - context_governance.py
       - agent_workspaces/context_catalog.json
@@ -17,6 +18,12 @@ on:
       - tests/test_agent_runtime.py
       - tests/test_artifact_validation.py
       - tests/test_presentation_delivery.py
+      - tests/test_artifact_registry.py
+      - tests/test_agent_control_ui.js
+      - agent-control.html
+      - agent_control.js
+      - agent_control.css
+      - reports/artifact_registry.json
       - tests/test_context_audit.py
       - tests/test_context_governance.py
       - .github/workflows/context-governance.yml
@@ -27,6 +34,7 @@ on:
       - agent_runtime.py
       - artifact_validation.py
       - presentation_delivery.py
+      - artifact_registry.py
       - context_audit.py
       - context_governance.py
       - agent_workspaces/context_catalog.json
@@ -36,6 +44,12 @@ on:
       - tests/test_agent_runtime.py
       - tests/test_artifact_validation.py
       - tests/test_presentation_delivery.py
+      - tests/test_artifact_registry.py
+      - tests/test_agent_control_ui.js
+      - agent-control.html
+      - agent_control.js
+      - agent_control.css
+      - reports/artifact_registry.json
       - tests/test_context_audit.py
       - tests/test_context_governance.py
       - .github/workflows/context-governance.yml
@@ -62,6 +76,9 @@ jobs:
           tests/test_context_audit.py
           tests/test_artifact_validation.py
           tests/test_presentation_delivery.py
+          tests/test_artifact_registry.py
+      - name: 驗證中央 AI 交付清冊介面
+        run: node tests/test_agent_control_ui.js
       - name: 產生並核對資料治理稽核
         run: |
           python context_audit.py --output /tmp/context_governance.json

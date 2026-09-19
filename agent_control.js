@@ -40,8 +40,20 @@
     document.getElementById('runtimeUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('runtimeTasks').innerHTML=tasks.map(function(task){return '<div class="runtime-task" data-runtime-agent="'+esc(task.agent_id)+'"><b>✅ '+esc(task.agent_name)+'</b><span>'+esc(task.title)+'：'+esc(task.status_label)+'</span></div>';}).join('')||'<div class="empty">尚無安全任務執行紀錄。</div>';
   }
-  Promise.all([fetchJSON('reports/agent_control.json'),fetchJSON('reports/agent_runtime.json'),fetchJSON('reports/agent_tasks.json')]).then(function(pair){
-    var report=pair[0],runtime=pair[1],tasks=pair[2];
+  function deliveryClass(status){return status==='ready_for_handoff'?'done':status==='in_progress'?'running':status==='waiting_approval'?'approval':'waiting';}
+  function renderDeliveries(report){
+    var summary=report.summary||{},items=Array.isArray(report.items)?report.items:[];
+    document.getElementById('deliveryHeadline').textContent=(report.status_label||'交付清冊運作中')+'｜共 '+(summary.total||0)+' 項｜可交付 '+(summary.ready_for_handoff||0)+'｜等待授權 '+(summary.waiting_approval||0)+'｜等待資料 '+(summary.waiting_input||0);
+    document.getElementById('deliveryUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
+    document.getElementById('deliveryCards').innerHTML=items.map(function(item){
+      var blockers=Array.isArray(item.blocked_by)?item.blocked_by:[],failures=Array.isArray(item.failures)?item.failures:[];
+      var link=item.artifact_exists?'<a class="task-link" href="'+esc(item.artifact)+'">'+esc(item.artifact_label||'開啟檔案')+'</a>':'';
+      var detail=item.slide_count!==undefined&&item.slide_count!==null?'<div class="delivery-proof">投影片 '+esc(item.slide_count)+' 頁｜渲染證據 '+esc(item.rendered_slide_count||0)+' 頁</div>':'';
+      return '<article class="delivery-card '+deliveryClass(item.status)+'"><div class="task-head"><span>'+esc(item.agent_name)+'</span><b>'+esc(item.status_label)+'</b></div><h3>'+esc(item.title)+'</h3><div class="delivery-path">'+esc(item.artifact)+'</div>'+detail+(blockers.length?'<div class="task-blocker"><span>等待</span>'+esc(blockers.join('、'))+'</div>':'')+(failures.length?'<div class="delivery-failure">尚未通過：'+esc(failures.join('、'))+'</div>':'')+'<div class="task-next"><span>下一步</span>'+esc(item.next_action)+'</div>'+link+'</article>';
+    }).join('')||'<div class="empty">目前沒有需要交付的檔案。</div>';
+  }
+  Promise.all([fetchJSON('reports/agent_control.json'),fetchJSON('reports/agent_runtime.json'),fetchJSON('reports/agent_tasks.json'),fetchJSON('reports/artifact_registry.json')]).then(function(pair){
+    var report=pair[0],runtime=pair[1],tasks=pair[2],deliveries=pair[3];
     document.getElementById('overallStatus').textContent=report.status_label||'控制層可用';
     document.getElementById('updatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('agentCards').innerHTML=(report.agents||[]).map(renderAgent).join('')||'<div class="empty">尚無 Agent 狀態。</div>';
@@ -49,6 +61,7 @@
     document.getElementById('safetyItems').innerHTML=Object.keys(labels).map(function(key){return '<div class="safety-item">🔒 '+labels[key]+'</div>';}).join('');
     renderRuntime(runtime);
     renderTasks(tasks);
+    renderDeliveries(deliveries);
   }).catch(function(error){
     document.getElementById('overallStatus').textContent='狀態讀取失敗';
     var box=document.getElementById('loadError');box.hidden=false;box.textContent='無法讀取 Agent 狀態：'+error.message;
