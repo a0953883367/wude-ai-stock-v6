@@ -1,0 +1,218 @@
+{
+  "schema": "wude.central_agent_control.v1",
+  "version": "CENTRAL-AGENT-CONTROL-V1",
+  "generated_at": "2026-09-19T16:20:23+00:00",
+  "status": "safe_first_version",
+  "status_label": "中央 Agent 安全控制層已建立",
+  "data_policy": {
+    "cross_domain_reads": false,
+    "shared_business_database": false,
+    "stores_sensitive_payloads": false,
+    "stores_only": [
+      "路由",
+      "權限",
+      "用量",
+      "核准狀態",
+      "稽核摘要"
+    ]
+  },
+  "safety": {
+    "formal_v6_locked": true,
+    "formal_rankings_locked": true,
+    "automatic_orders": false,
+    "automatic_payments": false,
+    "automatic_external_messages": false,
+    "erp_plc_device_writes": false
+  },
+  "blocked_actions": [
+    {
+      "action": "formal_weight_change",
+      "reason": "正式股票權重必須由本人審核，不由 Agent 自動修改。"
+    },
+    {
+      "action": "formal_ranking_change",
+      "reason": "正式排名維持鎖定，只能先做影子驗證。"
+    },
+    {
+      "action": "broker_order",
+      "reason": "不得連券商或自動下單。"
+    },
+    {
+      "action": "external_send",
+      "reason": "寄信、訊息或通知前必須取得本次明確核准。"
+    },
+    {
+      "action": "external_publish",
+      "reason": "上架或公開發布前必須取得本次明確核准。"
+    },
+    {
+      "action": "payment",
+      "reason": "付款與採購必須由本人確認。"
+    },
+    {
+      "action": "delete_history",
+      "reason": "不可自動刪除歷史或稽核資料。"
+    },
+    {
+      "action": "erp_write",
+      "reason": "公司 ERP 寫入等待公司授權與測試環境。"
+    },
+    {
+      "action": "plc_write",
+      "reason": "PLC 或現場設備控制等待公司授權與安全驗收。"
+    },
+    {
+      "action": "device_control",
+      "reason": "實體設備操作等待公司授權與安全驗收。"
+    }
+  ],
+  "agents": [
+    {
+      "id": "stock_shadow",
+      "name": "武得股票影子驗證 Agent",
+      "namespace": "stock_shadow",
+      "mode": "active_shadow",
+      "description": "讀取既有股票資料、執行隔離驗證、整理衝突與風險；不改正式 V6。",
+      "safe_actions": [
+        "read_status",
+        "analyze",
+        "shadow_validate",
+        "draft_report"
+      ],
+      "connectors": [
+        "github_reports",
+        "railway_read_only"
+      ],
+      "limits": {
+        "api_calls_per_day": 120,
+        "tokens_per_day": 300000,
+        "retries_per_task": 2
+      },
+      "runtime": {
+        "status": "running_shadow",
+        "status_label": "影子驗證運作中",
+        "source_updated_at": "2026-09-20 00:05:58",
+        "trading_days_collected": 20,
+        "target_trading_days": 60,
+        "weekly_coach_last_run": "2026-09-13T15:56:13.407747+00:00",
+        "weekly_coach_mode": "openai",
+        "weekly_coach_api_requests": 0,
+        "system_guard": "warning",
+        "formal_v6_locked": true,
+        "places_orders": false
+      }
+    },
+    {
+      "id": "zhiying_company",
+      "name": "至盈公司 Agent",
+      "namespace": "zhiying_company",
+      "mode": "sandbox_waiting_authorization",
+      "description": "可整理報價、工單與內部流程草稿；公司系統寫入與設備連線等待授權。",
+      "safe_actions": [
+        "read_status",
+        "analyze",
+        "draft_report",
+        "simulate_workflow"
+      ],
+      "connectors": [
+        "github_quotation"
+      ],
+      "limits": {
+        "api_calls_per_day": 80,
+        "tokens_per_day": 200000,
+        "retries_per_task": 2
+      },
+      "runtime": {
+        "status": "waiting_authorization",
+        "status_label": "測試模式；公司連線等待同意",
+        "available_now": [
+          "流程分析",
+          "報價與工單草稿",
+          "模擬驗收"
+        ],
+        "blocked": [
+          "ERP 寫入",
+          "PLC／設備控制",
+          "對外寄送"
+        ]
+      }
+    },
+    {
+      "id": "wt_fasteners",
+      "name": "WT 螺絲電商 Agent",
+      "namespace": "wt_fasteners",
+      "mode": "sandbox_waiting_source",
+      "description": "可建立商品、競品與營運分析草稿；商店資料來源與對外發布尚未啟用。",
+      "safe_actions": [
+        "read_status",
+        "analyze",
+        "draft_report",
+        "simulate_workflow"
+      ],
+      "connectors": [],
+      "limits": {
+        "api_calls_per_day": 60,
+        "tokens_per_day": 160000,
+        "retries_per_task": 2
+      },
+      "runtime": {
+        "status": "waiting_source",
+        "status_label": "測試模式；等待商店資料來源",
+        "available_now": [
+          "商品分析草稿",
+          "競品整理",
+          "流程模擬"
+        ],
+        "blocked": [
+          "自動上架",
+          "廣告付款",
+          "對外寄送"
+        ]
+      }
+    },
+    {
+      "id": "packaging_startup",
+      "name": "包裝創業 Agent",
+      "namespace": "packaging_startup",
+      "mode": "sandbox_ready",
+      "description": "可整理市場、成本與投資評估草稿；付款、採購與對外聯絡保持鎖定。",
+      "safe_actions": [
+        "read_status",
+        "analyze",
+        "draft_report",
+        "simulate_workflow"
+      ],
+      "connectors": [],
+      "limits": {
+        "api_calls_per_day": 60,
+        "tokens_per_day": 160000,
+        "retries_per_task": 2
+      },
+      "runtime": {
+        "status": "sandbox_ready",
+        "status_label": "測試模式可用",
+        "available_now": [
+          "市場分析",
+          "成本試算",
+          "投資評估草稿"
+        ],
+        "blocked": [
+          "採購付款",
+          "聯絡供應商",
+          "公開發布"
+        ]
+      }
+    }
+  ],
+  "audit": {
+    "event_count": 1,
+    "events": [
+      {
+        "event": "control_report_generated",
+        "at": "2026-09-19T16:20:23+00:00",
+        "payload_stored": false,
+        "result": "ok"
+      }
+    ]
+  }
+}
