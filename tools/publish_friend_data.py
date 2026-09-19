@@ -129,6 +129,91 @@ def sanitize_rotation(value):
     }
 
 
+def _public_identity(row):
+    market = str(row.get("market") or "")
+    return {
+        "name": str(row.get("name") or row.get("symbol") or "—")[:80],
+        "symbol": str(row.get("symbol") or "—")[:30],
+        "market": "台灣" if market == "TW" else "美國" if market == "US" else market[:20],
+        "kind": str(row.get("type") or "個股")[:30],
+        "sector": str(row.get("sector") or row.get("industry") or "—")[:80],
+    }
+
+
+def sanitize_patterns(rows, updated_at="等待更新"):
+    """Publish current pattern conclusions without shadow ledgers or formulas."""
+    items = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        pattern = str(row.get("chart_pattern_shadow_name") or "").strip()
+        if not pattern or pattern == "未偵測":
+            continue
+        direction = str(row.get("chart_pattern_shadow_direction") or "neutral")
+        if direction not in {"bullish", "bearish", "neutral"}:
+            direction = "neutral"
+        item = _public_identity(row)
+        item.update({
+            "pattern": pattern[:60],
+            "direction": direction,
+            "status": str(row.get("chart_pattern_shadow_status") or "等待確認")[:120],
+            "confidence": _number(row.get("chart_pattern_shadow_confidence")),
+            "volumeConfirmed": row.get("chart_pattern_shadow_volume_confirmed") is True,
+            "entry": _number(row.get("chart_pattern_shadow_entry")),
+            "stop": _number(row.get("chart_pattern_shadow_stop")),
+            "target": _number(row.get("chart_pattern_shadow_target")),
+        })
+        items.append(item)
+    items.sort(key=lambda item: (item.get("confidence") is not None, item.get("confidence") or 0), reverse=True)
+    return {
+        "updatedAt": str(updated_at or "等待更新")[:40],
+        "items": items[:200],
+        "note": "型態為公開行情的技術分析摘要，僅供研究；不含影子驗證、內部權重或模型公式。",
+    }
+
+
+def sanitize_institutions(rows, status=None, updated_at="等待更新"):
+    """Publish official TW institutional flow rankings using an explicit allowlist."""
+    source_status = status if isinstance(status, dict) else {}
+    official = source_status.get("official") if isinstance(source_status.get("official"), dict) else {}
+    eligible_rows = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict) or row.get("market") != "TW":
+            continue
+        if row.get("institution_available") is not True or row.get("institution_official") is not True:
+            continue
+        identity = _public_identity(row)
+        identity["source"] = str(row.get("institution_source") or "官方法人資料")[:60]
+        identity["sessionDate"] = str(row.get("institution_date") or source_status.get("session_date") or "")[:30]
+        identity["flows"] = {
+            "total": _number(row.get("institution_net")),
+            "foreign": _number(row.get("foreign_net")),
+            "trust": _number(row.get("trust_net")),
+            "dealer": _number(row.get("dealer_net")),
+        }
+        eligible_rows.append(identity)
+
+    groups = {}
+    for group in ("total", "foreign", "trust", "dealer"):
+        available = [item for item in eligible_rows if item["flows"].get(group) is not None]
+        buy = sorted((item for item in available if item["flows"][group] > 0), key=lambda item: item["flows"][group], reverse=True)[:25]
+        sell = sorted((item for item in available if item["flows"][group] < 0), key=lambda item: item["flows"][group])[:25]
+        groups[group] = {
+            "buy": [{**{k: v for k, v in item.items() if k != "flows"}, "netShares": item["flows"][group]} for item in buy],
+            "sell": [{**{k: v for k, v in item.items() if k != "flows"}, "netShares": item["flows"][group]} for item in sell],
+        }
+
+    return {
+        "updatedAt": str(updated_at or "等待更新")[:40],
+        "sessionDate": str(official.get("session_date") or source_status.get("session_date") or "等待更新")[:30],
+        "source": "證交所／櫃買中心官方法人資料",
+        "coveragePct": _number(official.get("coverage_pct")),
+        "ready": official.get("ranking_eligible") is True,
+        "groups": groups,
+        "note": "買賣超為已完成交易日的官方淨買賣股數，不代表未來漲跌或投資建議。",
+    }
+
+
 def main():
     site_url = os.getenv("FRIEND_SITE_URL", "").strip()
     for prefix in ("網址：", "網址:", "URL：", "URL:"):
@@ -155,6 +240,8 @@ def main():
         # Intentionally overwrite previously published validation aggregates.
         "accuracy": sanitize_accuracy(None),
         "rotation": sanitize_rotation(rotation),
+        "patterns": sanitize_patterns(rows, source.get("updated_at")),
+        "institutions": sanitize_institutions(rows, source.get("institution_status"), source.get("updated_at")),
         "updated": source.get("updated_at", "等待更新"),
         "version": "AI股票助理・朋友版",
     }, ensure_ascii=False).encode("utf-8")
