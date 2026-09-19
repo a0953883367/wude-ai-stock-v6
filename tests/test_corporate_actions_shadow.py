@@ -352,6 +352,49 @@ def test_official_event_parsers_classify_halt_resume_and_merger() -> None:
     assert parsed["type"] == "TRADING_HALT"
 
 
+def test_consolidated_financial_report_is_not_misclassified_as_merger() -> None:
+    events = normalize_tw_announcements([
+        {
+            "公司代號": "3027",
+            "主旨": "公告本公司115年8月份自結合併財務報告之相關資訊",
+            "發言日期": "20260918",
+        },
+        {
+            "公司代號": "2324",
+            "主旨": "公告本公司董事會決議通過現金股份轉換案",
+            "發言日期": "20260918",
+        },
+    ], exchange="TWSE")
+
+    assert [event["symbol"] for event in events] == ["2324.TW"]
+    assert events[0]["type"] == "MERGER_OR_SHARE_EXCHANGE"
+
+
+def test_sec_outage_is_degraded_when_live_symbol_directory_covers_identity() -> None:
+    old = {
+        "symbol": "AAPL", "market": "US", "exchange": "Nasdaq",
+        "name": "Apple Inc.", "entity_id": "US-CIK-0000320193",
+        "identity_scope": "stable", "source": "sec_registry",
+    }
+    directory = {
+        **old,
+        "entity_id": "US-ISSUE-AAPL",
+        "identity_scope": "symbol",
+        "source": "us_symbol_directory",
+    }
+    report, _ = _build(
+        _universe(("AAPL", "Apple", "🇺🇸 美國")),
+        _previous(old),
+        _source("sec_registry", [], ok=False),
+        _source("us_symbol_directory", [directory]),
+    )
+
+    assert report["summary"]["officially_matched"] == 1
+    assert report["summary"]["source_failure_count"] == 0
+    assert report["summary"]["degraded_source_count"] == 1
+    assert report["status"] == "ok"
+
+
 def test_twse_trailing_subject_space_does_not_classify_questionnaire_boilerplate() -> None:
     events = normalize_tw_announcements([
         {

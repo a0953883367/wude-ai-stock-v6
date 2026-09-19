@@ -297,6 +297,13 @@ def test_trade_metric_only_counts_real_entry_zone_trigger(tmp_path: Path):
     )
     assert summary["horizons"]["1"]["samples"] == 1
     assert summary["trade_signals"]["1"]["samples"] == 0
+    diagnostics = summary["groups"]["TW_STOCK"]["trade_signal_diagnostics"]
+    assert diagnostics["qualified_setups"] == 2
+    assert diagnostics["evaluated_setups"] == 1
+    assert diagnostics["pending_setups"] == 1
+    assert diagnostics["untouched_entry_zones"] == 1
+    assert diagnostics["data_contract_errors"] == 0
+    assert diagnostics["diagnosis"] == "healthy_waiting_for_zone"
 
 
 def test_trade_signal_uses_frozen_zone_and_next_completed_session_range(tmp_path: Path):
@@ -326,6 +333,9 @@ def test_trade_signal_uses_frozen_zone_and_next_completed_session_range(tmp_path
     assert outcome["entry_triggered"] is True
     assert outcome["entry_fill_price"] == 100.0
     assert outcome["entry_to_close_return_pct"] == 4.0
+    diagnostics = summary["groups"]["TW_STOCK"]["trade_signal_diagnostics"]
+    assert diagnostics["triggered_setups"] == 1
+    assert diagnostics["diagnosis"] == "healthy_triggered"
 
 
 def test_trade_signal_does_not_infer_missing_range_or_override_frozen_guard(tmp_path: Path):

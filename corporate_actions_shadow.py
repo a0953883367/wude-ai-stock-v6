@@ -358,6 +358,19 @@ def normalize_sec_entity_search(payload: dict[str, Any], symbol: str) -> list[di
 
 def _classify_announcement(text: str) -> str:
     compact = str(text or "")
+    # MOPS frequently uses 「合併」 to mean consolidated financial reporting,
+    # not a legal merger.  Keep real transaction wording, but do not create a
+    # merger candidate from routine consolidated revenue/financial notices.
+    financial_consolidation = re.search(
+        r"(?:自結)?合併(?:財務報告|財務報表|財務資訊|營收|損益|報表|財報)",
+        compact,
+    )
+    transaction_wording = re.search(
+        r"(?:吸收合併|合併案|合併契約|股份轉換|換股|併購)",
+        compact,
+    )
+    if financial_consolidation and not transaction_wording:
+        return ""
     patterns = (
         ("TRADING_RESUMED", r"恢復(?:交易|買賣)"),
         ("TRADING_HALT", r"(?:暫停|停止)(?:交易|買賣)"),
@@ -703,6 +716,18 @@ def build_shadow_report(
         name for name in registry_source_names
         if name in source_health and not (source_health.get(name) or {}).get("ok")
     ]
+    degraded_source_failures: list[str] = []
+    # Nasdaq Trader's live symbol directory proves the U.S. issue remains
+    # listed.  If SEC blocks the hosted runner, retain the last verified CIK
+    # and expose the SEC outage as degraded identity detail rather than a
+    # whole-system warning.  Missing symbols and identity conflicts are still
+    # handled independently and can still turn the report yellow or red.
+    if (
+        "sec_registry" in registry_source_failures
+        and (source_health.get("us_symbol_directory") or {}).get("ok") is True
+    ):
+        registry_source_failures.remove("sec_registry")
+        degraded_source_failures.append("sec_registry")
     event_source_failures = [
         name for name in ("twse_announcements", "tpex_announcements", "nasdaq_halts")
         if name in source_health and not (source_health.get(name) or {}).get("ok")
@@ -751,6 +776,8 @@ def build_shadow_report(
             "warning_count": sum(row.get("level") == "warning" for row in events),
             "critical_count": sum(row.get("level") == "critical" for row in events),
             "source_failure_count": len(source_failures),
+            "degraded_source_count": len(degraded_source_failures),
+            "degraded_sources": degraded_source_failures,
             "registry_source_failure_count": len(registry_source_failures),
             "event_source_failure_count": len(event_source_failures),
             "available_registry_source_count": available_registry_sources,

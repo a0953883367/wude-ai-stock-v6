@@ -7,6 +7,12 @@ on:
         description: 測試時上傳最新幾檔；0 代表全部
         required: true
         default: "1"
+  push:
+    branches: [main]
+    paths:
+      - "tools/google_drive_archive.py"
+      - "tests/test_google_drive_archive.py"
+      - ".github/workflows/google-drive-archive.yml"
   schedule:
     # Daily 21:15 Asia/Taipei, after the 20:00 briefing.
     - cron: "15 13 * * *"
@@ -29,12 +35,16 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: 選擇測試或每日完整模式
+      - name: 選擇合併驗收、手動測試或每日完整模式
         id: mode
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "limit=${{ inputs.limit }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # A merged archive-code change verifies one real Drive object with
+            # production secrets.  The nightly schedule remains the only full run.
+            echo "limit=1" >> "$GITHUB_OUTPUT"
           else
             echo "limit=0" >> "$GITHUB_OUTPUT"
           fi

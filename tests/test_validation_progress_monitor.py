@@ -80,6 +80,61 @@ def _performance(
     })
 
 
+def _performance_with_diagnostics(
+    tmp_path: Path,
+    market: str,
+    days: int,
+    direction: int,
+    trades: int,
+    diagnostics: dict,
+) -> None:
+    _write(tmp_path / "performance.json", {
+        "trade_signal_contract": {"version": 2},
+        "groups": {
+            f"{market}_STOCK": {
+                "horizons": {"1": {"samples": direction}},
+                "trade_signals": {"1": {"samples": trades}},
+                "trade_signal_diagnostics": diagnostics,
+            },
+        },
+        "ab_testing": {
+            "markets": {market: {"trading_days_collected": days}},
+        },
+    })
+
+
+def test_zero_trade_signals_are_healthy_when_no_zone_trigger_or_contract_error(
+    tmp_path: Path,
+) -> None:
+    _source(tmp_path, 9, 9, global_days=9)
+    _performance_with_diagnostics(
+        tmp_path,
+        "US",
+        days=9,
+        direction=162,
+        trades=0,
+        diagnostics={
+            "diagnosis": "healthy_waiting_for_zone",
+            "qualified_setups": 1,
+            "evaluated_setups": 1,
+            "triggered_setups": 0,
+            "pending_setups": 0,
+            "untouched_entry_zones": 1,
+            "data_contract_errors": 0,
+        },
+    )
+    state = update_validation_progress_monitor(
+        tmp_path, _rows("US", "2026-09-18"),
+        period="morning", updated_at="2026-09-19 06:00:00",
+    )
+
+    signal = state["signal_health"]["US"]
+    assert signal["status"] == "ok"
+    assert signal["stagnant_sessions"] == 0
+    assert "0筆成交觸發不是資料缺漏" in signal["detail"]
+    assert state["status"] == "ok"
+
+
 def test_zero_trade_signals_warn_after_five_days_and_recover(tmp_path: Path) -> None:
     _source(tmp_path, 5, 4, global_days=4)
     _performance(tmp_path, "TW", days=5, direction=80, trades=0)

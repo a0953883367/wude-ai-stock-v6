@@ -18,6 +18,17 @@ from google_drive_archive import (
 )
 
 
+def test_archive_workflow_runs_one_file_after_archive_code_merge() -> None:
+    workflow = Path(".github/workflows/google-drive-archive.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "push:" in workflow
+    assert "branches: [main]" in workflow
+    assert 'github.event_name }}" = "push"' in workflow
+    assert 'echo "limit=1"' in workflow
+
+
 def test_gzip_bytes_is_deterministic_and_round_trips():
     first = gzip_bytes(b'{"answer": 42}\n')
     second = gzip_bytes(b'{"answer": 42}\n')

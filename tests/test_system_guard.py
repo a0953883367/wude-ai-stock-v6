@@ -208,6 +208,34 @@ def test_healthy_guard_is_green(tmp_path: Path) -> None:
     assert "實際補值 3 檔" in sec["detail"]
 
 
+def test_weekend_uses_latest_completed_market_session_without_false_warning(
+    tmp_path: Path,
+) -> None:
+    _healthy_reports(tmp_path)
+    timestamp = "2026-08-28 20:00:00"
+    for name in ("latest.json", "rankings.json", "all_analysis.json"):
+        payload = json.loads((tmp_path / name).read_text(encoding="utf-8"))
+        payload["updated_at"] = timestamp
+        for row in payload.get("data", []):
+            row["official_session_date"] = "2026-08-28"
+        _write(tmp_path / name, payload)
+
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 29, 22, 0, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+        primary_app_probe={"probe_ok": True, "status_code": 200},
+        live_runtime_probe=_healthy_live_probe(),
+    )
+
+    freshness = next(
+        item for item in guard["checks"] if item["code"] == "report_freshness"
+    )
+    assert freshness["level"] == "ok"
+    assert "週末休市" in freshness["detail"]
+
+
 def test_archive_integrity_error_turns_guard_red_without_changing_models(tmp_path: Path) -> None:
     _healthy_reports(tmp_path)
     _write(tmp_path / "history_archive_health.json", {

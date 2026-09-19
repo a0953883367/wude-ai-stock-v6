@@ -175,6 +175,12 @@ def _signal_totals(performance: dict[str, Any], market: str) -> tuple[int, int, 
     )
 
 
+def _signal_diagnostics(performance: dict[str, Any], market: str) -> dict[str, Any]:
+    group = ((performance.get("groups") or {}).get(f"{market}_STOCK") or {})
+    diagnostics = group.get("trade_signal_diagnostics")
+    return diagnostics if isinstance(diagnostics, dict) else {}
+
+
 def _queue(state: dict[str, Any], event: dict[str, Any]) -> None:
     pending = [item for item in state.get("pending_notifications", []) if isinstance(item, dict)]
     if any(item.get("id") == event["id"] for item in pending):
@@ -323,6 +329,7 @@ def _observe_signal_health(
     direction_samples, trade_samples, validation_days, contract_version = _signal_totals(
         performance, market
     )
+    diagnostics = _signal_diagnostics(performance, market)
     signal = state["signal_health"][market]
     previous_contract = int(signal.get("trade_signal_contract_version") or 1)
     previous_samples = int(signal.get("last_trade_signal_samples") or 0)
@@ -356,6 +363,66 @@ def _observe_signal_health(
             "last_validation_days": validation_days,
             "detail": "方向樣本尚未建立，暫不判定交易訊號停滯",
         })
+        return
+
+    # V2 reports expose a reasoned diagnostic contract.  A zero trigger count
+    # is not a stalled pipeline when no setup qualified, or when the frozen
+    # buy zone was simply not traded.  Only malformed setup fields or missing
+    # completed-session OHLC should raise a system warning.  Older reports
+    # without diagnostics retain the conservative legacy stagnation check.
+    if diagnostics:
+        qualified = int(diagnostics.get("qualified_setups") or 0)
+        evaluated = int(diagnostics.get("evaluated_setups") or 0)
+        triggered = int(diagnostics.get("triggered_setups") or trade_samples)
+        pending = int(diagnostics.get("pending_setups") or 0)
+        untouched = int(diagnostics.get("untouched_entry_zones") or 0)
+        contract_errors = int(diagnostics.get("data_contract_errors") or 0)
+        diagnosis = str(diagnostics.get("diagnosis") or "")
+        signal.update({
+            "last_session_date": session_date,
+            "last_validation_days": validation_days,
+            "last_trade_signal_samples": trade_samples,
+            "qualified_setups": qualified,
+            "evaluated_setups": evaluated,
+            "pending_setups": pending,
+            "untouched_entry_zones": untouched,
+            "data_contract_errors": contract_errors,
+            "diagnosis": diagnosis,
+        })
+        if contract_errors:
+            level = "critical" if contract_errors >= 10 else "warning"
+            signal.update({
+                "status": level,
+                "stagnant_sessions": 0,
+                "detail": (
+                    f"方向結果 {direction_samples} 筆；合格進場設定 {qualified} 筆、"
+                    f"已評估 {evaluated} 筆，其中 {contract_errors} 筆缺少有效進場區或完整OHLC"
+                ),
+            })
+            return
+
+        _resolve_signal_alert(state, market)
+        signal["alert_notified"] = False
+        signal["status"] = "ok"
+        signal["stagnant_sessions"] = 0
+        if trade_samples > previous_samples:
+            signal["last_signal_growth_at"] = updated_at
+        if triggered:
+            signal["detail"] = (
+                f"方向結果 {direction_samples} 筆；合格進場設定 {qualified} 筆，"
+                f"已有 {triggered} 筆實際觸及凍結買進區"
+            )
+        elif qualified:
+            signal["detail"] = (
+                f"方向結果 {direction_samples} 筆；合格進場設定 {qualified} 筆，"
+                f"其中 {untouched} 筆尚未觸及凍結買進區、{pending} 筆等待下一交易日；"
+                "0筆成交觸發不是資料缺漏"
+            )
+        else:
+            signal["detail"] = (
+                f"方向結果 {direction_samples} 筆；目前沒有股票通過正式短線進場條件，"
+                "因此完整交易訊號為0，不代表資料未更新"
+            )
         return
 
     if not last_session:
