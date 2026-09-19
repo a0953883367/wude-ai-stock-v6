@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-19 23:13:35",
-  "status": "warning",
+  "updated_at": "2026-09-20 07:46:50",
+  "status": "ok",
   "mode": "completed_session_observer_only",
   "current": {
     "trading_days_collected": 20,
@@ -58,16 +58,22 @@
       "trade_signal_contract_version": 2
     },
     "US": {
-      "status": "warning",
+      "status": "ok",
       "last_session_date": "2026-09-18",
       "last_validation_days": 19,
       "last_trade_signal_samples": 0,
       "direction_samples": 162,
-      "stagnant_sessions": 9,
+      "stagnant_sessions": 0,
       "last_signal_growth_at": null,
-      "alert_notified": true,
-      "detail": "已有 162 筆方向結果；完整交易訊號 0 筆，連續 9 個有效交易日未增加",
-      "trade_signal_contract_version": 2
+      "alert_notified": false,
+      "detail": "方向結果 162 筆；合格進場設定 1 筆，其中 1 筆尚未觸及凍結買進區、0 筆等待下一交易日；0筆成交觸發不是資料缺漏",
+      "trade_signal_contract_version": 2,
+      "qualified_setups": 1,
+      "evaluated_setups": 1,
+      "pending_setups": 0,
+      "untouched_entry_zones": 1,
+      "data_contract_errors": 0,
+      "diagnosis": "healthy_waiting_for_zone"
     }
   },
   "last_notification_delivered_at": "2026-09-19 07:44:38",
