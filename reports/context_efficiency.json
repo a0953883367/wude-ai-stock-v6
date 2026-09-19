@@ -1,0 +1,82 @@
+{
+  "schema": "wude.context_efficiency.v1",
+  "generated_at": "2026-09-19T18:55:35+00:00",
+  "status": "passed",
+  "measurement": "檔案與工具定義的靜態位元組／Token 估算；不是供應商帳單",
+  "exact_provider_tokens": false,
+  "average_reduction_pct": 29.62,
+  "scenarios": [
+    {
+      "agent_id": "stock_shadow",
+      "action": "shadow_validate",
+      "profile": "research",
+      "before": {
+        "bytes": 84834316,
+        "estimated_tokens": 21208579
+      },
+      "after": {
+        "bytes": 192083,
+        "estimated_tokens": 48021
+      },
+      "reduction_pct": 99.77,
+      "selected_files": 11,
+      "selected_skills": 3,
+      "selected_tools": 3
+    },
+    {
+      "agent_id": "zhiying_company",
+      "action": "draft_report",
+      "profile": "output",
+      "before": {
+        "bytes": 2574,
+        "estimated_tokens": 644
+      },
+      "after": {
+        "bytes": 2330,
+        "estimated_tokens": 583
+      },
+      "reduction_pct": 9.47,
+      "selected_files": 1,
+      "selected_skills": 3,
+      "selected_tools": 3
+    },
+    {
+      "agent_id": "wt_fasteners",
+      "action": "analyze",
+      "profile": "formal_answer",
+      "before": {
+        "bytes": 10207,
+        "estimated_tokens": 2552
+      },
+      "after": {
+        "bytes": 9765,
+        "estimated_tokens": 2442
+      },
+      "reduction_pct": 4.31,
+      "selected_files": 2,
+      "selected_skills": 2,
+      "selected_tools": 2
+    },
+    {
+      "agent_id": "packaging_startup",
+      "action": "simulate_workflow",
+      "profile": "formal_answer",
+      "before": {
+        "bytes": 9791,
+        "estimated_tokens": 2448
+      },
+      "after": {
+        "bytes": 9307,
+        "estimated_tokens": 2327
+      },
+      "reduction_pct": 4.94,
+      "selected_files": 2,
+      "selected_skills": 2,
+      "selected_tools": 2
+    }
+  ],
+  "privacy": {
+    "raw_messages_stored": false,
+    "business_payloads_stored": false
+  }
+}

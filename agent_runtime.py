@@ -17,10 +17,12 @@ from agent_control import AGENTS, UsageLedger, authorize_task
 from artifact_validation import verify_artifact
 from context_audit import audit_catalog
 from context_governance import build_context_plan
+from dynamic_capability_loader import build_capability_plan
+from context_efficiency import build_efficiency_report
 from presentation_delivery import verify_presentation_delivery
 
 
-RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V1"
+RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V2"
 
 BOOTSTRAP_TASKS = (
     ("stock_shadow", "shadow_validate", "檢查股票影子驗證工作區"),
@@ -96,6 +98,19 @@ def execute_safe_task(
             "truncated": plan["usage"]["truncated"],
             "cross_domain_reads": plan["cross_domain_reads"],
         }
+        capabilities = build_capability_plan(
+            title,
+            action,
+            explicit_agent=agent_id,
+            root=root,
+        )
+        result["capability_plan"] = {
+            "skills": capabilities["skills"],
+            "tools": [item["name"] for item in capabilities["tools"]],
+            "schema_bytes": capabilities["usage"]["schema_bytes"],
+            "executor_loaded": capabilities["executor_loaded"],
+            "cross_domain_tools": capabilities["cross_domain_tools"],
+        }
         if action == "draft_report":
             validation_spec = payload.get("artifact_validation") if isinstance(payload, Mapping) else None
             if isinstance(validation_spec, dict):
@@ -140,6 +155,14 @@ def execute_safe_task(
             summary="獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。",
         )
     else:
+        capabilities = build_capability_plan(title, action, explicit_agent=agent_id, root=root)
+        result["capability_plan"] = {
+            "skills": capabilities["skills"],
+            "tools": [item["name"] for item in capabilities["tools"]],
+            "schema_bytes": capabilities["usage"]["schema_bytes"],
+            "executor_loaded": capabilities["executor_loaded"],
+            "cross_domain_tools": capabilities["cross_domain_tools"],
+        }
         result.update(
             status=decision["decision"],
             status_label="等待授權" if decision["decision"] == "waiting_for_approval" else "已阻擋",
@@ -163,6 +186,7 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
     completed = sum(task["status"] == "completed" for task in validations)
     protected = sum(task["status"] == "waiting_for_approval" for task in gates)
     governance = audit_catalog(root=Path("."))
+    efficiency = build_efficiency_report(root=Path("."))
     return {
         "schema": "wude.central_agent_runtime.v1",
         "version": RUNTIME_VERSION,
@@ -195,6 +219,14 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
             "cross_layer_conflicts": len(governance["cross_layer_conflicts"]),
             "dynamic_loading": True,
             "archive_requires_explicit_request": True,
+        },
+        "context_efficiency": {
+            "status": efficiency["status"],
+            "average_reduction_pct": efficiency["average_reduction_pct"],
+            "exact_provider_tokens": efficiency["exact_provider_tokens"],
+            "dynamic_skill_loading": True,
+            "dynamic_tool_schema_loading": True,
+            "memory_compaction_available": True,
         },
         "output_validation": {
             "status": "enforced_by_contract",

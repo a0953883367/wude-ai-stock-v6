@@ -48,6 +48,8 @@ def test_external_side_effect_waits_for_approval():
     assert row["status"] == "waiting_for_approval"
     assert row["external_side_effect"] is False
     assert row["status_label"] == "等待授權"
+    assert row["capability_plan"]["executor_loaded"] is False
+    assert row["capability_plan"]["tools"] == []
 
 
 def test_every_safe_task_gets_a_bounded_context_plan():
@@ -56,6 +58,7 @@ def test_every_safe_task_gets_a_bounded_context_plan():
     assert row["context_plan"]["profile"] == "research"
     assert row["context_plan"]["cross_domain_reads"] is False
     assert row["context_plan"]["files"] <= 12
+    assert row["capability_plan"]["cross_domain_tools"] is False
 
 
 def test_report_without_artifact_evidence_stays_draft():
