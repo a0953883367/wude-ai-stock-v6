@@ -1,0 +1,137 @@
+{
+  "schema": "wude.central_agent_runtime.v1",
+  "version": "CENTRAL-AGENT-RUNTIME-V1",
+  "generated_at": "2026-09-19T16:46:12+00:00",
+  "status": "passed",
+  "status_label": "四個 Agent 安全驗收通過",
+  "control_version": "CENTRAL-AGENT-CONTROL-V1",
+  "summary": {
+    "agent_count": 4,
+    "validation_completed": 4,
+    "validation_total": 4,
+    "approval_gates_protected": 4,
+    "approval_gates_total": 4,
+    "external_calls": 0,
+    "paid_model_calls": 0
+  },
+  "validations": [
+    {
+      "agent_id": "stock_shadow",
+      "agent_name": "武得股票影子驗證 Agent",
+      "namespace": "stock_shadow",
+      "title": "檢查股票影子驗證工作區",
+      "action": "shadow_validate",
+      "task_key": "8dc6a67d37a0421735e2569d8e9fb8e385ef15ab7ba148922ffd0b312f13b7ac",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "completed",
+      "status_label": "安全驗收通過",
+      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+    },
+    {
+      "agent_id": "zhiying_company",
+      "agent_name": "至盈公司 Agent",
+      "namespace": "zhiying_company",
+      "title": "驗證至盈流程模擬工作區",
+      "action": "simulate_workflow",
+      "task_key": "d7a9cc5d56c11cd503085a7a085c53514c7cf9fbffc62c578d546e7a20797856",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "completed",
+      "status_label": "安全驗收通過",
+      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+    },
+    {
+      "agent_id": "wt_fasteners",
+      "agent_name": "WT 螺絲電商 Agent",
+      "namespace": "wt_fasteners",
+      "title": "驗證 WT 電商測試工作區",
+      "action": "simulate_workflow",
+      "task_key": "53228ac069136d1a30d4ad98afe79960c0527ca054e617cf668da3f025286112",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "completed",
+      "status_label": "安全驗收通過",
+      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+    },
+    {
+      "agent_id": "packaging_startup",
+      "agent_name": "包裝創業 Agent",
+      "namespace": "packaging_startup",
+      "title": "驗證包裝創業試算工作區",
+      "action": "simulate_workflow",
+      "task_key": "080bb51a20855e316817dc5eabbb0d7e6d44895875f7d8f278ac2ac457b60dd4",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "completed",
+      "status_label": "安全驗收通過",
+      "summary": "獨立資料空間、權限與輸出契約均已通過；未呼叫外部服務。"
+    }
+  ],
+  "approval_gate_checks": [
+    {
+      "agent_id": "stock_shadow",
+      "agent_name": "武得股票影子驗證 Agent",
+      "namespace": "stock_shadow",
+      "title": "券商下單保持鎖定",
+      "action": "broker_order",
+      "task_key": "7e64013208994f2736680efb4b6707f35962b0a7709f84857e48e25d4a7ac272",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "waiting_for_approval",
+      "status_label": "等待授權",
+      "summary": "不得連券商或自動下單。"
+    },
+    {
+      "agent_id": "zhiying_company",
+      "agent_name": "至盈公司 Agent",
+      "namespace": "zhiying_company",
+      "title": "公司 ERP 寫入保持鎖定",
+      "action": "erp_write",
+      "task_key": "2c940d9ba4efa2a94b79943493d459c15547b34647b73c9f8ebe75ad18b8154b",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "waiting_for_approval",
+      "status_label": "等待授權",
+      "summary": "公司 ERP 寫入等待公司授權與測試環境。"
+    },
+    {
+      "agent_id": "wt_fasteners",
+      "agent_name": "WT 螺絲電商 Agent",
+      "namespace": "wt_fasteners",
+      "title": "WT 對外上架保持鎖定",
+      "action": "external_publish",
+      "task_key": "078fd17fe6e5db04138be5b7ebc269c4de250eb8789ac4a06c397caa09ec21d5",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "waiting_for_approval",
+      "status_label": "等待授權",
+      "summary": "上架或公開發布前必須取得本次明確核准。"
+    },
+    {
+      "agent_id": "packaging_startup",
+      "agent_name": "包裝創業 Agent",
+      "namespace": "packaging_startup",
+      "title": "包裝創業付款保持鎖定",
+      "action": "payment",
+      "task_key": "6dcb7aaea78424494426c7ebcd4244a627c90ee7e6262c6214b950883bb2452b",
+      "payload_stored": false,
+      "external_side_effect": false,
+      "status": "waiting_for_approval",
+      "status_label": "等待授權",
+      "summary": "付款與採購必須由本人確認。"
+    }
+  ],
+  "privacy": {
+    "payloads_stored": false,
+    "customer_data_stored": false,
+    "cross_domain_writes": false,
+    "public_output": "只含任務摘要、雜湊、結果與授權狀態"
+  },
+  "next_authorized_steps": {
+    "stock_shadow": "繼續既有影子前向驗證與 GPT 教導，不改正式 V6。",
+    "zhiying_company": "可執行流程草稿與模擬；ERP／PLC 實接等待公司同意。",
+    "wt_fasteners": "可執行商品與競品草稿；正式商店資料與上架等待來源及核准。",
+    "packaging_startup": "可執行市場、成本與投資評估；付款與聯絡供應商等待核准。"
+  }
+}
