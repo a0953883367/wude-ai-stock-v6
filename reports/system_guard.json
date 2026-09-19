@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-20T04:51:44+08:00",
+  "checked_at": "2026-09-20T07:16:15+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-19 23:13:35",
-  "report_age_minutes": 338.2,
+  "report_age_minutes": 482.7,
   "counts": {
     "ok": 24,
-    "info": 7,
-    "warning": 2,
+    "info": 8,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -32,17 +32,17 @@
     {
       "code": "corporate_actions_shadow",
       "title": "股票更名／停復牌監控",
-      "level": "warning",
-      "label": "注意",
-      "detail": "官方身分符合 374/374 檔（個股 306、ETF 68）；事件 1 件；來源失敗 0 個；已有替代來源覆蓋 1 個受限來源",
-      "action": "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+      "level": "info",
+      "label": "資訊",
+      "detail": "官方身分符合 374/374 檔（個股 306、ETF 68）；事件 0 件；來源失敗 0 個；已有替代來源覆蓋 1 個受限來源；替代官方名單已確認代號仍有效，正式資料維持鎖定",
+      "action": "持續重試受限來源；不得據此自動更名、下市或拼接歷史價格"
     },
     {
       "code": "report_freshness",
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-09-18 已正確入帳，報表距今 5.6 小時",
+      "detail": "週末休市；最近完成交易日 2026-09-18 已正確入帳，報表距今 8.0 小時",
       "action": ""
     },
     {
@@ -282,7 +282,6 @@
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
     "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名"
   ],
   "safety": {
