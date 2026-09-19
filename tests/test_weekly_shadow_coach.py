@@ -164,6 +164,32 @@ class WeeklyShadowCoachTests(unittest.TestCase):
         self.assertTrue((self.reports / "weekly_shadow_coach.json").exists())
         self.assertTrue((self.reports / "weekly_shadow_coach_history.json").exists())
 
+    def test_dry_run_does_not_report_healthy_zero_signal_as_data_gap(self) -> None:
+        learning = _learning()
+        learning["signal_health"] = {
+            "US_STOCK": {
+                "direction_samples": 199,
+                "trade_signal_samples": 0,
+                "status": "waiting_for_entry_zone",
+                "requires_diagnostic": False,
+            },
+            "TW_STOCK": {
+                "direction_samples": 100,
+                "trade_signal_samples": 0,
+                "status": "data_contract_error",
+                "requires_diagnostic": True,
+            },
+        }
+        _write(self.reports / "model_learning.json", learning)
+
+        report = build_weekly_coach(
+            self.reports,
+            mode="dry_run",
+            archive_result=self.archive,
+        )
+
+        self.assertEqual(report["coach"]["data_gaps"], ["TW_STOCK"])
+
     def test_coach_reads_tw_signal_confirmation_shadow_summary(self) -> None:
         _write(self.reports / "tw_signal_confirmation_shadow.json", {
             "status": "ok",
