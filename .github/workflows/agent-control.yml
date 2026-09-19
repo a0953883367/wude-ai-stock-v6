@@ -1,0 +1,51 @@
+name: 中央 Agent 安全控制層
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 台灣每日 20:35，在晚報排程後更新狀態；不呼叫付費模型。
+    - cron: "35 12 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "agent_control.py"
+      - "reports/model_learning.json"
+      - "reports/validation_60d.json"
+      - "reports/weekly_shadow_coach.json"
+      - "reports/system_guard.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-control-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: 建立控制層狀態
+        run: python agent_control.py --reports-dir reports
+      - name: 驗證安全規則
+        run: python -m pytest -q tests/test_agent_control.py && node tests/test_agent_control_ui.js
+      - name: 保存最新狀態
+        if: github.event_name != 'pull_request'
+        run: |
+          if git diff --quiet -- reports/agent_control.json; then
+            echo "控制層狀態沒有變更"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/agent_control.json
+          git commit -m "chore: 更新中央 Agent 控制狀態"
+          git pull --rebase origin main
+          git push origin HEAD:main
