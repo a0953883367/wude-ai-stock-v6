@@ -43,6 +43,7 @@ class ArchiveResult:
     size: int
     sha256: str
     drive_file_id: str = ""
+    warning: str = ""
     error: str = ""
 
 
@@ -224,35 +225,91 @@ class DriveArchiveClient:
             raise ArchiveError(f"Drive SHA-256 metadata verification failed for {name}")
         return uploaded
 
+    @staticmethod
+    def _matches_payload(existing: dict[str, Any], payload: bytes) -> bool:
+        """Verify content using Drive's checksum; SHA metadata is optional for old files."""
+        sha256 = hashlib.sha256(payload).hexdigest()
+        md5 = hashlib.md5(payload, usedforsecurity=False).hexdigest()
+        existing_sha256 = str(
+            (existing.get("appProperties") or {}).get("sha256") or ""
+        )
+        return (
+            int(existing.get("size") or -1) == len(payload)
+            and str(existing.get("md5Checksum") or "").lower() == md5
+            and (not existing_sha256 or existing_sha256 == sha256)
+        )
+
+    @staticmethod
+    def _revision_name(target_name: str, sha256: str) -> str:
+        suffix = ".json.gz"
+        stem = (
+            target_name[: -len(suffix)]
+            if target_name.endswith(suffix)
+            else target_name
+        )
+        return f"{stem}.revision-{sha256[:12]}{suffix}"
+
     def archive_file(self, path: Path, root_name: str) -> ArchiveResult:
         match = ARCHIVE_DATE_RE.match(path.name)
         if not match:
             raise ArchiveError(f"Archive filename has no YYYY-MM-DD prefix: {path.name}")
         target_name, payload = archive_payload(path)
         sha256 = hashlib.sha256(payload).hexdigest()
-        md5 = hashlib.md5(payload, usedforsecurity=False).hexdigest()
         folder = self.ensure_archive_path(
             root_name, match.group("year"), match.group("month")
         )
         destination = f"{root_name}/{match.group('year')}/{match.group('month')}/{target_name}"
         existing = self.find_file(target_name, str(folder["id"]))
         if existing:
-            same_size = int(existing.get("size") or -1) == len(payload)
-            same_md5 = str(existing.get("md5Checksum") or "").lower() == md5
-            same_sha256 = (
-                (existing.get("appProperties") or {}).get("sha256") == sha256
-            )
-            if not (same_size and same_md5 and same_sha256):
-                raise ArchiveConflictError(
-                    f"Drive already contains different content at {destination}"
+            if self._matches_payload(existing, payload):
+                return ArchiveResult(
+                    source=str(path),
+                    destination=destination,
+                    status="verified_existing",
+                    size=len(payload),
+                    sha256=sha256,
+                    drive_file_id=str(existing["id"]),
                 )
+
+            # The canonical archive is immutable: never overwrite or delete it.
+            # Preserve the current local bytes under a checksum-qualified revision
+            # so a historical correction is backed up once instead of making every
+            # nightly run fail forever.
+            revision_name = self._revision_name(target_name, sha256)
+            revision_destination = (
+                f"{root_name}/{match.group('year')}/{match.group('month')}/"
+                f"{revision_name}"
+            )
+            revision = self.find_file(revision_name, str(folder["id"]))
+            if revision:
+                if not self._matches_payload(revision, payload):
+                    raise ArchiveConflictError(
+                        "Drive revision filename has unexpected content at "
+                        f"{revision_destination}"
+                    )
+                return ArchiveResult(
+                    source=str(path),
+                    destination=revision_destination,
+                    status="conflict_revision_verified_existing",
+                    size=len(payload),
+                    sha256=sha256,
+                    drive_file_id=str(revision["id"]),
+                    warning=f"Canonical archive preserved at {destination}",
+                )
+            uploaded = self.upload_verified(
+                revision_name,
+                payload,
+                str(folder["id"]),
+                source=str(path),
+            )
             return ArchiveResult(
                 source=str(path),
-                destination=destination,
-                status="verified_existing",
+                destination=revision_destination,
+                status="conflict_revision_uploaded_verified",
                 size=len(payload),
                 sha256=sha256,
-                drive_file_id=str(existing["id"]),
+                drive_file_id=str(uploaded["id"]),
+                warning=f"Canonical archive preserved at {destination}",
             )
         uploaded = self.upload_verified(
             target_name,
@@ -271,16 +328,20 @@ class DriveArchiveClient:
 
 
 def write_result(path: Path, results: list[ArchiveResult], errors: list[str]) -> None:
+    conflicts = [
+        item for item in results if item.status.startswith("conflict_revision_")
+    ]
     payload = {
         "schema": "wude.google_drive_archive_result.v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "status": "error" if errors else "ok",
+        "status": "error" if errors else ("warning" if conflicts else "ok"),
         "counts": {
             "total": len(results),
             "uploaded": sum(item.status == "uploaded_verified" for item in results),
             "verified_existing": sum(
                 item.status == "verified_existing" for item in results
             ),
+            "conflict_revisions": len(conflicts),
             "errors": len(errors),
         },
         "results": [asdict(item) for item in results],
@@ -328,6 +389,8 @@ def main() -> int:
                 item = client.archive_file(candidate, args.root_folder)
                 results.append(item)
                 print(f"{item.status}: {item.destination} ({item.size} bytes)")
+                if item.warning:
+                    print(f"::warning title=歷史封存版本衝突::{item.warning}")
             except Exception as exc:
                 message = f"{candidate}: {exc}"
                 errors.append(message)
