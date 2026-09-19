@@ -646,6 +646,36 @@ class FlowWeightShadow:
         for signal in signals:
             for label, result in self._results_by_horizon(signal).items():
                 horizon_results[label].append(result)
+        settlement_health: dict[str, Any] = {}
+        official_date = self._official_date(market)
+        for label, index in DAILY_HORIZONS.items():
+            if index == 0:
+                continue
+            settled = waiting = overdue = calendar_blocked = 0
+            for signal in signals:
+                if label in self._results_by_horizon(signal):
+                    settled += 1
+                    continue
+                signal_date = str(signal.get("signal_session_date") or "")
+                if not signal_date or not official_date or official_date <= signal_date:
+                    waiting += 1
+                    continue
+                lookup = self.calendar.lookup(market, signal_date, official_date)
+                if not lookup.get("available"):
+                    calendar_blocked += 1
+                    continue
+                sessions = lookup.get("sessions") or []
+                if len(sessions) >= index:
+                    overdue += 1
+                else:
+                    waiting += 1
+            settlement_health[label] = {
+                "status": "attention" if overdue else ("calendar_wait" if calendar_blocked else "ok"),
+                "settled": settled,
+                "waiting_not_due": waiting,
+                "overdue_unsettled": overdue,
+                "calendar_blocked": calendar_blocked,
+            }
         return {
             "tracked_signals": len(signals),
             "capacity": MAX_TRACKED_SIGNALS,
@@ -659,6 +689,7 @@ class FlowWeightShadow:
                 )
                 for label in horizon_results
             },
+            "settlement_health": settlement_health,
             "interpretation": "directional_return: buy expects up; sell expects down",
         }
 

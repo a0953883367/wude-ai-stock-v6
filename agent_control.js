@@ -23,20 +23,32 @@
     return '<article class="agent-card" data-agent-id="'+esc(agent.id)+'"><div class="agent-head"><h3>'+esc(agent.name)+'</h3><span class="agent-chip '+statusClass(runtime.status)+'">'+esc(label)+'</span></div><p class="agent-description">'+esc(agent.description)+'</p><div class="facts">'+statusFacts(agent)+'</div><div class="agent-note">資料空間：'+esc(agent.namespace)+'｜每日最多 '+esc((agent.limits||{}).api_calls_per_day)+' 次呼叫｜失敗最多重試 '+esc((agent.limits||{}).retries_per_task)+' 次</div></article>';
   }
   function fetchJSON(path){return fetch(path+'?ts='+Date.now(),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error(path+' HTTP '+response.status);return response.json();});}
+  function taskClass(status){return status==='completed'?'done':status==='collecting'||status==='prepared'||status==='review_ready'?'running':'waiting';}
+  function renderTasks(report){
+    var summary=report.summary||{},tasks=Array.isArray(report.tasks)?report.tasks:[];
+    document.getElementById('taskHeadline').textContent=(report.status_label||'任務中心運作中')+'｜共 '+(summary.total||0)+' 項｜已完成 '+(summary.completed||0)+'｜進行中 '+(summary.running||0)+'｜等待資料 '+(summary.waiting_input||0);
+    document.getElementById('taskUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
+    document.getElementById('taskCards').innerHTML=tasks.map(function(task){
+      var blockers=Array.isArray(task.blocked_by)?task.blocked_by:[];
+      var artifact=task.artifact_url?'<a class="task-link" href="'+esc(task.artifact_url)+'">'+esc(task.artifact_label||'開啟檔案')+'</a>':'';
+      return '<article class="task-card '+taskClass(task.status)+'" data-task-id="'+esc(task.id)+'"><div class="task-head"><span>'+esc(task.agent_name)+'</span><b>'+esc(task.status_label)+'</b></div><h3>'+esc(task.title)+'</h3><p>'+esc(task.progress_label)+'</p><div class="task-next"><span>下一步</span>'+esc(task.next_action)+'</div>'+(blockers.length?'<div class="task-blocker"><span>等待</span>'+esc(blockers.join('、'))+'</div>':'')+artifact+'</article>';
+    }).join('')||'<div class="empty">尚無任務紀錄。</div>';
+  }
   function renderRuntime(report){
     var summary=report.summary||{},tasks=Array.isArray(report.validations)?report.validations:[];
     document.getElementById('runtimeHeadline').textContent=(report.status_label||'等待驗收')+'｜安全任務 '+(summary.validation_completed||0)+'／'+(summary.validation_total||0)+'｜授權閘門 '+(summary.approval_gates_protected||0)+'／'+(summary.approval_gates_total||0)+' 已保護｜付費模型呼叫 '+(summary.paid_model_calls||0)+' 次';
     document.getElementById('runtimeUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('runtimeTasks').innerHTML=tasks.map(function(task){return '<div class="runtime-task" data-runtime-agent="'+esc(task.agent_id)+'"><b>✅ '+esc(task.agent_name)+'</b><span>'+esc(task.title)+'：'+esc(task.status_label)+'</span></div>';}).join('')||'<div class="empty">尚無安全任務執行紀錄。</div>';
   }
-  Promise.all([fetchJSON('reports/agent_control.json'),fetchJSON('reports/agent_runtime.json')]).then(function(pair){
-    var report=pair[0],runtime=pair[1];
+  Promise.all([fetchJSON('reports/agent_control.json'),fetchJSON('reports/agent_runtime.json'),fetchJSON('reports/agent_tasks.json')]).then(function(pair){
+    var report=pair[0],runtime=pair[1],tasks=pair[2];
     document.getElementById('overallStatus').textContent=report.status_label||'控制層可用';
     document.getElementById('updatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('agentCards').innerHTML=(report.agents||[]).map(renderAgent).join('')||'<div class="empty">尚無 Agent 狀態。</div>';
     var labels={formal_v6_locked:'正式 V6 權重',formal_rankings_locked:'正式股票排名',automatic_orders:'券商下單',automatic_payments:'付款與採購',automatic_external_messages:'對外寄送與發布',erp_plc_device_writes:'ERP／PLC／設備寫入'};
     document.getElementById('safetyItems').innerHTML=Object.keys(labels).map(function(key){return '<div class="safety-item">🔒 '+labels[key]+'</div>';}).join('');
     renderRuntime(runtime);
+    renderTasks(tasks);
   }).catch(function(error){
     document.getElementById('overallStatus').textContent='狀態讀取失敗';
     var box=document.getElementById('loadError');box.hidden=false;box.textContent='無法讀取 Agent 狀態：'+error.message;

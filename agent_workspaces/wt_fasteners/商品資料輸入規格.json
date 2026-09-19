@@ -1,0 +1,12 @@
+{
+  "schema": "wude.wt.product_input.v1",
+  "data_namespace": "wt_fasteners",
+  "workbook": "WT商品與毛利輸入表.xlsx",
+  "required_inputs": ["螺絲成本", "包材成本", "人工成本", "國際運費", "平台費率", "廣告費率"],
+  "calculation_rules": [
+    "缺少必要成本時，毛利顯示待輸入，不得以0元代替。",
+    "Amazon、eBay與Shopee分開計算平台費用。",
+    "410不鏽鋼描述使用rust-resistant，不使用rust-proof。",
+    "正式上架、廣告付款及對外發布必須另行核准。"
+  ]
+}
