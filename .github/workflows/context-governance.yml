@@ -7,13 +7,16 @@ on:
       - agent_control.py
       - agent_runtime.py
       - artifact_validation.py
+      - presentation_delivery.py
       - context_audit.py
       - context_governance.py
       - agent_workspaces/context_catalog.json
       - agent_workspaces/輸出驗收規格範本.json
+      - agent_workspaces/PPT交付驗收規格範本.json
       - tests/test_agent_control.py
       - tests/test_agent_runtime.py
       - tests/test_artifact_validation.py
+      - tests/test_presentation_delivery.py
       - tests/test_context_audit.py
       - tests/test_context_governance.py
       - .github/workflows/context-governance.yml
@@ -23,13 +26,16 @@ on:
       - agent_control.py
       - agent_runtime.py
       - artifact_validation.py
+      - presentation_delivery.py
       - context_audit.py
       - context_governance.py
       - agent_workspaces/context_catalog.json
       - agent_workspaces/輸出驗收規格範本.json
+      - agent_workspaces/PPT交付驗收規格範本.json
       - tests/test_agent_control.py
       - tests/test_agent_runtime.py
       - tests/test_artifact_validation.py
+      - tests/test_presentation_delivery.py
       - tests/test_context_audit.py
       - tests/test_context_governance.py
       - .github/workflows/context-governance.yml
@@ -55,6 +61,7 @@ jobs:
           tests/test_context_governance.py
           tests/test_context_audit.py
           tests/test_artifact_validation.py
+          tests/test_presentation_delivery.py
       - name: 產生並核對資料治理稽核
         run: |
           python context_audit.py --output /tmp/context_governance.json
