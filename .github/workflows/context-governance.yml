@@ -45,6 +45,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: 安裝測試工具
+        run: python -m pip install "pytest>=8,<10"
       - name: 驗證五層清冊及輸出契約
         run: >-
           python -m pytest -q
