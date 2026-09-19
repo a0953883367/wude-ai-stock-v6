@@ -1,0 +1,46 @@
+{
+  "schema": "wude.zhiying.connector_acceptance.v1",
+  "mode": "simulation_read_only",
+  "data_namespace": "zhiying_company",
+  "purpose": "在公司授權前完成欄位映射、模擬資料與唯讀驗收；禁止寫入正式系統或控制設備。",
+  "connectors": [
+    {
+      "name": "ERP",
+      "current_mode": "未連線",
+      "first_test": "唯讀查詢單一測試工單",
+      "required_fields": ["公司代碼", "工單號", "客戶", "品號", "數量", "交期", "包材狀態", "入庫狀態"],
+      "write_enabled": false
+    },
+    {
+      "name": "PLC／工業電腦",
+      "current_mode": "未連線",
+      "first_test": "讀取測試點位，不下控制命令",
+      "required_fields": ["設備編號", "點位名稱", "數值", "時間", "品質狀態"],
+      "write_enabled": false
+    },
+    {
+      "name": "無線掃描器",
+      "current_mode": "模擬",
+      "first_test": "掃描測試QR並檢查唯一編號、防重掃及人員身分",
+      "required_fields": ["QR唯一編號", "公司", "工單", "物料", "操作人員", "掃描時間"],
+      "write_enabled": false
+    },
+    {
+      "name": "標籤機",
+      "current_mode": "模擬",
+      "first_test": "輸出測試標籤到PDF，不送正式印表機",
+      "required_fields": ["標籤版型", "工單號", "品號", "箱數", "條碼資料"],
+      "write_enabled": false
+    }
+  ],
+  "acceptance_steps": [
+    "確認公司書面授權與測試範圍",
+    "建立去識別化測試資料",
+    "完成欄位對照與格式驗證",
+    "先通過ERP唯讀測試",
+    "再測掃描與測試標籤",
+    "PLC只讀驗收通過後才討論控制權限",
+    "正式上線前完成備份、回復與稽核紀錄測試"
+  ],
+  "approval_gates": ["ERP寫入", "PLC控制", "正式列印", "正式Mail或Telegram寄送", "設備採購"]
+}

@@ -116,7 +116,7 @@ test('owner page shows the current regular-session buy and sell ranking', () => 
   assert.match(script, /window:'session'/);
   assert.match(script, /state\.window==='session'\?marketData\.session/);
   assert.match(script, /今日正式盤/);
-  assert.match(html, /live_flow\.js\?v=653/);
+  assert.match(html, /live_flow\.js\?v=654/);
 });
 
 test('theme outflows keep theme labels and never render raw undefined names', () => {
@@ -126,7 +126,7 @@ test('theme outflows keep theme labels and never render raw undefined names', ()
   assert.match(script, /row\.theme\|\|'未分類族群'/);
   assert.match(script, /row\.name\|\|row\.symbol\|\|'未命名'/);
   assert.doesNotMatch(script, /var title=isTheme\?row\.theme:\(row\.name\|\|row\.symbol\)\+'・'\+row\.symbol/);
-  assert.match(html, /live_flow\.js\?v=653/);
+  assert.match(html, /live_flow\.js\?v=654/);
   assert.match(script, /族群流入排名（綜合訊號品質）/);
   assert.match(script, /個股流出排名（綜合訊號品質）/);
   assert.match(script, /flow\.theme_inflows\|\|\[\]/);
@@ -201,6 +201,9 @@ test('five-day flow weight experiment is isolated and visible', () => {
   assert.match(script, /待結算/);
   assert.match(script, /容量期間未追蹤/);
   assert.match(script, /第5交易日/);
+  assert.match(script, /3／5日結算正常/);
+  assert.match(script, /overdue=\['day3','day5'\]/);
+  assert.match(script, /overdue_unsettled/);
   assert.match(html, /官方 TWSE／TPEx 與 Alpaca 市場日曆/);
   assert.match(html, /不會拿下一日遞補/);
   assert.match(script, /官方交易日曆已驗證/);

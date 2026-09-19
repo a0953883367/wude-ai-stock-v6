@@ -245,6 +245,45 @@ def test_signal_uses_completed_trading_days_not_calendar_days(tmp_path: Path):
     assert horizons["day3"]["samples"] == 1
     assert horizons["day5"]["samples"] == 1
     assert horizons["day5"]["quarantined"] == 0
+    health = snapshot["markets"]["TW"]["signal_performance"]["settlement_health"]
+    assert health["day3"] == {
+        "status": "ok",
+        "settled": 1,
+        "waiting_not_due": 0,
+        "overdue_unsettled": 0,
+        "calendar_blocked": 0,
+    }
+    assert health["day5"]["overdue_unsettled"] == 0
+
+
+def test_signal_settlement_health_flags_matured_missing_day3_result(tmp_path: Path):
+    report = tmp_path / "all_analysis.json"
+    state = tmp_path / "state.json"
+    _write_report(report, "2026-08-28", "evening")
+    model = _model(report, state)
+    alert = _alert("T03")
+    alert["sequence"] = 901
+    model.record_alert(alert)
+    model.snapshot({})
+
+    for session_date in ("2026-08-31", "2026-09-01", "2026-09-02"):
+        _write_report(report, session_date, "evening", next_prices=True)
+        model = _model(report, state)
+        model.snapshot({})
+
+    signal = model._state["markets"]["TW"]["intraday_signals"][0]
+    signal["daily_results"] = [
+        row for row in signal["daily_results"]
+        if row.get("trading_day_index") != 3
+    ]
+    health = model._signal_performance("TW")["settlement_health"]["day3"]
+    assert health == {
+        "status": "attention",
+        "settled": 0,
+        "waiting_not_due": 0,
+        "overdue_unsettled": 1,
+        "calendar_blocked": 0,
+    }
 
 
 def test_missing_report_is_quarantined_without_shifting_day_one(tmp_path: Path):
