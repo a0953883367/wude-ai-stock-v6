@@ -2,13 +2,14 @@
   'use strict';
   function esc(value){return String(value===undefined||value===null?'—':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
   function statusClass(status){return status==='running_shadow'||status==='sandbox_ready'?'running':'waiting';}
+  function healthLabel(status){return {ok:'正常',warning:'注意',critical:'異常'}[status]||status||'尚無紀錄';}
   function statusFacts(agent){
     var runtime=agent.runtime||{},facts=[];
     if(agent.id==='stock_shadow'){
       facts.push(['向前驗證',esc(runtime.trading_days_collected||0)+' / '+esc(runtime.target_trading_days||60)+' 日']);
       facts.push(['正式 V6',runtime.formal_v6_locked?'保持鎖定':'需核對']);
       facts.push(['GPT 教導',runtime.weekly_coach_last_run?'已有紀錄':'尚無紀錄']);
-      facts.push(['系統值班員',esc(runtime.system_guard||'尚無紀錄')]);
+      facts.push(['系統值班員',esc(healthLabel(runtime.system_guard))]);
     }else{
       var available=Array.isArray(runtime.available_now)?runtime.available_now:[];
       var blocked=Array.isArray(runtime.blocked)?runtime.blocked:[];
