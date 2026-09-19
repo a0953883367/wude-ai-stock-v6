@@ -285,7 +285,7 @@ def _dry_run_coach(context: dict[str, Any]) -> dict[str, Any]:
         "data_gaps": [
             key
             for key, value in (context.get("signal_health") or {}).items()
-            if int((value or {}).get("trade_signal_samples") or 0) == 0
+            if (value or {}).get("requires_diagnostic") is True
         ][:5],
         "confidence_notes": [
             f"目前為 {context['trading_days_collected']}/"

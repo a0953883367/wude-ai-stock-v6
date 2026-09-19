@@ -80,6 +80,79 @@ def test_trade_signal_health_separates_direction_questions_from_trades(tmp_path:
     assert tw["status"] == "collecting_trade_outcomes"
 
 
+def test_healthy_zero_trade_signals_do_not_create_diagnostic_candidate(tmp_path: Path) -> None:
+    _write(tmp_path / "performance.json", {
+        "calibration": {"trading_days_collected": 20},
+        "groups": {
+            "US_STOCK": {
+                "horizons": {"1": {"samples": 199}},
+                "trade_signals": {"1": {"samples": 0}},
+                "trade_signal_diagnostics": {
+                    "diagnosis": "healthy_waiting_for_zone",
+                    "qualified_setups": 1,
+                    "evaluated_setups": 1,
+                    "triggered_setups": 0,
+                    "pending_setups": 0,
+                    "untouched_entry_zones": 1,
+                    "data_contract_errors": 0,
+                },
+            },
+            "US_ETF": {
+                "horizons": {"1": {"samples": 200}},
+                "trade_signals": {"1": {"samples": 0}},
+                "trade_signal_diagnostics": {
+                    "diagnosis": "healthy_no_qualified_setup",
+                    "qualified_setups": 0,
+                    "evaluated_setups": 0,
+                    "triggered_setups": 0,
+                    "pending_setups": 0,
+                    "untouched_entry_zones": 0,
+                    "data_contract_errors": 0,
+                },
+            },
+        },
+    })
+
+    report = update_model_learning(tmp_path, updated_at="2026-09-19 23:59:00")
+
+    stock = report["signal_health"]["US_STOCK"]
+    assert stock["status"] == "waiting_for_entry_zone"
+    assert stock["requires_diagnostic"] is False
+    assert "正常等待" in stock["detail"]
+    etf = report["signal_health"]["US_ETF"]
+    assert etf["status"] == "no_qualified_setup"
+    assert etf["requires_diagnostic"] is False
+    assert "屬正常" in etf["detail"]
+    candidate_ids = {item["candidate_id"] for item in report["shadow_candidates"]}
+    assert "shadow:trade_threshold_diagnostic:v1" not in candidate_ids
+
+
+def test_trade_contract_error_still_creates_diagnostic_candidate(tmp_path: Path) -> None:
+    _write(tmp_path / "performance.json", {
+        "calibration": {"trading_days_collected": 20},
+        "groups": {
+            "TW_STOCK": {
+                "horizons": {"1": {"samples": 100}},
+                "trade_signals": {"1": {"samples": 0}},
+                "trade_signal_diagnostics": {
+                    "diagnosis": "data_contract_error",
+                    "qualified_setups": 2,
+                    "evaluated_setups": 2,
+                    "data_contract_errors": 2,
+                },
+            },
+        },
+    })
+
+    report = update_model_learning(tmp_path, updated_at="2026-09-19 23:59:00")
+
+    tw = report["signal_health"]["TW_STOCK"]
+    assert tw["status"] == "data_contract_error"
+    assert tw["requires_diagnostic"] is True
+    candidate_ids = {item["candidate_id"] for item in report["shadow_candidates"]}
+    assert "shadow:trade_threshold_diagnostic:v1" in candidate_ids
+
+
 def test_legacy_performance_does_not_erase_event_level_learning_history(tmp_path: Path) -> None:
     _write(tmp_path / "model_learning.json", {
         "error_learning": {
