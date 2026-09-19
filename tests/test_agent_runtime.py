@@ -47,3 +47,49 @@ def test_external_side_effect_waits_for_approval():
     assert row["status"] == "waiting_for_approval"
     assert row["external_side_effect"] is False
     assert row["status_label"] == "等待授權"
+
+
+def test_every_safe_task_gets_a_bounded_context_plan():
+    row = execute_safe_task("stock_shadow", "shadow_validate", "股票影子驗證", {"validation": True}, UsageLedger())
+    assert row["status"] == "completed"
+    assert row["context_plan"]["profile"] == "research"
+    assert row["context_plan"]["cross_domain_reads"] is False
+    assert row["context_plan"]["files"] <= 12
+
+
+def test_report_without_artifact_evidence_stays_draft():
+    row = execute_safe_task("zhiying_company", "draft_report", "製作至盈簡報", {}, UsageLedger())
+    assert row["status"] == "draft"
+    assert row["status_label"] == "草稿；尚未提供輸出驗收"
+
+
+def test_report_becomes_complete_only_after_artifact_validation(tmp_path: Path):
+    (tmp_path / "agent_workspaces").mkdir()
+    catalog = {
+        "schema": "wude.context_catalog.v1",
+        "policy": {"default_max_files": 12, "default_max_bytes": 200000},
+        "layers": {},
+        "domains": {
+            key: {layer: [] for layer in ("canonical", "reference", "research", "temporary", "archive")}
+            for key in ("stock_shadow", "zhiying_company", "wt_fasteners", "packaging_startup")
+        },
+        "task_profiles": {"output": ["canonical", "reference", "temporary"]},
+    }
+    (tmp_path / "agent_workspaces" / "context_catalog.json").write_text(json.dumps(catalog), encoding="utf-8")
+    (tmp_path / "source.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "report.md").write_text("# 已渲染並核對", encoding="utf-8")
+    checks = {
+        key: {"passed": True, "evidence": "測試證據"}
+        for key in ("source_version", "numbers_dates_units", "cross_page_consistency", "visual_render_review")
+    }
+    row = execute_safe_task(
+        "zhiying_company",
+        "draft_report",
+        "製作至盈簡報",
+        {"artifact_validation": {"artifact": "report.md", "domain": "zhiying_company", "sources": ["source.json"], "checks": checks}},
+        UsageLedger(),
+        root=tmp_path,
+    )
+    assert row["status"] == "completed"
+    assert row["artifact_validation"]["verified"] is True
+    assert row["payload_stored"] is False
