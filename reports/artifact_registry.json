@@ -1,0 +1,77 @@
+{
+  "schema": "wude.artifact_registry.v1",
+  "generated_at": "2026-09-19T18:33:58+00:00",
+  "status": "active",
+  "status_label": "交付清冊已啟用",
+  "summary": {
+    "total": 3,
+    "ready_for_handoff": 0,
+    "draft": 0,
+    "waiting_approval": 1,
+    "waiting_input": 2,
+    "in_progress": 0
+  },
+  "items": [
+    {
+      "id": "zhiying_connector_pack",
+      "agent_id": "zhiying_company",
+      "agent_name": "至盈公司 Agent",
+      "title": "ERP／PLC／掃描／列印模擬串接包",
+      "artifact": "agent_workspaces/zhiying_company/連線模擬與驗收規格.json",
+      "artifact_label": "查看模擬串接規格",
+      "artifact_exists": true,
+      "status": "waiting_approval",
+      "status_label": "等待授權",
+      "next_action": "取得公司同意及測試環境後，才進行實際連線",
+      "blocked_by": [
+        "公司授權",
+        "ERP／PLC測試環境"
+      ],
+      "validation_record": null,
+      "verified": false
+    },
+    {
+      "id": "wt_product_cost_template",
+      "agent_id": "wt_fasteners",
+      "agent_name": "WT 螺絲電商 Agent",
+      "title": "商品、成本、售價與毛利輸入表",
+      "artifact": "agent_workspaces/wt_fasteners/WT商品與毛利輸入表.xlsx",
+      "artifact_label": "下載商品與毛利輸入表",
+      "artifact_exists": true,
+      "status": "waiting_input",
+      "status_label": "等待資料",
+      "next_action": "填入螺絲、包材、人工、運費與平台費用",
+      "blocked_by": [
+        "實際成本資料",
+        "商店帳號連線"
+      ],
+      "validation_record": null,
+      "verified": false
+    },
+    {
+      "id": "packaging_feasibility_model",
+      "agent_id": "packaging_startup",
+      "agent_name": "包裝創業 Agent",
+      "title": "機器產能與損益試算",
+      "artifact": "agent_workspaces/packaging_startup/包裝創業產能與損益試算.xlsx",
+      "artifact_label": "下載產能與損益試算",
+      "artifact_exists": true,
+      "status": "waiting_input",
+      "status_label": "等待資料",
+      "next_action": "補上工資、水電、包材、設備與每桶平均重量",
+      "blocked_by": [
+        "設備正式報價",
+        "工資與水電",
+        "預估訂單量"
+      ],
+      "validation_record": null,
+      "verified": false
+    }
+  ],
+  "safety": {
+    "cross_domain_reads": false,
+    "external_publish": false,
+    "external_messages_sent": false,
+    "formal_stock_system_changed": false
+  }
+}
