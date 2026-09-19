@@ -11,7 +11,14 @@ on:
       - artifact_registry.py
       - context_audit.py
       - context_governance.py
+      - dynamic_capability_loader.py
+      - memory_compaction.py
+      - context_efficiency.py
+      - presentation_pipeline.mjs
       - agent_workspaces/context_catalog.json
+      - agent_workspaces/capability_catalog.json
+      - agent_workspaces/PPT自動產生規格範本.json
+      - agent_workspaces/PPT自動流程使用說明.md
       - agent_workspaces/輸出驗收規格範本.json
       - agent_workspaces/PPT交付驗收規格範本.json
       - tests/test_agent_control.py
@@ -24,8 +31,14 @@ on:
       - agent_control.js
       - agent_control.css
       - reports/artifact_registry.json
+      - reports/agent_runtime.json
+      - reports/context_efficiency.json
       - tests/test_context_audit.py
       - tests/test_context_governance.py
+      - tests/test_dynamic_capability_loader.py
+      - tests/test_memory_compaction.py
+      - tests/test_context_efficiency.py
+      - tests/test_presentation_pipeline.js
       - .github/workflows/context-governance.yml
   push:
     branches: [main]
@@ -37,7 +50,14 @@ on:
       - artifact_registry.py
       - context_audit.py
       - context_governance.py
+      - dynamic_capability_loader.py
+      - memory_compaction.py
+      - context_efficiency.py
+      - presentation_pipeline.mjs
       - agent_workspaces/context_catalog.json
+      - agent_workspaces/capability_catalog.json
+      - agent_workspaces/PPT自動產生規格範本.json
+      - agent_workspaces/PPT自動流程使用說明.md
       - agent_workspaces/輸出驗收規格範本.json
       - agent_workspaces/PPT交付驗收規格範本.json
       - tests/test_agent_control.py
@@ -50,8 +70,14 @@ on:
       - agent_control.js
       - agent_control.css
       - reports/artifact_registry.json
+      - reports/agent_runtime.json
+      - reports/context_efficiency.json
       - tests/test_context_audit.py
       - tests/test_context_governance.py
+      - tests/test_dynamic_capability_loader.py
+      - tests/test_memory_compaction.py
+      - tests/test_context_efficiency.py
+      - tests/test_presentation_pipeline.js
       - .github/workflows/context-governance.yml
 
 permissions:
@@ -77,8 +103,11 @@ jobs:
           tests/test_artifact_validation.py
           tests/test_presentation_delivery.py
           tests/test_artifact_registry.py
+          tests/test_dynamic_capability_loader.py
+          tests/test_memory_compaction.py
+          tests/test_context_efficiency.py
       - name: 驗證中央 AI 交付清冊介面
-        run: node tests/test_agent_control_ui.js
+        run: node tests/test_agent_control_ui.js && node tests/test_presentation_pipeline.js
       - name: 產生並核對資料治理稽核
         run: |
           python context_audit.py --output /tmp/context_governance.json

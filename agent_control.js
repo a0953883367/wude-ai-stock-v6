@@ -35,8 +35,8 @@
     }).join('')||'<div class="empty">尚無任務紀錄。</div>';
   }
   function renderRuntime(report){
-    var summary=report.summary||{},tasks=Array.isArray(report.validations)?report.validations:[];
-    document.getElementById('runtimeHeadline').textContent=(report.status_label||'等待驗收')+'｜安全任務 '+(summary.validation_completed||0)+'／'+(summary.validation_total||0)+'｜授權閘門 '+(summary.approval_gates_protected||0)+'／'+(summary.approval_gates_total||0)+' 已保護｜付費模型呼叫 '+(summary.paid_model_calls||0)+' 次';
+    var summary=report.summary||{},efficiency=report.context_efficiency||{},tasks=Array.isArray(report.validations)?report.validations:[];
+    document.getElementById('runtimeHeadline').textContent=(report.status_label||'等待驗收')+'｜安全任務 '+(summary.validation_completed||0)+'／'+(summary.validation_total||0)+'｜授權閘門 '+(summary.approval_gates_protected||0)+'／'+(summary.approval_gates_total||0)+' 已保護｜動態載入估計減少 '+esc(efficiency.average_reduction_pct||0)+'%｜付費模型呼叫 '+(summary.paid_model_calls||0)+' 次';
     document.getElementById('runtimeUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('runtimeTasks').innerHTML=tasks.map(function(task){return '<div class="runtime-task" data-runtime-agent="'+esc(task.agent_id)+'"><b>✅ '+esc(task.agent_name)+'</b><span>'+esc(task.title)+'：'+esc(task.status_label)+'</span></div>';}).join('')||'<div class="empty">尚無安全任務執行紀錄。</div>';
   }

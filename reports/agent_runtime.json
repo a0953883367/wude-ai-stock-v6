@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
-  "version": "CENTRAL-AGENT-RUNTIME-V1",
-  "generated_at": "2026-09-19T18:30:11+00:00",
+  "version": "CENTRAL-AGENT-RUNTIME-V2",
+  "generated_at": "2026-09-19T18:55:35+00:00",
   "status": "passed",
   "status_label": "四個 Agent 安全驗收通過",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -35,6 +35,21 @@
         "truncated": true,
         "cross_domain_reads": false
       },
+      "capability_plan": {
+        "skills": [
+          "context_governance",
+          "stock_shadow_analysis",
+          "evidence_verification"
+        ],
+        "tools": [
+          "context_plan",
+          "shadow_validator",
+          "evidence_check"
+        ],
+        "schema_bytes": 412,
+        "executor_loaded": true,
+        "cross_domain_tools": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
       "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
@@ -58,6 +73,19 @@
         "bytes": 1844,
         "truncated": false,
         "cross_domain_reads": false
+      },
+      "capability_plan": {
+        "skills": [
+          "context_governance",
+          "workflow_simulation"
+        ],
+        "tools": [
+          "context_plan",
+          "workflow_simulator"
+        ],
+        "schema_bytes": 246,
+        "executor_loaded": true,
+        "cross_domain_tools": false
       },
       "status": "completed",
       "status_label": "安全驗收通過",
@@ -83,6 +111,19 @@
         "truncated": false,
         "cross_domain_reads": false
       },
+      "capability_plan": {
+        "skills": [
+          "context_governance",
+          "workflow_simulation"
+        ],
+        "tools": [
+          "context_plan",
+          "workflow_simulator"
+        ],
+        "schema_bytes": 246,
+        "executor_loaded": true,
+        "cross_domain_tools": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
       "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
@@ -107,6 +148,19 @@
         "truncated": false,
         "cross_domain_reads": false
       },
+      "capability_plan": {
+        "skills": [
+          "context_governance",
+          "workflow_simulation"
+        ],
+        "tools": [
+          "context_plan",
+          "workflow_simulator"
+        ],
+        "schema_bytes": 246,
+        "executor_loaded": true,
+        "cross_domain_tools": false
+      },
       "status": "completed",
       "status_label": "安全驗收通過",
       "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
@@ -122,6 +176,13 @@
       "task_key": "7e64013208994f2736680efb4b6707f35962b0a7709f84857e48e25d4a7ac272",
       "payload_stored": false,
       "external_side_effect": false,
+      "capability_plan": {
+        "skills": [],
+        "tools": [],
+        "schema_bytes": 0,
+        "executor_loaded": false,
+        "cross_domain_tools": false
+      },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
       "summary": "不得連券商或自動下單。"
@@ -135,6 +196,13 @@
       "task_key": "2c940d9ba4efa2a94b79943493d459c15547b34647b73c9f8ebe75ad18b8154b",
       "payload_stored": false,
       "external_side_effect": false,
+      "capability_plan": {
+        "skills": [],
+        "tools": [],
+        "schema_bytes": 0,
+        "executor_loaded": false,
+        "cross_domain_tools": false
+      },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
       "summary": "公司 ERP 寫入等待公司授權與測試環境。"
@@ -148,6 +216,13 @@
       "task_key": "078fd17fe6e5db04138be5b7ebc269c4de250eb8789ac4a06c397caa09ec21d5",
       "payload_stored": false,
       "external_side_effect": false,
+      "capability_plan": {
+        "skills": [],
+        "tools": [],
+        "schema_bytes": 0,
+        "executor_loaded": false,
+        "cross_domain_tools": false
+      },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
       "summary": "上架或公開發布前必須取得本次明確核准。"
@@ -161,6 +236,13 @@
       "task_key": "6dcb7aaea78424494426c7ebcd4244a627c90ee7e6262c6214b950883bb2452b",
       "payload_stored": false,
       "external_side_effect": false,
+      "capability_plan": {
+        "skills": [],
+        "tools": [],
+        "schema_bytes": 0,
+        "executor_loaded": false,
+        "cross_domain_tools": false
+      },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
       "summary": "付款與採購必須由本人確認。"
@@ -180,6 +262,14 @@
     "cross_layer_conflicts": 0,
     "dynamic_loading": true,
     "archive_requires_explicit_request": true
+  },
+  "context_efficiency": {
+    "status": "passed",
+    "average_reduction_pct": 29.62,
+    "exact_provider_tokens": false,
+    "dynamic_skill_loading": true,
+    "dynamic_tool_schema_loading": true,
+    "memory_compaction_available": true
   },
   "output_validation": {
     "status": "enforced_by_contract",
