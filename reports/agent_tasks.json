@@ -1,13 +1,13 @@
 {
   "schema": "wude.central_agent_tasks.v1",
   "version": "CENTRAL-AGENT-TASKS-V1",
-  "generated_at": "2026-09-19T19:01:11+00:00",
+  "generated_at": "2026-09-20T09:46:04.289Z",
   "status": "active",
   "status_label": "未完成工作已納入任務中心",
   "summary": {
-    "total": 5,
+    "total": 4,
     "completed": 1,
-    "running": 2,
+    "running": 1,
     "waiting_input": 2
   },
   "tasks": [
@@ -38,22 +38,6 @@
         "gpt_shadow_teaching": "已有紀錄",
         "formal_v6_locked": true
       }
-    },
-    {
-      "id": "zhiying_connector_pack",
-      "agent_id": "zhiying_company",
-      "agent_name": "至盈公司 Agent",
-      "title": "ERP／PLC／掃描／列印模擬串接包",
-      "status": "prepared",
-      "status_label": "模擬規格已備妥",
-      "progress_label": "可先做欄位映射、唯讀測試與驗收，不接正式設備",
-      "next_action": "取得公司同意及測試環境後，才進行實際連線",
-      "blocked_by": [
-        "公司授權",
-        "ERP／PLC測試環境"
-      ],
-      "artifact_url": "agent_workspaces/zhiying_company/連線模擬與驗收規格.json",
-      "artifact_label": "查看模擬串接規格"
     },
     {
       "id": "wt_product_cost_template",
