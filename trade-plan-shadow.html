@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <link rel="stylesheet" href="app_shell.css?v=1">
+  <title>影子交易計畫</title>
+  <style>
+    :root{--bg:#07111f;--panel:#0d1b2d;--line:#294b68;--text:#f4f8ff;--muted:#91a6c1;--green:#55e6a5;--yellow:#f8ca65;--red:#fb7185;--blue:#38bdf8}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b2440,#07111f 32%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif}
+    button,input{font:inherit}.app{width:min(920px,100%);margin:auto;padding:18px 14px 80px}.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.back{color:#dbeafe;text-decoration:none;border:1px solid var(--line);background:#0c192a;border-radius:999px;padding:9px 13px;font-weight:800}.refresh{border:1px solid #176b75;background:#134e5e;color:#cffafe;border-radius:999px;padding:9px 13px;font-weight:900}
+    .hero{margin:14px 0;padding:18px;border:1px solid #2b5c83;border-radius:22px;background:linear-gradient(145deg,#102a49,#0b182a)}.eyebrow{color:var(--blue);font-size:12px;font-weight:900}.hero h1{margin:6px 0 8px;font-size:28px}.hero p{margin:0;color:#bfd0e5;line-height:1.65;font-size:13px}.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.chip{font-size:10px;border:1px solid #31516d;border-radius:999px;padding:5px 8px;color:#c7d7e9}.chip.ok{color:#a7f3d0;border-color:#1e765c}.chip.warn{color:#fde68a;border-color:#805f19}
+    .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.metric{background:#0a1728;border:1px solid var(--line);border-radius:15px;padding:12px}.metric span{display:block;color:var(--muted);font-size:10px}.metric b{display:block;font-size:19px;margin-top:5px}
+    .controls{position:sticky;top:0;z-index:3;background:#07111fee;backdrop-filter:blur(12px);padding:10px 0}.row{display:flex;gap:7px;overflow:auto;scrollbar-width:none;margin-bottom:8px}.row button{white-space:nowrap;border:1px solid #365373;background:#102139;color:#cbdcf0;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:850}.row button.active{background:#0e7490;border-color:#38bdf8;color:#ecfeff}.search input{width:100%;border:1px solid var(--line);background:#0b192a;color:white;border-radius:13px;padding:12px}
+    .note{margin:10px 0;padding:12px;border-radius:14px;border:1px solid #8a681f;background:#32260e;color:#fde7a7;font-size:12px;line-height:1.6}.count{color:var(--muted);font-size:12px;margin:12px 2px}
+    .card{border:1px solid var(--line);background:linear-gradient(145deg,#0d1d31,#0a1728);border-radius:18px;padding:14px;margin:10px 0}.card.candidate{border-color:#1e765c}.card.wait{border-color:#805f19}.card.blocked{border-color:#8f3348}.head{display:flex;justify-content:space-between;gap:10px}.symbol{font-size:11px;color:var(--blue);font-weight:900}.name{font-size:21px;font-weight:950;margin-top:3px}.status{text-align:right}.status b{display:inline-block;border-radius:999px;padding:6px 9px;font-size:11px;background:#1b3147;color:#dbeafe}.candidate .status b{background:#0d4234;color:#a7f3d0}.wait .status b{background:#45350e;color:#fde68a}.blocked .status b{background:#49202a;color:#ffb1bf}.status small{display:block;color:var(--muted);font-size:9px;margin-top:5px}
+    .planline{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px}.box{background:#091522;border-radius:10px;padding:9px}.box span{display:block;color:var(--muted);font-size:9px}.box b{display:block;font-size:13px;margin-top:4px}.good{color:var(--green)}.warn{color:var(--yellow)}.bad{color:var(--red)}
+    .sell{margin-top:10px;padding:10px;border-radius:12px;background:#101f34;color:#c9d9ea;font-size:11px;line-height:1.55}.reason{margin-top:9px;color:#b5c6d8;font-size:11px;line-height:1.55}.reason.bad{color:#ffb1bf}.meta{margin-top:10px;color:#8298b2;font-size:9px}.empty{padding:28px;text-align:center;border:1px dashed var(--line);border-radius:16px;color:var(--muted)}
+    @media(min-width:720px){.summary{grid-template-columns:repeat(4,1fr)}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{margin:0}}
+  </style>
+</head>
+<body>
+<main class="app">
+  <div class="top"><a class="back" href="decision-hub.html">← 中央 AI</a><button class="refresh" id="refresh">更新</button></div>
+  <section class="hero">
+    <div class="eyebrow">只讀影子層｜不改正式 V6</div>
+    <h1>🧮 交易計畫計算器</h1>
+    <p>把中央 AI 已有的買進區、停損、目標價與多週期資料，整理成「可買多久、哪裡買、哪裡不追、到哪裡分批賣」的單一計畫。</p>
+    <div class="chips"><span class="chip ok">正式排名不變</span><span class="chip ok">正式權重不變</span><span class="chip ok">不連券商</span><span class="chip warn" id="progressChip">等待資料</span></div>
+  </section>
+  <section class="summary" id="summary"></section>
+  <div class="note">買進期限以「有效交易日」計算；期限到、正式收盤資料更新、風險新增或買進區失效，就必須重新計算。這一版只做影子驗證，不會送出任何訂單。</div>
+  <section class="controls">
+    <div class="row" id="markets"><button class="active" data-market="ALL">全部</button><button data-market="TW">台股</button><button data-market="US">美股</button></div>
+    <div class="row" id="statuses"><button class="active" data-status="ALL">全部</button><button data-status="candidate">有計畫</button><button data-status="wait">等待</button><button data-status="blocked">先不買</button></div>
+    <div class="row" id="horizons"><button class="active" data-horizon="preferred">系統建議週期</button><button data-horizon="short">1～5日</button><button data-horizon="medium">45日</button><button data-horizon="long">約6個月</button></div>
+    <div class="search"><input id="search" type="search" placeholder="輸入股票名稱或代號" autocomplete="off"></div>
+  </section>
+  <div class="count" id="count">正在載入…</div>
+  <section class="cards" id="cards"><div class="empty">正在整理交易計畫…</div></section>
+</main>
+<script src="trade_plan_shadow.js?v=1"></script>
+<script src="app_shell.js?v=2"></script>
+</body>
+</html>
