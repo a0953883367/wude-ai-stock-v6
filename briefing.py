@@ -387,6 +387,31 @@ def _update_decision_hub_safely(
     return success
 
 
+def _update_trade_plan_shadow_safely(reports_dir, *, updated_at: str) -> bool:
+    """Build a compact read-only trade plan after Central AI has finished."""
+    health_path = reports_dir / "trade_plan_shadow_health.json"
+    try:
+        from trade_plan_shadow import write_trade_plan_report
+
+        write_trade_plan_report(reports_dir)
+    except Exception as exc:  # noqa: BLE001 - shadow execution plan is isolated
+        logging.exception("影子交易計畫計算失敗；正式V6與既有報表繼續")
+        health = {
+            "status": "warning",
+            "updated_at": updated_at,
+            "error_type": type(exc).__name__,
+            "detail": str(exc)[:300] or "影子交易計畫發生未分類錯誤",
+            "formal_v6_unchanged": True,
+            "formal_rankings_unchanged": True,
+            "automatic_orders": False,
+        }
+        tmp = reports_dir / "trade_plan_shadow_health.tmp"
+        tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(health_path)
+        return False
+    return True
+
+
 def _update_prediction_engine_safely(
     reports_dir,
     rows,
@@ -1904,6 +1929,10 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         institution_status=institution_status,
+    )
+    _update_trade_plan_shadow_safely(
+        SETTINGS.reports_dir,
+        updated_at=report["updated_at"],
     )
     _update_tw_signal_confirmation_shadow_safely(
         SETTINGS.reports_dir,
