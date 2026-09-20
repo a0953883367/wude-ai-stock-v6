@@ -54,6 +54,8 @@ REQUIRED_WORKFLOW_COMMANDS = (
     "python -m unittest tests.test_commercial_readiness_check",
     "python tools/live_trading_safety_check.py",
     "python -m unittest tests.test_live_trading_safety_check",
+    "python tools/paper_trading_acceptance_check.py",
+    "python -m unittest tests.test_paper_trading_acceptance_check",
 )
 
 REQUIRED_FILES = {
@@ -65,6 +67,8 @@ REQUIRED_FILES = {
     "依賴套件自動更新監控": ".github/dependabot.yml",
     "真實下單安全鎖驗證": "tools/live_trading_safety_check.py",
     "真實下單安全鎖單元測試": "tests/test_live_trading_safety_check.py",
+    "紙上交易全流程驗收": "tools/paper_trading_acceptance_check.py",
+    "紙上交易全流程單元測試": "tests/test_paper_trading_acceptance_check.py",
 }
 
 
