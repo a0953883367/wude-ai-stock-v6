@@ -141,6 +141,8 @@ def _no_buy_reason(row: dict[str, Any], plan: dict[str, Any], price: float | Non
         return str(execution.get("reason") or "現價高於買進區，不追價")
     if code == "wait_stabilize":
         return str(execution.get("reason") or "現價低於買進區，等待止穩")
+    if recommendation == "wait_pullback":
+        return str(execution.get("reason") or "中央結論仍是等待買點／確認，尚未直接可買")
     if recommendation == "watch":
         return "目前僅列觀察，尚未達到可買條件"
     if price is None:
