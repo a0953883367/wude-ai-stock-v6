@@ -17,15 +17,29 @@ def test_share_quantities_are_split_for_tw_exchange():
 
 
 def test_live_orders_fail_closed():
-    assert live_order_unlock_reason({}) == "TRADING_MODE 尚未設為 live"
-    assert "LIVE_TRADING_ENABLED" in live_order_unlock_reason({"TRADING_MODE": "live"})
-    env = {"TRADING_MODE": "live", "LIVE_TRADING_ENABLED": "true"}
+    assert live_order_unlock_reason({}) == "DEPLOYMENT_ENVIRONMENT 尚未設為 production"
+    production = {"DEPLOYMENT_ENVIRONMENT": "production"}
+    assert live_order_unlock_reason(production) == "TRADING_MODE 尚未設為 live"
+    assert "LIVE_TRADING_ENABLED" in live_order_unlock_reason({**production, "TRADING_MODE": "live"})
+    env = {**production, "TRADING_MODE": "live", "LIVE_TRADING_ENABLED": "true"}
     assert "永久交易狀態" in live_order_unlock_reason(env)
     env["TRADE_STATE_PATH"] = "/data/trading.json"
     env["LIVE_TRADING_CONFIRMATION"] = "A"
     assert "確認碼" in live_order_unlock_reason(env)
     env["TRADE_STATE_PATH"] = "/data/paper_trading_state.json"
     assert "不同狀態檔" in live_order_unlock_reason(env)
+
+
+def test_live_orders_stay_locked_when_other_switches_are_accidentally_enabled_in_test():
+    env = {
+        "DEPLOYMENT_ENVIRONMENT": "test",
+        "TRADING_MODE": "live",
+        "LIVE_TRADING_ENABLED": "true",
+        "TRADE_STATE_PATH": "/data/live_trading_state.json",
+        "LIVE_TRADING_CONFIRMATION": "confirmed",
+        "LIVE_TRADING_CONFIRMATION_INPUT": "confirmed",
+    }
+    assert "DEPLOYMENT_ENVIRONMENT" in live_order_unlock_reason(env)
 
 
 def test_available_cash_never_exceeds_twenty_thousand():
