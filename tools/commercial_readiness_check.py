@@ -59,6 +59,8 @@ REQUIRED_FILES = {
     "預測證據備份": "tools/prediction_evidence_backup.py",
     "歷史資料封存": "history_archive.py",
     "還原安全機制": "prediction_engine/evidence_backup.py",
+    "私密弱點通報流程": "SECURITY.md",
+    "依賴套件自動更新監控": ".github/dependabot.yml",
 }
 
 
