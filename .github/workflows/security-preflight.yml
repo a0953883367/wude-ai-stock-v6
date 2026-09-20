@@ -27,3 +27,7 @@ jobs:
           python-version: "3.12"
       - name: 檢查API密鑰與敏感檔案
         run: python tools/security_preflight.py
+      - name: 檢查安全測試模式與備份能力
+        run: |
+          python tools/commercial_readiness_check.py
+          python -m unittest tests.test_commercial_readiness_check
