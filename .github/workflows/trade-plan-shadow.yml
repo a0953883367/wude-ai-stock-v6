@@ -27,10 +27,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: 安裝測試工具
+        run: python -m pip install "pytest>=8,<10"
       - name: 建立影子交易計畫
         run: python trade_plan_shadow.py --reports-dir reports
       - name: 驗證交易計畫
-        run: python -m unittest discover -s tests -p "test_trade_plan_shadow.py"
+        run: python -m pytest -q tests/test_trade_plan_shadow.py
       - name: 保存最新計畫
         run: |
           if git diff --quiet -- reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json; then
