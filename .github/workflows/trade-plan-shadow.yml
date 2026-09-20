@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "trade_plan_shadow.py"
+      - ".github/workflows/trade-plan-shadow.yml"
       - "reports/decision_hub.json"
       - "reports/decision_hub_*.json"
   workflow_dispatch:
@@ -35,7 +36,7 @@ jobs:
         run: python -m pytest -q tests/test_trade_plan_shadow.py
       - name: 保存最新計畫
         run: |
-          if git diff --quiet -- reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json; then
+          if [ -z "$(git status --porcelain -- reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json)" ]; then
             echo "交易計畫沒有變更"
             exit 0
           fi
