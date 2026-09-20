@@ -1,6 +1,7 @@
 (function(){
   'use strict';
-  var state={payload:null,market:'ALL',status:'ALL',horizon:'preferred',query:''};
+  var params=new URLSearchParams(window.location.search);
+  var state={payload:null,market:'ALL',status:'ALL',horizon:'preferred',query:String(params.get('symbol')||'').trim()};
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
   function num(v,d){var n=Number(v);return Number.isFinite(n)?n.toFixed(d==null?2:d):'—';}
   function price(v){var n=Number(v);if(!Number.isFinite(n))return '—';return n.toLocaleString('zh-TW',{maximumFractionDigits:n>=1000?1:n>=10?2:3});}
@@ -26,9 +27,11 @@
         '<div class="box"><span>買進區</span><b>'+price(summary.entry_low)+' ～ '+price(summary.entry_high)+'</b></div>'+
         '<div class="box"><span>高於這裡不追</span><b class="warn">'+price(summary.do_not_chase_above)+'</b></div>'+
         '<div class="box"><span>停損／失效</span><b class="bad">'+price(summary.stop)+(summary.stop_sell_pct?'｜退出 '+summary.stop_sell_pct+'%':'')+'</b></div>'+
+        '<div class="box"><span>計畫品質</span><b>'+esc((summary.plan_quality||{}).label||'—')+'</b></div>'+
         '<div class="box"><span>最長持有</span><b>'+esc(summary.max_hold_sessions||'—')+' 個有效交易日</b></div>'+
       '</div>'+
-      '<div class="sell">'+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+'</div>'+
+      '<div class="sell">'+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+
+      (summary.stop_adjusted?'<br>🛡️ 停損已依週期／下跌風險防呆調整；原始停損 '+price(summary.source_stop):'')+'</div>'+
       (noBuy?'<div class="reason bad">目前不直接買：'+esc(noBuy)+'</div>':'<div class="reason">計畫有效；仍需依買進區、量價確認與最新收盤資料執行。</div>')+
       '<div class="meta">分數 '+num(summary.score,1)+'｜信心 '+pct(summary.confidence)+'｜資料品質 '+pct(summary.data_quality_pct)+'｜正式排名 '+esc(row.formal_rank||'—')+'</div>'+
     '</article>';
@@ -61,6 +64,10 @@
         '<div class="metric"><span>等待</span><b class="warn">'+Number(s.wait||0)+'</b></div>'+
         '<div class="metric"><span>先不買</span><b class="bad">'+Number(s.blocked||0)+'</b></div>';
       document.getElementById('progressChip').textContent='前向驗證 '+Number(v.trading_days_collected||0)+' / '+Number(v.target_trading_days||60)+' 日';
+      if(state.query){
+        var input=document.getElementById('search');
+        if(input) input.value=state.query;
+      }
       render();
     }).catch(function(err){
       document.getElementById('cards').innerHTML='<div class="empty">讀取失敗：'+esc(err.message)+'</div>';
