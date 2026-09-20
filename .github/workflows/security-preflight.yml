@@ -31,3 +31,7 @@ jobs:
         run: |
           python tools/commercial_readiness_check.py
           python -m unittest tests.test_commercial_readiness_check
+      - name: 驗證真實下單安全鎖（不連線券商）
+        run: |
+          python tools/live_trading_safety_check.py
+          python -m unittest tests.test_live_trading_safety_check
