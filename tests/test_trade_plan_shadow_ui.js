@@ -17,6 +17,9 @@ const hubJs = fs.readFileSync('decision_hub.js', 'utf8');
 ].forEach(text => assert(html.includes(text), 'missing trade plan UI copy: ' + text));
 
 assert(js.includes("reports/trade_plan_shadow.json"));
+assert(js.includes("reports/trade_plan_validation.json"));
+assert(html.includes('前向驗證資料載入中'));
+assert(js.includes('前向驗證'));
 assert(js.includes('買進期限'));
 assert(js.includes('高於這裡不追'));
 assert(js.includes('停損／失效'));
