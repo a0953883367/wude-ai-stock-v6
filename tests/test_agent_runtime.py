@@ -6,14 +6,14 @@ from agent_control import UsageLedger
 from agent_runtime import BOOTSTRAP_TASKS, build_runtime_report, execute_safe_task
 
 
-def test_all_four_agents_execute_one_safe_validation(tmp_path: Path):
+def test_all_three_agents_execute_one_safe_validation(tmp_path: Path):
     report = build_runtime_report(tmp_path)
     assert report["status"] == "passed"
-    assert report["summary"]["agent_count"] == 4
-    assert report["summary"]["validation_completed"] == 4
-    assert report["summary"]["approval_gates_protected"] == 4
+    assert report["summary"]["agent_count"] == 3
+    assert report["summary"]["validation_completed"] == 3
+    assert report["summary"]["approval_gates_protected"] == 3
     assert len(report["validations"]) == len(BOOTSTRAP_TASKS)
-    assert len({row["namespace"] for row in report["validations"]}) == 4
+    assert len({row["namespace"] for row in report["validations"]}) == 3
     assert all(row["external_side_effect"] is False for row in report["validations"])
     assert report["context_governance"]["status"] == "passed"
     assert report["context_governance"]["cross_domain_conflicts"] == 0
@@ -24,7 +24,7 @@ def test_all_four_agents_execute_one_safe_validation(tmp_path: Path):
 def test_runtime_never_persists_payload_content():
     secret = "PRIVATE-CUSTOMER-PRICE"
     row = execute_safe_task(
-        "zhiying_company",
+        "wt_fasteners",
         "simulate_workflow",
         "驗證流程",
         {"customer_price": secret},
@@ -62,7 +62,7 @@ def test_every_safe_task_gets_a_bounded_context_plan():
 
 
 def test_report_without_artifact_evidence_stays_draft():
-    row = execute_safe_task("zhiying_company", "draft_report", "製作至盈簡報", {}, UsageLedger())
+    row = execute_safe_task("packaging_startup", "draft_report", "製作包裝創業簡報", {}, UsageLedger())
     assert row["status"] == "draft"
     assert row["status_label"] == "草稿；尚未提供輸出驗收"
 
@@ -75,7 +75,7 @@ def test_report_becomes_complete_only_after_artifact_validation(tmp_path: Path):
         "layers": {},
         "domains": {
             key: {layer: [] for layer in ("canonical", "reference", "research", "temporary", "archive")}
-            for key in ("stock_shadow", "zhiying_company", "wt_fasteners", "packaging_startup")
+            for key in ("stock_shadow", "wt_fasteners", "packaging_startup")
         },
         "task_profiles": {"output": ["canonical", "reference", "temporary"]},
     }
@@ -87,10 +87,10 @@ def test_report_becomes_complete_only_after_artifact_validation(tmp_path: Path):
         for key in ("source_version", "numbers_dates_units", "cross_page_consistency", "visual_render_review")
     }
     row = execute_safe_task(
-        "zhiying_company",
+        "packaging_startup",
         "draft_report",
-        "製作至盈簡報",
-        {"artifact_validation": {"artifact": "report.md", "domain": "zhiying_company", "sources": ["source.json"], "checks": checks}},
+        "製作包裝創業簡報",
+        {"artifact_validation": {"artifact": "report.md", "domain": "packaging_startup", "sources": ["source.json"], "checks": checks}},
         UsageLedger(),
         root=tmp_path,
     )
@@ -107,7 +107,7 @@ def test_ppt_report_requires_every_slide_render_before_completion(tmp_path: Path
         "layers": {},
         "domains": {
             key: {layer: [] for layer in ("canonical", "reference", "research", "temporary", "archive")}
-            for key in ("stock_shadow", "zhiying_company", "wt_fasteners", "packaging_startup")
+            for key in ("stock_shadow", "wt_fasteners", "packaging_startup")
         },
         "task_profiles": {"output": ["canonical", "reference", "temporary"]},
     }
@@ -123,16 +123,16 @@ def test_ppt_report_requires_every_slide_render_before_completion(tmp_path: Path
     }
     spec = {
         "artifact": "report.pptx",
-        "domain": "zhiying_company",
+        "domain": "packaging_startup",
         "sources": ["source.json"],
         "checks": checks,
         "presentation": {"expected_slide_count": 1, "rendered_slides": ["slide-1.png"]},
     }
 
     row = execute_safe_task(
-        "zhiying_company",
+        "packaging_startup",
         "draft_report",
-        "製作至盈簡報",
+        "製作包裝創業簡報",
         {"artifact_validation": spec},
         UsageLedger(),
         root=tmp_path,
