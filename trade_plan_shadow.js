@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   var params=new URLSearchParams(window.location.search);
-  var state={payload:null,market:'ALL',status:'ALL',horizon:'preferred',query:String(params.get('symbol')||'').trim()};
+  var state={payload:null,validation:null,market:'ALL',status:'ALL',horizon:'preferred',query:String(params.get('symbol')||'').trim()};
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
   function num(v,d){var n=Number(v);return Number.isFinite(n)?n.toFixed(d==null?2:d):'—';}
   function price(v){var n=Number(v);if(!Number.isFinite(n))return '—';return n.toLocaleString('zh-TW',{maximumFractionDigits:n>=1000?1:n>=10?2:3});}
@@ -54,8 +54,24 @@
   function setActive(container,attr,value){
     document.querySelectorAll(container+' button').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute(attr)===value);});
   }
+  function renderValidation(){
+    var box=document.getElementById('validationSummary');
+    var v=state.validation||{},s=v.summary||{},by=s.by_horizon||{};
+    if(!v.status){box.textContent='前向驗證尚未建立；交易計畫仍維持影子模式。';return;}
+    function h(key,label){
+      var row=by[key]||{};
+      var rate=row.target1_hit_rate_pct==null?'—':Number(row.target1_hit_rate_pct).toFixed(1)+'%';
+      return label+'：訊號 '+Number(row.signals||0)+'｜觸發 '+Number(row.triggered||0)+'｜成熟 '+Number(row.matured_triggered||0)+'｜目標1命中 '+rate;
+    }
+    box.textContent='前向驗證｜等待進場 '+Number(s.waiting_entry||0)+'｜進行中 '+Number(s.active||0)+'｜已成熟 '+Number(s.matured||0)+'。'+h('short','短線')+'；'+h('medium','45日')+'；'+h('long','6個月');
+  }
   function load(){
-    fetchJSON('reports/trade_plan_shadow.json').then(function(payload){
+    Promise.all([
+      fetchJSON('reports/trade_plan_shadow.json'),
+      fetchJSON('reports/trade_plan_validation.json').catch(function(){return {};})
+    ]).then(function(pair){
+      var payload=pair[0];
+      state.validation=pair[1]||{};
       state.payload=payload;
       var s=payload.summary||{},v=payload.validation||{};
       document.getElementById('summary').innerHTML=
@@ -64,6 +80,7 @@
         '<div class="metric"><span>等待</span><b class="warn">'+Number(s.wait||0)+'</b></div>'+
         '<div class="metric"><span>先不買</span><b class="bad">'+Number(s.blocked||0)+'</b></div>';
       document.getElementById('progressChip').textContent='前向驗證 '+Number(v.trading_days_collected||0)+' / '+Number(v.target_trading_days||60)+' 日';
+      renderValidation();
       if(state.query){
         var input=document.getElementById('search');
         if(input) input.value=state.query;
