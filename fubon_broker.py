@@ -93,6 +93,8 @@ def split_market_quantities(quantity: int) -> list[tuple[str, int]]:
 
 def live_order_unlock_reason(environ: dict[str, str] | None = None) -> str | None:
     env = os.environ if environ is None else environ
+    if str(env.get("DEPLOYMENT_ENVIRONMENT", "test")).strip().lower() != "production":
+        return "DEPLOYMENT_ENVIRONMENT 尚未設為 production"
     if str(env.get("TRADING_MODE", "")).strip().lower() != "live":
         return "TRADING_MODE 尚未設為 live"
     if str(env.get("LIVE_TRADING_ENABLED", "")).strip().lower() not in {"1", "true", "yes", "on"}:
