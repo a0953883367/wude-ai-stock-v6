@@ -31,7 +31,7 @@
         '<div class="box"><span>最長持有</span><b>'+esc(summary.max_hold_sessions||'—')+' 個有效交易日</b></div>'+
       '</div>'+
       '<div class="sell">'+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+
-      (summary.stop_adjusted?'<br>🛡️ 停損已依週期／下跌風險防呆調整；原始停損 '+price(summary.source_stop):'')+'</div>'+
+      (summary.stop_too_tight?'<br>🛡️ 停損距離過窄：系統不自動放寬，先等待重算。參考安全距離價 '+price(summary.reference_stop_floor):'')+'</div>'+
       (noBuy?'<div class="reason bad">目前不直接買：'+esc(noBuy)+'</div>':'<div class="reason">計畫有效；仍需依買進區、量價確認與最新收盤資料執行。</div>')+
       '<div class="meta">分數 '+num(summary.score,1)+'｜信心 '+pct(summary.confidence)+'｜資料品質 '+pct(summary.data_quality_pct)+'｜正式排名 '+esc(row.formal_rank||'—')+'</div>'+
     '</article>';
