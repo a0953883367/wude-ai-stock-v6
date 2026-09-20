@@ -10,8 +10,8 @@ const runtime=JSON.parse(fs.readFileSync('reports/agent_runtime.json','utf8'));
   'Agent 控制中心','各事業資料仍完全分開','四個專屬 Agent','目前保持鎖定','資料隔離規則',
   '付款、寄送、下單及設備控制會停下等你同意','安全任務執行驗收','任務中心','交付驗收清冊'
 ].forEach(text=>assert(html.includes(text),`missing UI copy: ${text}`));
-assert(html.includes('agent_control.js?v=6'));
-assert(html.includes('agent_control.css?v=2'));
+assert(html.includes('agent_control.js?v=7'));
+assert(html.includes('agent_control.css?v=3'));
 assert(js.includes("reports/agent_control.json"));
 assert(js.includes('正式 V6 權重'));
 assert(js.includes('ERP／PLC／設備寫入'));
@@ -23,6 +23,8 @@ assert(js.includes('動態載入估計減少'));
 assert(js.includes('function renderDeliveries'));
 assert(js.includes('task.artifact_url'));
 assert(js.includes('付費模型呼叫'));
+assert(js.includes('packaging-order-intake.html'));
+assert(js.includes('開啟未接 ERP 接單中心'));
 assert(css.includes('.agent-grid'));
 assert(css.includes('.task-grid'));
 assert(css.includes('.delivery-grid'));

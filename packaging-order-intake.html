@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <link rel="icon" type="image/svg+xml" href="trend-arrow-icon-v2.svg">
+  <link rel="stylesheet" href="packaging_order_intake.css?v=1">
+  <title>未接 ERP 接單中心</title>
+</head>
+<body>
+  <main class="intake-shell">
+    <a class="back" href="agent-control.html">← 返回 Agent 控制中心</a>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">包裝創業｜安全測試版</p>
+        <h1>📥 未接 ERP 接單中心</h1>
+        <p>先收單、核對及回簽；只有確認接單後，才轉正式工單並建立 QR 識別。</p>
+      </div>
+      <span class="safe-chip">不自動寄送</span>
+    </header>
+
+    <section class="notice" aria-label="測試限制">
+      <b>目前是前端流程驗證：</b>拍照／附件只保留檔名，不會上傳；Email 尚未授權，不會讀取或寄送任何信件。資料只存於這台裝置的瀏覽器。
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>本月接單總覽</h2>
+        <label>統計月份 <input id="reportMonth" type="month"></label>
+      </div>
+      <div id="summaryCards" class="summary-grid"></div>
+      <p class="summary-note">接單量依「確認接單日」計算；預計生產量依「交貨月份」計算。待核對、待回簽及取消訂單不列入正式接單重量。</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-title"><h2>建立待確認訂單</h2><span>紙本、傳真、Email附件、Excel皆可先登錄</span></div>
+      <div class="source-grid" role="group" aria-label="訂單來源">
+        <label><input type="radio" name="source" value="photo" checked> 📷 拍照／掃描／傳真</label>
+        <label><input type="radio" name="source" value="email"> ✉️ Email附件</label>
+        <label><input type="radio" name="source" value="excel"> 📊 Excel／CSV</label>
+        <label><input type="radio" name="source" value="manual"> ✍️ 手動輸入</label>
+      </div>
+      <label class="file-box">選擇訂單檔案（測試版不會上傳）
+        <input id="sourceFile" type="file" accept="image/*,.pdf,.eml,.csv,.xlsx">
+        <span id="fileName">尚未選擇檔案</span>
+      </label>
+      <div class="email-lock">🔒 抓取真實Email需要信箱授權；目前只驗證畫面與接單流程。</div>
+
+      <form id="intakeForm">
+        <div class="form-grid">
+          <label>客戶名稱<input name="customer" required autocomplete="organization"></label>
+          <label>客戶訂單號<input name="customerPo" required></label>
+          <label>訂單版本<input name="version" value="1" required></label>
+          <label>收單日期<input name="receivedAt" type="date" required></label>
+          <label>產品／品號<input name="item" required></label>
+          <label>交貨日期<input name="deliveryDate" type="date" required></label>
+          <label>接單支數<input name="quantity" type="number" min="1" step="1" required></label>
+          <label>單重<input name="unitWeight" type="number" min="0" step="0.0001" required></label>
+          <label>單重單位
+            <select name="weightBasis">
+              <option value="g_each">公克／支</option>
+              <option value="kg_per_1000">公斤／千支</option>
+            </select>
+          </label>
+          <label>包裝方式<input name="packaging" placeholder="例如：50支／盒" required></label>
+        </div>
+        <label>備註<textarea name="notes" rows="3" placeholder="價格、交期修改或特殊包裝條件"></textarea></label>
+        <div class="calculation">預估螺絲淨重：<b id="weightPreview">0.00 kg</b></div>
+        <button class="primary" type="submit">儲存為待核對訂單</button>
+        <div id="formMessage" class="form-message" role="status"></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="section-title"><h2>接單流程</h2><button id="clearDemo" class="ghost" type="button">清除本機測試資料</button></div>
+      <div class="legend"><span>①待核對</span><span>②待回簽</span><span>③已回簽</span><span>④確認接單</span><span>⑤正式工單</span></div>
+      <div id="orderList" class="order-list"></div>
+    </section>
+  </main>
+  <script src="packaging_order_intake_logic.js?v=1"></script>
+  <script src="packaging_order_intake.js?v=1"></script>
+</body>
+</html>

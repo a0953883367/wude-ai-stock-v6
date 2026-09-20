@@ -20,7 +20,8 @@
   }
   function renderAgent(agent){
     var runtime=agent.runtime||{},label=runtime.status_label||agent.mode;
-    return '<article class="agent-card" data-agent-id="'+esc(agent.id)+'"><div class="agent-head"><h3>'+esc(agent.name)+'</h3><span class="agent-chip '+statusClass(runtime.status)+'">'+esc(label)+'</span></div><p class="agent-description">'+esc(agent.description)+'</p><div class="facts">'+statusFacts(agent)+'</div><div class="agent-note">資料空間：'+esc(agent.namespace)+'｜每日最多 '+esc((agent.limits||{}).api_calls_per_day)+' 次呼叫｜失敗最多重試 '+esc((agent.limits||{}).retries_per_task)+' 次</div></article>';
+    var intake=agent.id==='packaging_startup'?'<a class="task-link" href="packaging-order-intake.html">開啟未接 ERP 接單中心</a>':'';
+    return '<article class="agent-card" data-agent-id="'+esc(agent.id)+'"><div class="agent-head"><h3>'+esc(agent.name)+'</h3><span class="agent-chip '+statusClass(runtime.status)+'">'+esc(label)+'</span></div><p class="agent-description">'+esc(agent.description)+'</p><div class="facts">'+statusFacts(agent)+'</div><div class="agent-note">資料空間：'+esc(agent.namespace)+'｜每日最多 '+esc((agent.limits||{}).api_calls_per_day)+' 次呼叫｜失敗最多重試 '+esc((agent.limits||{}).retries_per_task)+' 次</div>'+intake+'</article>';
   }
   function fetchJSON(path){return fetch(path+'?ts='+Date.now(),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error(path+' HTTP '+response.status);return response.json();});}
   function taskClass(status){return status==='completed'?'done':status==='collecting'||status==='prepared'||status==='review_ready'?'running':'waiting';}
