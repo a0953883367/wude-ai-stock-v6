@@ -23,6 +23,9 @@ HORIZON_POLICY = {
         "buy_window_min": 1,
         "buy_window_max": 3,
         "max_hold_sessions": 5,
+        "min_stop_pct": 1.0,
+        "downside_stop_factor": 0.35,
+        "max_stop_floor_pct": 5.0,
     },
     "medium": {
         "label": "45日",
@@ -30,6 +33,9 @@ HORIZON_POLICY = {
         "buy_window_min": 3,
         "buy_window_max": 7,
         "max_hold_sessions": 45,
+        "min_stop_pct": 2.0,
+        "downside_stop_factor": 0.30,
+        "max_stop_floor_pct": 10.0,
     },
     "long": {
         "label": "約6個月",
@@ -37,6 +43,9 @@ HORIZON_POLICY = {
         "buy_window_min": 5,
         "buy_window_max": 10,
         "max_hold_sessions": 126,
+        "min_stop_pct": 4.0,
+        "downside_stop_factor": 0.30,
+        "max_stop_floor_pct": 15.0,
     },
 }
 
@@ -94,6 +103,56 @@ def _rr(entry: float | None, stop: float | None, target: float | None) -> float 
     if risk <= 0 or reward <= 0:
         return None
     return round(reward / risk, 2)
+
+
+def _stop_floor_pct(horizon: str, downside_risk_pct: float | None) -> float:
+    policy = HORIZON_POLICY[horizon]
+    base = float(policy["min_stop_pct"])
+    downside = max(0.0, float(downside_risk_pct or 0.0))
+    dynamic = downside * float(policy["downside_stop_factor"])
+    return round(min(float(policy["max_stop_floor_pct"]), max(base, dynamic)), 2)
+
+
+def _effective_stop(
+    horizon: str,
+    entry_mid: float | None,
+    source_stop: float | None,
+    downside_risk_pct: float | None,
+) -> tuple[float | None, float | None, bool]:
+    if entry_mid is None or entry_mid <= 0 or source_stop is None:
+        return source_stop, None, False
+    floor_pct = _stop_floor_pct(horizon, downside_risk_pct)
+    floor_price = entry_mid * (1.0 - floor_pct / 100.0)
+    if source_stop >= entry_mid:
+        return None, floor_pct, False
+    effective = min(source_stop, floor_price)
+    adjusted = effective < source_stop - max(1e-9, abs(source_stop) * 1e-9)
+    return effective, floor_pct, adjusted
+
+
+def _plan_quality(
+    *,
+    entry_mid: float | None,
+    stop: float | None,
+    target1: float | None,
+    reward_risk_1: float | None,
+    data_quality_pct: float,
+    score: float,
+    confidence: float,
+) -> dict[str, Any]:
+    if entry_mid is None or stop is None or target1 is None:
+        return {"code": "incomplete", "label": "計畫資料不足", "entry_eligible": False}
+    if stop >= entry_mid or target1 <= entry_mid:
+        return {"code": "invalid_geometry", "label": "價位結構異常", "entry_eligible": False}
+    if reward_risk_1 is None or reward_risk_1 < 1.2:
+        return {"code": "poor_rr", "label": "報酬風險比不足", "entry_eligible": False}
+    if data_quality_pct < 50:
+        return {"code": "low_data_quality", "label": "資料品質不足", "entry_eligible": False}
+    if reward_risk_1 >= 2.0 and data_quality_pct >= 70 and score >= 65 and confidence >= 65:
+        return {"code": "strong", "label": "計畫品質較佳", "entry_eligible": True}
+    if reward_risk_1 >= 1.5 and data_quality_pct >= 60:
+        return {"code": "acceptable", "label": "計畫品質合格", "entry_eligible": True}
+    return {"code": "caution", "label": "計畫可觀察，仍需確認", "entry_eligible": False}
 
 
 def _sell_split(score: float, confidence: float, target2: float | None) -> dict[str, int]:
@@ -188,8 +247,25 @@ def _plan_for_horizon(row: dict[str, Any], horizon: str) -> dict[str, Any]:
     entry_mid = None
     if entry_low is not None and entry_high is not None:
         entry_mid = (entry_low + entry_high) / 2.0
+    downside_risk = _number(forecast.get("downside_risk_pct"))
+    effective_stop, stop_floor_pct, stop_adjusted = _effective_stop(
+        horizon, entry_mid, stop, downside_risk
+    )
+    rr1 = _rr(entry_mid, effective_stop, target1)
+    rr2 = _rr(entry_mid, effective_stop, target2)
+    quality = _plan_quality(
+        entry_mid=entry_mid,
+        stop=effective_stop,
+        target1=target1,
+        reward_risk_1=rr1,
+        data_quality_pct=data_quality_pct,
+        score=score,
+        confidence=confidence,
+    )
     split = _sell_split(score, confidence, target2)
     no_buy = _no_buy_reason(row, plan, price)
+    if recommendation == "can_scale" and not quality["entry_eligible"] and no_buy is None:
+        no_buy = quality["label"]
 
     active_entry = recommendation in {"can_scale", "wait_pullback"} and entry_low is not None and entry_high is not None
     if buy_window <= 0:
@@ -212,17 +288,21 @@ def _plan_for_horizon(row: dict[str, Any], horizon: str) -> dict[str, Any]:
         "entry_low": _round_price(entry_low),
         "entry_high": _round_price(entry_high),
         "do_not_chase_above": _round_price(entry_high),
-        "stop": _round_price(stop),
-        "stop_sell_pct": 100 if stop is not None else 0,
+        "source_stop": _round_price(stop),
+        "stop": _round_price(effective_stop),
+        "stop_floor_pct": stop_floor_pct,
+        "stop_adjusted": stop_adjusted,
+        "stop_sell_pct": 100 if effective_stop is not None else 0,
         "target1": _round_price(target1),
         "target2": _round_price(target2),
         **split,
         "entry_mid": _round_price(entry_mid),
-        "reward_risk_1": _rr(entry_mid, stop, target1),
-        "reward_risk_2": _rr(entry_mid, stop, target2),
+        "reward_risk_1": rr1,
+        "reward_risk_2": rr2,
+        "plan_quality": quality,
         "forecast_probability_pct": _number(forecast.get("probability_pct")),
         "forecast_expected_return_pct": _number(forecast.get("expected_return_pct")),
-        "forecast_downside_risk_pct": _number(forecast.get("downside_risk_pct")),
+        "forecast_downside_risk_pct": downside_risk,
         "chase_risk_points": round(chase_risk, 1),
         "execution": plan.get("execution") or {},
         "no_buy_reason": no_buy,
@@ -283,6 +363,9 @@ def _compact_row(row: dict[str, Any]) -> dict[str, Any]:
             "entry_high": preferred_plan["entry_high"],
             "do_not_chase_above": preferred_plan["do_not_chase_above"],
             "stop": preferred_plan["stop"],
+            "source_stop": preferred_plan["source_stop"],
+            "stop_adjusted": preferred_plan["stop_adjusted"],
+            "plan_quality": preferred_plan["plan_quality"],
             "target1": preferred_plan["target1"],
             "target2": preferred_plan["target2"],
             "target1_sell_pct": preferred_plan["target1_pct"],
