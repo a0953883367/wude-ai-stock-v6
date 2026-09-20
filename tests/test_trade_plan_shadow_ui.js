@@ -22,7 +22,7 @@ assert(js.includes('高於這裡不追'));
 assert(js.includes('停損／失效'));
 assert(js.includes('目標1'));
 assert(js.includes('計畫品質'));
-assert(js.includes('stop_adjusted'));
+assert(js.includes('stop_too_tight'));
 assert(js.includes("params.get('symbol')"));
 assert(hub.includes('trade-plan-shadow.html'));
 assert(hub.includes('查看交易計畫'));

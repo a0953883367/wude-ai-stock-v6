@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from trade_plan_shadow import build_trade_plan_report, _effective_stop, _sell_split
+from trade_plan_shadow import build_trade_plan_report, _sell_split, _stop_geometry
 
 
 def _sample_row():
@@ -101,7 +101,7 @@ def test_trade_plan_builds_entry_validity_and_staged_exit(tmp_path: Path):
     assert short["runner_pct"] == 50
     assert short["reward_risk_1"] is not None
     assert short["plan_quality"]["entry_eligible"] is True
-    assert short["stop_adjusted"] is False
+    assert short["stop_too_tight"] is False
 
 
 def test_low_confidence_sell_split_is_more_defensive():
@@ -109,8 +109,9 @@ def test_low_confidence_sell_split_is_more_defensive():
     assert split == {"target1_pct": 40, "target2_pct": 40, "runner_pct": 20}
 
 
-def test_too_tight_long_stop_is_widened_by_shadow_safety_floor():
-    stop, floor_pct, adjusted = _effective_stop("long", 100.0, 99.8, 30.0)
-    assert adjusted is True
+def test_too_tight_long_stop_blocks_entry_without_widening_loss_limit():
+    stop, floor_pct, too_tight, reference_floor = _stop_geometry("long", 100.0, 99.8, 30.0)
+    assert too_tight is True
     assert floor_pct == 9.0
-    assert round(stop, 2) == 91.0
+    assert stop == 99.8
+    assert round(reference_floor, 2) == 91.0

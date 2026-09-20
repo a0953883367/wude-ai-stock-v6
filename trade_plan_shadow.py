@@ -13,8 +13,8 @@ import math
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
-MODEL_VERSION = "TRADE-PLAN-SHADOW-V1"
+SCHEMA_VERSION = 2
+MODEL_VERSION = "TRADE-PLAN-SHADOW-V2"
 
 HORIZON_POLICY = {
     "short": {
@@ -113,21 +113,22 @@ def _stop_floor_pct(horizon: str, downside_risk_pct: float | None) -> float:
     return round(min(float(policy["max_stop_floor_pct"]), max(base, dynamic)), 2)
 
 
-def _effective_stop(
+def _stop_geometry(
     horizon: str,
     entry_mid: float | None,
     source_stop: float | None,
     downside_risk_pct: float | None,
-) -> tuple[float | None, float | None, bool]:
+) -> tuple[float | None, float | None, bool, float | None]:
+    """Validate stop distance without silently widening the user's loss limit."""
     if entry_mid is None or entry_mid <= 0 or source_stop is None:
-        return source_stop, None, False
+        return source_stop, None, False, None
     floor_pct = _stop_floor_pct(horizon, downside_risk_pct)
-    floor_price = entry_mid * (1.0 - floor_pct / 100.0)
+    reference_floor = entry_mid * (1.0 - floor_pct / 100.0)
     if source_stop >= entry_mid:
-        return None, floor_pct, False
-    effective = min(source_stop, floor_price)
-    adjusted = effective < source_stop - max(1e-9, abs(source_stop) * 1e-9)
-    return effective, floor_pct, adjusted
+        return source_stop, floor_pct, True, reference_floor
+    actual_distance_pct = (entry_mid - source_stop) / entry_mid * 100.0
+    too_tight = actual_distance_pct + 1e-9 < floor_pct
+    return source_stop, floor_pct, too_tight, reference_floor
 
 
 def _plan_quality(
@@ -139,11 +140,14 @@ def _plan_quality(
     data_quality_pct: float,
     score: float,
     confidence: float,
+    stop_too_tight: bool = False,
 ) -> dict[str, Any]:
     if entry_mid is None or stop is None or target1 is None:
         return {"code": "incomplete", "label": "計畫資料不足", "entry_eligible": False}
     if stop >= entry_mid or target1 <= entry_mid:
         return {"code": "invalid_geometry", "label": "價位結構異常", "entry_eligible": False}
+    if stop_too_tight:
+        return {"code": "stop_too_tight", "label": "停損距離過窄，先重算", "entry_eligible": False}
     if reward_risk_1 is None or reward_risk_1 < 1.2:
         return {"code": "poor_rr", "label": "報酬風險比不足", "entry_eligible": False}
     if data_quality_pct < 50:
@@ -248,11 +252,11 @@ def _plan_for_horizon(row: dict[str, Any], horizon: str) -> dict[str, Any]:
     if entry_low is not None and entry_high is not None:
         entry_mid = (entry_low + entry_high) / 2.0
     downside_risk = _number(forecast.get("downside_risk_pct"))
-    effective_stop, stop_floor_pct, stop_adjusted = _effective_stop(
+    effective_stop, stop_floor_pct, stop_too_tight, reference_stop_floor = _stop_geometry(
         horizon, entry_mid, stop, downside_risk
     )
-    rr1 = _rr(entry_mid, effective_stop, target1)
-    rr2 = _rr(entry_mid, effective_stop, target2)
+    rr1 = None if stop_too_tight else _rr(entry_mid, effective_stop, target1)
+    rr2 = None if stop_too_tight else _rr(entry_mid, effective_stop, target2)
     quality = _plan_quality(
         entry_mid=entry_mid,
         stop=effective_stop,
@@ -261,6 +265,7 @@ def _plan_for_horizon(row: dict[str, Any], horizon: str) -> dict[str, Any]:
         data_quality_pct=data_quality_pct,
         score=score,
         confidence=confidence,
+        stop_too_tight=stop_too_tight,
     )
     split = _sell_split(score, confidence, target2)
     no_buy = _no_buy_reason(row, plan, price)
@@ -291,7 +296,8 @@ def _plan_for_horizon(row: dict[str, Any], horizon: str) -> dict[str, Any]:
         "source_stop": _round_price(stop),
         "stop": _round_price(effective_stop),
         "stop_floor_pct": stop_floor_pct,
-        "stop_adjusted": stop_adjusted,
+        "reference_stop_floor": _round_price(reference_stop_floor),
+        "stop_too_tight": stop_too_tight,
         "stop_sell_pct": 100 if effective_stop is not None else 0,
         "target1": _round_price(target1),
         "target2": _round_price(target2),
@@ -364,7 +370,8 @@ def _compact_row(row: dict[str, Any]) -> dict[str, Any]:
             "do_not_chase_above": preferred_plan["do_not_chase_above"],
             "stop": preferred_plan["stop"],
             "source_stop": preferred_plan["source_stop"],
-            "stop_adjusted": preferred_plan["stop_adjusted"],
+            "reference_stop_floor": preferred_plan["reference_stop_floor"],
+            "stop_too_tight": preferred_plan["stop_too_tight"],
             "plan_quality": preferred_plan["plan_quality"],
             "target1": preferred_plan["target1"],
             "target2": preferred_plan["target2"],
@@ -430,6 +437,8 @@ def build_trade_plan_report(reports_dir: Path) -> dict[str, Any]:
             "buy_window_uses_valid_trading_sessions": True,
             "expired_plan_must_recalculate": True,
             "stop_loss_exits_full_shadow_position": True,
+            "stop_never_auto_widened": True,
+            "tight_stop_blocks_entry_until_recalculated": True,
             "sell_percentages_are_shadow_execution_rules": True,
         },
         "summary": counts,
