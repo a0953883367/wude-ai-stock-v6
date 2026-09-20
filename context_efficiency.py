@@ -14,7 +14,6 @@ from dynamic_capability_loader import build_capability_plan, load_capability_cat
 
 SCENARIOS = (
     ("stock_shadow", "shadow_validate", "股票影子驗證", "research"),
-    ("zhiying_company", "draft_report", "製作至盈簡報", "output"),
     ("wt_fasteners", "analyze", "WT 螺絲商品分析", "formal_answer"),
     ("packaging_startup", "simulate_workflow", "包裝創業流程模擬", "formal_answer"),
 )
