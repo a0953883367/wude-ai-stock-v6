@@ -58,7 +58,7 @@
     document.getElementById('overallStatus').textContent=report.status_label||'控制層可用';
     document.getElementById('updatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('agentCards').innerHTML=(report.agents||[]).map(renderAgent).join('')||'<div class="empty">尚無 Agent 狀態。</div>';
-    var labels={formal_v6_locked:'正式 V6 權重',formal_rankings_locked:'正式股票排名',automatic_orders:'券商下單',automatic_payments:'付款與採購',automatic_external_messages:'對外寄送與發布',erp_plc_device_writes:'ERP／PLC／設備寫入'};
+    var labels={formal_v6_locked:'正式 V6 權重',formal_rankings_locked:'正式股票排名',automatic_orders:'券商下單',automatic_payments:'付款與採購',automatic_external_messages:'對外寄送與發布'};
     document.getElementById('safetyItems').innerHTML=Object.keys(labels).map(function(key){return '<div class="safety-item">🔒 '+labels[key]+'</div>';}).join('');
     renderRuntime(runtime);
     renderTasks(tasks);
