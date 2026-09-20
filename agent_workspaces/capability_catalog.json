@@ -8,191 +8,24 @@
     "blocked_actions_never_load_executors": true
   },
   "skills": {
-    "context_governance": {
-      "label": "五層資料治理",
-      "domains": [
-        "*"
-      ]
-    },
-    "evidence_verification": {
-      "label": "證據驗收",
-      "domains": [
-        "*"
-      ]
-    },
-    "presentations": {
-      "label": "簡報產生與編輯",
-      "domains": [
-        "*"
-      ]
-    },
-    "stock_shadow_analysis": {
-      "label": "股票影子分析",
-      "domains": [
-        "stock_shadow"
-      ]
-    },
-    "workflow_simulation": {
-      "label": "流程模擬",
-      "domains": [
-        "wt_fasteners",
-        "packaging_startup"
-      ]
-    }
+    "context_governance": {"label": "五層資料治理", "domains": ["*"]},
+    "evidence_verification": {"label": "證據驗收", "domains": ["*"]},
+    "presentations": {"label": "簡報產生與編輯", "domains": ["*"]},
+    "stock_shadow_analysis": {"label": "股票影子分析", "domains": ["stock_shadow"]},
+    "workflow_simulation": {"label": "流程模擬", "domains": ["wt_fasteners", "packaging_startup"]}
   },
   "tools": {
-    "context_plan": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "task",
-          "profile"
-        ],
-        "properties": {
-          "task": {
-            "type": "string"
-          },
-          "profile": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "evidence_check": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "artifact",
-          "sources"
-        ],
-        "properties": {
-          "artifact": {
-            "type": "string"
-          },
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "presentation_pipeline": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "mode",
-          "spec",
-          "output"
-        ],
-        "properties": {
-          "mode": {
-            "enum": [
-              "create",
-              "edit"
-            ]
-          },
-          "spec": {
-            "type": "string"
-          },
-          "output": {
-            "type": "string"
-          },
-          "pdf": {
-            "type": "boolean"
-          }
-        }
-      }
-    },
-    "shadow_validator": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "market"
-        ],
-        "properties": {
-          "market": {
-            "enum": [
-              "TW",
-              "US"
-            ]
-          },
-          "horizon": {
-            "type": "integer"
-          }
-        }
-      }
-    },
-    "workflow_simulator": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "scenario"
-        ],
-        "properties": {
-          "scenario": {
-            "type": "string"
-          },
-          "dry_run": {
-            "const": true
-          }
-        }
-      }
-    }
+    "context_plan": {"schema": {"type": "object", "required": ["task", "profile"], "properties": {"task": {"type": "string"}, "profile": {"type": "string"}}}},
+    "evidence_check": {"schema": {"type": "object", "required": ["artifact", "sources"], "properties": {"artifact": {"type": "string"}, "sources": {"type": "array", "items": {"type": "string"}}}}},
+    "presentation_pipeline": {"schema": {"type": "object", "required": ["mode", "spec", "output"], "properties": {"mode": {"enum": ["create", "edit"]}, "spec": {"type": "string"}, "output": {"type": "string"}, "pdf": {"type": "boolean"}}}},
+    "shadow_validator": {"schema": {"type": "object", "required": ["market"], "properties": {"market": {"enum": ["TW", "US"]}, "horizon": {"type": "integer"}}}},
+    "workflow_simulator": {"schema": {"type": "object", "required": ["scenario"], "properties": {"scenario": {"type": "string"}, "dry_run": {"const": true}}}}
   },
   "routes": {
-    "read_status": {
-      "skills": [
-        "context_governance"
-      ],
-      "tools": [
-        "context_plan"
-      ]
-    },
-    "analyze": {
-      "skills": [
-        "context_governance",
-        "evidence_verification"
-      ],
-      "tools": [
-        "context_plan",
-        "evidence_check"
-      ]
-    },
-    "shadow_validate": {
-      "skills": [
-        "context_governance",
-        "stock_shadow_analysis",
-        "evidence_verification"
-      ],
-      "tools": [
-        "context_plan",
-        "shadow_validator",
-        "evidence_check"
-      ]
-    },
-    "draft_report": {
-      "skills": [
-        "context_governance",
-        "presentations",
-        "evidence_verification"
-      ],
-      "tools": [
-        "context_plan",
-        "presentation_pipeline",
-        "evidence_check"
-      ]
-    },
-    "simulate_workflow": {
-      "skills": [
-        "context_governance",
-        "workflow_simulation"
-      ],
-      "tools": [
-        "context_plan",
-        "workflow_simulator"
-      ]
-    }
+    "read_status": {"skills": ["context_governance"], "tools": ["context_plan"]},
+    "analyze": {"skills": ["context_governance", "evidence_verification"], "tools": ["context_plan", "evidence_check"]},
+    "shadow_validate": {"skills": ["context_governance", "stock_shadow_analysis", "evidence_verification"], "tools": ["context_plan", "shadow_validator", "evidence_check"]},
+    "draft_report": {"skills": ["context_governance", "presentations", "evidence_verification"], "tools": ["context_plan", "presentation_pipeline", "evidence_check"]},
+    "simulate_workflow": {"skills": ["context_governance", "workflow_simulation"], "tools": ["context_plan", "workflow_simulator"]}
   }
 }
