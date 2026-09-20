@@ -412,6 +412,30 @@ def _update_trade_plan_shadow_safely(reports_dir, *, updated_at: str) -> bool:
     return True
 
 
+def _update_trade_plan_validation_safely(reports_dir, *, updated_at: str) -> bool:
+    """Advance the forward-only trade-plan ledger after the plan snapshot exists."""
+    try:
+        from trade_plan_validation import update_trade_plan_validation
+
+        update_trade_plan_validation(reports_dir)
+    except Exception as exc:  # noqa: BLE001 - validation must never stop formal output
+        logging.exception("影子交易計畫前向驗證失敗；正式V6與既有報表繼續")
+        health = {
+            "status": "warning",
+            "updated_at": updated_at,
+            "error_type": type(exc).__name__,
+            "detail": str(exc)[:300] or "影子交易計畫前向驗證發生未分類錯誤",
+            "formal_v6_unchanged": True,
+            "formal_rankings_unchanged": True,
+            "automatic_orders": False,
+        }
+        tmp = reports_dir / "trade_plan_validation_health.tmp"
+        tmp.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(reports_dir / "trade_plan_validation_health.json")
+        return False
+    return True
+
+
 def _update_prediction_engine_safely(
     reports_dir,
     rows,
@@ -1931,6 +1955,10 @@ def main() -> int:
         institution_status=institution_status,
     )
     _update_trade_plan_shadow_safely(
+        SETTINGS.reports_dir,
+        updated_at=report["updated_at"],
+    )
+    _update_trade_plan_validation_safely(
         SETTINGS.reports_dir,
         updated_at=report["updated_at"],
     )
