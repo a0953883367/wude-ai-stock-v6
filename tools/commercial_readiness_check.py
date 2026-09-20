@@ -12,7 +12,47 @@ SAFE_DEFAULTS = {
     "DEPLOYMENT_ENVIRONMENT": "test",
     "TRADING_MODE": "paper",
     "LIVE_TRADING_ENABLED": "false",
+    "LIVE_PUBLIC_READ": "0",
+    "FUBON_AUTO_GIT": "0",
 }
+
+SECRET_EXAMPLE_KEYS = (
+    "FINMIND_TOKEN",
+    "TIINGO_API_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_LIVE_BOT_TOKEN",
+    "TELEGRAM_LIVE_CHAT_ID",
+    "TELEGRAM_FRIEND_ALERT_CHAT_ID",
+    "FUBON_ID",
+    "FUBON_API_KEY",
+    "FUBON_PASSWORD",
+    "FUBON_CERT_PATH",
+    "FUBON_CERT_PASSWORD",
+    "FUBON_CERT_BASE64",
+    "LIVE_ACCESS_TOKEN",
+    "LIVE_TRADING_CONFIRMATION",
+    "LIVE_TRADING_CONFIRMATION_INPUT",
+    "LIVE_TRUSTED_AUTH_HEADER",
+    "ALPACA_API_KEY_ID",
+    "ALPACA_API_SECRET_KEY",
+)
+
+REQUIRED_GITIGNORE_LINES = (
+    ".env",
+    "*.p12",
+    "*.pfx",
+    "*.pem",
+    "*.key",
+    "fubon_local_config.json",
+    "reports/owner_private_holding_simulation.json",
+)
+
+REQUIRED_WORKFLOW_COMMANDS = (
+    "python tools/security_preflight.py",
+    "python tools/commercial_readiness_check.py",
+    "python -m unittest tests.test_commercial_readiness_check",
+)
 
 REQUIRED_FILES = {
     "敏感資料掃描": "tools/security_preflight.py",
@@ -43,6 +83,41 @@ def inspect_repository(root: Path) -> dict[str, Any]:
             "passed": env_values.get(key, "") == expected,
             "detail": f"應為 {expected}",
         })
+    for key in SECRET_EXAMPLE_KEYS:
+        checks.append({
+            "name": f"{key} 範例值不得含密鑰",
+            "passed": env_values.get(key, "") == "",
+            "detail": "範例環境檔必須留空；正式值只能放在祕密管理服務",
+        })
+
+    state_path = env_values.get("TRADE_STATE_PATH", "")
+    checks.append({
+        "name": "正式交易狀態使用永久且獨立的路徑",
+        "passed": state_path.startswith("/data/") and "paper" not in Path(state_path).name.lower(),
+        "detail": "TRADE_STATE_PATH 必須位於 /data/，且不得與模擬交易共用",
+    })
+
+    gitignore_path = root / ".gitignore"
+    gitignore_lines = {
+        line.strip()
+        for line in gitignore_path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    } if gitignore_path.exists() else set()
+    for pattern in REQUIRED_GITIGNORE_LINES:
+        checks.append({
+            "name": f"敏感檔案忽略規則：{pattern}",
+            "passed": pattern in gitignore_lines,
+            "detail": ".gitignore 必須明確阻擋此類檔案",
+        })
+
+    workflow_path = root / ".github/workflows/security-preflight.yml"
+    workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
+    for command in REQUIRED_WORKFLOW_COMMANDS:
+        checks.append({
+            "name": f"GitHub 自動安全檢查：{command}",
+            "passed": command in workflow_text,
+            "detail": "每次推送與合併請求都必須自動執行",
+        })
     for name, relative in REQUIRED_FILES.items():
         checks.append({
             "name": name,
@@ -51,7 +126,7 @@ def inspect_repository(root: Path) -> dict[str, Any]:
         })
     return {
         "status": "ready_for_testing" if all(item["passed"] for item in checks) else "blocked",
-        "scope": "安全模式、備份與還原能力；不檢查或變更選股分數",
+        "scope": "安全模式、密鑰隔離、敏感檔案阻擋、備份還原與自動驗收；不檢查或變更選股分數",
         "checks": checks,
     }
 
