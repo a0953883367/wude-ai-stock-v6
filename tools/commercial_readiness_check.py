@@ -52,6 +52,8 @@ REQUIRED_WORKFLOW_COMMANDS = (
     "python tools/security_preflight.py",
     "python tools/commercial_readiness_check.py",
     "python -m unittest tests.test_commercial_readiness_check",
+    "python tools/live_trading_safety_check.py",
+    "python -m unittest tests.test_live_trading_safety_check",
 )
 
 REQUIRED_FILES = {
@@ -61,6 +63,8 @@ REQUIRED_FILES = {
     "還原安全機制": "prediction_engine/evidence_backup.py",
     "私密弱點通報流程": "SECURITY.md",
     "依賴套件自動更新監控": ".github/dependabot.yml",
+    "真實下單安全鎖驗證": "tools/live_trading_safety_check.py",
+    "真實下單安全鎖單元測試": "tests/test_live_trading_safety_check.py",
 }
 
 
