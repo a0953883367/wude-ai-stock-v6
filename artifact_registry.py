@@ -10,7 +10,7 @@ from typing import Any
 
 
 REGISTRY_SCHEMA = "wude.artifact_registry.v1"
-ALLOWED_DOMAINS = {"stock_shadow", "zhiying_company", "wt_fasteners", "packaging_startup"}
+ALLOWED_DOMAINS = {"stock_shadow", "wt_fasteners", "packaging_startup"}
 STATUS_LABELS = {
     "ready_for_handoff": "可交付",
     "draft": "草稿；等待驗收",

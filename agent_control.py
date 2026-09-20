@@ -47,18 +47,6 @@ AGENTS: dict[str, AgentDefinition] = {
         daily_call_limit=120,
         daily_token_limit=300_000,
     ),
-    "zhiying_company": AgentDefinition(
-        agent_id="zhiying_company",
-        name="至盈公司 Agent",
-        namespace="zhiying_company",
-        mode="sandbox_waiting_authorization",
-        description="可整理報價、工單與內部流程草稿；公司系統寫入與設備連線等待授權。",
-        keywords=("至盈", "報價", "工單", "erp", "plc", "生產", "出貨", "客訴", "裝櫃"),
-        safe_actions=("read_status", "analyze", "draft_report", "simulate_workflow"),
-        connectors=("github_quotation",),
-        daily_call_limit=80,
-        daily_token_limit=200_000,
-    ),
     "wt_fasteners": AgentDefinition(
         agent_id="wt_fasteners",
         name="WT 螺絲電商 Agent",
@@ -92,9 +80,6 @@ BLOCKED_ACTIONS: dict[str, str] = {
     "external_publish": "上架或公開發布前必須取得本次明確核准。",
     "payment": "付款與採購必須由本人確認。",
     "delete_history": "不可自動刪除歷史或稽核資料。",
-    "erp_write": "公司 ERP 寫入等待公司授權與測試環境。",
-    "plc_write": "PLC 或現場設備控制等待公司授權與安全驗收。",
-    "device_control": "實體設備操作等待公司授權與安全驗收。",
 }
 
 
@@ -224,12 +209,6 @@ def build_report(reports_dir: Path) -> dict[str, Any]:
     stock_status = _stock_status(reports_dir)
     statuses = {
         "stock_shadow": stock_status,
-        "zhiying_company": {
-            "status": "waiting_authorization",
-            "status_label": "測試模式；公司連線等待同意",
-            "available_now": ["流程分析", "報價與工單草稿", "模擬驗收"],
-            "blocked": ["ERP 寫入", "PLC／設備控制", "對外寄送"],
-        },
         "wt_fasteners": {
             "status": "waiting_source",
             "status_label": "測試模式；等待商店資料來源",
@@ -280,7 +259,6 @@ def build_report(reports_dir: Path) -> dict[str, Any]:
             "automatic_orders": False,
             "automatic_payments": False,
             "automatic_external_messages": False,
-            "erp_plc_device_writes": False,
         },
         "blocked_actions": [
             {"action": action, "reason": reason} for action, reason in BLOCKED_ACTIONS.items()

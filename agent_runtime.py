@@ -1,4 +1,4 @@
-"""Safe execution runtime for the isolated central agents.
+"""Safe execution runtime for the three isolated central agents.
 
 Only deterministic and reversible validation tasks run here. The public result
 never stores task payloads, contacts recipients, changes stock scores, or writes
@@ -26,14 +26,12 @@ RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V2"
 
 BOOTSTRAP_TASKS = (
     ("stock_shadow", "shadow_validate", "檢查股票影子驗證工作區"),
-    ("zhiying_company", "simulate_workflow", "驗證至盈流程模擬工作區"),
     ("wt_fasteners", "simulate_workflow", "驗證 WT 電商測試工作區"),
     ("packaging_startup", "simulate_workflow", "驗證包裝創業試算工作區"),
 )
 
 BOUNDARY_CHECKS = (
     ("stock_shadow", "broker_order", "券商下單保持鎖定"),
-    ("zhiying_company", "erp_write", "公司 ERP 寫入保持鎖定"),
     ("wt_fasteners", "external_publish", "WT 對外上架保持鎖定"),
     ("packaging_startup", "payment", "包裝創業付款保持鎖定"),
 )
@@ -192,7 +190,7 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
         "version": RUNTIME_VERSION,
         "generated_at": generated_at,
         "status": "passed" if completed == len(validations) and protected == len(gates) else "attention",
-        "status_label": "四個 Agent 安全驗收通過" if completed == len(validations) and protected == len(gates) else "Agent 驗收需要注意",
+        "status_label": "三個 Agent 安全驗收通過" if completed == len(validations) and protected == len(gates) else "Agent 驗收需要注意",
         "control_version": control.get("version") or "尚無控制層紀錄",
         "summary": {
             "agent_count": len(AGENTS),
@@ -236,7 +234,6 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
         },
         "next_authorized_steps": {
             "stock_shadow": "繼續既有影子前向驗證與 GPT 教導，不改正式 V6。",
-            "zhiying_company": "可執行流程草稿與模擬；ERP／PLC 實接等待公司同意。",
             "wt_fasteners": "可執行商品與競品草稿；正式商店資料與上架等待來源及核准。",
             "packaging_startup": "可執行市場、成本與投資評估；付款與聯絡供應商等待核准。",
         },
