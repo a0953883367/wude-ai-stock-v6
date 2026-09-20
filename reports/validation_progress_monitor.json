@@ -1,22 +1,22 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-20 16:59:42",
+  "updated_at": "2026-09-20 23:18:23",
   "status": "ok",
   "mode": "completed_session_observer_only",
   "current": {
-    "trading_days_collected": 20,
+    "trading_days_collected": 21,
     "target_trading_days": 60,
-    "remaining_trading_days": 40,
-    "eligible_samples": 1112
+    "remaining_trading_days": 39,
+    "eligible_samples": 1173
   },
   "markets": {
     "TW": {
       "status": "ok",
-      "last_session_date": "2026-09-18",
-      "last_completed_days": 20,
-      "last_progress_at": "2026-09-18 16:41:13",
+      "last_session_date": "2026-09-20",
+      "last_completed_days": 21,
+      "last_progress_at": "2026-09-20 23:18:23",
       "stalled_sessions": 0,
-      "detail": "2026-09-18 正常增加至 20 天"
+      "detail": "2026-09-20 正常增加至 21 天"
     },
     "US": {
       "status": "ok",
@@ -47,15 +47,21 @@
   "signal_health": {
     "TW": {
       "status": "ok",
-      "last_session_date": "2026-09-18",
-      "last_validation_days": 19,
-      "last_trade_signal_samples": 7,
-      "direction_samples": 837,
+      "last_session_date": "2026-09-20",
+      "last_validation_days": 20,
+      "last_trade_signal_samples": 11,
+      "direction_samples": 898,
       "stagnant_sessions": 0,
-      "last_signal_growth_at": "2026-09-18 16:41:13",
+      "last_signal_growth_at": "2026-09-20 23:18:23",
       "alert_notified": false,
-      "detail": "完整交易訊號已增加至 7 筆",
-      "trade_signal_contract_version": 2
+      "detail": "方向結果 898 筆；合格進場設定 15 筆，已有 11 筆實際觸及凍結買進區",
+      "trade_signal_contract_version": 2,
+      "qualified_setups": 15,
+      "evaluated_setups": 15,
+      "pending_setups": 0,
+      "untouched_entry_zones": 4,
+      "data_contract_errors": 0,
+      "diagnosis": "healthy_triggered"
     },
     "US": {
       "status": "ok",
