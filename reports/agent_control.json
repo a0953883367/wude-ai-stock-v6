@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_control.v1",
   "version": "CENTRAL-AGENT-CONTROL-V1",
-  "generated_at": "2026-09-19T19:01:11+00:00",
+  "generated_at": "2026-09-20T09:46:04.289Z",
   "status": "safe_first_version",
   "status_label": "中央 Agent 安全控制層已建立",
   "data_policy": {
@@ -21,8 +21,7 @@
     "formal_rankings_locked": true,
     "automatic_orders": false,
     "automatic_payments": false,
-    "automatic_external_messages": false,
-    "erp_plc_device_writes": false
+    "automatic_external_messages": false
   },
   "blocked_actions": [
     {
@@ -52,18 +51,6 @@
     {
       "action": "delete_history",
       "reason": "不可自動刪除歷史或稽核資料。"
-    },
-    {
-      "action": "erp_write",
-      "reason": "公司 ERP 寫入等待公司授權與測試環境。"
-    },
-    {
-      "action": "plc_write",
-      "reason": "PLC 或現場設備控制等待公司授權與安全驗收。"
-    },
-    {
-      "action": "device_control",
-      "reason": "實體設備操作等待公司授權與安全驗收。"
     }
   ],
   "agents": [
@@ -100,41 +87,6 @@
         "system_guard": "warning",
         "formal_v6_locked": true,
         "places_orders": false
-      }
-    },
-    {
-      "id": "zhiying_company",
-      "name": "至盈公司 Agent",
-      "namespace": "zhiying_company",
-      "mode": "sandbox_waiting_authorization",
-      "description": "可整理報價、工單與內部流程草稿；公司系統寫入與設備連線等待授權。",
-      "safe_actions": [
-        "read_status",
-        "analyze",
-        "draft_report",
-        "simulate_workflow"
-      ],
-      "connectors": [
-        "github_quotation"
-      ],
-      "limits": {
-        "api_calls_per_day": 80,
-        "tokens_per_day": 200000,
-        "retries_per_task": 2
-      },
-      "runtime": {
-        "status": "waiting_authorization",
-        "status_label": "測試模式；公司連線等待同意",
-        "available_now": [
-          "流程分析",
-          "報價與工單草稿",
-          "模擬驗收"
-        ],
-        "blocked": [
-          "ERP 寫入",
-          "PLC／設備控制",
-          "對外寄送"
-        ]
       }
     },
     {
