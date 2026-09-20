@@ -1,16 +1,16 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V2",
-  "generated_at": "2026-09-19T19:01:11+00:00",
+  "generated_at": "2026-09-20T09:46:04.289Z",
   "status": "passed",
-  "status_label": "四個 Agent 安全驗收通過",
+  "status_label": "三個 Agent 安全驗收通過",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
   "summary": {
-    "agent_count": 4,
-    "validation_completed": 4,
-    "validation_total": 4,
-    "approval_gates_protected": 4,
-    "approval_gates_total": 4,
+    "agent_count": 3,
+    "validation_completed": 3,
+    "validation_total": 3,
+    "approval_gates_protected": 3,
+    "approval_gates_total": 3,
     "external_calls": 0,
     "paid_model_calls": 0
   },
@@ -47,43 +47,6 @@
           "evidence_check"
         ],
         "schema_bytes": 412,
-        "executor_loaded": true,
-        "cross_domain_tools": false
-      },
-      "status": "completed",
-      "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
-    },
-    {
-      "agent_id": "zhiying_company",
-      "agent_name": "至盈公司 Agent",
-      "namespace": "zhiying_company",
-      "title": "驗證至盈流程模擬工作區",
-      "action": "simulate_workflow",
-      "task_key": "d7a9cc5d56c11cd503085a7a085c53514c7cf9fbffc62c578d546e7a20797856",
-      "payload_stored": false,
-      "external_side_effect": false,
-      "context_plan": {
-        "profile": "formal_answer",
-        "layers": [
-          "canonical",
-          "reference"
-        ],
-        "files": 1,
-        "bytes": 1844,
-        "truncated": false,
-        "cross_domain_reads": false
-      },
-      "capability_plan": {
-        "skills": [
-          "context_governance",
-          "workflow_simulation"
-        ],
-        "tools": [
-          "context_plan",
-          "workflow_simulator"
-        ],
-        "schema_bytes": 246,
         "executor_loaded": true,
         "cross_domain_tools": false
       },
@@ -188,26 +151,6 @@
       "summary": "不得連券商或自動下單。"
     },
     {
-      "agent_id": "zhiying_company",
-      "agent_name": "至盈公司 Agent",
-      "namespace": "zhiying_company",
-      "title": "公司 ERP 寫入保持鎖定",
-      "action": "erp_write",
-      "task_key": "2c940d9ba4efa2a94b79943493d459c15547b34647b73c9f8ebe75ad18b8154b",
-      "payload_stored": false,
-      "external_side_effect": false,
-      "capability_plan": {
-        "skills": [],
-        "tools": [],
-        "schema_bytes": 0,
-        "executor_loaded": false,
-        "cross_domain_tools": false
-      },
-      "status": "waiting_for_approval",
-      "status_label": "等待授權",
-      "summary": "公司 ERP 寫入等待公司授權與測試環境。"
-    },
-    {
       "agent_id": "wt_fasteners",
       "agent_name": "WT 螺絲電商 Agent",
       "namespace": "wt_fasteners",
@@ -292,7 +235,6 @@
   },
   "next_authorized_steps": {
     "stock_shadow": "繼續既有影子前向驗證與 GPT 教導，不改正式 V6。",
-    "zhiying_company": "可執行流程草稿與模擬；ERP／PLC 實接等待公司同意。",
     "wt_fasteners": "可執行商品與競品草稿；正式商店資料與上架等待來源及核准。",
     "packaging_startup": "可執行市場、成本與投資評估；付款與聯絡供應商等待核准。"
   }
