@@ -9,13 +9,13 @@ def test_stock_shadow_loads_only_relevant_capabilities():
 
 
 def test_draft_report_loads_presentation_pipeline():
-    plan = build_capability_plan("製作至盈簡報", "draft_report", explicit_agent="zhiying_company")
+    plan = build_capability_plan("製作包裝創業簡報", "draft_report", explicit_agent="packaging_startup")
     assert "presentations" in plan["skills"]
     assert "presentation_pipeline" in {tool["name"] for tool in plan["tools"]}
 
 
 def test_blocked_action_never_loads_executor():
-    plan = build_capability_plan("寫入 ERP", "erp_write", explicit_agent="zhiying_company")
+    plan = build_capability_plan("公開上架", "external_publish", explicit_agent="wt_fasteners")
     assert plan["blocked_action"] is True
     assert plan["executor_loaded"] is False
     assert plan["skills"] == []
