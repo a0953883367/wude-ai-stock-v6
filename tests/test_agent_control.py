@@ -8,21 +8,20 @@ from agent_control import AGENTS, UsageLedger, authorize_task, build_report, rou
 
 def test_routes_each_business_without_crossing_namespaces():
     assert route_task("檢查台股影子驗證").agent_id == "stock_shadow"
-    assert route_task("至盈 ERP 工單流程").agent_id == "zhiying_company"
     assert route_task("WT FASTENERS Amazon 商品").agent_id == "wt_fasteners"
     assert route_task("包裝創業成本試算").agent_id == "packaging_startup"
     assert len({agent.namespace for agent in AGENTS.values()}) == len(AGENTS)
 
 
 def test_explicit_agent_wins_and_unknown_domain_stops():
-    assert route_task("股票報價", explicit_agent="zhiying_company").agent_id == "zhiying_company"
+    assert route_task("股票商品", explicit_agent="wt_fasteners").agent_id == "wt_fasteners"
     with pytest.raises(ValueError):
         route_task("幫我處理一下")
 
 
 @pytest.mark.parametrize(
     "action",
-    ["formal_weight_change", "formal_ranking_change", "broker_order", "external_send", "payment", "erp_write", "plc_write"],
+    ["formal_weight_change", "formal_ranking_change", "broker_order", "external_send", "external_publish", "payment"],
 )
 def test_high_risk_actions_never_run_automatically(action):
     result = authorize_task("stock_shadow", action, {"secret": "not stored"})
@@ -35,11 +34,11 @@ def test_high_risk_actions_never_run_automatically(action):
 def test_safe_task_is_idempotent_and_payload_is_hashed_only():
     ledger = UsageLedger()
     payload = {"customer": "private", "task": "status"}
-    first = authorize_task("zhiying_company", "read_status", payload, ledger, calls=1, tokens=20)
-    second = authorize_task("zhiying_company", "read_status", payload, ledger, calls=1, tokens=20)
+    first = authorize_task("wt_fasteners", "read_status", payload, ledger, calls=1, tokens=20)
+    second = authorize_task("wt_fasteners", "read_status", payload, ledger, calls=1, tokens=20)
     assert first["decision"] == "safe_to_run"
     assert second["decision"] == "duplicate"
-    assert first["task_key"] == task_key("zhiying_company", "read_status", payload)
+    assert first["task_key"] == task_key("wt_fasteners", "read_status", payload)
     assert "private" not in json.dumps(first)
 
 
