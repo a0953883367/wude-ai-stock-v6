@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "trade_plan_shadow.py"
+      - "trade_plan_validation.py"
       - ".github/workflows/trade-plan-shadow.yml"
       - "reports/decision_hub.json"
       - "reports/decision_hub_*.json"
@@ -32,17 +33,19 @@ jobs:
         run: python -m pip install "pytest>=8,<10"
       - name: 建立影子交易計畫
         run: python trade_plan_shadow.py --reports-dir reports
+      - name: 更新前向驗證帳本
+        run: python trade_plan_validation.py --reports-dir reports
       - name: 驗證交易計畫
-        run: python -m pytest -q tests/test_trade_plan_shadow.py
+        run: python -m pytest -q tests/test_trade_plan_shadow.py tests/test_trade_plan_validation.py
       - name: 保存最新計畫
         run: |
-          if [ -z "$(git status --porcelain -- reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json)" ]; then
+          if [ -z "$(git status --porcelain -- reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json reports/trade_plan_validation.json)" ]; then
             echo "交易計畫沒有變更"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json
+          git add reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json reports/trade_plan_validation.json
           git commit -m "chore: 更新影子交易計畫"
           git pull --rebase origin main
           git push origin HEAD:main
