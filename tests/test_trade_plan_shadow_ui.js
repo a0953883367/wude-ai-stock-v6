@@ -4,6 +4,7 @@ const assert = require('assert');
 const html = fs.readFileSync('trade-plan-shadow.html', 'utf8');
 const js = fs.readFileSync('trade_plan_shadow.js', 'utf8');
 const hub = fs.readFileSync('decision-hub.html', 'utf8');
+const hubJs = fs.readFileSync('decision_hub.js', 'utf8');
 
 [
   '交易計畫計算器',
@@ -20,6 +21,11 @@ assert(js.includes('買進期限'));
 assert(js.includes('高於這裡不追'));
 assert(js.includes('停損／失效'));
 assert(js.includes('目標1'));
+assert(js.includes('計畫品質'));
+assert(js.includes('stop_adjusted'));
+assert(js.includes("params.get('symbol')"));
 assert(hub.includes('trade-plan-shadow.html'));
 assert(hub.includes('查看交易計畫'));
+assert(hubJs.includes('查看本檔交易計畫'));
+assert(hubJs.includes('trade-plan-shadow.html?symbol='));
 console.log('trade plan shadow UI checks passed');
