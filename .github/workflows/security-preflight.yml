@@ -35,3 +35,7 @@ jobs:
         run: |
           python tools/live_trading_safety_check.py
           python -m unittest tests.test_live_trading_safety_check
+      - name: 驗證紙上交易完整流程（只用假資料）
+        run: |
+          python tools/paper_trading_acceptance_check.py
+          python -m unittest tests.test_paper_trading_acceptance_check
