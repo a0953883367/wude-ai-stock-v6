@@ -1,4 +1,4 @@
-"""Build a human-readable task centre for the four isolated agents.
+"""Build a human-readable task centre for the three isolated agents.
 
 The task centre reports progress and blockers only.  It does not execute paid
 calls, publish externally, change stock weights, or write to company systems.
@@ -66,19 +66,6 @@ def build_task_report(root: Path, reports_dir: Path) -> dict[str, Any]:
             },
         },
         {
-            "id": "zhiying_connector_pack",
-            "agent_id": "zhiying_company",
-            "agent_name": "至盈公司 Agent",
-            "title": "ERP／PLC／掃描／列印模擬串接包",
-            "status": "prepared" if _exists(root, "agent_workspaces/zhiying_company/連線模擬與驗收規格.json") else "not_started",
-            "status_label": "模擬規格已備妥" if _exists(root, "agent_workspaces/zhiying_company/連線模擬與驗收規格.json") else "尚未建立",
-            "progress_label": "可先做欄位映射、唯讀測試與驗收，不接正式設備",
-            "next_action": "取得公司同意及測試環境後，才進行實際連線",
-            "blocked_by": ["公司授權", "ERP／PLC測試環境"],
-            "artifact_url": "agent_workspaces/zhiying_company/連線模擬與驗收規格.json",
-            "artifact_label": "查看模擬串接規格",
-        },
-        {
             "id": "wt_product_cost_template",
             "agent_id": "wt_fasteners",
             "agent_name": "WT 螺絲電商 Agent",
@@ -124,7 +111,6 @@ def build_task_report(root: Path, reports_dir: Path) -> dict[str, Any]:
             "orders_placed": False,
             "payments_made": False,
             "external_messages_sent": False,
-            "company_devices_connected": False,
         },
     }
 
