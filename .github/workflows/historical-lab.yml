@@ -40,7 +40,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Restore resumable market-data cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .cache/historical_lab
           key: historical-lab-${{ runner.os }}-${{ github.run_id }}
@@ -63,7 +63,7 @@ jobs:
         run: python historical_lab.py --period 5y ${{ steps.mode.outputs.argument }}
       - name: Save cache for failed-run continuation
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .cache/historical_lab
           key: historical-lab-${{ runner.os }}-${{ github.run_id }}

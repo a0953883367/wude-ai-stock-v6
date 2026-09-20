@@ -51,7 +51,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Restore private Tiingo trial cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             reports/tiingo_us_close_fallback.json
@@ -61,7 +61,7 @@ jobs:
           restore-keys: |
             tiingo-eod-v1-
       - name: Restore private AI prediction database
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
@@ -174,7 +174,7 @@ jobs:
           --owner-publish "${{ steps.owner_publish.outcome }}"
       - name: Save private Tiingo trial cache
         if: ${{ always() && steps.generate.outcome == 'success' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             reports/tiingo_us_close_fallback.json
@@ -185,7 +185,7 @@ jobs:
         if: >-
           ${{ always() && steps.generate.outcome == 'success' &&
           steps.period.outputs.save_prediction == 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
