@@ -56,6 +56,8 @@ REQUIRED_WORKFLOW_COMMANDS = (
     "python -m unittest tests.test_live_trading_safety_check",
     "python tools/paper_trading_acceptance_check.py",
     "python -m unittest tests.test_paper_trading_acceptance_check",
+    "python tools/commercialization_gap_check.py",
+    "python -m unittest tests.test_commercialization_gap_check",
 )
 
 REQUIRED_FILES = {
@@ -69,6 +71,9 @@ REQUIRED_FILES = {
     "真實下單安全鎖單元測試": "tests/test_live_trading_safety_check.py",
     "紙上交易全流程驗收": "tools/paper_trading_acceptance_check.py",
     "紙上交易全流程單元測試": "tests/test_paper_trading_acceptance_check.py",
+    "商業化缺口證據清單": "commercialization_readiness.json",
+    "商業化缺口唯讀檢查": "tools/commercialization_gap_check.py",
+    "商業化缺口檢查單元測試": "tests/test_commercialization_gap_check.py",
 }
 
 

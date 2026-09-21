@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-21",
+  "policy": "只有完成驗收且附可重現證據的項目可標為 verified；阻塞項目不得因文件存在而視為完成。",
+  "items": [
+    {
+      "id": "packaging-offsite-backup-restore",
+      "product": "包裝自動化",
+      "title": "異地備份與真實還原演練",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "尚未取得正式資料庫、異地儲存位置與可隔離的還原環境授權",
+      "next_action": "由公司指定備份目的地與測試資料，執行一次備份、還原、校驗並保存演練紀錄"
+    },
+    {
+      "id": "packaging-key-rotation",
+      "product": "包裝自動化",
+      "title": "正式金鑰輪替",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "正式服務金鑰只能由帳號持有人或公司管理員撤銷與重發",
+      "next_action": "盤點正式金鑰擁有者、設定失效日期，完成雙金鑰切換與舊金鑰撤銷證據"
+    },
+    {
+      "id": "packaging-account-management",
+      "product": "包裝自動化",
+      "title": "客戶與帳號管理",
+      "status": "ready_for_testing",
+      "evidence": [],
+      "blocked_by": "",
+      "next_action": "使用假客戶帳號驗證建立、停用、角色隔離、稽核紀錄與資料匯出"
+    },
+    {
+      "id": "packaging-outage-alert",
+      "product": "包裝自動化",
+      "title": "外部斷線告警",
+      "status": "ready_for_testing",
+      "evidence": [],
+      "blocked_by": "",
+      "next_action": "以測試端點模擬逾時、斷線與恢復，保存告警送達及去重證據"
+    },
+    {
+      "id": "packaging-terms-contract",
+      "product": "包裝自動化",
+      "title": "條款與商業合約",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要公司決策與律師審查，程式驗收不能代替法律核准",
+      "next_action": "確認服務範圍、責任限制、資料處理、維護與退費條款後交律師定稿"
+    },
+    {
+      "id": "packaging-ai-real-data-validation",
+      "product": "包裝自動化",
+      "title": "AI 真實資料驗證",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "缺少經公司核准且去識別的真實工單、標籤與人工答案",
+      "next_action": "提供去識別樣本與人工標準答案，先影子比對再決定是否導入"
+    },
+    {
+      "id": "packaging-erp-device-integration",
+      "product": "包裝自動化",
+      "title": "ERP 與設備串接",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "禁止在未授權情況連接真實 ERP、PLC、掃描器、標籤機或秤重設備",
+      "next_action": "由設備商提供測試協定與沙盒，先完成離線模擬器與現場變更核准"
+    },
+    {
+      "id": "packaging-offline-retry",
+      "product": "包裝自動化",
+      "title": "離線補送",
+      "status": "ready_for_testing",
+      "evidence": [],
+      "blocked_by": "",
+      "next_action": "用假工單驗證離線排隊、冪等鍵、重送上限、人工解除與稽核紀錄"
+    },
+    {
+      "id": "packaging-50-day-pilot",
+      "product": "包裝自動化",
+      "title": "50 個工作日試點",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要真人現場執行與公司核准的試點範圍",
+      "next_action": "指定場域、班別、負責人、成功指標與退出條件後開始逐日記錄"
+    },
+    {
+      "id": "packaging-training-support",
+      "product": "包裝自動化",
+      "title": "教育訓練與客服",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要確認客服人員、服務時間、回應層級與教材負責人",
+      "next_action": "完成操作手冊、故障演練、客服分級與至少一次真人訓練簽到"
+    },
+    {
+      "id": "stock-paper-trading-fake-e2e",
+      "product": "武得 AI 股票",
+      "title": "假資料紙上交易全流程安全驗收",
+      "status": "verified",
+      "evidence": [
+        "tools/paper_trading_acceptance_check.py",
+        "tests/test_paper_trading_acceptance_check.py",
+        ".github/workflows/security-preflight.yml"
+      ],
+      "blocked_by": "",
+      "next_action": "保留為每次推送的回歸驗收；這不代表真實券商或真人操作已驗收"
+    },
+    {
+      "id": "stock-paper-trading-human-pilot",
+      "product": "武得 AI 股票",
+      "title": "紙上交易真人試點",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要本人以非真單模式執行完整週期並核對每筆結果",
+      "next_action": "固定測試資金與股票清單，連續執行買進、持有、停損、停利及重啟還原"
+    },
+    {
+      "id": "stock-multi-user-isolation",
+      "product": "武得 AI 股票",
+      "title": "多使用者隔離實測",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要至少兩個獨立測試帳號與核准的隔離測試資料",
+      "next_action": "以 A/B 帳號交叉驗證登入、權限、報告、持倉、通知與匯出不可互見"
+    },
+    {
+      "id": "stock-market-data-license",
+      "product": "武得 AI 股票",
+      "title": "行情與法人資料商用授權",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要資料供應商書面商用授權與費用方案",
+      "next_action": "向供應商確認展示、快取、轉授權、朋友版與付費使用者的授權範圍"
+    },
+    {
+      "id": "stock-subscription-billing-refund",
+      "product": "武得 AI 股票",
+      "title": "訂閱、收費與退款",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "需要付款服務帳號、公司收款決策與退款條款",
+      "next_action": "先在付款沙盒驗證訂閱、取消、失敗補償、退款與對帳，再申請正式啟用"
+    },
+    {
+      "id": "stock-20d-shadow-validation",
+      "product": "武得 AI 股票",
+      "title": "20 交易日影子驗證",
+      "status": "collecting_evidence",
+      "evidence": [],
+      "blocked_by": "",
+      "next_action": "等待足額有效交易日；不得補值、回填或提前改動正式排名與權重"
+    },
+    {
+      "id": "stock-60d-shadow-validation",
+      "product": "武得 AI 股票",
+      "title": "60 交易日影子驗證",
+      "status": "collecting_evidence",
+      "evidence": [],
+      "blocked_by": "",
+      "next_action": "等待完整前向結果成熟；只接受正式交易日與可稽核收盤資料"
+    },
+    {
+      "id": "stock-gpt-shadow-coaching",
+      "product": "武得 AI 股票",
+      "title": "GPT 教導影子證據",
+      "status": "collecting_evidence",
+      "evidence": [],
+      "blocked_by": "",
+      "next_action": "持續保存教導前後版本、輸入摘要、候選變更、樣本外結果與未影響正式層的證據"
+    },
+    {
+      "id": "stock-key-rotation",
+      "product": "武得 AI 股票",
+      "title": "正式金鑰輪替",
+      "status": "blocked_external",
+      "evidence": [],
+      "blocked_by": "正式 API、通知、券商與部署金鑰只能由帳號持有人撤銷與重發",
+      "next_action": "依金鑰清冊逐一雙金鑰切換、驗證服務、撤銷舊值並保存不含祕密的紀錄"
+    }
+  ]
+}
