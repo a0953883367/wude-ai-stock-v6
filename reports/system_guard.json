@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-21T14:37:11+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-09-21T17:34:11+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-21 07:42:46",
-  "report_age_minutes": 414.4,
+  "report_updated_at": "2026-09-21 17:31:42",
+  "report_age_minutes": 2.5,
   "counts": {
-    "ok": 25,
-    "info": 7,
-    "warning": 1,
+    "ok": 28,
+    "info": 5,
+    "warning": 0,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 307.8 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 310.8 MB；可壓縮 3 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -26,7 +26,7 @@
       "title": "影子證據私人備份",
       "level": "ok",
       "label": "正常",
-      "detail": "完整資料庫備份已校驗（3.4 MB）；未發布至網站，正式V6未變更",
+      "detail": "完整資料庫備份已校驗（3.6 MB）；未發布至網站，正式V6未變更",
       "action": ""
     },
     {
@@ -40,10 +40,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 6.9 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 2 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -66,7 +66,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-09-20 32/33；TW_STOCK 2026-09-20 141/154；US_ETF 2026-09-18 35/35；US_STOCK 2026-09-18 151/151",
+      "detail": "TW_ETF 2026-09-21 33/33；TW_STOCK 2026-09-21 154/154；US_ETF 2026-09-18 35/35；US_STOCK 2026-09-18 151/151",
       "action": ""
     },
     {
@@ -120,10 +120,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "info",
-      "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 141 檔；尚未切換半套快取",
-      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
+      "level": "ok",
+      "label": "正常",
+      "detail": "私密完整快取涵蓋 186 檔；原始價格未進入網站或計算",
+      "action": ""
     },
     {
       "code": "us_sec_fundamentals",
@@ -138,7 +138,7 @@
       "title": "60日向前驗證",
       "level": "ok",
       "label": "正常",
-      "detail": "真實交易日 21/60；進度監控正常；TW 2026-09-20／21天、US 2026-09-18／19天",
+      "detail": "真實交易日 22/60；進度監控正常；TW 2026-09-21／22天、US 2026-09-18／19天",
       "action": ""
     },
     {
@@ -154,7 +154,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 2456 筆錯誤列合併為 502 個事件；影子候選 5 組；完整學習治理 52/52 項，正式V6鎖定",
+      "detail": "已將 2582 筆錯誤列合併為 501 個事件；影子候選 5 組；完整學習治理 52/52 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -178,10 +178,10 @@
       "title": "多期間真實答案帳本",
       "level": "ok",
       "label": "正常",
-      "detail": "台美股共 20 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+      "detail": "台美股共 21 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
-      "cohort_count": 20,
-      "ledger_updated_at": "2026-09-21 07:42:46"
+      "cohort_count": 21,
+      "ledger_updated_at": "2026-09-21 17:31:42"
     },
     {
       "code": "unified_evidence",
@@ -243,9 +243,9 @@
     {
       "code": "stream_us",
       "title": "美股即時串流",
-      "level": "info",
-      "label": "資訊",
-      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "level": "ok",
+      "label": "正常",
+      "detail": "盤前已連線，訂閱 186 檔",
       "action": ""
     },
     {
@@ -253,7 +253,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-09-21T05:30:03+00:00",
+      "detail": "最近一次已送達：2026-09-21T09:25:39+00:00",
       "action": ""
     },
     {
@@ -277,13 +277,11 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
-  "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,

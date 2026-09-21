@@ -1,38 +1,11 @@
 {
-  "status": "ok",
-  "checked_at": "2026-09-21 07:42:46",
-  "delivery": {
-    "index_bytes": 119004,
-    "chunk_count": 28,
-    "largest_chunk_bytes": 255114,
-    "total_chunk_bytes": 2611976
-  },
-  "database": {
-    "schema_version": 5,
-    "database_bytes": 101576704,
-    "configured_max_bytes": 524288000,
-    "capacity_pct": 19.37,
-    "capacity_status": "ok",
-    "tables": {
-      "market_sessions": 44,
-      "prices": 5158,
-      "predictions": 36106,
-      "model_versions": 8,
-      "model_control": 4,
-      "model_control_events": 8,
-      "unit_learning_predictions": 40986,
-      "unit_trust_control": 44,
-      "unit_trust_events": 396,
-      "portfolios": 66,
-      "forward_outcome_cohorts": 20,
-      "forward_outcome_candidates": 3050,
-      "forward_outcome_results": 4575
-    },
-    "matured_predictions": 9113,
-    "public_database_exposed": false
-  },
+  "status": "warning",
+  "checked_at": "2026-09-21 17:31:42",
+  "last_success_at": null,
+  "error_type": "RuntimeError",
+  "detail": "prediction engine chunk prediction_engine_data_TW_STOCK_UP_60D.json exceeded 300000 bytes",
   "formal_pipeline_continues": true,
   "formal_v6_unchanged": true,
   "existing_ledgers_unchanged": true,
-  "network_requests": 0
+  "automatic_orders": false
 }

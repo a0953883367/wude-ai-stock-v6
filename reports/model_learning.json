@@ -1,26 +1,26 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-09-21 07:42:46",
+  "updated_at": "2026-09-21 17:31:42",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
-    "trading_days_collected": 21,
+    "trading_days_collected": 22,
     "preliminary_review_days": 20,
     "promotion_review_days": 60,
     "remaining_to_preliminary": 0,
-    "remaining_to_promotion_review": 39
+    "remaining_to_promotion_review": 38
   },
   "error_learning": {
-    "raw_error_rows": 2456,
-    "independent_events": 502,
+    "raw_error_rows": 2582,
+    "independent_events": 501,
     "unique_symbols": 246,
-    "duplicate_rows_collapsed": 1954,
+    "duplicate_rows_collapsed": 2081,
     "cause_counts": {
       "event_gap_risk": 30,
-      "missed_strength_rotation": 50,
+      "missed_strength_rotation": 58,
       "etf_model_separation": 52,
-      "direction_calibration": 365,
-      "intraday_reversal": 5
+      "direction_calibration": 357,
+      "intraday_reversal": 4
     },
     "recent_events": [
       {
@@ -105,6 +105,34 @@
         "affects_formal_model": false
       },
       {
+        "event_id": "TW:3264.TWO:2026-09-09:2026-09-21",
+        "market": "TW",
+        "symbol": "3264.TWO",
+        "name": "欣銓",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-09-09",
+        "evaluated_end_date": "2026-09-21",
+        "row_count": 11,
+        "horizons": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "predicted_directions": [
+          "DOWN",
+          "UP"
+        ],
+        "worst_directional_return_pct": -28.5068,
+        "largest_actual_move_pct": 28.5068,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
+        "classification_status": "自動初判、等待前向驗證",
+        "affects_formal_model": false
+      },
+      {
         "event_id": "US:PCG:2026-08-24:2026-09-03",
         "market": "US",
         "symbol": "PCG",
@@ -160,6 +188,33 @@
         "affects_formal_model": false
       },
       {
+        "event_id": "TW:1560.TW:2026-09-15:2026-09-21",
+        "market": "TW",
+        "symbol": "1560.TW",
+        "name": "中砂",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-09-15",
+        "evaluated_end_date": "2026-09-21",
+        "row_count": 4,
+        "horizons": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "predicted_directions": [
+          "DOWN"
+        ],
+        "worst_directional_return_pct": -24.3537,
+        "largest_actual_move_pct": 24.3537,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
+        "classification_status": "自動初判、等待前向驗證",
+        "affects_formal_model": false
+      },
+      {
         "event_id": "US:LEU:2026-09-04:2026-09-15",
         "market": "US",
         "symbol": "LEU",
@@ -187,24 +242,26 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:1560.TW:2026-09-15:2026-09-18",
+        "event_id": "TW:8996.TW:2026-09-14:2026-09-21",
         "market": "TW",
-        "symbol": "1560.TW",
-        "name": "中砂",
+        "symbol": "8996.TW",
+        "name": "高力",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-09-15",
-        "evaluated_end_date": "2026-09-18",
-        "row_count": 3,
+        "source_start_date": "2026-09-14",
+        "evaluated_end_date": "2026-09-21",
+        "row_count": 8,
         "horizons": [
           1,
           2,
-          3
+          3,
+          5
         ],
         "predicted_directions": [
-          "DOWN"
+          "DOWN",
+          "UP"
         ],
-        "worst_directional_return_pct": -21.9048,
-        "largest_actual_move_pct": 21.9048,
+        "worst_directional_return_pct": -23.3607,
+        "largest_actual_move_pct": 23.3607,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
@@ -241,14 +298,14 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:3264.TWO:2026-09-09:2026-09-18",
+        "event_id": "TW:4979.TWO:2026-09-11:2026-09-21",
         "market": "TW",
-        "symbol": "3264.TWO",
-        "name": "欣銓",
+        "symbol": "4979.TWO",
+        "name": "華星光",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-09-09",
-        "evaluated_end_date": "2026-09-18",
-        "row_count": 10,
+        "source_start_date": "2026-09-11",
+        "evaluated_end_date": "2026-09-21",
+        "row_count": 7,
         "horizons": [
           1,
           2,
@@ -256,11 +313,10 @@
           5
         ],
         "predicted_directions": [
-          "DOWN",
-          "UP"
+          "DOWN"
         ],
-        "worst_directional_return_pct": -21.4932,
-        "largest_actual_move_pct": 21.4932,
+        "worst_directional_return_pct": -21.4145,
+        "largest_actual_move_pct": 21.4145,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
@@ -323,14 +379,14 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:4979.TWO:2026-09-11:2026-09-18",
+        "event_id": "TW:4991.TWO:2026-09-11:2026-09-21",
         "market": "TW",
-        "symbol": "4979.TWO",
-        "name": "華星光",
+        "symbol": "4991.TWO",
+        "name": "環宇-KY",
         "cohort": "TW_STOCK",
         "source_start_date": "2026-09-11",
-        "evaluated_end_date": "2026-09-18",
-        "row_count": 6,
+        "evaluated_end_date": "2026-09-21",
+        "row_count": 5,
         "horizons": [
           1,
           2,
@@ -340,8 +396,8 @@
         "predicted_directions": [
           "DOWN"
         ],
-        "worst_directional_return_pct": -20.0393,
-        "largest_actual_move_pct": 20.0393,
+        "worst_directional_return_pct": -19.1388,
+        "largest_actual_move_pct": 19.1388,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
@@ -459,14 +515,14 @@
         "affects_formal_model": false
       },
       {
-        "event_id": "TW:8996.TW:2026-09-14:2026-09-20",
+        "event_id": "TW:2449.TW:2026-09-11:2026-09-21",
         "market": "TW",
-        "symbol": "8996.TW",
-        "name": "高力",
+        "symbol": "2449.TW",
+        "name": "京元電子",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-09-14",
-        "evaluated_end_date": "2026-09-20",
-        "row_count": 7,
+        "source_start_date": "2026-09-11",
+        "evaluated_end_date": "2026-09-21",
+        "row_count": 5,
         "horizons": [
           1,
           2,
@@ -474,11 +530,10 @@
           5
         ],
         "predicted_directions": [
-          "DOWN",
-          "UP"
+          "DOWN"
         ],
-        "worst_directional_return_pct": -17.2131,
-        "largest_actual_move_pct": 17.2131,
+        "worst_directional_return_pct": -17.3152,
+        "largest_actual_move_pct": 17.3152,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
@@ -513,61 +568,6 @@
         "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
         "classification_status": "自動初判、等待前向驗證",
         "affects_formal_model": false
-      },
-      {
-        "event_id": "TW:6829.TWO:2026-08-31:2026-09-14",
-        "market": "TW",
-        "symbol": "6829.TWO",
-        "name": "千附精密",
-        "cohort": "TW_STOCK",
-        "source_start_date": "2026-08-31",
-        "evaluated_end_date": "2026-09-14",
-        "row_count": 13,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "DOWN",
-          "UP"
-        ],
-        "worst_directional_return_pct": -16.4729,
-        "largest_actual_move_pct": 16.4729,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。",
-        "classification_status": "自動初判、等待前向驗證",
-        "affects_formal_model": false
-      },
-      {
-        "event_id": "US:MTSI:2026-09-09:2026-09-16",
-        "market": "US",
-        "symbol": "MTSI",
-        "name": "MACOM",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-09-09",
-        "evaluated_end_date": "2026-09-16",
-        "row_count": 4,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -16.2205,
-        "largest_actual_move_pct": 16.2205,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。",
-        "classification_status": "自動初判、等待前向驗證",
-        "affects_formal_model": false
       }
     ]
   },
@@ -582,13 +582,13 @@
       "trade_signal_diagnostics": {
         "contract_version": 2,
         "diagnosis": "healthy_triggered",
-        "qualified_setups": 15,
+        "qualified_setups": 17,
         "evaluated_setups": 15,
         "triggered_setups": 11,
-        "pending_setups": 0,
+        "pending_setups": 2,
         "untouched_entry_zones": 4,
-        "source_ineligible_rows": 1470,
-        "guard_blocked_rows": 652,
+        "source_ineligible_rows": 1601,
+        "guard_blocked_rows": 691,
         "data_contract_errors": 0,
         "evaluation_status_counts": {
           "entry_zone_not_touched": 4,
@@ -675,9 +675,22 @@
       "candidate_id": "shadow:direction_calibration:v1",
       "name": "方向門檻校準影子候選",
       "cause": "direction_calibration",
-      "evidence_event_count": 365,
+      "evidence_event_count": 357,
       "purpose": "在固定資料上比較共識門檻，不回頭改寫正式V6預測。",
       "required_evidence": "相同市場、盤勢與期間的獨立前向事件",
+      "stage": "preliminary_review_only",
+      "uses_future_data": false,
+      "affects_formal_v6": false,
+      "automatic_promotion": false,
+      "broker_orders": false
+    },
+    {
+      "candidate_id": "shadow:missed_strength_rotation:v1",
+      "name": "強勢反轉與族群輪動影子候選",
+      "cause": "missed_strength_rotation",
+      "evidence_event_count": 58,
+      "purpose": "檢查量能、突破、攻擊量與族群廣度是否已推翻原本看跌判斷。",
+      "required_evidence": "事前凍結的量價、族群廣度與資金流證據",
       "stage": "preliminary_review_only",
       "uses_future_data": false,
       "affects_formal_v6": false,
@@ -691,19 +704,6 @@
       "evidence_event_count": 52,
       "purpose": "台灣ETF與美國ETF分開驗證，不再以個股規則解讀ETF。",
       "required_evidence": "ETF類型、成分／槓桿結構及分市場前向結果",
-      "stage": "preliminary_review_only",
-      "uses_future_data": false,
-      "affects_formal_v6": false,
-      "automatic_promotion": false,
-      "broker_orders": false
-    },
-    {
-      "candidate_id": "shadow:missed_strength_rotation:v1",
-      "name": "強勢反轉與族群輪動影子候選",
-      "cause": "missed_strength_rotation",
-      "evidence_event_count": 50,
-      "purpose": "檢查量能、突破、攻擊量與族群廣度是否已推翻原本看跌判斷。",
-      "required_evidence": "事前凍結的量價、族群廣度與資金流證據",
       "stage": "preliminary_review_only",
       "uses_future_data": false,
       "affects_formal_v6": false,
@@ -727,7 +727,7 @@
       "candidate_id": "shadow:intraday_reversal:v1",
       "name": "開盤確認影子候選",
       "cause": "intraday_reversal",
-      "evidence_event_count": 5,
+      "evidence_event_count": 4,
       "purpose": "把隔夜方向和盤中進場分開，使用15／30分鐘確認及風險控制。",
       "required_evidence": "事前預判、正式開盤及15／30分鐘確認資料",
       "stage": "preliminary_review_only",
@@ -822,7 +822,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 898,
               "detail": {
                 "samples": 898,
@@ -872,7 +872,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1,
               "detail": {
                 "samples": 1,
@@ -922,7 +922,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 162,
               "detail": {
                 "samples": 162,
@@ -972,7 +972,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 112,
               "detail": {
                 "samples": 112,
@@ -1030,7 +1030,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1341,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1126,7 +1126,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1423,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1222,7 +1222,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1188,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1318,7 +1318,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1405,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1414,7 +1414,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1545,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1510,7 +1510,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1120,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1606,7 +1606,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 766,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1702,7 +1702,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1451,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1798,7 +1798,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1210,
               "by_cohort": {
                 "TW_STOCK": {
@@ -1894,7 +1894,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1159,
               "by_cohort": {
                 "TW_STOCK": {
@@ -2281,9 +2281,9 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 13,
-              "samples": 28,
+              "samples": 29,
               "by_market": {
-                "TW": 15,
+                "TW": 16,
                 "US": 13
               }
             },
@@ -2938,7 +2938,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1173
             },
             "stage": "collecting",
@@ -3307,7 +3307,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 14,
-              "samples": 4422
+              "samples": 4581
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -3546,7 +3546,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1173
             },
             "stage": "collecting",
@@ -3588,7 +3588,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1173
             },
             "stage": "collecting",
@@ -3630,7 +3630,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 0
             },
             "stage": "collecting",
@@ -3840,7 +3840,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1173
             },
             "stage": "collecting",
@@ -3883,7 +3883,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 19,
-              "samples": 40
+              "samples": 41
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -4011,7 +4011,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 1173
             },
             "stage": "manual_review_available",
@@ -4052,7 +4052,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 0
             },
             "stage": "monitoring",
@@ -4093,7 +4093,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 0
             },
             "stage": "monitoring",
@@ -4134,7 +4134,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 21,
+              "sessions": 22,
               "samples": 0
             },
             "stage": "monitoring",
