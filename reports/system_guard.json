@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-21T22:23:33+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-09-21T23:38:30+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-21 17:31:42",
-  "report_age_minutes": 291.9,
+  "report_updated_at": "2026-09-21 23:35:44",
+  "report_age_minutes": 2.8,
   "counts": {
-    "ok": 27,
+    "ok": 28,
     "info": 5,
-    "warning": 1,
+    "warning": 0,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 310.8 MB；可壓縮 3 份；未發現校驗錯誤",
+      "detail": "封存容量 310.9 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -40,10 +40,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 4.9 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -66,7 +66,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-09-21 33/33；TW_STOCK 2026-09-21 154/154；US_ETF 2026-09-18 35/35；US_STOCK 2026-09-18 151/151",
+      "detail": "TW_ETF 2026-09-21 33/33；TW_STOCK 2026-09-21 154/154；US_ETF 2026-09-21 35/35；US_STOCK 2026-09-21 151/151",
       "action": ""
     },
     {
@@ -181,7 +181,7 @@
       "detail": "台美股共 21 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 21,
-      "ledger_updated_at": "2026-09-21 17:31:42"
+      "ledger_updated_at": "2026-09-21 23:35:44"
     },
     {
       "code": "unified_evidence",
@@ -253,7 +253,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-09-21T14:23:17+00:00",
+      "detail": "最近一次已送達：2026-09-21T15:38:27+00:00",
       "action": ""
     },
     {
@@ -277,13 +277,11 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
-  "action_required": [
-    "若已跨過下一個排程時間，檢查排程是否延遲"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,
