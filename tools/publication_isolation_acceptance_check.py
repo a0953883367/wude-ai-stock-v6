@@ -6,8 +6,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from tools.publish_friend_data import sanitize, sanitize_accuracy
-from tools.publish_owner_data import CHUNK_PROTOCOL, build_chunked_bodies
+try:
+    from tools.publish_friend_data import sanitize, sanitize_accuracy
+    from tools.publish_owner_data import CHUNK_PROTOCOL, build_chunked_bodies
+except ModuleNotFoundError:  # Direct execution: python tools/publication_isolation_acceptance_check.py
+    from publish_friend_data import sanitize, sanitize_accuracy
+    from publish_owner_data import CHUNK_PROTOCOL, build_chunked_bodies
 
 
 PRIVATE_MARKER = "OWNER_ONLY_MARKER_MUST_NOT_LEAK"
