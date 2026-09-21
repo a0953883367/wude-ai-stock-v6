@@ -120,9 +120,13 @@
       "product": "武得 AI 股票",
       "title": "多使用者隔離實測",
       "status": "blocked_external",
-      "evidence": [],
+      "evidence": [
+        "tools/publication_isolation_acceptance_check.py",
+        "tests/test_publication_isolation_acceptance_check.py",
+        ".github/workflows/security-preflight.yml"
+      ],
       "blocked_by": "需要至少兩個獨立測試帳號與核准的隔離測試資料",
-      "next_action": "以 A/B 帳號交叉驗證登入、權限、報告、持倉、通知與匯出不可互見"
+      "next_action": "假資料發布隔離已自動驗收；仍須以 A/B 獨立帳號交叉驗證登入、持倉、通知與匯出不可互見"
     },
     {
       "id": "stock-market-data-license",
@@ -164,10 +168,17 @@
       "id": "stock-gpt-shadow-coaching",
       "product": "武得 AI 股票",
       "title": "GPT 教導影子證據",
-      "status": "collecting_evidence",
-      "evidence": [],
+      "status": "verified",
+      "evidence": [
+        "tools/shadow_coaching_evidence_check.py",
+        "tests/test_shadow_coaching_evidence_check.py",
+        "reports/weekly_shadow_coach.json",
+        "reports/weekly_shadow_coach_history.json",
+        "reports/shadow_candidate_registry.json",
+        ".github/workflows/security-preflight.yml"
+      ],
       "blocked_by": "",
-      "next_action": "持續保存教導前後版本、輸入摘要、候選變更、樣本外結果與未影響正式層的證據"
+      "next_action": "保留自動回歸驗收並持續累積候選規則前向結果；教導成效仍由20／60交易日項目獨立判定"
     },
     {
       "id": "stock-key-rotation",

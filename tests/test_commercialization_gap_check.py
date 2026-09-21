@@ -10,7 +10,7 @@ class CommercializationGapCheckTests(unittest.TestCase):
     def test_repository_manifest_passes(self):
         result = inspect_manifest()
         self.assertEqual(result["status"], "passed")
-        self.assertEqual(result["summary"]["verified"], 1)
+        self.assertEqual(result["summary"]["verified"], 2)
         self.assertGreater(result["summary"]["blocked_external"], 0)
 
     def test_verified_without_evidence_is_rejected(self):

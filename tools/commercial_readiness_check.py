@@ -58,6 +58,10 @@ REQUIRED_WORKFLOW_COMMANDS = (
     "python -m unittest tests.test_paper_trading_acceptance_check",
     "python tools/commercialization_gap_check.py",
     "python -m unittest tests.test_commercialization_gap_check",
+    "python tools/publication_isolation_acceptance_check.py",
+    "python -m unittest tests.test_publication_isolation_acceptance_check",
+    "python tools/shadow_coaching_evidence_check.py",
+    "python -m unittest tests.test_shadow_coaching_evidence_check",
 )
 
 REQUIRED_FILES = {
@@ -74,6 +78,10 @@ REQUIRED_FILES = {
     "商業化缺口證據清單": "commercialization_readiness.json",
     "商業化缺口唯讀檢查": "tools/commercialization_gap_check.py",
     "商業化缺口檢查單元測試": "tests/test_commercialization_gap_check.py",
+    "發布隔離假資料驗收": "tools/publication_isolation_acceptance_check.py",
+    "發布隔離單元測試": "tests/test_publication_isolation_acceptance_check.py",
+    "GPT影子教導證據檢查": "tools/shadow_coaching_evidence_check.py",
+    "GPT影子教導證據單元測試": "tests/test_shadow_coaching_evidence_check.py",
 }
 
 

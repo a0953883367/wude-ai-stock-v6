@@ -43,3 +43,11 @@ jobs:
         run: |
           python tools/paper_trading_acceptance_check.py
           python -m unittest tests.test_paper_trading_acceptance_check
+      - name: 驗證本人版與朋友版發布隔離（只用假資料）
+        run: |
+          python tools/publication_isolation_acceptance_check.py
+          python -m unittest tests.test_publication_isolation_acceptance_check
+      - name: 驗證GPT影子教導證據與正式層安全鎖（唯讀）
+        run: |
+          python tools/shadow_coaching_evidence_check.py
+          python -m unittest tests.test_shadow_coaching_evidence_check
