@@ -46,7 +46,7 @@ def test_formal_combined_universe_covers_all_375_securities() -> None:
     tracked = _tracked_securities(combined)
 
     assert len(tracked) == 375
-    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 306
+    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 307
     assert sum(row["asset_type"] == "ETF" for row in tracked.values()) == 68
     assert {"2327.TW", "HUBB", "0050.TW", "VOO"} <= set(tracked)
     assert tracked["HNHPF"]["display_name"] == "鴻海 OTC"
