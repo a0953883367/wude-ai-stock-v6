@@ -23,12 +23,14 @@ def test_power_theme_and_friend_requested_mxic_are_in_fixed_watchlist():
         "1519.TW", "1513.TW", "1503.TW", "1514.TW", "2371.TW",
         "8926.TW", "6873.TW", "6869.TW", "3713.TWO",
         "1605.TW", "1609.TW", "1618.TW", "1612.TW", "2308.TW",
-        "6781.TW", "3027.TW", "2337.TW",
+        "6781.TW", "3027.TW", "2337.TW", "6290.TWO",
     }
     assert expected_us <= by_symbol.keys()
     assert expected_tw <= by_symbol.keys()
     assert by_symbol["2337.TW"]["name"] == "旺宏"
     assert by_symbol["2337.TW"]["theme"] == "記憶體"
+    assert by_symbol["6290.TWO"]["name"] == "良維"
+    assert by_symbol["6290.TWO"]["theme"] == "AI伺服器／電源線"
 
 
 def test_user_requested_us_listings_and_screenshot_symbols_are_in_fixed_watchlist():

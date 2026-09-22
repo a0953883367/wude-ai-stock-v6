@@ -765,6 +765,8 @@ _POWER_AND_FRIEND_ADDITIONS = (
     # Friend-requested Taiwan memory stock; fixed-list status enables richer
     # institutional, credit, and fundamental enrichment before publication.
     ("2337.TW", "旺宏", "TW", "記憶體", "半導體"),
+    # User-requested TPEx listing; published to both owner and friend sites.
+    ("6290.TWO", "良維", "TW", "AI伺服器／電源線", "電源線材"),
     # User-requested U.S. listings for the 2026-08-24 forward shadow test.
     # Use the exchange-listed ADR where one exists; HNHPF remains OTC and is
     # therefore still subject to the normal liquidity and trade guards.
