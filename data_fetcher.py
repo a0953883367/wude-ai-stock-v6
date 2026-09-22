@@ -46,12 +46,12 @@ MARKET_REGIME_BENCHMARKS = {
     "US": ("S&P 500", "^GSPC"),
 }
 
-# Newly listed TPEx securities for which Yahoo may not yet expose daily bars.
+# TPEx securities for which Yahoo may not expose reliable daily bars.
 # These are independent security identifiers: official fallback data is fetched
 # only for the requested symbol and is never stitched to another company's
 # history.  In particular, 5371 and 3718 have different legal entities and
 # security identifiers despite their 1:1 share exchange.
-TPEX_MONTHLY_FALLBACK_SYMBOLS = {"3718.TWO"}
+TPEX_MONTHLY_FALLBACK_SYMBOLS = {"3718.TWO", "6290.TWO"}
 
 TPEX_MONTHLY_STOCK_URL = (
     "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock"
