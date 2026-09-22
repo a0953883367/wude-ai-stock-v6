@@ -96,6 +96,29 @@ def test_3718_uses_only_its_tpex_history_when_yahoo_omits_it(monkeypatch):
     assert result["3718.TWO"].iloc[-1]["close"] == 75.5
 
 
+def test_6290_uses_official_tpex_history_when_yahoo_omits_it(monkeypatch):
+    from data_fetcher import download_history
+
+    official = pd.DataFrame({
+        "open": [274.0, 280.0], "high": [288.0, 284.5],
+        "low": [270.5, 277.0], "close": [282.5, 281.0],
+        "adj close": [282.5, 281.0], "volume": [9_242_000, 3_189_000],
+    }, index=pd.to_datetime(["2026-09-18", "2026-09-21"]))
+
+    monkeypatch.setattr("data_fetcher.yf.download", lambda **_: pd.DataFrame())
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    monkeypatch.setattr(
+        "data_fetcher._download_tpex_monthly_history",
+        lambda symbol: official if symbol == "6290.TWO" else pd.DataFrame(),
+    )
+
+    result = download_history(["6290.TWO"])
+
+    assert set(result) == {"6290.TWO"}
+    assert result["6290.TWO"].iloc[-1]["close"] == 281.0
+    assert result["6290.TWO"].iloc[-1]["volume"] == 3_189_000
+
+
 def test_core_market_does_not_request_excluded_open_market_prices(monkeypatch):
     from data_fetcher import CORE_MARKET, fetch_core_market
 
