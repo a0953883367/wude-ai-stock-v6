@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-24T23:18:10+08:00",
+  "checked_at": "2026-09-25T03:20:14+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-24 21:58:56",
-  "report_age_minutes": 79.2,
+  "report_age_minutes": 321.3,
   "counts": {
-    "ok": 28,
+    "ok": 27,
     "info": 4,
-    "warning": 1,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -40,10 +40,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近更新距今 79 分鐘",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 5.4 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
       "code": "report_consistency",
@@ -253,7 +253,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-09-24T15:18:06+00:00",
+      "detail": "最近一次已送達：2026-09-24T19:20:10+00:00",
       "action": ""
     },
     {
@@ -282,7 +282,8 @@
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "若已跨過下一個排程時間，檢查排程是否延遲"
   ],
   "safety": {
     "changes_rankings": false,
