@@ -231,6 +231,52 @@ class WeeklyShadowCoachTests(unittest.TestCase):
                 archive_result=self.archive,
             )
 
+    def test_verified_conflict_revision_warning_allows_coaching(self) -> None:
+        warning = {
+            "status": "warning",
+            "counts": {
+                "total": 2,
+                "uploaded": 0,
+                "verified_existing": 1,
+                "conflict_revisions": 1,
+                "errors": 0,
+            },
+            "results": [
+                {"status": "verified_existing"},
+                {"status": "conflict_revision_verified_existing"},
+            ],
+            "errors": [],
+        }
+        _write(self.archive, warning)
+
+        report = build_weekly_coach(
+            self.reports,
+            mode="dry_run",
+            archive_result=self.archive,
+        )
+
+        self.assertEqual(report["status"], "ok")
+
+    def test_archive_warning_without_item_verification_stays_blocked(self) -> None:
+        warning = {
+            "status": "warning",
+            "counts": {
+                "total": 1,
+                "conflict_revisions": 1,
+                "errors": 0,
+            },
+            "results": [{"status": "warning"}],
+            "errors": [],
+        }
+        _write(self.archive, warning)
+
+        with self.assertRaisesRegex(CoachBlocked, "archive verification"):
+            build_weekly_coach(
+                self.reports,
+                mode="dry_run",
+                archive_result=self.archive,
+            )
+
     def test_missing_safety_lock_blocks_coaching(self) -> None:
         learning = _learning()
         learning["policy"]["formal_weights_unchanged"] = False
