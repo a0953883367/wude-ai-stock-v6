@@ -496,6 +496,18 @@ def _update_central_controls_safely(reports_dir, *, updated_at: str) -> bool:
     return True
 
 
+def _update_stock_growth_control_safely(reports_dir, *, updated_at: str) -> bool:
+    """Refresh the read-only workflow control tower after research outputs."""
+    try:
+        from stock_growth_control import update_stock_growth_control
+
+        update_stock_growth_control(reports_dir, updated_at=updated_at)
+    except Exception:  # noqa: BLE001 - owner dashboard must not stop reports
+        logging.exception("股票成長控制塔更新失敗；正式排名與報表繼續")
+        return False
+    return True
+
+
 def _update_validation_progress_monitor_safely(
     reports_dir,
     rows,
@@ -1974,6 +1986,10 @@ def main() -> int:
     # their fresh ledgers, so the training center never shows yesterday's
     # learning state beside today's decisions.
     _update_model_learning_safely(
+        SETTINGS.reports_dir,
+        updated_at=report["updated_at"],
+    )
+    _update_stock_growth_control_safely(
         SETTINGS.reports_dir,
         updated_at=report["updated_at"],
     )

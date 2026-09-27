@@ -28,7 +28,7 @@ jobs:
       - name: Save status only when it changes
         shell: bash
         run: |
-          git add reports/system_guard.json
+          git add reports/system_guard.json reports/stock_growth_control.json
           git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -20,7 +20,8 @@
     var current = currentFile();
     var parentPages = {
       'next-session-shadow.html': 'decision-hub.html',
-      'prediction-engine.html': 'decision-hub.html'
+      'prediction-engine.html': 'decision-hub.html',
+      'stock-growth-control.html': 'decision-hub.html'
     };
     var activeFile = parentPages[current] || current;
     var nav = document.createElement('nav');

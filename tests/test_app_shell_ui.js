@@ -11,6 +11,7 @@ const pages = [
   'valuation-risk-shadow.html',
   'next-session-shadow.html',
   'prediction-engine.html',
+  'stock-growth-control.html',
 ];
 
 for (const page of pages) {
@@ -60,7 +61,7 @@ for (const expected of [
 
 const manifest = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
 assert.strictEqual(manifest.display, 'standalone');
-assert.strictEqual(manifest.shortcuts.length, 4);
+assert.strictEqual(manifest.shortcuts.length, 5);
 
 function element(tagName) {
   return {

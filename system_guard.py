@@ -1153,6 +1153,12 @@ def main() -> int:
         print(f"System guard unchanged: {guard['status_label']}")
         return 0
     output.write_text(json.dumps(guard, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        from stock_growth_control import update_stock_growth_control
+
+        update_stock_growth_control(reports_dir, updated_at=guard["checked_at"])
+    except Exception as exc:  # noqa: BLE001 - guard output remains authoritative
+        print(f"Stock growth control update skipped: {type(exc).__name__}: {exc}")
     print(f"System guard: {guard['status_label']} -> {output}")
     return 0
 

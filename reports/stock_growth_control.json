@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-27 08:02:37",
+  "system": "股票成長控制塔 V1",
+  "status": "attention",
+  "light": "yellow",
+  "status_label": "注意",
+  "detail": "七階段流程與六層監控已統一。",
+  "summary": {
+    "workflow_stages": 7,
+    "monitoring_layers": 6,
+    "tracked_models": 7,
+    "models_waiting_owner": 3,
+    "validation_days": 26,
+    "validation_target": 60
+  },
+  "workflow_stages": [
+    {
+      "id": "data_ingestion",
+      "order": 1,
+      "label": "資料進站",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "台股、美股、ETF 與官方資料先進入獨立資料層。"
+    },
+    {
+      "id": "quality_gate",
+      "order": 2,
+      "label": "品質檢查",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "系統值班檢查：異常 0 項、注意 0 項。"
+    },
+    {
+      "id": "formal_v6",
+      "order": 3,
+      "label": "正式 V6 分析",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "正式排名與權重只讀，控制塔沒有修改權限。"
+    },
+    {
+      "id": "shadow_growth",
+      "order": 4,
+      "label": "影子候選",
+      "status": "collecting",
+      "light": "blue",
+      "status_label": "累積中",
+      "detail": "目前追蹤 7 個正式升級候選；影子帳本與正式 V6 隔離。"
+    },
+    {
+      "id": "phased_validation",
+      "order": 5,
+      "label": "1／3／5／20／60／126日驗證",
+      "status": "collecting",
+      "light": "blue",
+      "status_label": "累積中",
+      "detail": "60日中央驗證目前 26/60；交易計畫已成熟 405 筆。",
+      "current": 26,
+      "target": 60
+    },
+    {
+      "id": "graduation_gate",
+      "order": 6,
+      "label": "畢業閘門",
+      "status": "manual_review",
+      "light": "orange",
+      "status_label": "待人工決定",
+      "detail": "3 個候選已到人工決定階段；未達門檻者繼續累積。"
+    },
+    {
+      "id": "formal_release",
+      "order": 7,
+      "label": "正式上線／退回",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "只接受人工決定；自動合併、自動改權重與自動下單全部關閉。"
+    }
+  ],
+  "monitoring_layers": [
+    {
+      "id": "data",
+      "label": "資料監控",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "完整度、來源、更新時間與缺值隔離。"
+    },
+    {
+      "id": "workflow",
+      "label": "流程監控",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "報表、驗證、畢業結論依序產生。"
+    },
+    {
+      "id": "model",
+      "label": "模型監控",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
+      "detail": "準確率、報酬、回撤、獲利因子與預判引擎健康。"
+    },
+    {
+      "id": "system",
+      "label": "系統監控",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "GitHub Actions、主 App、Railway 與通知分開判斷。"
+    },
+    {
+      "id": "safety",
+      "label": "安全監控",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
+      "detail": "正式 V6、排名、權重、Merge 與券商下單保持鎖定。"
+    },
+    {
+      "id": "cost",
+      "label": "成本監控",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
+      "detail": "只顯示用量治理狀態；帳務與付款資料不寫入公開報表。"
+    }
+  ],
+  "models": [
+    {
+      "model_id": "next_session_v7",
+      "label": "隔日方向影子模型",
+      "phase": "preliminary_review",
+      "phase_label": "20日初評",
+      "light": "blue",
+      "current": 26,
+      "target": 60,
+      "progress_pct": 43.3,
+      "reason": "有效進度 26/60，尚未達畢業門檻",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    },
+    {
+      "model_id": "valuation_risk",
+      "label": "估值風險雷達",
+      "phase": "waiting_owner",
+      "phase_label": "待人工畢業決定",
+      "light": "orange",
+      "current": 5799,
+      "target": 100,
+      "progress_pct": 100.0,
+      "reason": "樣本及品質條件通過，可由中央中樞人工決定是否畢業；有效交易日最少 19/10",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    },
+    {
+      "model_id": "market_rotation",
+      "label": "族群輪動影子模型",
+      "phase": "preliminary_review",
+      "phase_label": "20日初評",
+      "light": "blue",
+      "current": 21,
+      "target": 60,
+      "progress_pct": 35.0,
+      "reason": "有效進度 21/60，尚未達畢業門檻",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    },
+    {
+      "model_id": "tw_institution_weight",
+      "label": "台股法人權重模型",
+      "phase": "waiting_owner",
+      "phase_label": "待人工畢業決定",
+      "light": "orange",
+      "current": 23,
+      "target": 20,
+      "progress_pct": 100.0,
+      "reason": "樣本及品質條件通過，可由中央中樞人工決定是否畢業；5日只做初檢，20日才可提出正式權重候選",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    },
+    {
+      "model_id": "inverse_etf",
+      "label": "反向ETF影子模型",
+      "phase": "waiting_owner",
+      "phase_label": "待人工畢業決定",
+      "light": "orange",
+      "current": 38,
+      "target": 20,
+      "progress_pct": 100.0,
+      "reason": "樣本及品質條件通過，可由中央中樞人工決定是否畢業",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    },
+    {
+      "model_id": "comprehensive_shadow_tw",
+      "label": "台股綜合影子排名",
+      "phase": "accumulating",
+      "phase_label": "樣本累積",
+      "light": "blue",
+      "current": 19,
+      "target": 60,
+      "progress_pct": 31.7,
+      "reason": "有效進度 19/60，尚未達畢業門檻；20個交易日先初評，60日後才可人工決定是否整合",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    },
+    {
+      "model_id": "comprehensive_shadow_us",
+      "label": "美股綜合影子排名",
+      "phase": "accumulating",
+      "phase_label": "樣本累積",
+      "light": "blue",
+      "current": 18,
+      "target": 60,
+      "progress_pct": 30.0,
+      "reason": "有效進度 18/60，尚未達畢業門檻；20個交易日先初評，60日後才可人工決定是否整合",
+      "formal_promotion": "manual_only",
+      "automatic_orders": false
+    }
+  ],
+  "action_queue": [
+    {
+      "priority": "review",
+      "title": "檢查預判引擎健康",
+      "detail": "獨立預判有警示；不影響正式 V6，但不可升級。"
+    },
+    {
+      "priority": "wait",
+      "title": "繼續累積60日證據",
+      "detail": "目前 26/60，尚差 34 個有效交易日。"
+    },
+    {
+      "priority": "owner",
+      "title": "人工審查畢業候選",
+      "detail": "已有 3 個候選等待你的決定；系統不會自動合併。"
+    }
+  ],
+  "rules": {
+    "diagnostic_horizons": [
+      1,
+      3,
+      5
+    ],
+    "preliminary_review_day": 20,
+    "formal_review_day": 60,
+    "long_term_review_day": 126,
+    "missing_data_is_not_zero": true,
+    "same_session_outcome_forbidden": true
+  },
+  "safety": {
+    "read_only_aggregator": true,
+    "formal_v6_locked": true,
+    "formal_rankings_locked": true,
+    "formal_weights_locked": true,
+    "automatic_merge": false,
+    "automatic_orders": false,
+    "stores_private_billing_details": false,
+    "note": "控制塔只整理既有證據與提醒人工決定，不控制券商、不付款。"
+  }
+}

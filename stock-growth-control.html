@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest?v=3">
+  <link rel="apple-touch-icon" sizes="180x180" href="trend-arrow-apple-v2.png">
+  <link rel="stylesheet" href="app_shell.css?v=1">
+  <link rel="stylesheet" href="human_ui.css?v=1">
+  <title>股票成長控制塔</title>
+  <style>
+    :root{--bg:#07111f;--panel:#0d1b2d;--line:#294c70;--text:#f4f8ff;--muted:#9db0c8;--green:#55e6a5;--blue:#38bdf8;--yellow:#f8ca65;--orange:#fb923c;--red:#fb7185}
+    *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#102b48 0,#07111f 34%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif}
+    .app{width:min(980px,100%);margin:auto;padding:18px 15px 112px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px}.top a,.refresh{border:1px solid var(--line);border-radius:999px;padding:10px 14px;color:#dbeafe;background:#0b1929;text-decoration:none;font-weight:900}.refresh{color:#d9fbff;border-color:#187287;background:#0c4a5a}
+    .hero{margin-top:14px;padding:21px;border:1px solid #39739a;border-radius:24px;background:linear-gradient(145deg,#12385a,#0a1728);box-shadow:0 18px 42px #0005}.eyebrow{color:#7dd3fc;font-weight:950;font-size:12px}.hero h1{margin:7px 0;font-size:30px}.hero p{margin:0;color:#c3d3e5;line-height:1.65}.overall{display:flex;align-items:center;gap:10px;margin-top:14px}.lamp{width:13px;height:13px;border-radius:50%;background:var(--muted);box-shadow:0 0 13px currentColor}.green{color:var(--green)}.blue{color:var(--blue)}.yellow{color:var(--yellow)}.orange{color:var(--orange)}.red{color:var(--red)}.lamp.green{background:var(--green)}.lamp.blue{background:var(--blue)}.lamp.yellow{background:var(--yellow)}.lamp.orange{background:var(--orange)}.lamp.red{background:var(--red)}
+    .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:14px 0}.metric{padding:12px;border:1px solid var(--line);border-radius:16px;background:#0a1728}.metric span{display:block;color:var(--muted);font-size:11px}.metric b{display:block;margin-top:4px;font-size:19px}
+    h2{margin:24px 3px 10px;font-size:21px}.section-note{margin:-5px 3px 11px;color:var(--muted);font-size:12px;line-height:1.6}.grid{display:grid;gap:10px}.card{padding:15px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#0d1d31,#091624)}.card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.card-title{font-weight:950}.badge{white-space:nowrap;border:1px solid currentColor;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900}.detail{margin-top:8px;color:#b8c9dc;font-size:12px;line-height:1.55}.progress{height:8px;margin-top:11px;overflow:hidden;border-radius:999px;background:#07101b}.progress i{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#55e6a5)}.stage-index{display:inline-grid;place-items:center;width:27px;height:27px;margin-right:7px;border-radius:50%;background:#143550;color:#7dd3fc;font-size:12px}.stage-card{position:relative}.stage-card:not(:last-child)::after{content:"";position:absolute;left:28px;bottom:-11px;width:2px;height:10px;background:#31597c}
+    .actions .card{border-color:#725825;background:#251f11}.actions .urgent{border-color:#9f3347;background:#351822}.actions .owner{border-color:#9a5729;background:#382213}.empty{padding:24px;border:1px dashed var(--line);border-radius:18px;color:var(--muted);text-align:center}.safety{margin-top:18px;padding:15px;border:1px solid #28765e;border-radius:18px;background:#0a2c26;color:#c7f9e5;font-size:12px;line-height:1.65}.footer{margin:18px 3px;color:#8296af;font-size:11px;line-height:1.6}
+    @media(min-width:720px){.summary{grid-template-columns:repeat(4,1fr)}.layer-grid,.model-grid{grid-template-columns:repeat(2,1fr)}.workflow{grid-template-columns:repeat(2,1fr)}.stage-card:not(:last-child)::after{display:none}}
+  </style>
+</head>
+<body>
+  <main class="app" id="mainContent">
+    <div class="top"><a href="index.html">← 股票總覽</a><button class="refresh" id="refresh">更新資料</button></div>
+    <section class="hero">
+      <div class="eyebrow">流程化成長，不靠臨時判斷</div>
+      <h1>股票成長控制塔</h1>
+      <p>每一份資料依序經過品質檢查、正式分析、影子驗證與人工畢業閘門；六層監控一起顯示，但互不混用權限。</p>
+      <div class="overall"><span class="lamp blue" id="overallLamp"></span><b id="overallLabel">正在讀取</b><span id="updatedAt"></span></div>
+    </section>
+    <section class="summary" id="summary"><div class="metric"><span>載入狀態</span><b>讀取中</b></div></section>
+
+    <h2>七階段成長流程</h2>
+    <p class="section-note">綠燈可繼續、藍燈累積中、黃燈需查看、橘燈等你決定、紅燈先停止。</p>
+    <section class="grid workflow" id="workflow"><div class="empty">正在整理流程…</div></section>
+
+    <h2>六層監控</h2>
+    <p class="section-note">一個控制塔看全局；資料、流程、模型、系統、安全、成本仍各自判斷。</p>
+    <section class="grid layer-grid" id="layers"></section>
+
+    <h2>模型成長位置</h2>
+    <p class="section-note">20日只能初評，60日才進正式人工審查；126日持續追蹤長期穩定性。</p>
+    <section class="grid model-grid" id="models"></section>
+
+    <h2>目前要做的事</h2>
+    <section class="grid actions" id="actions"></section>
+    <section class="safety" id="safety">正式 V6、排名、權重與券商下單全部維持鎖定。</section>
+    <p class="footer">本頁只整合既有報表並指出流程位置，不保證獲利，也不會自動修改正式模型、付款或下單。</p>
+  </main>
+  <script src="stock_growth_control.js?v=1"></script>
+  <script src="human_ui.js?v=1"></script>
+  <script src="app_shell.js?v=2"></script>
+</body>
+</html>
