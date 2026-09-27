@@ -21,6 +21,7 @@ assert.match(js, /requestedHorizon/);
 assert.match(js, /URLSearchParams/);
 assert.match(js, /UP_45D/);
 assert.match(js, /REPORT\.data_files/);
+assert.match(js, /\.parts\|\|\[\]/);
 assert.match(js, /本次答案模型/);
 assert.match(js, /本檔排名原因/);
 assert.match(js, /factor_discovery/);
