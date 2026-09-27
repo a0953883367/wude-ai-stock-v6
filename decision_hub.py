@@ -20,6 +20,7 @@ from comprehensive_shadow_ranking import update_comprehensive_shadow_ranking
 from evidence_contract import build_unified_evidence_report, make_evidence
 from next_session_ranking import update_next_session_ranking
 from portfolio_control import build_portfolio_control
+from practical_weighted_ranking import update_practical_weighted_ranking
 from model_unit_learning import (
     build_unit_learning_report,
     open_prediction_store,
@@ -176,7 +177,7 @@ def _prediction_engine_answer(payload: dict[str, Any] | None) -> dict[str, Any]:
     rankings = payload.get("rankings") if isinstance(payload.get("rankings"), dict) else {}
     by_market: dict[str, dict[str, Any]] = {"TW": {}, "US": {}}
     for market in ("TW", "US"):
-        for horizon in ("NEXT_1D", "UP_5D", "UP_45D", "UP_126D", "DOWN_14D", "DOWN_21D"):
+        for horizon in ("NEXT_1D", "UP_5D", "UP_10D", "UP_21D", "UP_45D", "UP_126D", "DOWN_14D", "DOWN_21D"):
             candidates = []
             for group in (f"{market}_STOCK", f"{market}_ETF"):
                 values = (rankings.get(group) or {}).get(horizon) or []
@@ -1334,6 +1335,24 @@ def update_decision_hub(
             "status": "waiting_for_completed_market_checkpoint",
             "horizons": {},
         }
+    try:
+        practical_ranking = update_practical_weighted_ranking(
+            reports_dir,
+            frozen_rows,
+            decisions,
+            period=period,
+            updated_at=updated_at,
+            intraday=intraday,
+        )
+    except Exception as exc:  # noqa: BLE001 - isolated ranking must not block hub
+        logging.exception("實用權重影子排名失敗；正式V6與中央原結論繼續")
+        practical_ranking = {
+            "status": "error",
+            "model_version": "PRACTICAL-WEIGHTED-RANKING-V1-SHADOW",
+            "rankings": {},
+            "validation": {},
+            "error": str(exc),
+        }
     # Build the owner's requested next-session ranking as a separate,
     # forward-only layer.  It receives the full fixed universe plus the
     # already-normalized shadow evidence, but cannot mutate formal V6 rows or
@@ -1675,6 +1694,16 @@ def update_decision_hub(
                 }
                 for market in ("TW", "US")
             },
+        },
+        "practical_weighted_ranking": {
+            "report": "practical_weighted_ranking.json",
+            "history": "practical_weighted_history.json",
+            "status": practical_ranking.get("status"),
+            "model_version": practical_ranking.get("model_version"),
+            "weights": practical_ranking.get("weights") or {},
+            "validation": practical_ranking.get("validation") or {},
+            "formal_v6_unchanged": True,
+            "automatic_orders": False,
         },
         "single_answer": single_answer,
         "prediction_engine_answer": prediction_engine_answer,

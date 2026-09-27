@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>實用權重排名｜武得 AI</title>
+  <style>
+    :root{color-scheme:dark;--bg:#071426;--panel:#0f2036;--line:#294766;--text:#eef6ff;--muted:#9fb4cc;--green:#42dc91;--yellow:#ffd166;--red:#ff7188;--blue:#5bc7ff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{max-width:980px;margin:auto;padding:16px 14px 80px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px}.back,.refresh{color:var(--blue);text-decoration:none;border:1px solid var(--line);background:#0b1a2e;border-radius:12px;padding:10px 13px}.hero,.card,.validation{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px;margin-top:13px}.hero h1{margin:0 0 8px}.hero p,.note{color:var(--muted);line-height:1.65}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:14px 0}.tabs button{border:1px solid var(--line);background:#0b1a2e;color:var(--text);border-radius:13px;padding:11px 5px}.tabs button.active{background:#12507b;border-color:#5bc7ff}.rank{display:flex;align-items:center;justify-content:space-between;gap:10px}.rank h2{font-size:18px;margin:0}.score{font-size:27px;font-weight:900;color:var(--green)}.meta{color:var(--muted);font-size:13px;margin-top:7px}.status{display:inline-block;margin-top:9px;padding:6px 9px;border-radius:999px;background:#253347;color:var(--yellow);font-size:12px}.components{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.component{background:#0a182a;border-radius:11px;padding:9px;font-size:12px}.component b{display:block;margin-top:4px;color:var(--blue)}.blocked .score{color:var(--red)}.empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:560px){.components{grid-template-columns:1fr}.tabs{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="top"><a class="back" href="index.html">← 股票總覽</a><button class="refresh" id="refresh">更新</button></div>
+    <section class="hero">
+      <h1>🏆 實用權重排名</h1>
+      <p>10日、一個月、資金流、基本面、估值、買進位置、大盤風險與資料品質，共八類資訊各計一次。這是隔離影子排名，先與正式V6比較，不改正式排名、不下單。20組前不可使用，60組後才可人工決定是否整合。</p>
+    </section>
+    <div class="tabs" id="tabs">
+      <button class="active" data-group="TW_STOCK">台股</button><button data-group="US_STOCK">美股</button><button data-group="TW_ETF">台灣ETF</button><button data-group="US_ETF">美國ETF</button>
+    </div>
+    <section class="validation" id="validation">讀取驗證進度…</section>
+    <section id="results"><div class="empty">讀取最新排名…</div></section>
+  </main>
+  <script src="practical_ranking.js?v=1"></script>
+</body>
+</html>

@@ -75,6 +75,9 @@ def test_future_fields_cannot_change_point_in_time_forecast() -> None:
     assert forecast(first["features"], "UP_5D", chase_risk_points=0, data_quality_pct=90, trade_blocked=False) == forecast(
         second["features"], "UP_5D", chase_risk_points=0, data_quality_pct=90, trade_blocked=False
     )
+    assert HORIZONS["UP_10D"]["sessions"] == 10
+    assert HORIZONS["UP_21D"]["sessions"] == 21
+    assert HORIZONS["UP_10D"]["side"] == HORIZONS["UP_21D"]["side"] == "UP"
 
 
 def test_factor_explanation_names_upward_and_downward_ranking_drivers() -> None:
@@ -179,7 +182,7 @@ def test_engine_is_immutable_compact_and_preserves_old_ledgers(tmp_path: Path) -
     assert second["run_summary"]["inserted_predictions"] == 0
     with sqlite3.connect(database) as db:
         assert db.execute("SELECT COUNT(*) FROM predictions").fetchone()[0] == len(rows) * len(HORIZONS)
-        assert db.execute("SELECT COUNT(*) FROM portfolios").fetchone()[0] == 6
+        assert db.execute("SELECT COUNT(*) FROM portfolios").fetchone()[0] == 10
     assert (reports / "prediction_engine.json").stat().st_size < MAX_PUBLIC_REPORT_BYTES
     assert "rankings" not in second
     assert "symbols" not in second

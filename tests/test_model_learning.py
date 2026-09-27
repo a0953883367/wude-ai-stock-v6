@@ -48,15 +48,15 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
     assert report["policy"]["broker_orders"] is False
     complete = report["complete_learning"]
     assert complete["inventory_complete"] is True
-    assert complete["summary"]["registered_units"] == 52
-    assert complete["summary"]["connected_units"] == 52
+    assert complete["summary"]["registered_units"] == 54
+    assert complete["summary"]["connected_units"] == 54
     assert complete["summary"]["learning_governance_coverage_pct"] == 100.0
     assert complete["summary"]["by_layer"] == {
-        "forecast": 23, "evidence": 14, "execution": 9, "governance": 6,
+        "forecast": 25, "evidence": 14, "execution": 9, "governance": 6,
     }
-    assert complete["summary"]["controlled_shadow_auto_upgrade_units"] == 7
+    assert complete["summary"]["controlled_shadow_auto_upgrade_units"] == 9
     assert complete["summary"]["controlled_shadow_trust_units"] == 11
-    assert sum(complete["summary"]["by_decision_usage"].values()) == 52
+    assert sum(complete["summary"]["by_decision_usage"].values()) == 54
     assert complete["summary"]["by_decision_usage"]["usable"] == 4
     formal = next(
         unit for layer in complete["layers"] for unit in layer["units"]
@@ -64,7 +64,7 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
     )
     assert formal["decision_usage_label"] == "可使用"
     assert formal["may_affect_formal_ranking"] is False
-    assert complete["summary"]["dedicated_validation_units"] == 52
+    assert complete["summary"]["dedicated_validation_units"] == 54
     assert complete["shared_rules"]["controlled_shadow_auto_promotion"] is True
     assert complete["shared_rules"]["formal_v6_automatic_promotion"] is False
     assert complete["shared_rules"]["only_usable_units_may_affect_central_ai"] is True
