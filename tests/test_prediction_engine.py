@@ -7,6 +7,8 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
+import prediction_engine.engine as prediction_engine_module
+
 from prediction_engine.engine import (
     MAX_PUBLIC_CHUNK_BYTES,
     MAX_PUBLIC_REPORT_BYTES,
@@ -205,6 +207,33 @@ def test_engine_is_immutable_compact_and_preserves_old_ledgers(tmp_path: Path) -
     assert second["database"]["public_database_exposed"] is False
     for name, content in protected.items():
         assert (reports / name).read_bytes() == content
+
+
+def test_oversized_public_contract_is_sharded_without_losing_predictions(monkeypatch) -> None:
+    monkeypatch.setattr(prediction_engine_module, "MAX_PUBLIC_CHUNK_BYTES", 1_200)
+    payload = {
+        "schema_version": 2,
+        "contract_version": "test",
+        "updated_at": "2026-09-27 20:00:00",
+        "group": "TW_STOCK",
+        "horizon_code": "UP_60D",
+        "rankings": [{"symbol": "2330.TW", "rank": 1}],
+        "predictions": [
+            {"symbol": f"T{i}.TW", "market": "TW", "detail": "資料" * 120}
+            for i in range(12)
+        ],
+    }
+
+    parts = prediction_engine_module._split_public_chunk(payload)
+
+    assert len(parts) > 1
+    assert parts[0]["rankings"] == payload["rankings"]
+    assert all(not part["rankings"] for part in parts[1:])
+    assert [row for part in parts for row in part["predictions"]] == payload["predictions"]
+    assert all(
+        prediction_engine_module._json_size(part) <= 1_200
+        for part in parts
+    )
 
 
 def test_market_checkpoints_do_not_freeze_intraday_or_wrong_market(tmp_path: Path) -> None:
