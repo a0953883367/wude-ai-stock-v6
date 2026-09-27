@@ -499,8 +499,10 @@ def _update_central_controls_safely(reports_dir, *, updated_at: str) -> bool:
 def _update_stock_growth_control_safely(reports_dir, *, updated_at: str) -> bool:
     """Refresh the read-only workflow control tower after research outputs."""
     try:
+        from cost_monitor import update_cost_monitor
         from stock_growth_control import update_stock_growth_control
 
+        update_cost_monitor(reports_dir, updated_at=updated_at)
         update_stock_growth_control(reports_dir, updated_at=updated_at)
     except Exception:  # noqa: BLE001 - owner dashboard must not stop reports
         logging.exception("股票成長控制塔更新失敗；正式排名與報表繼續")
@@ -2035,9 +2037,11 @@ def main() -> int:
         if isinstance(item, dict) and item.get("message")
     ]
     pending_notices = list(validation_notices)
+    control_notices = []
     for notice_path, nested_keys in (
         (SETTINGS.reports_dir / "model_unit_learning.json", ("pending_notifications",)),
         (SETTINGS.reports_dir / "prediction_engine.json", ("run_summary", "model_competition", "pending_notifications")),
+        (SETTINGS.reports_dir / "stock_growth_control.json", ("pending_notifications",)),
     ):
         try:
             notice_payload = json.loads(notice_path.read_text(encoding="utf-8"))
@@ -2045,10 +2049,10 @@ def main() -> int:
             for key in nested_keys:
                 current = current.get(key, {}) if isinstance(current, dict) else {}
             if isinstance(current, list):
-                pending_notices.extend(
-                    item for item in current
-                    if isinstance(item, dict) and item.get("message")
-                )
+                valid = [item for item in current if isinstance(item, dict) and item.get("message")]
+                pending_notices.extend(valid)
+                if notice_path.name == "stock_growth_control.json":
+                    control_notices.extend(valid)
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             logging.exception("讀取模型成長通知失敗：%s", notice_path.name)
     unique_notices = []
@@ -2077,6 +2081,15 @@ def main() -> int:
             )
         except Exception:  # noqa: BLE001 - delivery already succeeded
             logging.exception("60日驗證通知已送達，但確認狀態寫入失敗")
+        try:
+            from stock_growth_control import acknowledge_notifications as acknowledge_control
+
+            acknowledge_control(
+                SETTINGS.reports_dir,
+                [str(item.get("id") or "") for item in control_notices],
+            )
+        except Exception:  # noqa: BLE001 - delivery already succeeded
+            logging.exception("控制塔通知已送達，但確認狀態寫入失敗")
     print(markdown)
     print(f"\nSaved: {latest_json}, {latest_md}; Telegram={delivered}")
     return 0

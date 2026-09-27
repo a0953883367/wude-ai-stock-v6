@@ -67,6 +67,8 @@ def _normalize_model(row: dict[str, Any]) -> dict[str, Any]:
     source_status = str(row.get("status") or "collecting")
     if source_status == "eligible_for_manual_graduation":
         phase, light, phase_label = "waiting_owner", "orange", "待人工畢業決定"
+    elif source_status == "preliminary_review_only":
+        phase, light, phase_label = "preliminary_review", "blue", "20日初評／等待60日"
     elif source_status == "review_required":
         phase, light, phase_label = "performance_review", "yellow", "績效／品質複核"
     elif current >= 60:
@@ -75,6 +77,8 @@ def _normalize_model(row: dict[str, Any]) -> dict[str, Any]:
         phase, light, phase_label = "preliminary_review", "blue", "20日初評"
     else:
         phase, light, phase_label = "accumulating", "blue", "樣本累積"
+    formal_days = int(row.get("formal_validation_days") or 0)
+    formal_target = max(60, int(row.get("formal_validation_target") or 60))
     return {
         "model_id": str(row.get("model_id") or "unknown"),
         "label": str(row.get("label") or "未命名模型"),
@@ -84,6 +88,10 @@ def _normalize_model(row: dict[str, Any]) -> dict[str, Any]:
         "current": current,
         "target": target,
         "progress_pct": round(min(100.0, current / target * 100), 1),
+        "formal_validation_days": formal_days,
+        "formal_validation_target": formal_target,
+        "formal_progress_pct": round(min(100.0, formal_days / formal_target * 100), 1),
+        "component_gate_passed": bool(row.get("component_gate_passed", current >= target)),
         "reason": str(row.get("reason") or "等待有效樣本"),
         "formal_promotion": "manual_only",
         "automatic_orders": False,
@@ -98,6 +106,7 @@ def build_stock_growth_control(reports_dir: Path, *, updated_at: str = "") -> di
     validation = _read(reports_dir / "validation_60d.json")
     prediction = _read(reports_dir / "prediction_engine_health.json")
     trade_validation = _read(reports_dir / "trade_plan_validation.json")
+    cost = _read(reports_dir / "cost_monitor.json")
 
     models = [
         _normalize_model(row)
@@ -119,6 +128,12 @@ def build_stock_growth_control(reports_dir: Path, *, updated_at: str = "") -> di
     else:
         data_state = system_state = "ok"
     model_state = "attention" if prediction_status not in {"ok", "ready", "success"} else "ok"
+    cost_status = str(cost.get("status") or "setup_required").lower()
+    cost_state = "blocked" if cost_status == "critical" else "ok" if cost_status == "ok" else "attention"
+    known_costs = sum(
+        str(row.get("budget_status") or "unknown") != "unknown"
+        for row in cost.get("providers", []) if isinstance(row, dict)
+    )
 
     stages = [
         _stage("data_ingestion", 1, "資料進站", data_state,
@@ -146,7 +161,10 @@ def build_stock_growth_control(reports_dir: Path, *, updated_at: str = "") -> di
         {"id": "model", "label": "模型監控", **_status(model_state, detail="準確率、報酬、回撤、獲利因子與預判引擎健康。")},
         {"id": "system", "label": "系統監控", **_status(system_state, detail="GitHub Actions、主 App、Railway 與通知分開判斷。")},
         {"id": "safety", "label": "安全監控", **_status("ok", detail="正式 V6、排名、權重、Merge 與券商下單保持鎖定。")},
-        {"id": "cost", "label": "成本監控", **_status("attention", detail="只顯示用量治理狀態；帳務與付款資料不寫入公開報表。")},
+        {"id": "cost", "label": "成本監控", **_status(
+            cost_state,
+            detail=f"已有 {known_costs}/3 個服務提供私人用量狀態；金額、帳務與付款資料不公開。",
+        )},
     ]
 
     actions: list[dict[str, str]] = []
@@ -187,6 +205,13 @@ def build_stock_growth_control(reports_dir: Path, *, updated_at: str = "") -> di
             "long_term_review_day": 126,
             "missing_data_is_not_zero": True,
             "same_session_outcome_forbidden": True,
+            "component_threshold_cannot_bypass_60d": True,
+        },
+        "notification_policy": {
+            "yellow": "next_scheduled_report_on_state_change",
+            "orange": "next_scheduled_report_and_owner_decision",
+            "red": "immediate_when_hourly_guard_detects_change",
+            "unchanged_state": "no_repeat",
         },
         "safety": {
             "read_only_aggregator": True,
@@ -202,9 +227,65 @@ def build_stock_growth_control(reports_dir: Path, *, updated_at: str = "") -> di
 
 
 def update_stock_growth_control(reports_dir: Path, *, updated_at: str = "") -> dict[str, Any]:
-    payload = build_stock_growth_control(Path(reports_dir), updated_at=updated_at)
-    _write(Path(reports_dir) / "stock_growth_control.json", payload)
+    reports_dir = Path(reports_dir)
+    output = reports_dir / "stock_growth_control.json"
+    previous = _read(output)
+    payload = build_stock_growth_control(reports_dir, updated_at=updated_at)
+    pending = [
+        row for row in previous.get("pending_notifications", [])
+        if isinstance(row, dict) and row.get("id")
+    ]
+    if previous:
+        previous_layers = {
+            str(row.get("id")): str(row.get("status"))
+            for row in previous.get("monitoring_layers", []) if isinstance(row, dict)
+        }
+        for layer in payload.get("monitoring_layers", []):
+            layer_id = str(layer.get("id") or "")
+            current = str(layer.get("status") or "")
+            before = previous_layers.get(layer_id)
+            if current not in {"attention", "blocked"} or before == current:
+                continue
+            icon = "🔴" if current == "blocked" else "🟡"
+            event = {
+                "id": f"layer:{layer_id}:{current}:{updated_at}",
+                "type": "control_layer_change",
+                "level": "critical" if current == "blocked" else "warning",
+                "created_at": updated_at,
+                "message": f"{icon} 股票成長控制塔：{layer.get('label')}變為{layer.get('status_label')}。{layer.get('detail')}",
+            }
+            if not any(row.get("id") == event["id"] for row in pending):
+                pending.append(event)
+        previous_models = {
+            str(row.get("model_id")): str(row.get("phase"))
+            for row in previous.get("models", []) if isinstance(row, dict)
+        }
+        for model in payload.get("models", []):
+            if model.get("phase") != "waiting_owner" or previous_models.get(str(model.get("model_id"))) == "waiting_owner":
+                continue
+            event = {
+                "id": f"model:{model.get('model_id')}:waiting_owner:{updated_at}",
+                "type": "model_waiting_owner",
+                "level": "manual_review",
+                "created_at": updated_at,
+                "message": f"🟠 模型人工審查：{model.get('label')}已完成60日正式門檻，等待你決定畢業或退回。",
+            }
+            if not any(row.get("id") == event["id"] for row in pending):
+                pending.append(event)
+    payload["pending_notifications"] = pending[-20:]
+    _write(output, payload)
     return payload
+
+
+def acknowledge_notifications(reports_dir: Path, notification_ids: list[str]) -> None:
+    output = Path(reports_dir) / "stock_growth_control.json"
+    payload = _read(output)
+    acknowledged = {str(value) for value in notification_ids if value}
+    payload["pending_notifications"] = [
+        row for row in payload.get("pending_notifications", [])
+        if isinstance(row, dict) and str(row.get("id") or "") not in acknowledged
+    ]
+    _write(output, payload)
 
 
 def main() -> int:

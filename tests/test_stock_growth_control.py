@@ -1,6 +1,10 @@
 import json
 
-from stock_growth_control import build_stock_growth_control, update_stock_growth_control
+from stock_growth_control import (
+    acknowledge_notifications,
+    build_stock_growth_control,
+    update_stock_growth_control,
+)
 
 
 def _write(path, value):
@@ -47,3 +51,39 @@ def test_red_system_guard_blocks_data_and_system_layers(tmp_path):
     assert payload["status"] == "blocked"
     assert by_id["data"]["light"] == "red"
     assert by_id["system"]["light"] == "red"
+
+
+def test_preliminary_model_is_not_presented_as_waiting_owner(tmp_path):
+    _write(tmp_path / "validation_60d.json", {"trading_days_collected": 26})
+    _write(tmp_path / "model_graduation.json", {"models": [{
+        "model_id": "weight", "label": "法人權重",
+        "status": "preliminary_review_only", "current": 23, "target": 20,
+        "formal_validation_days": 26, "formal_validation_target": 60,
+        "component_gate_passed": True, "reason": "只可初評",
+    }]})
+    payload = build_stock_growth_control(tmp_path)
+    assert payload["models"][0]["phase"] == "preliminary_review"
+    assert payload["models"][0]["formal_progress_pct"] == 43.3
+    assert payload["summary"]["models_waiting_owner"] == 0
+
+
+def test_state_change_notification_is_queued_once_and_can_be_acknowledged(tmp_path):
+    _write(tmp_path / "validation_60d.json", {"trading_days_collected": 26})
+    _write(tmp_path / "model_graduation.json", {"models": [{
+        "model_id": "candidate", "label": "候選", "status": "preliminary_review_only",
+        "current": 30, "target": 20, "formal_validation_days": 26,
+    }]})
+    update_stock_growth_control(tmp_path, updated_at="before")
+    _write(tmp_path / "validation_60d.json", {"trading_days_collected": 60})
+    _write(tmp_path / "model_graduation.json", {"models": [{
+        "model_id": "candidate", "label": "候選", "status": "eligible_for_manual_graduation",
+        "current": 60, "target": 20, "formal_validation_days": 60,
+    }]})
+    changed = update_stock_growth_control(tmp_path, updated_at="after")
+    notices = [row for row in changed["pending_notifications"] if row["type"] == "model_waiting_owner"]
+    assert len(notices) == 1
+    unchanged = update_stock_growth_control(tmp_path, updated_at="later")
+    assert len([row for row in unchanged["pending_notifications"] if row["type"] == "model_waiting_owner"]) == 1
+    acknowledge_notifications(tmp_path, [notices[0]["id"]])
+    final = json.loads((tmp_path / "stock_growth_control.json").read_text(encoding="utf-8"))
+    assert final["pending_notifications"] == []

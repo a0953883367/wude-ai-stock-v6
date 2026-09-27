@@ -40,7 +40,9 @@
   function renderModels(models) {
     if (!models.length) return '<div class="empty">模型畢業報告尚未產生，正式 V6 維持鎖定。</div>';
     return models.map(function (row) {
-      return '<article class="card"><div class="card-head"><div class="card-title">'+esc(row.label)+'</div><span class="badge '+esc(row.light)+'">'+esc(row.phase_label)+'</span></div><div class="detail">有效進度 '+esc(row.current)+' / '+esc(row.target)+'<br>'+esc(row.reason)+'</div><div class="progress"><i style="width:'+esc(row.progress_pct)+'%"></i></div></article>';
+      var formalDays = Number(row.formal_validation_days || 0);
+      var formalTarget = Number(row.formal_validation_target || 60);
+      return '<article class="card"><div class="card-head"><div class="card-title">'+esc(row.label)+'</div><span class="badge '+esc(row.light)+'">'+esc(row.phase_label)+'</span></div><div class="detail">模型資料 '+esc(row.current)+' / '+esc(row.target)+'｜正式共同驗證 '+esc(formalDays)+' / '+esc(formalTarget)+'<br>'+esc(row.reason)+'</div><div class="progress"><i style="width:'+esc(row.formal_progress_pct || 0)+'%"></i></div></article>';
     }).join('');
   }
 

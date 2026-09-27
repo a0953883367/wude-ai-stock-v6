@@ -24,7 +24,10 @@ jobs:
       - name: Install guard dependency
         run: python -m pip install "requests>=2.32,<3"
       - name: Inspect report health
-        run: python system_guard.py --state-change-only
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python system_guard.py --state-change-only --notify-critical
       - name: Save status only when it changes
         shell: bash
         run: |

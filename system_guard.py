@@ -1132,6 +1132,7 @@ def main() -> int:
     )
     parser.add_argument("--skip-runtime-probes", action="store_true")
     parser.add_argument("--state-change-only", action="store_true")
+    parser.add_argument("--notify-critical", action="store_true")
     args = parser.parse_args()
     reports_dir = Path(args.reports_dir)
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -1154,9 +1155,22 @@ def main() -> int:
         return 0
     output.write_text(json.dumps(guard, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     try:
-        from stock_growth_control import update_stock_growth_control
+        from stock_growth_control import acknowledge_notifications, update_stock_growth_control
 
-        update_stock_growth_control(reports_dir, updated_at=guard["checked_at"])
+        control = update_stock_growth_control(reports_dir, updated_at=guard["checked_at"])
+        critical = [
+            row for row in control.get("pending_notifications", [])
+            if isinstance(row, dict) and row.get("level") == "critical" and row.get("message")
+        ]
+        if args.notify_critical and critical:
+            from notifier import send_telegram
+
+            message = "\n".join(str(row["message"]) for row in critical)
+            if send_telegram(message):
+                acknowledge_notifications(
+                    reports_dir,
+                    [str(row.get("id") or "") for row in critical],
+                )
     except Exception as exc:  # noqa: BLE001 - guard output remains authoritative
         print(f"Stock growth control update skipped: {type(exc).__name__}: {exc}")
     print(f"System guard: {guard['status_label']} -> {output}")

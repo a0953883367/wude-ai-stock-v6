@@ -23,21 +23,30 @@ def _write(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _conclusion(name: str, label: str, current: int, target: int, *,
-                quality_ready: bool = False, extra: str = "") -> dict[str, Any]:
+                formal_days: int, quality_ready: bool = False, extra: str = "") -> dict[str, Any]:
     if current < target:
         status = "collecting"
-        reason = f"有效進度 {current}/{target}，尚未達畢業門檻"
+        reason = f"模型資料進度 {current}/{target}，尚未達初評門檻"
+    elif formal_days < 60:
+        status = "preliminary_review_only"
+        reason = (
+            f"模型資料門檻已達 {current}/{target}，但正式共同驗證只有 "
+            f"{formal_days}/60；目前只可初評，不可畢業"
+        )
     elif not quality_ready:
         status = "review_required"
-        reason = f"樣本已達 {current}/{target}，但品質或績效條件尚未全部通過"
+        reason = f"正式共同驗證已達 {formal_days}/60，但品質或績效條件尚未全部通過"
     else:
         status = "eligible_for_manual_graduation"
-        reason = f"樣本及品質條件通過，可由中央中樞人工決定是否畢業"
+        reason = f"正式共同驗證 {formal_days}/60 且品質條件通過，可人工決定是否畢業"
     if extra:
         reason += f"；{extra}"
     return {
         "model_id": name, "label": label, "status": status,
         "current": current, "target": target, "reason": reason,
+        "component_gate_passed": current >= target,
+        "formal_validation_days": formal_days,
+        "formal_validation_target": 60,
         "automatic_promotion": False, "changes_formal_weights": False,
         "promotion_scope": "formal_v6",
         "places_orders": False,
@@ -56,6 +65,7 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
     models = [
         _conclusion(
             "next_session_v7", "隔日方向影子模型", days, 60,
+            formal_days=days,
             quality_ready=bool(validation.get("ready_for_model_selection")),
         )
     ]
@@ -69,6 +79,7 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
     )
     models.append(_conclusion(
         "valuation_risk", "估值風險雷達", valuation_samples, 100,
+        formal_days=days,
         quality_ready=valuation_sessions >= 10,
         extra=f"有效交易日最少 {valuation_sessions}/10",
     ))
@@ -78,6 +89,7 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
     ) if rotation else 0
     models.append(_conclusion(
         "market_rotation", "族群輪動影子模型", rotation_days, 60,
+        formal_days=days,
         quality_ready=rotation_days >= 60,
     ))
     weight_days = max(
@@ -86,6 +98,7 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
     )
     models.append(_conclusion(
         "tw_institution_weight", "台股法人權重模型", weight_days, 20,
+        formal_days=days,
         quality_ready=weight_days >= 20 and bool(weights.get("winner_model")),
         extra="5日只做初檢，20日才可提出正式權重候選",
     ))
@@ -97,6 +110,7 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
     )
     models.append(_conclusion(
         "inverse_etf", "反向ETF影子模型", inverse_samples, 20,
+        formal_days=days,
         quality_ready=inverse_samples >= 20,
     ))
     comprehensive_days = comprehensive.get("valid_trading_days") or {}
@@ -107,12 +121,16 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
             f"{label}綜合影子排名",
             current,
             60,
+            formal_days=days,
             quality_ready=current >= 60,
             extra="20個交易日先初評，60日後才可人工決定是否整合",
         ))
     summary = {
         status: sum(model["status"] == status for model in models)
-        for status in ("collecting", "review_required", "eligible_for_manual_graduation")
+        for status in (
+            "collecting", "preliminary_review_only", "review_required",
+            "eligible_for_manual_graduation",
+        )
     }
     payload = {
         "schema_version": 1, "updated_at": updated_at,
@@ -124,6 +142,9 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
             "controlled_shadow_promotion_automatic": True,
             "controlled_shadow_trust_automatic": True,
             "formal_v6_promotion_requires_manual_decision": True,
+            "formal_v6_minimum_validation_days": 60,
+            "twenty_days_is_preliminary_review_only": True,
+            "long_term_tracking_days": 126,
             "formal_ranking_locked": True,
             "automatic_weight_changes": False,
             "automatic_merge": False,

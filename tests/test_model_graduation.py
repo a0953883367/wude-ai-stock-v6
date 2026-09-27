@@ -33,3 +33,34 @@ def test_comprehensive_shadow_has_separate_tw_us_graduation_tracks(tmp_path):
     assert by_id["comprehensive_shadow_tw"]["target"] == 60
     assert "20個交易日先初評" in by_id["comprehensive_shadow_tw"]["reason"]
     assert all(row["automatic_promotion"] is False for row in by_id.values())
+
+
+def test_component_threshold_cannot_bypass_shared_60_day_gate(tmp_path):
+    _write(tmp_path / "validation_60d.json", {"trading_days_collected": 26})
+    _write(tmp_path / "valuation_risk_shadow.json", {
+        "validation": {
+            "TW": {"effective_sessions": 19, "effective_samples": 3000},
+            "US": {"effective_sessions": 19, "effective_samples": 2800},
+        },
+    })
+    payload = update_model_graduation(tmp_path, updated_at="now")
+    valuation = next(row for row in payload["models"] if row["model_id"] == "valuation_risk")
+    assert valuation["component_gate_passed"] is True
+    assert valuation["formal_validation_days"] == 26
+    assert valuation["status"] == "preliminary_review_only"
+    assert "不可畢業" in valuation["reason"]
+    assert payload["policy"]["formal_v6_minimum_validation_days"] == 60
+
+
+def test_manual_graduation_needs_shared_60_days_and_quality(tmp_path):
+    _write(tmp_path / "validation_60d.json", {"trading_days_collected": 60})
+    _write(tmp_path / "valuation_risk_shadow.json", {
+        "validation": {
+            "TW": {"effective_sessions": 20, "effective_samples": 60},
+            "US": {"effective_sessions": 20, "effective_samples": 60},
+        },
+    })
+    payload = update_model_graduation(tmp_path, updated_at="now")
+    valuation = next(row for row in payload["models"] if row["model_id"] == "valuation_risk")
+    assert valuation["status"] == "eligible_for_manual_graduation"
+    assert valuation["automatic_promotion"] is False
