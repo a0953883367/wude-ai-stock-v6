@@ -43,6 +43,7 @@ from notifier import (
 )
 from trade_engine import JsonTradingStateStore, PaperTradingEngine, TAIPEI
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
+from github_oidc_auth import verify_token as verify_github_oidc_token
 from web_push import WebPushService
 
 LOG = logging.getLogger("live_api")
@@ -924,6 +925,43 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path == "/api/internal/market-data":
+            if not self.rate_limiter.allow():
+                self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "request limit reached"})
+                return
+            authorization = self.headers.get("Authorization", "").strip()
+            token = authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
+            try:
+                verify_github_oidc_token(token)
+                payload = self._read_json()
+                kind = str(payload.get("kind") or "").lower()
+                if kind == "sip":
+                    symbols = [
+                        str(symbol).upper() for symbol in list(payload.get("symbols") or [])[:200]
+                        if re.fullmatch(r"[A-Z0-9.\-]{1,16}", str(symbol).upper())
+                    ]
+                    data = fetch_us_sip_snapshots(symbols)
+                elif kind == "opra":
+                    candidates = []
+                    for row in list(payload.get("candidates") or [])[:30]:
+                        if not isinstance(row, dict):
+                            continue
+                        symbol = str(row.get("symbol") or "").upper()
+                        if re.fullmatch(r"[A-Z0-9.\-]{1,16}", symbol):
+                            candidates.append({"symbol": symbol, "price": row.get("price")})
+                    data = fetch_us_opra_signals(candidates)
+                else:
+                    raise ValueError("unsupported market-data kind")
+            except PermissionError as exc:
+                self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": str(exc)})
+            except (TypeError, ValueError) as exc:
+                self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+            except Exception:
+                LOG.exception("internal market-data relay failed")
+                self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "market-data relay unavailable"})
+            else:
+                self._send(HTTPStatus.OK, {"ok": True, "kind": kind, "count": len(data), "data": data})
+            return
         if parsed.path not in {
             "/api/device-auth/request", "/api/device-auth/verify",
             "/api/push/subscribe", "/api/trading/config", "/api/trading/run"
