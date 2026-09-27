@@ -1,11 +1,6 @@
 name: 每週影子教導
 
 on:
-  # One-time post-fix verification. Removed after the run completes.
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/weekly-shadow-coach.yml"
   workflow_dispatch:
     inputs:
       mode:
