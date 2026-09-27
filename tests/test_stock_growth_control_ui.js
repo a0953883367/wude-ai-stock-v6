@@ -9,7 +9,7 @@ const js = fs.readFileSync('stock_growth_control.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
 [
   '股票成長控制塔','七階段成長流程','六層監控','模型成長位置','目前要做的事',
-  '20日只能初評','60日才進正式人工審查','126日持續追蹤','stock_growth_control.js?v=1'
+  '20日只能初評','60日才進正式人工審查','126日持續追蹤','stock_growth_control.js?v=2'
 ].forEach((text) => assert(html.includes(text), `missing control tower UI: ${text}`));
 assert(index.includes('stock-growth-control.html'));
 assert(js.includes('reports/stock_growth_control.json'));
