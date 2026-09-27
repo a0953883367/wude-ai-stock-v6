@@ -26,7 +26,6 @@ FALSE_LOCKS = (
     "automatic_formal_promotion",
 )
 CANDIDATE_FALSE_LOCKS = (
-    "visible_in_predictions",
     "affects_formal_v6",
     "affects_formal_rankings",
     "affects_formal_weights",
