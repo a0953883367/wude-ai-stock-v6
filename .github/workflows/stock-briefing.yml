@@ -5,7 +5,8 @@ name: AI 股票早中晚報
 
 on:
   schedule:
-    # UTC schedule: Taiwan 06:00 / 12:00 / 20:00 reports plus a weekday
+    # UTC schedule: Taiwan 06:00 / 12:00 reports, a weekday 17:00 close
+    # settlement, and a 19:30 evening preparation that is released at 20:00.
     # 17:00 Taiwan-close settlement.  The 17:00 run is silent and exists only
     # to settle Taiwan ledgers before the 20:00 evening notification.
     # Code pushes must not start a competing refresh or replace a close
@@ -14,7 +15,7 @@ on:
     - cron: "0 22 * * *"
     - cron: "0 4 * * *"
     - cron: "0 9 * * 1-5"
-    - cron: "0 12 * * *"
+    - cron: "30 11 * * *"
   workflow_dispatch:
     inputs:
       period:
@@ -44,7 +45,7 @@ jobs:
     # The full 337-symbol universe can exceed 25 minutes when upstream market
     # or news providers respond slowly. Keep one atomic run instead of writing
     # a partial ranking snapshot.
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -75,6 +76,7 @@ jobs:
         run: |
           commit_message=""
           no_telegram="false"
+          defer_delivery="false"
           save_prediction="false"
           taiwan_hour="$(TZ=Asia/Taipei date +%H)"
           taiwan_weekday="$(TZ=Asia/Taipei date +%u)"
@@ -111,7 +113,13 @@ jobs:
                 save_prediction="true"
                 commit_message="更新台股17:00收盤結算"
                 ;;
-              "0 12 * * *") period="evening"; commit_message="更新 AI 股票evening報" ;;
+              "30 11 * * *")
+                period="evening"
+                no_telegram="true"
+                defer_delivery="true"
+                save_prediction="true"
+                commit_message="更新 AI 股票evening報"
+                ;;
               *)
                 echo "Unsupported schedule: ${{ github.event.schedule }}" >&2
                 exit 1
@@ -122,6 +130,7 @@ jobs:
           echo "value=$period" >> "$GITHUB_OUTPUT"
           echo "no_telegram=$no_telegram" >> "$GITHUB_OUTPUT"
           echo "save_prediction=$save_prediction" >> "$GITHUB_OUTPUT"
+          echo "defer_delivery=$defer_delivery" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
       - name: Generate report
         id: generate
@@ -142,6 +151,31 @@ jobs:
             args+=(--no-telegram)
           fi
           python briefing.py "${args[@]}"
+      - name: Wait for official 20:00 evening delivery window
+        if: ${{ steps.period.outputs.defer_delivery == 'true' }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          from datetime import datetime, time
+          from time import sleep
+          from zoneinfo import ZoneInfo
+
+          zone = ZoneInfo("Asia/Taipei")
+          now = datetime.now(zone)
+          target = datetime.combine(now.date(), time(20, 0), tzinfo=zone)
+          seconds = max(0, min(30 * 60, (target - now).total_seconds()))
+          if seconds:
+              print(f"Waiting {seconds:.0f}s for the official 20:00 delivery window")
+              sleep(seconds)
+          PY
+      - name: Deliver verified evening report
+        id: verified_delivery
+        if: ${{ steps.period.outputs.defer_delivery == 'true' }}
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python report_delivery.py --period evening --max-age-minutes 120
       - name: Publish sanitized friend-site data
         id: friend_publish
         continue-on-error: true
@@ -201,3 +235,10 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "${{ steps.period.outputs.commit_message }}"
           git push
+      - name: Fail when verified evening delivery was blocked
+        if: >-
+          ${{ always() && steps.period.outputs.defer_delivery == 'true' &&
+          steps.verified_delivery.outcome != 'success' }}
+        run: |
+          echo "Evening report was generated but delivery freshness verification failed." >&2
+          exit 1

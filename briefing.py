@@ -31,6 +31,7 @@ from data_fetcher import (
 )
 from macro_regime import update_macro_regime
 from notifier import render_markdown, save_report, send_telegram
+from report_delivery import record_delivery
 from news_risk import fetch_news_risks, merge_official_announcements
 from performance import load_frozen_forecasts, load_performance_context, update_performance
 from market_models import (
@@ -2070,6 +2071,23 @@ def main() -> int:
         # Keep the saved human-readable report identical to the Telegram copy.
         latest_md.write_text(markdown, encoding="utf-8")
     delivered = False if args.no_telegram else send_telegram(markdown)
+    record_delivery(
+        SETTINGS.reports_dir,
+        period=args.period,
+        report_updated_at=report["updated_at"],
+        state=(
+            "suppressed"
+            if args.no_telegram
+            else ("delivered" if delivered else "delivery_failed")
+        ),
+        delivered=delivered,
+        expected_delivery=not args.no_telegram,
+        detail=(
+            "排程指定為靜默資料更新"
+            if args.no_telegram
+            else ("Telegram 已送達" if delivered else "Telegram 傳送失敗")
+        ),
+    )
     if delivered and pending_notices:
         try:
             from validation_progress_monitor import acknowledge_notifications

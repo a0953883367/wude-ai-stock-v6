@@ -12,7 +12,7 @@ def test_stock_briefing_keeps_reports_and_adds_silent_taiwan_close_settlement():
         "0 22 * * *",
         "0 4 * * *",
         "0 9 * * 1-5",
-        "0 12 * * *",
+        "30 11 * * *",
     ]
     assert "  push:" not in text
     assert '"0 9 * * 1-5")' in text
@@ -20,6 +20,17 @@ def test_stock_briefing_keeps_reports_and_adds_silent_taiwan_close_settlement():
     assert 'no_telegram="true"' in text
     assert "更新台股17:00收盤結算" in text
     assert "args+=(--no-telegram)" in text
+
+
+def test_evening_is_prepared_before_20_and_delivered_only_after_verification():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert '"30 11 * * *")' in text
+    assert 'defer_delivery="true"' in text
+    assert "Wait for official 20:00 evening delivery window" in text
+    assert "python report_delivery.py --period evening --max-age-minutes 120" in text
+    assert "steps.verified_delivery.outcome != 'success'" in text
+    assert "timeout-minutes: 60" in text
 
 
 def test_delayed_noon_run_becomes_silent_close_settlement():

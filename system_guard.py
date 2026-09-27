@@ -555,6 +555,7 @@ def build_guard(
     now = now.astimezone(TAIPEI) if now and now.tzinfo else (now.replace(tzinfo=TAIPEI) if now else datetime.now(TAIPEI))
     previous = _load(reports_dir / "system_guard.json")
     latest = _load(reports_dir / "latest.json")
+    delivery_status = _load(reports_dir / "report_delivery_status.json")
     rankings = _load(reports_dir / "rankings.json")
     all_analysis = _load(reports_dir / "all_analysis.json")
     holding = _load(reports_dir / "holding_simulation.json")
@@ -660,6 +661,43 @@ def build_guard(
             checks.append(_check("report_freshness", "股票資料更新", "warning", f"最近更新距今 {age_minutes / 60:.1f} 小時", "若已跨過下一個排程時間，檢查排程是否延遲"))
         else:
             checks.append(_check("report_freshness", "股票資料更新", "ok", f"最近更新距今 {max(0, age_minutes):.0f} 分鐘"))
+
+    latest_period = str(latest.get("period") or "")
+    if latest_period and now.hour >= 20:
+        if latest_period == "evening":
+            checks.append(_check(
+                "report_period_alignment", "晚報時段同步", "ok",
+                "20:00 後的最新固定報表已是 evening",
+            ))
+        else:
+            checks.append(_check(
+                "report_period_alignment", "晚報時段同步", "warning",
+                f"20:00 後最新報表仍是 {latest_period}",
+                "等待晚報排程；通知不得把午報標示成 V6 晚報",
+            ))
+
+    if delivery_status:
+        matches_latest = (
+            str(delivery_status.get("period") or "") == latest_period
+            and str(delivery_status.get("report_updated_at") or "")
+            == str(latest.get("updated_at") or "")
+        )
+        if delivery_status.get("delivered") is True and matches_latest:
+            checks.append(_check(
+                "report_delivery", "V6 通知派發", "ok",
+                f"{latest_period} 報表已驗證並由 Telegram 送達",
+            ))
+        elif delivery_status.get("expected_delivery") is False and matches_latest:
+            checks.append(_check(
+                "report_delivery", "V6 通知派發", "info",
+                "本次是排程指定的靜默資料更新，未發送通知",
+            ))
+        else:
+            checks.append(_check(
+                "report_delivery", "V6 通知派發", "warning",
+                str(delivery_status.get("detail") or "通知狀態與最新報表不一致"),
+                "保留報表但停止標示為已派發；檢查資料新鮮度與 Telegram",
+            ))
 
     timestamps = {
         "latest": str(latest.get("updated_at") or ""),

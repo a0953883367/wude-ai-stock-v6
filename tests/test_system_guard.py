@@ -732,3 +732,58 @@ def test_holding_benchmark_date_mismatch_is_red(tmp_path: Path) -> None:
     assert guard["status"] == "critical"
     assert check["level"] == "critical"
     assert "持倉與基準估值日混雜" in check["detail"]
+
+
+def test_guard_separates_evening_period_sync_from_notification_delivery(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    latest = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    latest["period"] = "noon"
+    _write(tmp_path / "latest.json", latest)
+    _write(tmp_path / "report_delivery_status.json", {
+        "period": "noon",
+        "report_updated_at": latest["updated_at"],
+        "state": "delivered",
+        "delivered": True,
+        "expected_delivery": True,
+        "detail": "Telegram 已送達",
+    })
+
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 20, 5, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+    )
+
+    period = next(item for item in guard["checks"] if item["code"] == "report_period_alignment")
+    delivery = next(item for item in guard["checks"] if item["code"] == "report_delivery")
+    assert period["level"] == "warning"
+    assert "仍是 noon" in period["detail"]
+    assert delivery["level"] == "ok"
+
+
+def test_guard_marks_matching_verified_evening_delivery_green(tmp_path: Path) -> None:
+    _healthy_reports(tmp_path)
+    latest = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    latest["period"] = "evening"
+    _write(tmp_path / "latest.json", latest)
+    _write(tmp_path / "report_delivery_status.json", {
+        "period": "evening",
+        "report_updated_at": latest["updated_at"],
+        "state": "delivered",
+        "delivered": True,
+        "expected_delivery": True,
+        "detail": "固定報表與行情資料已驗證後送出",
+    })
+
+    guard = build_guard(
+        tmp_path,
+        now=datetime(2026, 8, 24, 20, 5, tzinfo=ZoneInfo("Asia/Taipei")),
+        friend_publish="success",
+        owner_publish="success",
+    )
+
+    period = next(item for item in guard["checks"] if item["code"] == "report_period_alignment")
+    delivery = next(item for item in guard["checks"] if item["code"] == "report_delivery")
+    assert period["level"] == "ok"
+    assert delivery["level"] == "ok"
