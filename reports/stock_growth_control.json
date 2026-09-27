@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-27 08:02:37",
+  "updated_at": "2026-09-27T17:47:19+08:00",
   "system": "股票成長控制塔 V1",
   "status": "attention",
   "light": "yellow",
@@ -101,9 +101,9 @@
     {
       "id": "model",
       "label": "模型監控",
-      "status": "attention",
-      "light": "yellow",
-      "status_label": "注意",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
       "detail": "準確率、報酬、回撤、獲利因子與預判引擎健康。"
     },
     {
@@ -253,11 +253,6 @@
     }
   ],
   "action_queue": [
-    {
-      "priority": "review",
-      "title": "檢查預判引擎健康",
-      "detail": "獨立預判有警示；不影響正式 V6，但不可升級。"
-    },
     {
       "priority": "wait",
       "title": "繼續累積60日證據",
