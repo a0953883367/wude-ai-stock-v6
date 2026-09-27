@@ -50,7 +50,7 @@ class ShadowCoachingEvidenceTests(unittest.TestCase):
             "policy": _policy(),
         }])
         candidate = {
-            "visible_in_predictions": False,
+            "visible_in_predictions": True,
             "affects_formal_v6": False,
             "affects_formal_rankings": False,
             "affects_formal_weights": False,
@@ -83,6 +83,17 @@ class ShadowCoachingEvidenceTests(unittest.TestCase):
             result = inspect_shadow_coaching_evidence(*paths)
             self.assertEqual(result["status"], "failed")
             self.assertTrue(any("formal_weights_unchanged" in item for item in result["errors"]))
+
+    def test_visible_shadow_candidate_is_allowed_but_formal_effect_stays_locked(self):
+        with TemporaryDirectory() as directory:
+            paths = self._fixture(Path(directory))
+            registry = json.loads(paths[2].read_text(encoding="utf-8"))
+            registry["candidates"][0]["visible_in_predictions"] = True
+            _write(paths[2], registry)
+
+            result = inspect_shadow_coaching_evidence(*paths)
+
+            self.assertEqual(result["status"], "passed")
 
 
 if __name__ == "__main__":
