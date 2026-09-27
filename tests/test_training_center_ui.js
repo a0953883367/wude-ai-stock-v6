@@ -20,6 +20,8 @@ const html = fs.readFileSync('index.html', 'utf8');
   'function renderCompleteLearning(value)',
   'function renderUnitLearning(value)',
   '全模型學習治理已接入',
+  '只有「可使用」能影響中央AI影子判斷',
+  '限制參考與不可使用都不得改分',
   '影子升級：受控自動',
   '影子信任：受控自動',
   '連續3日樣本外勝出',

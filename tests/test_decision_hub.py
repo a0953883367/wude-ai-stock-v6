@@ -503,6 +503,8 @@ def test_completed_quality_flow_links_to_short_decision_without_using_amount(tmp
     assert link["amount_affects_decision"] is False
     assert item["horizons"]["short"]["score"] == 83.5
     assert evidence["affects_decision"] is True
+    assert evidence["decision_usage_label"] == "可使用"
+    assert "capital_flow_shadow" in item["evidence_usage"]["used_source_ids"]
     assert "金額只顯示、不參與加分" in evidence["reason"]
     assert report["summary"]["capital_flow_active_count"] == 1
 
@@ -530,6 +532,10 @@ def test_low_quality_or_wrong_session_flow_never_changes_decision(tmp_path):
     assert item["capital_flow_shadow"]["validated_for_decision"] is False
     assert item["capital_flow_shadow"]["short_adjustment_points"] == 0
     assert item["horizons"]["short"]["score"] == 82
+    evidence = next(
+        row for row in item["evidence"] if row["source_id"] == "capital_flow_shadow"
+    )
+    assert evidence["decision_usage_label"] == "限制參考"
 
 
 def test_verified_material_news_overrides_positive_models(tmp_path):

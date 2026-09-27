@@ -56,9 +56,18 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
     }
     assert complete["summary"]["controlled_shadow_auto_upgrade_units"] == 7
     assert complete["summary"]["controlled_shadow_trust_units"] == 11
+    assert sum(complete["summary"]["by_decision_usage"].values()) == 52
+    assert complete["summary"]["by_decision_usage"]["usable"] == 4
+    formal = next(
+        unit for layer in complete["layers"] for unit in layer["units"]
+        if unit["model_id"] == "formal_v6_tw_stock"
+    )
+    assert formal["decision_usage_label"] == "可使用"
+    assert formal["may_affect_formal_ranking"] is False
     assert complete["summary"]["dedicated_validation_units"] == 52
     assert complete["shared_rules"]["controlled_shadow_auto_promotion"] is True
     assert complete["shared_rules"]["formal_v6_automatic_promotion"] is False
+    assert complete["shared_rules"]["only_usable_units_may_affect_central_ai"] is True
     assert report["policy"]["controlled_central_trust_auto_update"] is True
     assert report["institution_weight_learning"]["status"] == "collecting"
     assert (tmp_path / "model_learning.json").exists()

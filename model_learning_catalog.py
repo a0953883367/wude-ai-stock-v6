@@ -26,6 +26,12 @@ LAYER_LABELS = {
 }
 COHORTS = ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF")
 TRACKS = ("overnight", "session", "full_day")
+USAGE_LABELS = {
+    "usable": "可使用",
+    "limited_reference": "限制參考",
+    "shadow_only": "不可使用",
+    "not_applicable": "不適用",
+}
 UNIT_LEDGER_MODELS = {
     "central_decision", "technical_kline", "volume_attack", "capital_flow",
     "tw_credit_broker", "tw_accumulation", "macro_regime", "news_event",
@@ -344,6 +350,37 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             shadow_upgrade_status = "automatic_candidate_cycle"
         else:
             shadow_upgrade_status = "waiting_dedicated_validation"
+        sessions = int(progress.get("sessions") or 0)
+        samples = int(progress.get("samples") or 0)
+        active_unit_trust = False
+        if automatic_shadow_trust:
+            unit_rows = reports.get("model_unit_learning.json", {}).get("units") or []
+            unit_row = next(
+                (row for row in unit_rows if row.get("unit_id") == spec["model_id"]),
+                {},
+            )
+            active_unit_trust = any(
+                abs(float((state or {}).get("active_multiplier") or 1.0) - 1.0) >= 0.001
+                for state in (unit_row.get("cohorts") or {}).values()
+            )
+        if spec["learning_mode"] == "frozen_baseline":
+            usage_level = "usable"
+            usage_reason = "正式V6只讀基準；中央可引用，但不得重排或改權重"
+        elif spec["layer"] == "governance":
+            usage_level = "not_applicable"
+            usage_reason = "治理單元只負責守門與稽核，不產生買賣分數"
+        elif not source_available or stage == "waiting_source":
+            usage_level = "shadow_only"
+            usage_reason = "來源尚未就緒，只能留在影子層"
+        elif active_unit_trust:
+            usage_level = "usable"
+            usage_reason = "已通過專屬前向帳本守門，只能調整中央AI影子信任"
+        elif stage == "manual_review_available" or sessions >= 20:
+            usage_level = "limited_reference"
+            usage_reason = "已達初評區間，只能輔助說明，不得直接改分或產生買點"
+        else:
+            usage_level = "shadow_only"
+            usage_reason = "樣本或交易日尚未達初評門檻，不參與中央AI判斷"
         units.append({
             **{key: value for key, value in spec.items() if key != "progress_tag"},
             "source_available": source_available,
@@ -355,6 +392,12 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "automatic_shadow_upgrade": automatic_shadow_upgrade,
             "automatic_shadow_trust": automatic_shadow_trust,
             "shadow_upgrade_status": shadow_upgrade_status,
+            "decision_usage_level": usage_level,
+            "decision_usage_label": USAGE_LABELS[usage_level],
+            "decision_usage_reason": usage_reason,
+            "may_affect_central_decision": usage_level == "usable",
+            "may_affect_formal_ranking": False,
+            "active_unit_trust": active_unit_trust,
             "formal_v6_automatic_promotion": False,
             "broker_orders": False,
         })
@@ -362,6 +405,7 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
     layer_counts = Counter(item["layer"] for item in units)
     mode_counts = Counter(item["learning_mode"] for item in units)
     stage_counts = Counter(item["stage"] for item in units)
+    usage_counts = Counter(item["decision_usage_level"] for item in units)
     source_ready = sum(bool(item["source_available"]) for item in units)
     dedicated = sum(bool(item["dedicated_validation"]) for item in units)
     automatic_shadow_units = sum(bool(item["automatic_shadow_upgrade"]) for item in units)
@@ -386,6 +430,9 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "by_layer": {key: layer_counts.get(key, 0) for key in LAYER_LABELS},
             "by_mode": dict(sorted(mode_counts.items())),
             "by_stage": dict(sorted(stage_counts.items())),
+            "by_decision_usage": {
+                key: usage_counts.get(key, 0) for key in USAGE_LABELS
+            },
         },
         "layers": [
             {
@@ -409,6 +456,9 @@ def build_complete_learning_catalog(reports_dir: Path) -> dict[str, Any]:
             "formal_v6_frozen": True,
             "controlled_shadow_auto_promotion": True,
             "controlled_central_trust_auto_update": True,
+            "only_usable_units_may_affect_central_ai": True,
+            "limited_reference_never_changes_scores": True,
+            "shadow_only_never_changes_decisions": True,
             "shadow_promotion_requires_distinct_session_wins": 3,
             "automatic_shadow_rollback_after_failures": 2,
             "formal_v6_automatic_promotion": False,

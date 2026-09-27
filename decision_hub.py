@@ -232,6 +232,18 @@ def _evidence(
     }
 
 
+def _usage_level_for_evidence(item: dict[str, Any]) -> tuple[str, str]:
+    """Expose the already-enforced decision gate in one auditable vocabulary."""
+    if item.get("affects_decision"):
+        return "usable", "可使用"
+    if item.get("direction") != "missing" and item.get("status") not in {
+        "insufficient", "not_linked", "not_applicable", "coverage_blocked_or_missing",
+        "unit_guard",
+    }:
+        return "limited_reference", "限制參考"
+    return "shadow_only", "不可使用"
+
+
 def _direction(score: Any, *, high: float = 65.0, low: float = 45.0) -> str:
     value = _number(score)
     if value is None:
@@ -955,8 +967,9 @@ def _build_decision(
     # Convert every model adapter to one canonical evidence contract.  The
     # source-specific values remain intact, while provenance and symbol keys
     # become machine-verifiable and comparable across all models.
-    evidence = [
-        make_evidence(
+    normalized_evidence = []
+    for item in evidence:
+        normalized = make_evidence(
             source_id=item["source_id"],
             source_label=item["source_label"],
             horizon=item["horizon"],
@@ -971,8 +984,14 @@ def _build_decision(
             market=str(row.get("market") or ""),
             provenance=item.get("provenance") or item["source_id"],
         )
-        for item in evidence
-    ]
+        usage_level, usage_label = _usage_level_for_evidence(normalized)
+        normalized.update({
+            "decision_usage_level": usage_level,
+            "decision_usage_label": usage_label,
+            "may_affect_formal_ranking": False,
+        })
+        normalized_evidence.append(normalized)
+    evidence = normalized_evidence
 
     conflicts: list[dict[str, Any]] = []
     if data_block and short_score >= 60:
@@ -1135,7 +1154,26 @@ def _build_decision(
                 short_trust, medium_trust, long_trust, central_confidence_trust
             )),
             "unit_multipliers": dict(adaptive_trust or {}),
+            "used_unit_ids": sorted(
+                unit_id for unit_id, multiplier in (adaptive_trust or {}).items()
+                if abs(float(multiplier or 1.0) - 1.0) >= 0.001
+            ),
+            "gate": "只有通過專屬前向帳本的可使用單元才會生效",
             "formal_v6_unchanged": True,
+        },
+        "evidence_usage": {
+            "usable": sum(row["decision_usage_level"] == "usable" for row in evidence),
+            "limited_reference": sum(
+                row["decision_usage_level"] == "limited_reference" for row in evidence
+            ),
+            "shadow_only": sum(
+                row["decision_usage_level"] == "shadow_only" for row in evidence
+            ),
+            "used_source_ids": [
+                row["source_id"] for row in evidence
+                if row["decision_usage_level"] == "usable"
+            ],
+            "formal_ranking_unchanged": True,
         },
         "shadow_baseline": shadow_baseline,
         "institutional_link": institutional_link,
@@ -1553,6 +1591,7 @@ def update_decision_hub(
             "十個隔日影子模型依趨勢、量能資金、環境風險、進場反轉與平衡動能五個證據家族各計一次，避免中央重複投票",
             "1～5日、45日、6個月分開判斷，不以多數決互相覆蓋",
             "未完成向前驗證的影子模型只能提供證據，不能提高正式排名",
+            "中央證據統一分為可使用、限制參考、不可使用；只有可使用證據能影響中央影子判斷，後兩者不得改分",
             "台股官方法人覆蓋達95%才連動；已在正式V6單次計入，中央不重複加分，美股永不套用台股法人",
             "大量買賣依原訊號品質連動；淨流金額只顯示，完整收盤且品質達標才以最多±3點影響短線中央判斷",
             "同來源、同標的、同時段、同交易日證據只計一次；族群輪動中的資金流不再重複加權",
