@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "ok",
-  "status_label": "🟢 系統正常",
-  "checked_at": "2026-09-27T17:47:19+08:00",
+  "status": "warning",
+  "status_label": "🟡 需要注意",
+  "checked_at": "2026-09-27T22:46:01+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-09-27 17:45:35",
-  "report_age_minutes": 1.7,
+  "report_age_minutes": 300.4,
   "counts": {
     "ok": 25,
     "info": 8,
-    "warning": 0,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -42,8 +42,16 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-09-25 已正確入帳，報表距今 0.0 小時",
+      "detail": "週末休市；最近完成交易日 2026-09-25 已正確入帳，報表距今 5.0 小時",
       "action": ""
+    },
+    {
+      "code": "report_period_alignment",
+      "title": "晚報時段同步",
+      "level": "warning",
+      "label": "注意",
+      "detail": "20:00 後最新報表仍是 noon",
+      "action": "等待晚報排程；通知不得把午報標示成 V6 晚報"
     },
     {
       "code": "report_consistency",
@@ -277,11 +285,13 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     }
   ],
-  "action_required": [],
+  "action_required": [
+    "等待晚報排程；通知不得把午報標示成 V6 晚報"
+  ],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,
