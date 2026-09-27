@@ -72,6 +72,65 @@ def _write_json(path: Path, payload: dict[str, Any], *, compact: bool = True) ->
     return len(encoded)
 
 
+def _json_size(payload: dict[str, Any]) -> int:
+    """Return the exact compact UTF-8 size used by ``_write_json``."""
+    return len(json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+
+
+def _split_public_chunk(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Split an oversized public contract without dropping predictions.
+
+    Rankings remain in the first part so the browser only needs one request.
+    Central AI can reassemble every prediction from the manifest's ``parts``.
+    """
+    if _json_size(payload) <= MAX_PUBLIC_CHUNK_BYTES:
+        return [payload]
+
+    base = {
+        key: value for key, value in payload.items()
+        if key not in {"rankings", "predictions"}
+    }
+    rankings = payload.get("rankings") or []
+    predictions = payload.get("predictions") or []
+    parts: list[dict[str, Any]] = []
+    current: list[dict[str, Any]] = []
+    current_rankings = rankings
+
+    for prediction in predictions:
+        candidate = {
+            **base,
+            "rankings": current_rankings,
+            "predictions": [*current, prediction],
+        }
+        if _json_size(candidate) <= MAX_PUBLIC_CHUNK_BYTES:
+            current.append(prediction)
+            continue
+
+        completed = {
+            **base,
+            "rankings": current_rankings,
+            "predictions": current,
+        }
+        if current or current_rankings:
+            if _json_size(completed) > MAX_PUBLIC_CHUNK_BYTES:
+                raise RuntimeError("prediction engine rankings exceed public chunk limit")
+            parts.append(completed)
+        current_rankings = []
+        current = [prediction]
+        single = {**base, "rankings": [], "predictions": current}
+        if _json_size(single) > MAX_PUBLIC_CHUNK_BYTES:
+            raise RuntimeError("single prediction exceeds public chunk limit")
+
+    final = {**base, "rankings": current_rankings, "predictions": current}
+    if current or current_rankings or not parts:
+        parts.append(final)
+    return parts
+
+
 def _dominant_session(rows: list[dict[str, Any]]) -> str:
     dates = [session_date(row) for row in rows if session_date(row)]
     if not dates:
@@ -589,14 +648,14 @@ def _write_chunked_contract(
     """Publish a tiny index plus lazy-loaded group/horizon files."""
     symbols = contract.get("symbols") or {}
     rankings = contract.get("rankings") or {}
-    data_files: dict[str, dict[str, str]] = {}
+    data_files: dict[str, dict[str, Any]] = {}
     sizes: dict[str, int] = {}
     live_files = set()
+    sharded_contracts = 0
     for group in GROUPS:
         data_files[group] = {}
         for code in HORIZONS:
             filename = f"prediction_engine_data_{group}_{code}.json"
-            live_files.add(filename)
             predictions = []
             for symbol in symbols.values():
                 if symbol.get("asset_group") != group:
@@ -619,14 +678,33 @@ def _write_chunked_contract(
                 "rankings": (rankings.get(group) or {}).get(code) or [],
                 "predictions": predictions,
             }
-            size = _write_json(reports_dir / filename, payload)
-            if size > MAX_PUBLIC_CHUNK_BYTES:
-                (reports_dir / filename).unlink(missing_ok=True)
-                raise RuntimeError(
-                    f"prediction engine chunk {filename} exceeded {MAX_PUBLIC_CHUNK_BYTES} bytes"
+            parts = _split_public_chunk(payload)
+            if len(parts) == 1:
+                live_files.add(filename)
+                sizes[filename] = _write_json(reports_dir / filename, parts[0])
+                data_files[group][code] = filename
+                continue
+
+            sharded_contracts += 1
+            part_files = []
+            for part_number, part in enumerate(parts, start=1):
+                part_filename = (
+                    f"prediction_engine_data_{group}_{code}_part{part_number:02d}.json"
                 )
-            sizes[filename] = size
-            data_files[group][code] = filename
+                live_files.add(part_filename)
+                size = _write_json(reports_dir / part_filename, part)
+                if size > MAX_PUBLIC_CHUNK_BYTES:
+                    (reports_dir / part_filename).unlink(missing_ok=True)
+                    raise RuntimeError(
+                        f"prediction engine chunk {part_filename} exceeded "
+                        f"{MAX_PUBLIC_CHUNK_BYTES} bytes"
+                    )
+                sizes[part_filename] = size
+                part_files.append(part_filename)
+            data_files[group][code] = {
+                "format": "sharded_json_v1",
+                "parts": part_files,
+            }
     for stale in reports_dir.glob("prediction_engine_data_*.json"):
         if stale.name not in live_files:
             stale.unlink()
@@ -641,6 +719,7 @@ def _write_chunked_contract(
         "index_max_bytes": MAX_PUBLIC_INDEX_BYTES,
         "chunk_max_bytes": MAX_PUBLIC_CHUNK_BYTES,
         "chunk_count": len(sizes),
+        "sharded_contracts": sharded_contracts,
     }
     index_size = _write_json(reports_dir / "prediction_engine.json", index)
     if index_size > MAX_PUBLIC_INDEX_BYTES:
