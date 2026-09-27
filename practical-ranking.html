@@ -14,10 +14,13 @@
     <div class="top"><a class="back" href="index.html">← 股票總覽</a><button class="refresh" id="refresh">更新</button></div>
     <section class="hero">
       <h1>🏆 實用權重排名</h1>
-      <p>10日、1個月、3個月、半年、資金流、估值、買進位置、大盤風險與資料品質，共九類資訊各計一次。這是隔離影子排名，先與正式V6比較，不改正式排名、不下單。20組前不可使用，60組後才可人工決定是否整合。</p>
+      <p>先選持有期間，再用該期間專屬的100%證據權重，回答哪些股票適合10日、1個月、3個月或半年。四張排名完全分開，不把期間本身混在同一個分數裡；各期間20組前不可使用，60組後才可人工決定是否整合。維持影子驗證、不改正式V6、不下單。</p>
     </section>
     <div class="tabs" id="tabs">
       <button class="active" data-group="TW_STOCK">台股</button><button data-group="US_STOCK">美股</button><button data-group="TW_ETF">台灣ETF</button><button data-group="US_ETF">美國ETF</button>
+    </div>
+    <div class="tabs" id="horizonTabs">
+      <button class="active" data-horizon="10d">10日</button><button data-horizon="21d">1個月</button><button data-horizon="63d">3個月</button><button data-horizon="126d">半年</button>
     </div>
     <section class="validation" id="validation">讀取驗證進度…</section>
     <section id="results"><div class="empty">讀取最新排名…</div></section>

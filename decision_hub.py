@@ -1348,7 +1348,7 @@ def update_decision_hub(
         logging.exception("實用權重影子排名失敗；正式V6與中央原結論繼續")
         practical_ranking = {
             "status": "error",
-            "model_version": "PRACTICAL-WEIGHTED-RANKING-V2-SHADOW",
+            "model_version": "PRACTICAL-HORIZON-RANKING-V3-SHADOW",
             "rankings": {},
             "validation": {},
             "error": str(exc),
@@ -1700,7 +1700,7 @@ def update_decision_hub(
             "history": "practical_weighted_history.json",
             "status": practical_ranking.get("status"),
             "model_version": practical_ranking.get("model_version"),
-            "weights": practical_ranking.get("weights") or {},
+            "weights_by_horizon": practical_ranking.get("weights_by_horizon") or {},
             "validation": practical_ranking.get("validation") or {},
             "formal_v6_unchanged": True,
             "automatic_orders": False,

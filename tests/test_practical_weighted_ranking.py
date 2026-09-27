@@ -46,7 +46,11 @@ def _decision(symbol: str, *, usable_flow: bool = True) -> dict:
                 "UP_126D": {"probability_pct": 70, "buyability_score": 72},
             }
         },
-        "horizons": {"short": {"execution": {"code": "entry_confirm"}}},
+        "horizons": {
+            "short": {"execution": {"code": "entry_confirm"}},
+            "medium": {"execution": {"code": "entry_wait_confirmation"}},
+            "long": {"execution": {"code": "watch"}},
+        },
         "evidence": [
             {
                 "source_id": "capital_flow_shadow", "direction": "support",
@@ -72,7 +76,7 @@ def _decision(symbol: str, *, usable_flow: bool = True) -> dict:
     }
 
 
-def test_practical_ranking_uses_eight_families_and_stays_shadow(tmp_path) -> None:
+def test_practical_ranking_builds_four_independent_100_point_lists(tmp_path) -> None:
     rows = [_row("GOOD.TW", technical=85), _row("WEAK.TW", technical=55)]
     decisions = [_decision("GOOD.TW"), _decision("WEAK.TW")]
 
@@ -81,17 +85,19 @@ def test_practical_ranking_uses_eight_families_and_stays_shadow(tmp_path) -> Non
         updated_at="2026-09-27 12:00:00", intraday=True,
     )
 
-    assert sum(WEIGHTS.values()) == 100
-    assert len(WEIGHTS) == 9
-    assert WEIGHTS["three_month"] == 10
-    ranking = report["rankings"]["TW_STOCK"]
+    assert set(WEIGHTS) == {"10d", "21d", "63d", "126d"}
+    assert all(sum(matrix.values()) == 100 for matrix in WEIGHTS.values())
+    assert all(len(matrix) == 9 for matrix in WEIGHTS.values())
+    assert report["policy"]["horizons_are_never_used_as_weights_in_one_mixed_score"] is True
+    assert set(report["rankings"]["TW_STOCK"]) == set(WEIGHTS)
+    ranking = report["rankings"]["TW_STOCK"]["10d"]
     assert ranking[0]["symbol"] == "GOOD.TW"
     assert ranking[0]["practical_shadow_score"] > ranking[1]["practical_shadow_score"]
     assert ranking[0]["decision_usage_level"] == "shadow_only"
     assert ranking[0]["formal_v6_unchanged"] is True
     assert report["policy"]["automatic_orders"] is False
     saved = json.loads((tmp_path / "practical_weighted_ranking.json").read_text())
-    assert saved["weights"] == WEIGHTS
+    assert saved["weights_by_horizon"] == WEIGHTS
 
 
 def test_limited_reference_flow_never_adds_points(tmp_path) -> None:
@@ -99,11 +105,11 @@ def test_limited_reference_flow_never_adds_points(tmp_path) -> None:
     usable = update_practical_weighted_ranking(
         tmp_path / "usable", [row], [_decision("GOOD.TW", usable_flow=True)],
         period="noon", updated_at="now", intraday=True,
-    )["rankings"]["TW_STOCK"][0]
+    )["rankings"]["TW_STOCK"]["10d"][0]
     limited = update_practical_weighted_ranking(
         tmp_path / "limited", [row], [_decision("GOOD.TW", usable_flow=False)],
         period="noon", updated_at="now", intraday=True,
-    )["rankings"]["TW_STOCK"][0]
+    )["rankings"]["TW_STOCK"]["10d"][0]
 
     assert usable["components"]["capital_volume_institution"]["score"] > limited["components"]["capital_volume_institution"]["score"]
     assert usable["practical_shadow_score"] > limited["practical_shadow_score"]
