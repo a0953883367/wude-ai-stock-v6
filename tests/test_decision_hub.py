@@ -233,6 +233,40 @@ def test_central_hub_reassembles_lazy_prediction_chunks(tmp_path):
     assert payload["symbols"]["TW:TEST.TW"]["horizons"]["NEXT_1D"]["probability_pct"] == 62.0
 
 
+def test_central_hub_reassembles_sharded_prediction_chunks(tmp_path):
+    _write(tmp_path / "prediction_engine.json", {
+        "status": "ready",
+        "data_files": {
+            "TW_STOCK": {"UP_60D": {
+                "format": "sharded_json_v1",
+                "parts": ["part01.json", "part02.json"],
+            }},
+        },
+    })
+    _write(tmp_path / "part01.json", {
+        "rankings": [{"symbol": "A.TW", "rank": 1}],
+        "predictions": [{
+            "symbol": "A.TW", "name": "A", "market": "TW",
+            "asset_group": "TW_STOCK", "session_date": "2026-09-27",
+            "horizon_code": "UP_60D", "probability_pct": 60.0,
+        }],
+    })
+    _write(tmp_path / "part02.json", {
+        "rankings": [],
+        "predictions": [{
+            "symbol": "B.TW", "name": "B", "market": "TW",
+            "asset_group": "TW_STOCK", "session_date": "2026-09-27",
+            "horizon_code": "UP_60D", "probability_pct": 55.0,
+        }],
+    })
+
+    payload = decision_hub._load_prediction_engine_contract(tmp_path)
+
+    assert payload["rankings"]["TW_STOCK"]["UP_60D"][0]["symbol"] == "A.TW"
+    assert payload["symbols"]["TW:A.TW"]["horizons"]["UP_60D"]["probability_pct"] == 60.0
+    assert payload["symbols"]["TW:B.TW"]["horizons"]["UP_60D"]["probability_pct"] == 55.0
+
+
 def test_inverse_etf_mapping_is_linked_as_visible_shadow_evidence(tmp_path):
     _reports(tmp_path, valuation_score=30)
     _write(tmp_path / "inverse_etf_database.json", {
