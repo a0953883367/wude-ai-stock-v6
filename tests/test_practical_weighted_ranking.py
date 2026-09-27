@@ -42,6 +42,7 @@ def _decision(symbol: str, *, usable_flow: bool = True) -> dict:
             "horizons": {
                 "UP_10D": {"probability_pct": 78, "buyability_score": 80},
                 "UP_21D": {"probability_pct": 75, "buyability_score": 76},
+                "UP_63D": {"probability_pct": 72, "buyability_score": 74},
                 "UP_126D": {"probability_pct": 70, "buyability_score": 72},
             }
         },
@@ -81,7 +82,8 @@ def test_practical_ranking_uses_eight_families_and_stays_shadow(tmp_path) -> Non
     )
 
     assert sum(WEIGHTS.values()) == 100
-    assert len(WEIGHTS) == 8
+    assert len(WEIGHTS) == 9
+    assert WEIGHTS["three_month"] == 10
     ranking = report["rankings"]["TW_STOCK"]
     assert ranking[0]["symbol"] == "GOOD.TW"
     assert ranking[0]["practical_shadow_score"] > ranking[1]["practical_shadow_score"]

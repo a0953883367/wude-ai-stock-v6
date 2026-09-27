@@ -739,7 +739,7 @@ class PredictionStore:
             # substitute label. ETFs and direction-only horizons keep their
             # existing independent close-to-close ledger.
             if asset_group == f"{market}_STOCK" and horizon_code in {
-                "UP_5D", "UP_10D", "UP_21D", "UP_45D", "UP_60D", "UP_126D"
+                "UP_5D", "UP_10D", "UP_21D", "UP_45D", "UP_60D", "UP_63D", "UP_126D"
             }:
                 rows = db.execute(
                     "SELECT p.session_date,p.feature_json,r.close_return_pct realized_return_pct "

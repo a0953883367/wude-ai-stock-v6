@@ -177,7 +177,7 @@ def _prediction_engine_answer(payload: dict[str, Any] | None) -> dict[str, Any]:
     rankings = payload.get("rankings") if isinstance(payload.get("rankings"), dict) else {}
     by_market: dict[str, dict[str, Any]] = {"TW": {}, "US": {}}
     for market in ("TW", "US"):
-        for horizon in ("NEXT_1D", "UP_5D", "UP_10D", "UP_21D", "UP_45D", "UP_126D", "DOWN_14D", "DOWN_21D"):
+        for horizon in ("NEXT_1D", "UP_5D", "UP_10D", "UP_21D", "UP_45D", "UP_63D", "UP_126D", "DOWN_14D", "DOWN_21D"):
             candidates = []
             for group in (f"{market}_STOCK", f"{market}_ETF"):
                 values = (rankings.get(group) or {}).get(horizon) or []
@@ -1348,7 +1348,7 @@ def update_decision_hub(
         logging.exception("實用權重影子排名失敗；正式V6與中央原結論繼續")
         practical_ranking = {
             "status": "error",
-            "model_version": "PRACTICAL-WEIGHTED-RANKING-V1-SHADOW",
+            "model_version": "PRACTICAL-WEIGHTED-RANKING-V2-SHADOW",
             "rankings": {},
             "validation": {},
             "error": str(exc),

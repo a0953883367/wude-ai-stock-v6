@@ -21,6 +21,7 @@ HORIZONS = {
     "UP_21D": {"sessions": 21, "side": "UP", "return_scale": 22.0, "label": "未來1個月上漲"},
     "UP_45D": {"sessions": 45, "side": "UP", "return_scale": 32.0, "label": "未來45交易日"},
     "UP_60D": {"sessions": 60, "side": "UP", "return_scale": 38.0, "label": "未來60交易日"},
+    "UP_63D": {"sessions": 63, "side": "UP", "return_scale": 40.0, "label": "未來3個月"},
     "UP_126D": {"sessions": 126, "side": "UP", "return_scale": 55.0, "label": "未來6個月"},
 }
 
@@ -33,10 +34,11 @@ BASE_WEIGHTS = {
     "UP_21D": {"trend": .15, "volume": .07, "capital_flow": .10, "positioning": .10, "sector": .12, "market_regime": .13, "fundamental": .11, "valuation": .07, "news": .07, "entry": .03, "shadow_consensus": .05},
     "UP_45D": {"trend": .13, "volume": .05, "capital_flow": .08, "positioning": .10, "sector": .12, "market_regime": .13, "fundamental": .14, "valuation": .10, "news": .07, "entry": .03, "shadow_consensus": .05},
     "UP_60D": {"trend": .12, "volume": .04, "capital_flow": .07, "positioning": .09, "sector": .12, "market_regime": .13, "fundamental": .16, "valuation": .12, "news": .07, "entry": .03, "shadow_consensus": .05},
+    "UP_63D": {"trend": .12, "volume": .04, "capital_flow": .07, "positioning": .09, "sector": .12, "market_regime": .13, "fundamental": .16, "valuation": .12, "news": .07, "entry": .03, "shadow_consensus": .05},
     "UP_126D": {"trend": .08, "volume": .02, "capital_flow": .04, "positioning": .07, "sector": .11, "market_regime": .13, "fundamental": .22, "valuation": .20, "news": .08, "entry": .01, "shadow_consensus": .04},
 }
 
-MIN_TRAINING_SESSIONS = {"NEXT_1D": 20, "UP_5D": 20, "UP_10D": 20, "DOWN_14D": 30, "DOWN_21D": 35, "UP_21D": 35, "UP_45D": 45, "UP_60D": 60, "UP_126D": 126}
+MIN_TRAINING_SESSIONS = {"NEXT_1D": 20, "UP_5D": 20, "UP_10D": 20, "DOWN_14D": 30, "DOWN_21D": 35, "UP_21D": 35, "UP_45D": 45, "UP_60D": 60, "UP_63D": 63, "UP_126D": 126}
 MIN_TRAINING_SAMPLES = {key: 200 for key in HORIZONS}
 MIN_HOLDOUT_DIRECTION_HIT_PCT = 52.0
 MIN_DIRECTION_IMPROVEMENT_PCT = 2.0

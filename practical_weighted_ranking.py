@@ -15,10 +15,11 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
-MODEL_VERSION = "PRACTICAL-WEIGHTED-RANKING-V1-SHADOW"
+MODEL_VERSION = "PRACTICAL-WEIGHTED-RANKING-V2-SHADOW"
 WEIGHTS = {
-    "ten_day": 20,
-    "one_month": 15,
+    "ten_day": 15,
+    "one_month": 10,
+    "three_month": 10,
     "capital_volume_institution": 20,
     "fundamental_six_month": 15,
     "valuation": 10,
@@ -29,14 +30,15 @@ WEIGHTS = {
 COMPONENT_LABELS = {
     "ten_day": "10個交易日趨勢＋K線",
     "one_month": "1個月趨勢＋族群強弱",
+    "three_month": "3個月趨勢＋產業位置",
     "capital_volume_institution": "資金流、成交量與法人",
-    "fundamental_six_month": "基本面、成長與6個月品質",
+    "fundamental_six_month": "半年基本面、成長與長期品質",
     "valuation": "估值合理程度",
     "entry_position": "買進位置與風險報酬",
     "market_risk": "大盤環境與空頭風險",
     "data_quality": "資料完整度與可信度",
 }
-OUTCOME_HORIZONS = {"10d": 10, "21d": 21}
+OUTCOME_HORIZONS = {"10d": 10, "21d": 21, "63d": 63, "126d": 126}
 ROUND_TRIP_COST_PCT = {"TW": 0.685, "US": 0.20}
 MAX_HISTORY_PER_GROUP = 180
 
@@ -133,6 +135,7 @@ ENTRY_SCORES = {
 def _component_scores(row: dict[str, Any], decision: dict[str, Any]) -> dict[str, dict[str, Any]]:
     ten_day_prediction = _prediction_score(decision, "UP_10D")
     month_prediction = _prediction_score(decision, "UP_21D")
+    three_month_prediction = _prediction_score(decision, "UP_63D")
     six_month_prediction = _prediction_score(decision, "UP_126D")
 
     capital = _evidence(decision, "capital_flow_shadow")
@@ -149,8 +152,11 @@ def _component_scores(row: dict[str, Any], decision: dict[str, Any]) -> dict[str
         ten_day_prediction, row.get("technical_score"), row.get("kline_score"),
     ])
     one_month = _average([
-        month_prediction, row.get("mid_long_score"),
-        row.get("tw_sector_context_score"), row.get("group_score"),
+        month_prediction, row.get("group_score"),
+    ])
+    three_month = _average([
+        three_month_prediction, row.get("mid_long_score"),
+        row.get("tw_sector_context_score"),
     ])
     capital_score = _average([
         row.get("volume_score"), row.get("market_flow_score"),
@@ -173,6 +179,7 @@ def _component_scores(row: dict[str, Any], decision: dict[str, Any]) -> dict[str
     scores = {
         "ten_day": ten_day,
         "one_month": one_month,
+        "three_month": three_month,
         "capital_volume_institution": capital_score,
         "fundamental_six_month": fundamental,
         "valuation": valuation_score,
@@ -291,7 +298,11 @@ def _update_history(
             sessions[checkpoint_market].append(session_date)
             sessions[checkpoint_market] = sorted(set(sessions[checkpoint_market]))
         existing = {
-            (str(item.get("asset_group")), str(item.get("session_date")))
+            (
+                str(item.get("asset_group")),
+                str(item.get("session_date")),
+                str(item.get("model_version") or "V1"),
+            )
             for item in snapshots
         }
         rows_by_group = {
@@ -299,7 +310,7 @@ def _update_history(
             for group in (f"{checkpoint_market}_STOCK", f"{checkpoint_market}_ETF")
         }
         for group, ranked in rankings.items():
-            if not group.startswith(checkpoint_market) or (group, session_date) in existing:
+            if not group.startswith(checkpoint_market) or (group, session_date, MODEL_VERSION) in existing:
                 continue
             formal = sorted(
                 rows_by_group.get(group, []),
@@ -308,6 +319,7 @@ def _update_history(
             snapshots.append({
                 "asset_group": group,
                 "market": checkpoint_market,
+                "model_version": MODEL_VERSION,
                 "session_date": session_date,
                 "created_at": updated_at,
                 "practical_top10": [
@@ -363,7 +375,10 @@ def _update_history(
 def _validation(history: dict[str, Any]) -> dict[str, Any]:
     groups = {}
     for group in ("TW_STOCK", "TW_ETF", "US_STOCK", "US_ETF"):
-        group_rows = [row for row in history.get("snapshots") or [] if row.get("asset_group") == group]
+        group_rows = [
+            row for row in history.get("snapshots") or []
+            if row.get("asset_group") == group and row.get("model_version") == MODEL_VERSION
+        ]
         horizons = {}
         for label in OUTCOME_HORIZONS:
             outcomes = [
@@ -440,6 +455,8 @@ def update_practical_weighted_ranking(
         "policy": {
             "ten_day_is_real_10_session_model": True,
             "one_month_is_real_21_session_model": True,
+            "three_month_is_real_63_session_model": True,
+            "six_month_is_real_126_session_model": True,
             "old_5d_or_45d_never_relabelled": True,
             "only_usable_external_evidence_affects_components": True,
             "limited_reference_never_adds_points": True,
