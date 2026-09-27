@@ -131,27 +131,36 @@ def _load_prediction_engine_contract(reports_dir: Path) -> dict[str, Any] | None
         if not isinstance(horizons, dict):
             continue
         merged["rankings"][group] = {}
-        for horizon, filename in horizons.items():
-            chunk = _read_json(reports_dir / str(filename))
-            if not isinstance(chunk, dict):
-                continue
-            merged["rankings"][group][horizon] = chunk.get("rankings") or []
-            for row in chunk.get("predictions") or []:
-                if not isinstance(row, dict) or not row.get("symbol") or not row.get("market"):
+        for horizon, file_spec in horizons.items():
+            if isinstance(file_spec, str):
+                filenames = [file_spec]
+            elif isinstance(file_spec, dict) and isinstance(file_spec.get("parts"), list):
+                filenames = [str(value) for value in file_spec["parts"] if value]
+            else:
+                filenames = []
+            merged["rankings"][group][horizon] = []
+            for filename in filenames:
+                chunk = _read_json(reports_dir / filename)
+                if not isinstance(chunk, dict):
                     continue
-                key = f'{str(row["market"]).upper()}:{str(row["symbol"]).upper()}'
-                symbol = merged["symbols"].setdefault(key, {
-                    "symbol": row["symbol"], "name": row.get("name"),
-                    "market": row["market"], "asset_group": row.get("asset_group"),
-                    "session_date": row.get("session_date"), "horizons": {},
-                })
-                symbol["horizons"][horizon] = {
-                    field: value for field, value in row.items()
-                    if field not in {
-                        "symbol", "name", "market", "asset_group",
-                        "session_date", "horizon_code",
+                if chunk.get("rankings"):
+                    merged["rankings"][group][horizon] = chunk["rankings"]
+                for row in chunk.get("predictions") or []:
+                    if not isinstance(row, dict) or not row.get("symbol") or not row.get("market"):
+                        continue
+                    key = f'{str(row["market"]).upper()}:{str(row["symbol"]).upper()}'
+                    symbol = merged["symbols"].setdefault(key, {
+                        "symbol": row["symbol"], "name": row.get("name"),
+                        "market": row["market"], "asset_group": row.get("asset_group"),
+                        "session_date": row.get("session_date"), "horizons": {},
+                    })
+                    symbol["horizons"][horizon] = {
+                        field: value for field, value in row.items()
+                        if field not in {
+                            "symbol", "name", "market", "asset_group",
+                            "session_date", "horizon_code",
+                        }
                     }
-                }
     return merged
 
 
