@@ -141,6 +141,40 @@ def _write_json(path: Path, payload: dict[str, Any] | list[Any]) -> None:
     temporary.replace(path)
 
 
+def _archive_verification_is_acceptable(archive: dict[str, Any]) -> bool:
+    counts = archive.get("counts") or {}
+    total = int(counts.get("total") or 0)
+    errors = int(counts.get("errors") or 0)
+    if total < 1 or errors:
+        return False
+
+    status = archive.get("status")
+    if status == "ok":
+        return True
+    if status != "warning" or int(counts.get("conflict_revisions") or 0) < 1:
+        return False
+
+    # A preserved canonical file plus a separately verified revision is an
+    # expected, non-destructive archive outcome.  Accept only when every item
+    # has explicit verification evidence; other warning types remain blocked.
+    results = archive.get("results")
+    if not isinstance(results, list) or len(results) != total:
+        return False
+    verified_statuses = {
+        "uploaded_verified",
+        "verified_existing",
+        "conflict_revision_uploaded_verified",
+        "conflict_revision_verified_existing",
+    }
+    conflict_count = 0
+    for item in results:
+        if not isinstance(item, dict) or item.get("status") not in verified_statuses:
+            return False
+        if str(item.get("status")).startswith("conflict_revision_"):
+            conflict_count += 1
+    return conflict_count == int(counts.get("conflict_revisions") or 0)
+
+
 def _require_locked_inputs(
     learning: dict[str, Any],
     backup: dict[str, Any],
@@ -172,7 +206,7 @@ def _require_locked_inputs(
 
     if archive is not None:
         counts = archive.get("counts") or {}
-        if archive.get("status") != "ok" or int(counts.get("errors") or 0):
+        if not _archive_verification_is_acceptable(archive):
             raise CoachBlocked("Google Drive archive verification is not green")
         if int(counts.get("total") or 0) < 1:
             raise CoachBlocked("Google Drive archive verification has no files")
