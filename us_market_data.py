@@ -15,11 +15,45 @@ from statistics import mean
 from typing import Any, Iterable
 
 import requests
+from urllib.parse import urljoin
 
 LOG = logging.getLogger(__name__)
 STOCK_SNAPSHOT_URL = "https://data.alpaca.markets/v2/stocks/snapshots"
 OPTION_CHAIN_URL = "https://data.alpaca.markets/v1beta1/options/snapshots/{symbol}"
 OPTION_SYMBOL = re.compile(r"(\d{6})([CP])(\d{8})$")
+OIDC_AUDIENCE = "wude-live-data-relay"
+
+
+def _relay_request(kind: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
+    """Use Railway's existing Alpaca credentials from an authenticated Action."""
+    base = os.getenv("WUDE_LIVE_API_BASE", "").strip()
+    request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "").strip()
+    request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "").strip()
+    if not base or not request_url or not request_token:
+        return {}
+    try:
+        identity = requests.get(
+            request_url,
+            params={"audience": OIDC_AUDIENCE},
+            headers={"Authorization": f"Bearer {request_token}"},
+            timeout=min(timeout, 20),
+        )
+        identity.raise_for_status()
+        oidc_token = str(identity.json().get("value") or "")
+        if not oidc_token:
+            return {}
+        response = requests.post(
+            urljoin(base.rstrip("/") + "/", "api/internal/market-data"),
+            json={"kind": kind, **payload},
+            headers={"Authorization": f"Bearer {oidc_token}"},
+            timeout=max(timeout, 30),
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result.get("data") if isinstance(result, dict) and isinstance(result.get("data"), dict) else {}
+    except (requests.RequestException, ValueError) as exc:
+        LOG.warning("Railway %s relay failed: %s", kind, exc)
+        return {}
 
 
 def _chunks(items: list[str], size: int) -> Iterable[list[str]]:
@@ -111,7 +145,11 @@ def fetch_us_sip_snapshots(
 ) -> dict[str, dict[str, Any]]:
     credentials = _credentials()
     if not credentials:
-        LOG.info("Alpaca credentials absent; US SIP layer will use existing fallbacks")
+        relayed = _relay_request("sip", {"symbols": sorted({str(s).upper() for s in symbols if s})}, timeout)
+        if relayed:
+            LOG.info("US SIP layer received %s symbols from the authenticated Railway relay", len(relayed))
+            return relayed
+        LOG.info("Alpaca credentials and authenticated relay absent; US SIP layer will use existing fallbacks")
         return {}
     feed = os.getenv("ALPACA_STOCK_FEED", "sip").strip().lower() or "sip"
     client = session or requests.Session()
@@ -178,6 +216,19 @@ def fetch_us_opra_signals(
 ) -> dict[str, dict[str, Any]]:
     credentials = _credentials()
     feed = os.getenv("ALPACA_OPTION_FEED", "").strip().lower()
+    if not credentials:
+        relayed = _relay_request(
+            "opra",
+            {"candidates": [
+                {"symbol": str(row.get("symbol") or "").upper(),
+                 "price": _number(row.get("us_live_price")) or _number(row.get("price"))}
+                for row in candidates
+            ]},
+            timeout,
+        )
+        if relayed:
+            LOG.info("US OPRA layer received %s symbols from the authenticated Railway relay", len(relayed))
+            return relayed
     if not credentials or not feed:
         LOG.info("OPRA feed not configured; options remain an unavailable risk dimension")
         return {}
