@@ -60,7 +60,32 @@ def test_learning_report_builds_candidates_without_touching_v6(tmp_path: Path) -
     assert complete["shared_rules"]["controlled_shadow_auto_promotion"] is True
     assert complete["shared_rules"]["formal_v6_automatic_promotion"] is False
     assert report["policy"]["controlled_central_trust_auto_update"] is True
+    assert report["institution_weight_learning"]["status"] == "collecting"
     assert (tmp_path / "model_learning.json").exists()
+
+
+def test_weight_failure_is_written_into_learning_ledger(tmp_path: Path) -> None:
+    _write(tmp_path / "performance.json", {"calibration": {"trading_days_collected": 23}})
+    _write(tmp_path / "tw_weight_experiment.json", {
+        "completed_days": 23,
+        "observed_best_model": "moderate_10",
+        "winner_model": None,
+        "preliminary_assessment": {
+            "status": "failed_preliminary",
+            "verdict": "20日影子初判失敗",
+            "failure_feedback_recorded": True,
+            "reasons": ["扣成本後為負報酬"],
+            "next_shadow_actions": ["未達標留現金"],
+        },
+    })
+
+    report = update_model_learning(tmp_path, updated_at="now")
+    learning = report["institution_weight_learning"]
+    assert learning["status"] == "failed_preliminary"
+    assert learning["failure_feedback_recorded"] is True
+    assert learning["observed_best_model"] == "moderate_10"
+    assert learning["promotable_winner"] is None
+    assert learning["formal_v6_changed"] is False
 
 
 def test_trade_signal_health_separates_direction_questions_from_trades(tmp_path: Path) -> None:

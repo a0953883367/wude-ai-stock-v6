@@ -210,7 +210,9 @@ def test_intraday_does_nothing_and_evening_starts_next_cycle_after_five_days():
             updated_at=f"2026-08-{day} 20:00:00",
         )
     assert state["status"] == "collecting"
-    assert state["winner_model"] in state["models"]
+    assert state["winner_model"] is None
+    assert state["observed_best_model"] in state["models"]
+    assert state["preliminary_assessment"]["status"] == "collecting"
     assert state["completed_cycles"] == 1
     assert state["current_cycle"] == 2
     assert state["current_cycle_completed_days"] == 0
@@ -236,6 +238,33 @@ def test_intraday_does_nothing_and_evening_starts_next_cycle_after_five_days():
         assert model["cycles"][0]["status"] == "complete"
         assert model["cycles"][1]["status"] == "collecting"
         assert model["pending"]["signal_session_date"] == "2026-08-31"
+
+
+def test_twenty_days_records_preliminary_failure_without_promoting_weight():
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="start")
+    for index in range(1, 21):
+        session_date = f"2026-09-{index:02d}"
+        losing = universe(session_date)
+        for item in losing:
+            item["official_close_price"] = 99
+        update_state(state, losing, period="evening", updated_at=session_date)
+
+    assessment = state["preliminary_assessment"]
+    assert state["completed_days"] == 20
+    assert state["status"] == "failed_preliminary"
+    assert state["winner_model"] is None
+    assert state["observed_best_model"] in state["models"]
+    assert assessment["failure_feedback_recorded"] is True
+    assert assessment["formal_v6_changed"] is False
+    assert assessment["broker_orders"] is False
+    assert assessment["next_shadow_actions"]
+    for model in state["models"].values():
+        metrics = model["metrics"]
+        assert metrics["gross_profit_twd"] < 0
+        assert metrics["transaction_cost_twd"] > 0
+        assert metrics["cost_drag_pct"] > 0
+        assert metrics["losing_days"] == 20
 
 
 def test_legacy_complete_state_reopens_collection_without_inventing_missed_day():

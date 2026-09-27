@@ -100,7 +100,10 @@ def update_model_graduation(reports_dir: Path, *, updated_at: str) -> dict[str, 
         "tw_institution_weight", "台股法人權重模型", weight_days, 20,
         formal_days=days,
         quality_ready=weight_days >= 20 and bool(weights.get("winner_model")),
-        extra="5日只做初檢，20日才可提出正式權重候選",
+        extra=(
+            str((weights.get("preliminary_assessment") or {}).get("verdict") or "")
+            or "5日只做初檢，20日才可提出影子權重候選"
+        ),
     ))
     inverse_samples = sum(
         int(summary.get("samples") or 0)

@@ -26,6 +26,9 @@ PICKS = 10
 MIN_POSITIONS = PICKS - 1
 ALLOCATION_TWD = CAPITAL_TWD // PICKS
 ROUND_TRIP_COST_PCT = 0.685
+PRELIMINARY_DAYS = 20
+FORMAL_REVIEW_DAYS = 60
+MATERIAL_EDGE_PCT = 0.5
 MODELS = {
     "base_0": {"label": "100/0｜原模型", "accumulation_weight": 0.0},
     "moderate_10": {"label": "90/10｜法人10%", "accumulation_weight": 0.10},
@@ -457,6 +460,11 @@ def _empty_model(key: str) -> dict[str, Any]:
             "net_profit_twd": 0.0,
             "net_return_pct": 0.0,
             "gross_profit_twd": 0.0,
+            "transaction_cost_twd": 0.0,
+            "cost_drag_pct": 0.0,
+            "cost_share_of_net_loss_pct": 0.0,
+            "profitable_days": 0,
+            "losing_days": 0,
             "win_rate_pct": 0.0,
             "avg_position_net_return_pct": 0.0,
             "max_drawdown_pct": 0.0,
@@ -494,10 +502,20 @@ def empty_state(updated_at: str = "") -> dict[str, Any]:
             "selection": "安全資格分層優先；每組前10名等權",
             "valid_session_rule": "每組原選10檔；至少9檔取得同一個較晚交易日的官方開盤與收盤價即可結算",
             "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔於正式收盤報告隔離並繼續下一交易日",
-            "decision_rule": "5日只做第一次檢查，不自動改權重；20日樣本後再決定正式調整",
+            "decision_rule": "5日只做第一次檢查；20日產生影子初判；60日才可人工審查，永不自動改正式權重",
+            "preliminary_days": PRELIMINARY_DAYS,
+            "formal_review_days": FORMAL_REVIEW_DAYS,
+            "material_edge_pct": MATERIAL_EDGE_PCT,
         },
         "models": {key: _empty_model(key) for key in MODELS},
+        "observed_best_model": None,
         "winner_model": None,
+        "preliminary_assessment": {
+            "status": "collecting",
+            "verdict": "等待20個有效交易日",
+            "formal_v6_changed": False,
+            "broker_orders": False,
+        },
     }
 
 
@@ -702,6 +720,7 @@ def _refresh_metrics(model: dict[str, Any]) -> None:
     ]
     gross_profit = sum(_finite(day.get("gross_profit_twd")) for day in days)
     net_profit = sum(_finite(day.get("net_profit_twd")) for day in days)
+    transaction_cost = gross_profit - net_profit
     turnovers = [
         _finite(day.get("rank_turnover_pct")) for day in days
         if day.get("rank_turnover_pct") is not None
@@ -714,6 +733,8 @@ def _refresh_metrics(model: dict[str, Any]) -> None:
         max_drawdown = max(max_drawdown, (peak - equity) / peak * 100 if peak else 0.0)
     net_returns = [_finite(position.get("net_return_pct")) for position in positions]
     wins = sum(value > 0 for value in net_returns)
+    profitable_days = sum(_finite(day.get("net_profit_twd")) > 0 for day in days)
+    losing_days = sum(_finite(day.get("net_profit_twd")) < 0 for day in days)
     rank_correlations = [
         _finite(day.get("rank_return_spearman")) for day in days
         if day.get("rank_return_spearman") is not None
@@ -730,6 +751,13 @@ def _refresh_metrics(model: dict[str, Any]) -> None:
         "net_profit_twd": round(net_profit, 2),
         "net_return_pct": round(net_profit / CAPITAL_TWD * 100, 4),
         "gross_profit_twd": round(gross_profit, 2),
+        "transaction_cost_twd": round(transaction_cost, 2),
+        "cost_drag_pct": round(transaction_cost / CAPITAL_TWD * 100, 4),
+        "cost_share_of_net_loss_pct": round(
+            transaction_cost / abs(net_profit) * 100, 2
+        ) if net_profit < 0 else 0.0,
+        "profitable_days": profitable_days,
+        "losing_days": losing_days,
         "win_rate_pct": round(wins / len(net_returns) * 100, 2) if net_returns else 0.0,
         "avg_position_net_return_pct": round(sum(net_returns) / len(net_returns), 4) if net_returns else 0.0,
         "max_drawdown_pct": round(max_drawdown, 4),
@@ -748,6 +776,82 @@ def _refresh_metrics(model: dict[str, Any]) -> None:
         "capture_evaluated_days": len(top20_capture),
     }
     model["cycles"] = _cycle_summaries(model)
+
+
+def _refresh_preliminary_assessment(state: dict[str, Any]) -> None:
+    """Turn accumulated outcomes into an explicit, non-promoting shadow verdict."""
+    completed_days = int(state.get("completed_days") or 0)
+    models = state.get("models") or {}
+    if not models:
+        return
+    observed_best = max(
+        models,
+        key=lambda name: _finite(models[name].get("metrics", {}).get("net_return_pct")),
+    )
+    state["observed_best_model"] = observed_best if completed_days >= CYCLE_DAYS else None
+    base_metrics = (models.get("base_0") or {}).get("metrics") or {}
+    best_metrics = (models.get(observed_best) or {}).get("metrics") or {}
+    best_edge = _finite(
+        (models.get(observed_best) or {}).get("comparison_vs_base", {}).get(
+            "incremental_net_return_pct"
+        )
+    )
+    assessment = {
+        "status": "collecting",
+        "verdict": f"等待{PRELIMINARY_DAYS}個有效交易日",
+        "completed_days": completed_days,
+        "observed_best_model": state.get("observed_best_model"),
+        "promotable_winner": None,
+        "formal_v6_changed": False,
+        "broker_orders": False,
+        "evidence_recorded": completed_days > 0,
+        "failure_feedback_recorded": False,
+        "reasons": [],
+        "next_shadow_actions": [],
+    }
+    state["winner_model"] = None
+    if completed_days < PRELIMINARY_DAYS:
+        state["preliminary_assessment"] = assessment
+        return
+
+    reasons = []
+    if _finite(base_metrics.get("gross_profit_twd")) <= 0:
+        reasons.append("原模型未扣成本前仍為負報酬，選股／進出場缺乏正向優勢")
+    if _finite(base_metrics.get("net_profit_twd")) <= 0:
+        reasons.append("原模型扣除交易成本後為負報酬")
+    if _finite(base_metrics.get("avg_rank_return_spearman")) <= 0:
+        reasons.append("排名與次日漲幅一致性不為正")
+    if _finite(base_metrics.get("avg_rank_turnover_pct")) >= 50:
+        reasons.append("平均名單換手率過高，成本反覆侵蝕績效")
+    if best_edge < MATERIAL_EDGE_PCT:
+        reasons.append(f"最佳權重相對原模型僅改善{best_edge:+.2f}%，未達{MATERIAL_EDGE_PCT:.2f}%實質門檻")
+
+    promotable = (
+        _finite(best_metrics.get("net_profit_twd")) > 0
+        and best_edge >= MATERIAL_EDGE_PCT
+        and _finite(best_metrics.get("avg_rank_return_spearman")) > 0
+    )
+    if promotable:
+        assessment.update({
+            "status": "preliminary_candidate",
+            "verdict": "20日影子初判：形成候選，繼續收集至60日人工審查",
+            "promotable_winner": observed_best,
+            "reasons": ["淨報酬為正、排名一致性為正，且相對原模型達實質改善門檻"],
+        })
+        state["winner_model"] = observed_best
+    else:
+        assessment.update({
+            "status": "failed_preliminary",
+            "verdict": "20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
+            "failure_feedback_recorded": True,
+            "reasons": reasons,
+            "next_shadow_actions": [
+                "新增達標才買、未達標留現金的影子對照組",
+                "新增降低換手與3／5日持有的影子對照組",
+                "分開比較選股毛損益、交易成本與進出場效果",
+            ],
+        })
+    state["preliminary_assessment"] = assessment
 
 
 def _overlap(left: set[str], right: set[str]) -> dict[str, Any]:
@@ -834,6 +938,10 @@ def update_state(
         "minimum_positions_per_model": MIN_POSITIONS,
         "valid_session_rule": "每組原選10檔；至少9檔取得同一個較晚交易日的官方開盤與收盤價即可結算",
         "incomplete_policy": "缺少1檔時該檔配置保留現金、不轉配；少於9檔於正式收盤報告隔離並繼續下一交易日",
+        "decision_rule": "5日只做第一次檢查；20日產生影子初判；60日才可人工審查，永不自動改正式權重",
+        "preliminary_days": PRELIMINARY_DAYS,
+        "formal_review_days": FORMAL_REVIEW_DAYS,
+        "material_edge_pct": MATERIAL_EDGE_PCT,
     })
     settle_only = period == "morning"
     for key, model in state["models"].items():
@@ -869,14 +977,10 @@ def update_state(
     state["completed_cycles"] = completed_days // CYCLE_DAYS
     state["current_cycle"] = completed_days // CYCLE_DAYS + 1
     state["current_cycle_completed_days"] = completed_days % CYCLE_DAYS
-    state["status"] = "collecting"
-    state["winner_model"] = None
-    if completed_days >= CYCLE_DAYS:
-        state["winner_model"] = max(
-            state["models"],
-            key=lambda name: _finite(state["models"][name].get("metrics", {}).get("net_return_pct")),
-        )
     _refresh_diagnostics(state)
+    _refresh_preliminary_assessment(state)
+    assessment_status = (state.get("preliminary_assessment") or {}).get("status")
+    state["status"] = assessment_status if completed_days >= PRELIMINARY_DAYS else "collecting"
     return state
 
 

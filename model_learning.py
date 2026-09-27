@@ -212,6 +212,7 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
     reports_dir = Path(reports_dir)
     previous = _read(reports_dir / "model_learning.json")
     performance = _read(reports_dir / "performance.json")
+    weight_experiment = _read(reports_dir / "tw_weight_experiment.json")
     calibration = performance.get("calibration") or {}
     error_cases = performance.get("error_cases") or {}
     days = int(calibration.get("trading_days_collected") or 0)
@@ -231,6 +232,7 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
             candidates = previous_candidates
     generated_at = updated_at or str(performance.get("updated_at") or datetime.now().isoformat(timespec="seconds"))
     complete_catalog = build_complete_learning_catalog(reports_dir)
+    weight_assessment = weight_experiment.get("preliminary_assessment") or {}
 
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -253,6 +255,19 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
             "recent_events": events[:20],
         },
         "signal_health": signal_health,
+        "institution_weight_learning": {
+            "source": "tw_weight_experiment.json",
+            "completed_days": int(weight_experiment.get("completed_days") or 0),
+            "status": weight_assessment.get("status") or "collecting",
+            "verdict": weight_assessment.get("verdict") or "等待影子初判",
+            "observed_best_model": weight_experiment.get("observed_best_model"),
+            "promotable_winner": weight_experiment.get("winner_model"),
+            "failure_feedback_recorded": bool(weight_assessment.get("failure_feedback_recorded")),
+            "reasons": weight_assessment.get("reasons") or [],
+            "next_shadow_actions": weight_assessment.get("next_shadow_actions") or [],
+            "formal_v6_changed": False,
+            "broker_orders": False,
+        },
         "shadow_candidates": candidates,
         "complete_learning": complete_catalog,
         "policy": {

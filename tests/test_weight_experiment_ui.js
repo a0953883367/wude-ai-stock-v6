@@ -21,8 +21,13 @@ assert.ok(html.includes('法人額外效益'));
   '完成後自動開下一區塊',
   'current_cycle_completed_days',
   '區塊紀錄',
-  '20日才初步比較',
-  '不會自動把勝出權重套回正式排名'
+  '影子教導判定',
+  '選股毛損益',
+  '交易成本',
+  '成本占淨損失',
+  '不是三組損失相加',
+  '20日產生影子初判',
+  '60日才可人工審查'
 ].forEach((text) => assert.ok(html.includes(text), `missing weight UI contract: ${text}`));
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]

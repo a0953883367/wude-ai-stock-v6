@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-09-27 17:45:35",
+  "updated_at": "2026-09-27 17:52:53",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -670,6 +670,29 @@
       }
     }
   },
+  "institution_weight_learning": {
+    "source": "tw_weight_experiment.json",
+    "completed_days": 23,
+    "status": "failed_preliminary",
+    "verdict": "20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
+    "observed_best_model": "moderate_10",
+    "promotable_winner": null,
+    "failure_feedback_recorded": true,
+    "reasons": [
+      "原模型未扣成本前仍為負報酬，選股／進出場缺乏正向優勢",
+      "原模型扣除交易成本後為負報酬",
+      "排名與次日漲幅一致性不為正",
+      "平均名單換手率過高，成本反覆侵蝕績效",
+      "最佳權重相對原模型僅改善+0.05%，未達0.50%實質門檻"
+    ],
+    "next_shadow_actions": [
+      "新增達標才買、未達標留現金的影子對照組",
+      "新增降低換手與3／5日持有的影子對照組",
+      "分開比較選股毛損益、交易成本與進出場效果"
+    ],
+    "formal_v6_changed": false,
+    "broker_orders": false
+  },
   "shadow_candidates": [
     {
       "candidate_id": "shadow:direction_calibration:v1",
@@ -744,7 +767,7 @@
     "summary": {
       "registered_units": 52,
       "connected_units": 52,
-      "source_ready_units": 52,
+      "source_ready_units": 51,
       "dedicated_validation_units": 52,
       "controlled_shadow_auto_upgrade_units": 7,
       "controlled_shadow_trust_units": 11,
@@ -4090,7 +4113,7 @@
             "minimum_sessions": 0,
             "minimum_samples": 0,
             "dedicated_validation": true,
-            "source_available": true,
+            "source_available": false,
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 26,
@@ -4149,7 +4172,9 @@
         ]
       }
     ],
-    "remaining_gaps": [],
+    "remaining_gaps": [
+      "1個單元等待來源報表"
+    ],
     "shared_rules": {
       "point_in_time_only": true,
       "markets_and_asset_types_separate": true,
