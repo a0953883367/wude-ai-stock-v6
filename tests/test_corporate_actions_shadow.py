@@ -40,15 +40,18 @@ def _source(name: str, records: list[dict], *, ok: bool = True) -> dict:
     return {"source": name, "ok": ok, "records": records, "error": "" if ok else "timeout"}
 
 
-def test_formal_combined_universe_covers_all_375_securities() -> None:
+def test_formal_combined_universe_covers_all_378_securities() -> None:
     search = json.loads(Path("search_data.json").read_text(encoding="utf-8"))
     combined = _combined_active_payload(search, load_watchlist())
     tracked = _tracked_securities(combined)
 
-    assert len(tracked) == 375
-    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 307
+    assert len(tracked) == 378
+    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 310
     assert sum(row["asset_type"] == "ETF" for row in tracked.values()) == 68
-    assert {"2327.TW", "HUBB", "0050.TW", "VOO"} <= set(tracked)
+    assert {
+        "2327.TW", "HUBB", "0050.TW", "VOO",
+        "4576.TW", "6530.TWO", "6841.TWO", "TEM", "IONQ", "RXRX", "OKLO",
+    } <= set(tracked)
     assert tracked["HNHPF"]["display_name"] == "鴻海 OTC"
     assert tracked["HNHPF"]["ranking_mode"] == "reference_only"
 
