@@ -1,16 +1,16 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "critical",
-  "status_label": "🔴 需要處理",
-  "checked_at": "2026-09-28T06:24:15+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-09-28T08:10:18+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-27 17:45:35",
-  "report_age_minutes": 758.7,
+  "report_updated_at": "2026-09-28 08:07:16",
+  "report_age_minutes": 3.0,
   "counts": {
-    "ok": 24,
+    "ok": 26,
     "info": 8,
     "warning": 0,
-    "critical": 1
+    "critical": 0
   },
   "checks": [
     {
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 335.0 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 337.0 MB；可壓縮 2 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -40,10 +40,18 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "critical",
-      "label": "異常",
-      "detail": "已 12.6 小時沒有完成新報表",
-      "action": "檢查 GitHub Actions、電腦排程及上游行情來源"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 3 分鐘",
+      "action": ""
+    },
+    {
+      "code": "report_delivery",
+      "title": "V6 通知派發",
+      "level": "ok",
+      "label": "正常",
+      "detail": "morning 報表已驗證並由 Telegram 送達",
+      "action": ""
     },
     {
       "code": "report_consistency",
@@ -82,7 +90,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 188、法人 188、信用 188（沿用最近完整收盤）",
+      "detail": "價格 188、法人 188、信用 185",
       "action": ""
     },
     {
@@ -122,7 +130,7 @@
       "title": "Tiingo 免費版覆蓋測試",
       "level": "info",
       "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "detail": "免費版分批收集中，目前已嘗試 94 檔；尚未切換半套快取",
       "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
@@ -154,7 +162,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 2900 筆錯誤列合併為 569 個事件；影子候選 5 組；完整學習治理 52/52 項，正式V6鎖定",
+      "detail": "已將 2900 筆錯誤列合併為 569 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -181,7 +189,7 @@
       "detail": "台美股共 29 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 29,
-      "ledger_updated_at": "2026-09-27 17:45:35"
+      "ledger_updated_at": "2026-09-28 08:07:16"
     },
     {
       "code": "unified_evidence",
@@ -277,13 +285,11 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
-  "action_required": [
-    "檢查 GitHub Actions、電腦排程及上游行情來源"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,
