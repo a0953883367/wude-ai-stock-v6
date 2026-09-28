@@ -1,5 +1,5 @@
 from notifier import _telegram_chunks, render_markdown
-from watchlist import load_watchlist
+from watchlist import load_market_watchlists, load_watchlist
 
 
 def test_watchlist_is_deduplicated_and_contains_core_symbols():
@@ -48,6 +48,37 @@ def test_user_requested_us_listings_and_screenshot_symbols_are_in_fixed_watchlis
     assert by_symbol["PATH"]["industry"] == "RPA軟體"
     assert by_symbol["GLW"]["theme"] == "光通訊／CPO"
     assert all(by_symbol[symbol]["market"] == "US" for symbol in screenshot_symbols | {"HNHPF"})
+
+
+def test_requested_growth_candidates_join_the_correct_market_pool_once():
+    pools = load_market_watchlists()
+    tw_symbols = [row["symbol"] for row in pools["TW"]]
+    us_symbols = [row["symbol"] for row in pools["US"]]
+
+    assert {"4576.TW", "6530.TWO", "6841.TWO"} <= set(tw_symbols)
+    assert {"TEM", "IONQ", "RXRX", "OKLO"} <= set(us_symbols)
+    assert len(tw_symbols) == len(set(tw_symbols))
+    assert len(us_symbols) == len(set(us_symbols))
+    assert set(tw_symbols).isdisjoint(us_symbols)
+
+
+def test_market_pool_metadata_keeps_normal_ranking_rules():
+    pools = load_market_watchlists()
+    by_symbol = {
+        row["symbol"]: row
+        for rows in pools.values()
+        for row in rows
+    }
+
+    assert by_symbol["6530.TWO"]["theme"] == "光通訊"
+    assert by_symbol["6841.TWO"]["theme"] == "AI醫療"
+    assert by_symbol["TEM"]["industry"] == "醫療數據與診斷"
+    assert by_symbol["IONQ"]["theme"] == "量子運算"
+    assert by_symbol["RXRX"]["theme"] == "AI製藥"
+    assert all(
+        "ranking_mode" not in by_symbol[symbol]
+        for symbol in ("4576.TW", "6530.TWO", "6841.TWO", "TEM", "IONQ", "RXRX", "OKLO")
+    )
 
 
 def test_mobile_report_has_no_raw_markdown_headings():
