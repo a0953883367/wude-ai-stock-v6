@@ -801,6 +801,18 @@ _POWER_AND_FRIEND_ADDITIONS = (
     ("SMR", "NuScale Power", "US", "先進核能", "小型核反應爐"),
 )
 
+# User-requested growth candidates.  They join the existing canonical market
+# pools and use the same ranking rules as every other security; this is not a
+# separate high-growth score or an automatic buy list.  Existing candidates
+# (4576.TW and OKLO) are already present above and must not be duplicated.
+_USER_REQUESTED_GROWTH_ADDITIONS = (
+    ("6530.TWO", "創威", "TW", "光通訊", "光通訊元件"),
+    ("6841.TWO", "長佳智能", "TW", "AI醫療", "醫療資訊軟體"),
+    ("TEM", "Tempus AI", "US", "AI醫療", "醫療數據與診斷"),
+    ("IONQ", "IonQ", "US", "量子運算", "量子運算"),
+    ("RXRX", "Recursion Pharmaceuticals", "US", "AI製藥", "生技製藥"),
+)
+
 _BASE_WATCHLIST_COUNT = len(WATCHLIST)
 WATCHLIST.extend(
     {
@@ -814,6 +826,21 @@ WATCHLIST.extend(
     }
     for offset, (symbol, name, market, theme, industry)
     in enumerate(_POWER_AND_FRIEND_ADDITIONS, start=1)
+)
+
+_GROWTH_ADDITIONS_START = len(WATCHLIST)
+WATCHLIST.extend(
+    {
+        "symbol": symbol,
+        "name": name,
+        "market": market,
+        "type": "個股",
+        "theme": theme,
+        "industry": industry,
+        "order": _GROWTH_ADDITIONS_START + offset,
+    }
+    for offset, (symbol, name, market, theme, industry)
+    in enumerate(_USER_REQUESTED_GROWTH_ADDITIONS, start=1)
 )
 
 # HNHPF is an OTC foreign ordinary-share line for the same issuer represented
@@ -831,3 +858,17 @@ for _watchlist_row in WATCHLIST:
 def load_watchlist() -> list[dict[str, Any]]:
     """Return a defensive copy so scoring can safely add derived fields."""
     return [dict(item) for item in WATCHLIST]
+
+
+def load_market_watchlists() -> dict[str, list[dict[str, Any]]]:
+    """Return the canonical pool split into independent Taiwan/U.S. lists."""
+    pools: dict[str, list[dict[str, Any]]] = {"TW": [], "US": []}
+    seen: set[str] = set()
+    for item in WATCHLIST:
+        symbol = str(item["symbol"]).strip().upper()
+        market = str(item["market"]).strip().upper()
+        if market not in pools or symbol in seen:
+            continue
+        seen.add(symbol)
+        pools[market].append(dict(item))
+    return pools
