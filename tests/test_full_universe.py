@@ -1,7 +1,7 @@
 import json
 
 from config import SETTINGS
-from data_fetcher import load_search_universe, load_taiwan_universe
+from data_fetcher import load_analysis_universe, load_search_universe, load_taiwan_universe
 
 
 def test_search_universe_loads_all_maintained_markets():
@@ -25,3 +25,18 @@ def test_search_universe_loads_all_maintained_markets():
     assert "3718.TWO" in symbols
     assert "5371.TWO" not in symbols
     assert next(row for row in rows if row["symbol"] == "3718.TWO")["name"] == "中光電投控"
+
+
+
+def test_analysis_universe_automatically_includes_every_watchlist_addition():
+    search_symbols = {row["symbol"] for row in load_search_universe()}
+    rows = load_analysis_universe()
+    by_symbol = {row["symbol"]: row for row in rows}
+
+    # These user additions are intentionally absent from the broad catalogue;
+    # the canonical loader must still expose them to every formal feature.
+    assert {"6530.TWO", "6841.TWO", "TEM", "IONQ", "RXRX"} <= by_symbol.keys()
+    assert len(rows) == len(by_symbol)
+    assert len(rows) >= len(search_symbols)
+    assert by_symbol["6530.TWO"]["market"] == "TW"
+    assert by_symbol["TEM"]["market"] == "US"

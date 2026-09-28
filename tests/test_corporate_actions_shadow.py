@@ -40,14 +40,22 @@ def _source(name: str, records: list[dict], *, ok: bool = True) -> dict:
     return {"source": name, "ok": ok, "records": records, "error": "" if ok else "timeout"}
 
 
-def test_formal_combined_universe_covers_all_378_securities() -> None:
+def test_formal_combined_universe_covers_every_configured_security() -> None:
     search = json.loads(Path("search_data.json").read_text(encoding="utf-8"))
     combined = _combined_active_payload(search, load_watchlist())
     tracked = _tracked_securities(combined)
 
-    assert len(tracked) == 378
-    assert sum(row["asset_type"] == "STOCK" for row in tracked.values()) == 310
-    assert sum(row["asset_type"] == "ETF" for row in tracked.values()) == 68
+    expected = {
+        row["symbol"]: row
+        for row in load_watchlist()
+    }
+    expected.update({
+        str(row["代號"]).strip().upper(): row
+        for row in search.get("data", [])
+        if str(row.get("代號") or "").strip()
+    })
+
+    assert set(expected) <= set(tracked)
     assert {
         "2327.TW", "HUBB", "0050.TW", "VOO",
         "4576.TW", "6530.TWO", "6841.TWO", "TEM", "IONQ", "RXRX", "OKLO",

@@ -187,6 +187,29 @@ def load_taiwan_universe(path: Path = SETTINGS.search_data_path) -> list[dict[st
     return [row for row in load_search_universe(path) if row.get("market") == "TW"]
 
 
+def load_analysis_universe(path: Path = SETTINGS.search_data_path) -> list[dict[str, Any]]:
+    """Return the one canonical universe consumed by every formal feature.
+
+    ``search_data.json`` remains the broad maintained market catalogue while
+    ``watchlist.py`` is the user's explicit stock-pool entry point.  A symbol
+    added to the watchlist must therefore enter the same formal universe used
+    by rankings, decisions, shadows, historical validation and monitors.  The
+    watchlist metadata wins when a symbol exists in both sources.
+    """
+    from watchlist import load_watchlist
+
+    combined = {
+        str(row["symbol"]).strip().upper(): dict(row)
+        for row in load_search_universe(path)
+        if str(row.get("symbol") or "").strip()
+    }
+    for row in load_watchlist():
+        symbol = str(row.get("symbol") or "").strip().upper()
+        if symbol:
+            combined[symbol] = {**row, "symbol": symbol}
+    return list(combined.values())
+
+
 def _chunks(items: list[str], size: int) -> Iterable[list[str]]:
     for start in range(0, len(items), size):
         yield items[start : start + size]

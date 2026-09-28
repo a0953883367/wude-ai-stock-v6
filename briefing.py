@@ -27,6 +27,7 @@ from data_fetcher import (
     fetch_institutional_flows,
     fetch_us_short_volume,
     fetch_us_company_metadata,
+    load_analysis_universe,
     load_search_universe,
 )
 from macro_regime import update_macro_regime
@@ -1195,10 +1196,8 @@ def main() -> int:
     search_universe = load_search_universe()
     watchlist = load_watchlist()
 
-    combined = {item["symbol"]: item for item in search_universe}
-    combined.update({item["symbol"]: item for item in watchlist})
-    universe = list(combined.values())
-    symbols = list(combined)
+    universe = load_analysis_universe()
+    symbols = [item["symbol"] for item in universe]
     previous_rows = _previous_rows()
     for symbol, forecast in load_frozen_forecasts(
         SETTINGS.reports_dir, market="TW"

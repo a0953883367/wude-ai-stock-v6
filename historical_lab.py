@@ -643,14 +643,11 @@ def main() -> int:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    from data_fetcher import load_search_universe
-    from watchlist import load_watchlist
+    from data_fetcher import load_analysis_universe
 
-    # Match briefing.py exactly: the official candidate source is the union of
-    # search_data.json and the fixed watchlist, with watchlist metadata winning.
-    combined = {str(row["symbol"]): row for row in load_search_universe()}
-    combined.update({str(row["symbol"]): row for row in load_watchlist()})
-    universe = list(combined.values())
+    # Reuse the exact same canonical universe as the formal briefing.  This
+    # prevents a newly added stock-pool symbol from being absent here.
+    universe = load_analysis_universe()
     # Download the complete maintained list.  Stocks and ETFs are ranked in
     # separate groups so an ETF can never displace an individual stock.
     symbols = [str(row["symbol"]) for row in universe]
