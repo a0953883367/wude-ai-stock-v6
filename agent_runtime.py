@@ -22,7 +22,7 @@ from context_efficiency import build_efficiency_report
 from presentation_delivery import verify_presentation_delivery
 
 
-RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V2"
+RUNTIME_VERSION = "CENTRAL-AGENT-RUNTIME-V3"
 
 BOOTSTRAP_TASKS = (
     ("stock_shadow", "shadow_validate", "檢查股票影子驗證工作區"),
@@ -51,6 +51,113 @@ def _read_json(path: Path) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
     except (OSError, ValueError, TypeError):
         return {}
+
+
+def _stock_shadow_work(root: Path) -> dict[str, Any]:
+    reports = root / "reports"
+    validation = _read_json(reports / "validation_60d.json")
+    learning = _read_json(reports / "model_learning.json")
+    guard = _read_json(reports / "system_guard.json")
+    required = {
+        "validation_60d.json": bool(validation),
+        "model_learning.json": bool(learning),
+        "system_guard.json": bool(guard),
+    }
+    if not all(required.values()):
+        missing = [name for name, exists in required.items() if not exists]
+        return {
+            "status": "attention",
+            "status_label": "巡檢失敗；缺少影子證據",
+            "summary": "缺少必要報表，未把影子工作誤判為完成。",
+            "evidence": {"checked_files": required, "missing_files": missing},
+            "next_action": "等待既有股票報表流程補齊證據後再次巡檢。",
+        }
+    progress = validation.get("trading_days_collected", 0)
+    target = validation.get("target_trading_days", 60)
+    error_learning = learning.get("error_learning") or {}
+    guard_status = guard.get("status") or "unknown"
+    safe = guard_status in {"ok", "warning"}
+    return {
+        "status": "completed" if safe else "attention",
+        "status_label": "已實際核對影子進度與安全鎖" if safe else "影子巡檢發現異常",
+        "summary": f"已讀取三份實際證據：向前驗證 {progress}/{target} 日、錯誤事件 {error_learning.get('independent_events', 0)} 筆、值班員 {guard_status}。",
+        "evidence": {
+            "checked_files": required,
+            "validation_days": progress,
+            "target_days": target,
+            "eligible_samples": validation.get("eligible_samples", 0),
+            "independent_error_events": error_learning.get("independent_events", 0),
+            "guard_status": guard_status,
+            "formal_v6_locked": not bool((validation.get("rules") or {}).get("automatic_weight_changes", True)),
+            "automatic_orders_blocked": not bool((validation.get("rules") or {}).get("automatic_orders", True)),
+        },
+        "next_action": "持續累積真實交易日；只做影子驗證，不改正式排名、權重或下單。",
+    }
+
+
+def _wt_work(root: Path) -> dict[str, Any]:
+    workspace = root / "agent_workspaces" / "wt_fasteners"
+    spec = _read_json(workspace / "商品資料輸入規格.json")
+    workbook = workspace / str(spec.get("workbook") or "WT商品與毛利輸入表.xlsx")
+    required = list(spec.get("required_inputs") or [])
+    return {
+        "status": "waiting_input",
+        "status_label": "已檢查表格；等待真實成本",
+        "summary": f"商品骨架與試算檔已存在；{len(required)} 項必要成本尚未提供，因此沒有捏造毛利。",
+        "evidence": {
+            "spec_found": bool(spec),
+            "workbook_found": workbook.is_file(),
+            "required_input_count": len(required),
+            "missing_inputs": required,
+            "profit_calculated": False,
+        },
+        "next_action": "填入售價、螺絲、包材、人工、運費、平台與廣告成本後自動重算。",
+    }
+
+
+def _packaging_work(root: Path) -> dict[str, Any]:
+    workspace = root / "agent_workspaces" / "packaging_startup"
+    inputs = _read_json(workspace / "包裝創業試算輸入.json")
+    known = inputs.get("known_inputs") or {}
+    missing = list(inputs.get("missing_inputs") or [])
+    workbook = workspace / str(inputs.get("workbook") or "包裝創業產能與損益試算.xlsx")
+    per_minute = float(known.get("每分鐘桶數") or 0)
+    hours = float(known.get("每日工時") or 0)
+    utilization = float(known.get("稼動率") or 0)
+    workdays = float(known.get("每月工作日") or 0)
+    unit_revenue = float(known.get("每桶加工收入") or 0)
+    daily_design = per_minute * 60 * hours
+    daily_effective = daily_design * utilization
+    monthly_capacity = daily_effective * workdays
+    monthly_revenue_ceiling = monthly_capacity * unit_revenue
+    return {
+        "status": "waiting_input" if missing else "completed",
+        "status_label": "已完成產能試算；等待成本" if missing else "產能與損益試算完成",
+        "summary": f"依現有輸入實算月有效產能 {monthly_capacity:,.0f} 桶、滿載加工收入上限 {monthly_revenue_ceiling:,.0f} 元；缺 {len(missing)} 項資料，暫不顯示獲利。",
+        "evidence": {
+            "input_file_found": bool(inputs),
+            "workbook_found": workbook.is_file(),
+            "known_input_count": len(known),
+            "missing_input_count": len(missing),
+            "missing_inputs": missing,
+            "daily_design_capacity": round(daily_design, 2),
+            "daily_effective_capacity": round(daily_effective, 2),
+            "monthly_effective_capacity": round(monthly_capacity, 2),
+            "monthly_revenue_ceiling": round(monthly_revenue_ceiling, 2),
+            "profit_calculated": not bool(missing),
+        },
+        "next_action": "補齊重量、人事、水電、包材、設備報價與訂單上限後才計算損益與回收期。",
+    }
+
+
+def _perform_actual_work(agent_id: str, action: str, root: Path) -> dict[str, Any] | None:
+    if agent_id == "stock_shadow" and action == "shadow_validate":
+        return _stock_shadow_work(root)
+    if agent_id == "wt_fasteners" and action == "simulate_workflow":
+        return _wt_work(root)
+    if agent_id == "packaging_startup" and action == "simulate_workflow":
+        return _packaging_work(root)
+    return None
 
 
 def execute_safe_task(
@@ -147,11 +254,17 @@ def execute_safe_task(
                     summary="報告已保留草稿狀態；完成來源、數字、跨頁及渲染檢查後才可交付。",
                 )
             return result
-        result.update(
-            status="completed",
-            status_label="安全驗收通過",
-            summary="獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。",
-        )
+        work = _perform_actual_work(agent_id, action, root)
+        if work:
+            result.update(work)
+            result["actual_work_performed"] = True
+        else:
+            result.update(
+                status="completed",
+                status_label="安全驗收通過",
+                summary="獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。",
+                actual_work_performed=False,
+            )
     else:
         capabilities = build_capability_plan(title, action, explicit_agent=agent_id, root=root)
         result["capability_plan"] = {
@@ -182,6 +295,8 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
         for agent_id, action, title in BOUNDARY_CHECKS
     ]
     completed = sum(task["status"] == "completed" for task in validations)
+    waiting_input = sum(task["status"] == "waiting_input" for task in validations)
+    actual_work = sum(bool(task.get("actual_work_performed")) for task in validations)
     protected = sum(task["status"] == "waiting_for_approval" for task in gates)
     governance = audit_catalog(root=Path("."))
     efficiency = build_efficiency_report(root=Path("."))
@@ -189,13 +304,15 @@ def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
         "schema": "wude.central_agent_runtime.v1",
         "version": RUNTIME_VERSION,
         "generated_at": generated_at,
-        "status": "passed" if completed == len(validations) and protected == len(gates) else "attention",
-        "status_label": "三個 Agent 安全驗收通過" if completed == len(validations) and protected == len(gates) else "Agent 驗收需要注意",
+        "status": "active" if actual_work == len(validations) and protected == len(gates) else "attention",
+        "status_label": f"三個 Agent 已實際工作；{waiting_input} 項等待輸入" if actual_work == len(validations) and protected == len(gates) else "Agent 執行需要注意",
         "control_version": control.get("version") or "尚無控制層紀錄",
         "summary": {
             "agent_count": len(AGENTS),
             "validation_completed": completed,
             "validation_total": len(validations),
+            "actual_work_performed": actual_work,
+            "waiting_input": waiting_input,
             "approval_gates_protected": protected,
             "approval_gates_total": len(gates),
             "external_calls": 0,

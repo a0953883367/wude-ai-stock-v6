@@ -3,7 +3,8 @@ name: 中央 Agent 安全控制層
 on:
   workflow_dispatch:
   schedule:
-    # 台灣每日 20:35，在晚報排程後更新狀態；不呼叫付費模型。
+    # 台灣每日 08:20、12:20、20:35，在既有報表後實際巡檢；不呼叫付費模型。
+    - cron: "20 0,4 * * *"
     - cron: "35 12 * * *"
   push:
     branches: [main]
@@ -11,6 +12,8 @@ on:
       - ".github/workflows/agent-control.yml"
       - "agent_control.py"
       - "agent_runtime.py"
+      - "agent_workspaces/wt_fasteners/**"
+      - "agent_workspaces/packaging_startup/**"
       - "reports/model_learning.json"
       - "reports/validation_60d.json"
       - "reports/weekly_shadow_coach.json"

@@ -1,14 +1,16 @@
 {
   "schema": "wude.central_agent_runtime.v1",
-  "version": "CENTRAL-AGENT-RUNTIME-V2",
-  "generated_at": "2026-09-27T17:15:04+00:00",
-  "status": "passed",
-  "status_label": "三個 Agent 安全驗收通過",
+  "version": "CENTRAL-AGENT-RUNTIME-V3",
+  "generated_at": "2026-09-28T02:05:53+00:00",
+  "status": "active",
+  "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
   "summary": {
     "agent_count": 3,
-    "validation_completed": 3,
+    "validation_completed": 1,
     "validation_total": 3,
+    "actual_work_performed": 3,
+    "waiting_input": 2,
     "approval_gates_protected": 3,
     "approval_gates_total": 3,
     "external_calls": 0,
@@ -31,7 +33,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 109565,
+        "bytes": 196900,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -51,8 +53,24 @@
         "cross_domain_tools": false
       },
       "status": "completed",
-      "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
+      "status_label": "已實際核對影子進度與安全鎖",
+      "summary": "已讀取三份實際證據：向前驗證 26/60 日、錯誤事件 569 筆、值班員 ok。",
+      "evidence": {
+        "checked_files": {
+          "validation_60d.json": true,
+          "model_learning.json": true,
+          "system_guard.json": true
+        },
+        "validation_days": 26,
+        "target_days": 60,
+        "eligible_samples": 1333,
+        "independent_error_events": 569,
+        "guard_status": "ok",
+        "formal_v6_locked": true,
+        "automatic_orders_blocked": true
+      },
+      "next_action": "持續累積真實交易日；只做影子驗證，不改正式排名、權重或下單。",
+      "actual_work_performed": true
     },
     {
       "agent_id": "wt_fasteners",
@@ -87,9 +105,25 @@
         "executor_loaded": true,
         "cross_domain_tools": false
       },
-      "status": "completed",
-      "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
+      "status": "waiting_input",
+      "status_label": "已檢查表格；等待真實成本",
+      "summary": "商品骨架與試算檔已存在；6 項必要成本尚未提供，因此沒有捏造毛利。",
+      "evidence": {
+        "spec_found": true,
+        "workbook_found": true,
+        "required_input_count": 6,
+        "missing_inputs": [
+          "螺絲成本",
+          "包材成本",
+          "人工成本",
+          "國際運費",
+          "平台費率",
+          "廣告費率"
+        ],
+        "profit_calculated": false
+      },
+      "next_action": "填入售價、螺絲、包材、人工、運費、平台與廣告成本後自動重算。",
+      "actual_work_performed": true
     },
     {
       "agent_id": "packaging_startup",
@@ -124,9 +158,30 @@
         "executor_loaded": true,
         "cross_domain_tools": false
       },
-      "status": "completed",
-      "status_label": "安全驗收通過",
-      "summary": "獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。"
+      "status": "waiting_input",
+      "status_label": "已完成產能試算；等待成本",
+      "summary": "依現有輸入實算月有效產能 29,568 桶、滿載加工收入上限 32,525 元；缺 6 項資料，暫不顯示獲利。",
+      "evidence": {
+        "input_file_found": true,
+        "workbook_found": true,
+        "known_input_count": 7,
+        "missing_input_count": 6,
+        "missing_inputs": [
+          "每桶平均重量",
+          "每人月薪與雇主成本",
+          "每月水電",
+          "每桶包材",
+          "設備總價",
+          "每月訂單上限"
+        ],
+        "daily_design_capacity": 1920.0,
+        "daily_effective_capacity": 1344.0,
+        "monthly_effective_capacity": 29568.0,
+        "monthly_revenue_ceiling": 32524.8,
+        "profit_calculated": false
+      },
+      "next_action": "補齊重量、人事、水電、包材、設備報價與訂單上限後才計算損益與回收期。",
+      "actual_work_performed": true
     }
   ],
   "approval_gate_checks": [
@@ -200,7 +255,7 @@
   "context_governance": {
     "status": "passed",
     "status_label": "五層資料清冊驗收通過",
-    "classified_files": 42,
+    "classified_files": 43,
     "cross_domain_conflicts": 0,
     "cross_layer_conflicts": 0,
     "dynamic_loading": true,
@@ -208,7 +263,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.38,
+    "average_reduction_pct": 36.35,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,

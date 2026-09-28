@@ -7,10 +7,12 @@ from agent_runtime import BOOTSTRAP_TASKS, build_runtime_report, execute_safe_ta
 
 
 def test_all_three_agents_execute_one_safe_validation(tmp_path: Path):
-    report = build_runtime_report(tmp_path)
-    assert report["status"] == "passed"
+    report = build_runtime_report(Path("."))
+    assert report["status"] == "active"
     assert report["summary"]["agent_count"] == 3
-    assert report["summary"]["validation_completed"] == 3
+    assert report["summary"]["actual_work_performed"] == 3
+    assert report["summary"]["validation_completed"] == 1
+    assert report["summary"]["waiting_input"] == 2
     assert report["summary"]["approval_gates_protected"] == 3
     assert len(report["validations"]) == len(BOOTSTRAP_TASKS)
     assert len({row["namespace"] for row in report["validations"]}) == 3
@@ -30,7 +32,7 @@ def test_runtime_never_persists_payload_content():
         {"customer_price": secret},
         UsageLedger(),
     )
-    assert row["status"] == "completed"
+    assert row["status"] == "waiting_input"
     assert row["payload_stored"] is False
     assert secret not in json.dumps(row, ensure_ascii=False)
 
@@ -39,7 +41,7 @@ def test_duplicate_task_is_not_executed_twice():
     ledger = UsageLedger()
     first = execute_safe_task("wt_fasteners", "simulate_workflow", "測試", {"same": True}, ledger)
     second = execute_safe_task("wt_fasteners", "simulate_workflow", "測試", {"same": True}, ledger)
-    assert first["status"] == "completed"
+    assert first["status"] == "waiting_input"
     assert second["status"] == "duplicate"
 
 
@@ -59,6 +61,18 @@ def test_every_safe_task_gets_a_bounded_context_plan():
     assert row["context_plan"]["cross_domain_reads"] is False
     assert row["context_plan"]["files"] <= 12
     assert row["capability_plan"]["cross_domain_tools"] is False
+
+
+def test_actual_work_reports_evidence_instead_of_fake_completion():
+    stock = execute_safe_task("stock_shadow", "shadow_validate", "股票影子驗證", {"validation": True}, UsageLedger())
+    packaging = execute_safe_task("packaging_startup", "simulate_workflow", "包裝試算", {"validation": True}, UsageLedger())
+    assert stock["actual_work_performed"] is True
+    assert stock["evidence"]["validation_days"] > 0
+    assert stock["evidence"]["formal_v6_locked"] is True
+    assert packaging["actual_work_performed"] is True
+    assert packaging["status"] == "waiting_input"
+    assert packaging["evidence"]["monthly_effective_capacity"] == 29568
+    assert packaging["evidence"]["profit_calculated"] is False
 
 
 def test_report_without_artifact_evidence_stays_draft():

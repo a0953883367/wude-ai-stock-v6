@@ -37,9 +37,9 @@
   }
   function renderRuntime(report){
     var summary=report.summary||{},efficiency=report.context_efficiency||{},tasks=Array.isArray(report.validations)?report.validations:[];
-    document.getElementById('runtimeHeadline').textContent=(report.status_label||'等待驗收')+'｜安全任務 '+(summary.validation_completed||0)+'／'+(summary.validation_total||0)+'｜授權閘門 '+(summary.approval_gates_protected||0)+'／'+(summary.approval_gates_total||0)+' 已保護｜動態載入估計減少 '+esc(efficiency.average_reduction_pct||0)+'%｜付費模型呼叫 '+(summary.paid_model_calls||0)+' 次';
+    document.getElementById('runtimeHeadline').textContent=(report.status_label||'等待驗收')+'｜實際巡檢 '+(summary.actual_work_performed||0)+'／'+(summary.validation_total||0)+'｜等待輸入 '+(summary.waiting_input||0)+'｜授權閘門 '+(summary.approval_gates_protected||0)+'／'+(summary.approval_gates_total||0)+' 已保護｜動態載入估計減少 '+esc(efficiency.average_reduction_pct||0)+'%｜付費模型呼叫 '+(summary.paid_model_calls||0)+' 次';
     document.getElementById('runtimeUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
-    document.getElementById('runtimeTasks').innerHTML=tasks.map(function(task){return '<div class="runtime-task" data-runtime-agent="'+esc(task.agent_id)+'"><b>✅ '+esc(task.agent_name)+'</b><span>'+esc(task.title)+'：'+esc(task.status_label)+'</span></div>';}).join('')||'<div class="empty">尚無安全任務執行紀錄。</div>';
+    document.getElementById('runtimeTasks').innerHTML=tasks.map(function(task){var icon=task.status==='completed'?'✅':task.status==='waiting_input'?'⏳':'⚠️';return '<div class="runtime-task" data-runtime-agent="'+esc(task.agent_id)+'"><b>'+icon+' '+esc(task.agent_name)+'</b><span>'+esc(task.title)+'：'+esc(task.status_label)+'｜'+esc(task.summary)+'</span></div>';}).join('')||'<div class="empty">尚無安全任務執行紀錄。</div>';
   }
   function deliveryClass(status){return status==='ready_for_handoff'?'done':status==='in_progress'?'running':status==='waiting_approval'?'approval':'waiting';}
   function renderDeliveries(report){
