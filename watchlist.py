@@ -813,6 +813,51 @@ _USER_REQUESTED_GROWTH_ADDITIONS = (
     ("RXRX", "Recursion Pharmaceuticals", "US", "AI製藥", "生技製藥"),
 )
 
+
+# Forward-looking priority pool requested by the user.  Taiwan-listed and
+# U.S.-listed securities remain separate, and ETFs retain their own type so
+# the existing 10-day / 1-month / 3-month / 6-month rules can score the proper
+# cohort.  These are research candidates, not a pre-approved buy list.
+_FUTURE_PRIORITY_ADDITIONS = (
+    # Taiwan stocks: AI compute, servers, networking, cooling and ASICs.
+    ("2330.TW", "台積電", "TW", "個股", "AI晶片／先進製程", "半導體製造"),
+    ("6669.TW", "緯穎", "TW", "個股", "AI伺服器／雲端", "伺服器"),
+    ("2345.TW", "智邦", "TW", "個股", "AI資料中心網路", "網通設備"),
+    ("2382.TW", "廣達", "TW", "個股", "AI伺服器", "伺服器"),
+    ("3017.TW", "奇鋐", "TW", "個股", "AI散熱／液冷", "散熱模組"),
+    ("3443.TW", "創意", "TW", "個股", "ASIC／晶片設計服務", "IC設計服務"),
+    ("3661.TW", "世芯-KY", "TW", "個股", "AI／HPC客製化晶片", "IC設計服務"),
+    ("3533.TW", "嘉澤", "TW", "個股", "伺服器高速連接", "連接器"),
+    # United States stocks: AI platforms, infrastructure, security and space.
+    ("ANET", "Arista Networks", "US", "個股", "AI資料中心網路", "網路設備"),
+    ("MSFT", "Microsoft", "US", "個股", "雲端／生成式AI", "雲端軟體"),
+    ("GOOGL", "Alphabet", "US", "個股", "生成式AI／雲端／TPU", "網路與雲端服務"),
+    ("ASML", "ASML", "US", "個股", "EUV半導體設備", "半導體設備"),
+    ("KLAC", "KLA", "US", "個股", "晶圓檢測／良率", "半導體設備"),
+    ("PANW", "Palo Alto Networks", "US", "個股", "AI資安／雲端資安", "網路安全"),
+    ("PLTR", "Palantir", "US", "個股", "企業／政府AI", "資料分析軟體"),
+    ("RKLB", "Rocket Lab", "US", "個股", "太空／衛星", "航太／發射服務"),
+    # Taiwan-listed ETFs.  00892 is Taiwan semiconductor exposure; 00830 is
+    # the Taiwan-listed Philadelphia Semiconductor Index product.
+    ("00892.TW", "富邦台灣半導體", "TW", "ETF", "台灣半導體ETF", "半導體ETF"),
+    ("00830.TW", "國泰費城半導體", "TW", "ETF", "美國半導體ETF", "半導體ETF"),
+    ("006208.TW", "富邦台50", "TW", "ETF", "台灣大型股ETF", "大盤ETF"),
+    ("0052.TW", "富邦科技", "TW", "ETF", "台灣科技ETF", "科技ETF"),
+    ("00662.TW", "富邦NASDAQ", "TW", "ETF", "美國科技ETF", "科技ETF"),
+    ("00952.TW", "凱基台灣AI50", "TW", "ETF", "台灣AI ETF", "AI ETF"),
+    ("00935.TW", "野村臺灣新科技50", "TW", "ETF", "台灣科技ETF", "科技ETF"),
+    ("00891.TW", "中信關鍵半導體", "TW", "ETF", "台灣半導體ETF", "半導體ETF"),
+    # United States ETFs: semiconductors, broad tech and future industries.
+    ("SOXX", "iShares Semiconductor ETF", "US", "ETF", "半導體ETF", "半導體ETF"),
+    ("QQQM", "Invesco NASDAQ 100 ETF", "US", "ETF", "美國大型科技ETF", "科技ETF"),
+    ("CIBR", "First Trust Nasdaq Cybersecurity ETF", "US", "ETF", "資安ETF", "網路安全ETF"),
+    ("QTUM", "Defiance Quantum ETF", "US", "ETF", "量子運算ETF", "量子運算ETF"),
+    ("URA", "Global X Uranium ETF", "US", "ETF", "核能／鈾礦ETF", "核能ETF"),
+    ("ROBO", "ROBO Global Robotics and Automation ETF", "US", "ETF", "機器人ETF", "機器人ETF"),
+    ("ITA", "iShares U.S. Aerospace & Defense ETF", "US", "ETF", "航太國防ETF", "航太國防ETF"),
+    ("DTCR", "Global X Data Center & Digital Infrastructure ETF", "US", "ETF", "資料中心ETF", "數位基礎建設ETF"),
+)
+
 _BASE_WATCHLIST_COUNT = len(WATCHLIST)
 WATCHLIST.extend(
     {
@@ -841,6 +886,22 @@ WATCHLIST.extend(
     }
     for offset, (symbol, name, market, theme, industry)
     in enumerate(_USER_REQUESTED_GROWTH_ADDITIONS, start=1)
+)
+
+
+_FUTURE_PRIORITY_ADDITIONS_START = len(WATCHLIST)
+WATCHLIST.extend(
+    {
+        "symbol": symbol,
+        "name": name,
+        "market": market,
+        "type": security_type,
+        "theme": theme,
+        "industry": industry,
+        "order": _FUTURE_PRIORITY_ADDITIONS_START + offset,
+    }
+    for offset, (symbol, name, market, security_type, theme, industry)
+    in enumerate(_FUTURE_PRIORITY_ADDITIONS, start=1)
 )
 
 # HNHPF is an OTC foreign ordinary-share line for the same issuer represented

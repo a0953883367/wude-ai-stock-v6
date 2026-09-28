@@ -7,6 +7,7 @@ from tools.publish_friend_data import (
     sanitize_patterns,
     sanitize_rotation,
 )
+from tools.publication_rows import build_publication_rows
 
 
 def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
@@ -30,6 +31,27 @@ def test_friend_output_keeps_public_ranking_but_excludes_private_fields():
     assert result["timing"] == 64.0
     assert not ({"account", "inventory", "api_key", "certificate"} & result.keys())
     assert "industry_lifecycle" not in json.dumps(result, ensure_ascii=False)
+
+
+def test_friend_publication_includes_new_fixed_pool_candidate_safely(tmp_path):
+    source = {
+        "updated_at": "2026-09-28 20:00:00",
+        "data": [{"symbol": "2330.TW", "name": "台積電", "market": "TW"}],
+        "pending_candidates": [{
+            "symbol": "PANW", "name": "Palo Alto Networks", "market": "US",
+            "type": "個股", "theme": "AI資安／雲端資安", "industry": "網路安全",
+            "ranking_pending": True, "trade_guard_blocked": True,
+            "account": "owner-only", "api_key": "owner-only",
+        }],
+    }
+    rows = build_publication_rows(source, tmp_path)
+    friend = sanitize(next(row for row in rows if row["symbol"] == "PANW"))
+
+    assert friend["symbol"] == "PANW"
+    assert friend["theme"] == "AI資安／雲端資安"
+    assert friend["rankingPending"] is True
+    assert friend["trend"] == "資料累積中"
+    assert "owner-only" not in json.dumps(friend, ensure_ascii=False)
 
 
 def test_friend_pending_stock_is_neutral_and_has_no_rank():

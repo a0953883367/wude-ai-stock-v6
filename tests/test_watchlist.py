@@ -81,6 +81,35 @@ def test_market_pool_metadata_keeps_normal_ranking_rules():
     )
 
 
+def test_future_priority_stocks_and_etfs_join_owner_and_friend_source_pool():
+    pools = load_market_watchlists()
+    by_symbol = {
+        row["symbol"]: row
+        for rows in pools.values()
+        for row in rows
+    }
+    expected_tw_stocks = {
+        "2330.TW", "6669.TW", "2345.TW", "2382.TW", "3017.TW",
+        "3443.TW", "3661.TW", "3533.TW",
+    }
+    expected_us_stocks = {
+        "ANET", "MSFT", "GOOGL", "ASML", "KLAC", "PANW", "PLTR", "RKLB",
+    }
+    expected_tw_etfs = {
+        "00892.TW", "00830.TW", "006208.TW", "0052.TW", "00662.TW",
+        "00952.TW", "00935.TW", "00891.TW",
+    }
+    expected_us_etfs = {"SOXX", "QQQM", "CIBR", "QTUM", "URA", "ROBO", "ITA", "DTCR"}
+
+    assert expected_tw_stocks | expected_tw_etfs <= {row["symbol"] for row in pools["TW"]}
+    assert expected_us_stocks | expected_us_etfs <= {row["symbol"] for row in pools["US"]}
+    assert all(by_symbol[symbol]["type"] == "個股" for symbol in expected_tw_stocks | expected_us_stocks)
+    assert all(by_symbol[symbol]["type"] == "ETF" for symbol in expected_tw_etfs | expected_us_etfs)
+    assert by_symbol["00892.TW"]["name"] == "富邦台灣半導體"
+    assert by_symbol["00830.TW"]["name"] == "國泰費城半導體"
+    assert all("ranking_mode" not in by_symbol[symbol] for symbol in expected_tw_stocks | expected_us_stocks | expected_tw_etfs | expected_us_etfs)
+
+
 def test_mobile_report_has_no_raw_markdown_headings():
     row = {
         "symbol": "2327.TW", "name": "國巨", "market": "TW", "price": 100,
