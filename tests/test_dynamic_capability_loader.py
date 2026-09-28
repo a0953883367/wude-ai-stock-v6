@@ -6,6 +6,10 @@ def test_stock_shadow_loads_only_relevant_capabilities():
     assert "stock_shadow_analysis" in plan["skills"]
     assert "presentations" not in plan["skills"]
     assert {tool["name"] for tool in plan["tools"]} == {"context_plan", "shadow_validator", "evidence_check"}
+    assert {item["name"] for item in plan["connectors"]} == {
+        "github_reports", "railway_market_data", "google_drive_evidence", "openai_shadow_coach"
+    }
+    assert all(item["auto_connect"] for item in plan["connectors"])
 
 
 def test_draft_report_loads_presentation_pipeline():
@@ -20,6 +24,7 @@ def test_blocked_action_never_loads_executor():
     assert plan["executor_loaded"] is False
     assert plan["skills"] == []
     assert plan["tools"] == []
+    assert plan["connectors"] == []
 
 
 def test_capability_limits_are_enforced():

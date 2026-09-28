@@ -12,6 +12,8 @@ on:
       - ".github/workflows/agent-control.yml"
       - "agent_control.py"
       - "agent_runtime.py"
+      - "dynamic_capability_loader.py"
+      - "agent_workspaces/capability_catalog.json"
       - "agent_workspaces/wt_fasteners/**"
       - "agent_workspaces/packaging_startup/**"
       - "reports/model_learning.json"
@@ -38,7 +40,13 @@ jobs:
         with:
           python-version: "3.12"
       - name: 安裝測試工具
-        run: python -m pip install pytest
+        run: python -m pip install pytest requests
+      - name: 自動讀取已授權的 Agent 輸入來源
+        env:
+          GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+        run: python tools/google_drive_agent_inputs.py
       - name: 建立控制層狀態
         run: |
           python agent_control.py --reports-dir reports
@@ -49,13 +57,13 @@ jobs:
       - name: 保存最新狀態
         if: github.event_name != 'pull_request'
         run: |
-          if git diff --quiet -- reports/agent_control.json reports/agent_runtime.json reports/agent_tasks.json; then
+          if git diff --quiet -- reports/agent_control.json reports/agent_runtime.json reports/agent_tasks.json reports/agent_input_connectors.json; then
             echo "控制層狀態沒有變更"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/agent_control.json reports/agent_runtime.json reports/agent_tasks.json
+          git add reports/agent_control.json reports/agent_runtime.json reports/agent_tasks.json reports/agent_input_connectors.json
           git commit -m "chore: 更新中央 Agent 控制狀態"
           git pull --rebase origin main
           git push origin HEAD:main

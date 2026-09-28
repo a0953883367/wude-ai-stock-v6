@@ -70,6 +70,20 @@ def build_capability_plan(
         selected_tools.append({"name": name, "schema": definition.get("schema") or {}})
         schema_bytes += len(encoded)
 
+    available_connectors = catalog.get("connectors") or {}
+    selected_connectors: list[dict[str, Any]] = []
+    for name in route.get("connectors") or []:
+        definition = available_connectors.get(name) or {}
+        domains = definition.get("domains") or []
+        if name not in available_connectors or ("*" not in domains and agent.namespace not in domains):
+            continue
+        selected_connectors.append({
+            "name": name,
+            "label": definition.get("label") or name,
+            "access": definition.get("access") or "read_only",
+            "auto_connect": definition.get("auto_connect") is True,
+        })
+
     return {
         "schema": "wude.capability_plan.v1",
         "agent_id": agent.agent_id,
@@ -77,10 +91,12 @@ def build_capability_plan(
         "action": action,
         "skills": selected_skills,
         "tools": selected_tools,
+        "connectors": selected_connectors,
         "limits": {"max_skills": skill_limit, "max_tools": tool_limit, "max_schema_bytes": byte_limit},
         "usage": {
             "skills": len(selected_skills),
             "tools": len(selected_tools),
+            "connectors": len(selected_connectors),
             "schema_bytes": schema_bytes,
             "omitted_skills": omitted_skills,
             "omitted_tools": omitted_tools,

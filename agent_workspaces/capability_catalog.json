@@ -21,11 +21,17 @@
     "shadow_validator": {"schema": {"type": "object", "required": ["market"], "properties": {"market": {"enum": ["TW", "US"]}, "horizon": {"type": "integer"}}}},
     "workflow_simulator": {"schema": {"type": "object", "required": ["scenario"], "properties": {"scenario": {"type": "string"}, "dry_run": {"const": true}}}}
   },
+  "connectors": {
+    "github_reports": {"label": "GitHub 報表與工作流程", "domains": ["stock_shadow", "wt_fasteners", "packaging_startup"], "access": "read_only", "auto_connect": true},
+    "railway_market_data": {"label": "Railway 台美行情安全中繼", "domains": ["stock_shadow"], "access": "read_only", "auto_connect": true},
+    "google_drive_evidence": {"label": "Google Drive 證據與輸入資料夾", "domains": ["stock_shadow", "wt_fasteners", "packaging_startup"], "access": "read_only", "auto_connect": true},
+    "openai_shadow_coach": {"label": "OpenAI 影子教導", "domains": ["stock_shadow"], "access": "analysis_only", "auto_connect": true}
+  },
   "routes": {
-    "read_status": {"skills": ["context_governance"], "tools": ["context_plan"]},
+    "read_status": {"skills": ["context_governance"], "tools": ["context_plan"], "connectors": ["github_reports"]},
     "analyze": {"skills": ["context_governance", "evidence_verification"], "tools": ["context_plan", "evidence_check"]},
-    "shadow_validate": {"skills": ["context_governance", "stock_shadow_analysis", "evidence_verification"], "tools": ["context_plan", "shadow_validator", "evidence_check"]},
+    "shadow_validate": {"skills": ["context_governance", "stock_shadow_analysis", "evidence_verification"], "tools": ["context_plan", "shadow_validator", "evidence_check"], "connectors": ["github_reports", "railway_market_data", "google_drive_evidence", "openai_shadow_coach"]},
     "draft_report": {"skills": ["context_governance", "presentations", "evidence_verification"], "tools": ["context_plan", "presentation_pipeline", "evidence_check"]},
-    "simulate_workflow": {"skills": ["context_governance", "workflow_simulation"], "tools": ["context_plan", "workflow_simulator"]}
+    "simulate_workflow": {"skills": ["context_governance", "workflow_simulation"], "tools": ["context_plan", "workflow_simulator"], "connectors": ["github_reports", "google_drive_evidence"]}
   }
 }

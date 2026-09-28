@@ -69,10 +69,36 @@ def test_actual_work_reports_evidence_instead_of_fake_completion():
     assert stock["actual_work_performed"] is True
     assert stock["evidence"]["validation_days"] > 0
     assert stock["evidence"]["formal_v6_locked"] is True
+    assert stock["evidence"]["self_learning_enabled"] is True
+    assert stock["evidence"]["matured_learning_rows"] > 0
+    assert "railway_market_data" in stock["capability_plan"]["auto_connectors"]
     assert packaging["actual_work_performed"] is True
     assert packaging["status"] == "waiting_input"
     assert packaging["evidence"]["monthly_effective_capacity"] == 29568
     assert packaging["evidence"]["profit_calculated"] is False
+
+
+def test_private_connector_inputs_are_consumed_without_being_exposed(tmp_path: Path):
+    import shutil
+    shutil.copytree("agent_workspaces", tmp_path / "agent_workspaces")
+    private = tmp_path / ".agent_private_inputs"
+    private.mkdir()
+    secret_values = {
+        "known_inputs": {
+            "每桶平均重量": 12.5,
+            "每人月薪與雇主成本": 48000,
+            "每月水電": 20000,
+            "每桶包材": 0.5,
+            "設備總價": 200000,
+            "每月訂單上限": 10000,
+        }
+    }
+    (private / "packaging_startup.json").write_text(json.dumps(secret_values, ensure_ascii=False), encoding="utf-8")
+    row = execute_safe_task("packaging_startup", "simulate_workflow", "包裝試算", {}, UsageLedger(), root=tmp_path)
+    assert row["status"] == "completed"
+    assert row["evidence"]["private_connector_input_found"] is True
+    assert row["evidence"]["missing_input_count"] == 0
+    assert "48000" not in json.dumps(row, ensure_ascii=False)
 
 
 def test_report_without_artifact_evidence_stays_draft():

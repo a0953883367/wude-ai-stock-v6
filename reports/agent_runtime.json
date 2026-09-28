@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-09-28T02:08:16+00:00",
+  "generated_at": "2026-09-28T02:14:10+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -50,22 +50,65 @@
         ],
         "schema_bytes": 412,
         "executor_loaded": true,
-        "cross_domain_tools": false
+        "cross_domain_tools": false,
+        "connectors": [
+          {
+            "name": "github_reports",
+            "label": "GitHub 報表與工作流程",
+            "access": "read_only",
+            "auto_connect": true
+          },
+          {
+            "name": "railway_market_data",
+            "label": "Railway 台美行情安全中繼",
+            "access": "read_only",
+            "auto_connect": true
+          },
+          {
+            "name": "google_drive_evidence",
+            "label": "Google Drive 證據與輸入資料夾",
+            "access": "read_only",
+            "auto_connect": true
+          },
+          {
+            "name": "openai_shadow_coach",
+            "label": "OpenAI 影子教導",
+            "access": "analysis_only",
+            "auto_connect": true
+          }
+        ],
+        "auto_connectors": [
+          "github_reports",
+          "railway_market_data",
+          "google_drive_evidence",
+          "openai_shadow_coach"
+        ]
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取三份實際證據：向前驗證 26/60 日、錯誤事件 569 筆、值班員 ok。",
+      "summary": "已讀取影子證據：向前驗證 26/60 日、錯誤事件 569 筆、成熟學習 54132 筆；影子自動升退版已啟用。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
           "model_learning.json": true,
-          "system_guard.json": true
+          "system_guard.json": true,
+          "prediction_engine.json": true,
+          "model_unit_learning.json": true,
+          "weekly_shadow_coach.json": true
         },
         "validation_days": 26,
         "target_days": 60,
         "eligible_samples": 1333,
         "independent_error_events": 569,
         "guard_status": "ok",
+        "learning_units": 11,
+        "matured_learning_rows": 54132,
+        "active_shadow_trust_streams": 0,
+        "self_learning_enabled": true,
+        "automatic_shadow_promotion": true,
+        "automatic_shadow_rollback_after_failures": 2,
+        "weekly_coach_status": "ok",
+        "weekly_coach_mode": "openai",
         "formal_v6_locked": true,
         "automatic_orders_blocked": true
       },
@@ -103,15 +146,35 @@
         ],
         "schema_bytes": 246,
         "executor_loaded": true,
-        "cross_domain_tools": false
+        "cross_domain_tools": false,
+        "connectors": [
+          {
+            "name": "github_reports",
+            "label": "GitHub 報表與工作流程",
+            "access": "read_only",
+            "auto_connect": true
+          },
+          {
+            "name": "google_drive_evidence",
+            "label": "Google Drive 證據與輸入資料夾",
+            "access": "read_only",
+            "auto_connect": true
+          }
+        ],
+        "auto_connectors": [
+          "github_reports",
+          "google_drive_evidence"
+        ]
       },
       "status": "waiting_input",
-      "status_label": "已檢查表格；等待真實成本",
-      "summary": "商品骨架與試算檔已存在；6 項必要成本尚未提供，因此沒有捏造毛利。",
+      "status_label": "已自動搜尋；等待真實成本",
+      "summary": "已自動檢查工作區與授權輸入來源；仍缺 6 項必要成本，因此沒有捏造毛利。",
       "evidence": {
         "spec_found": true,
         "workbook_found": true,
         "required_input_count": 6,
+        "private_connector_input_found": false,
+        "resolved_input_count": 0,
         "missing_inputs": [
           "螺絲成本",
           "包材成本",
@@ -156,7 +219,25 @@
         ],
         "schema_bytes": 246,
         "executor_loaded": true,
-        "cross_domain_tools": false
+        "cross_domain_tools": false,
+        "connectors": [
+          {
+            "name": "github_reports",
+            "label": "GitHub 報表與工作流程",
+            "access": "read_only",
+            "auto_connect": true
+          },
+          {
+            "name": "google_drive_evidence",
+            "label": "Google Drive 證據與輸入資料夾",
+            "access": "read_only",
+            "auto_connect": true
+          }
+        ],
+        "auto_connectors": [
+          "github_reports",
+          "google_drive_evidence"
+        ]
       },
       "status": "waiting_input",
       "status_label": "已完成產能試算；等待成本",
@@ -164,6 +245,7 @@
       "evidence": {
         "input_file_found": true,
         "workbook_found": true,
+        "private_connector_input_found": false,
         "known_input_count": 7,
         "missing_input_count": 6,
         "missing_inputs": [
@@ -177,8 +259,11 @@
         "daily_design_capacity": 1920.0,
         "daily_effective_capacity": 1344.0,
         "monthly_effective_capacity": 29568.0,
+        "monthly_order_capacity": 29568.0,
         "monthly_revenue_ceiling": 32524.8,
-        "profit_calculated": false
+        "profit_calculated": false,
+        "monthly_profit": null,
+        "payback_months": null
       },
       "next_action": "補齊重量、人事、水電、包材、設備報價與訂單上限後才計算損益與回收期。",
       "actual_work_performed": true
@@ -199,7 +284,9 @@
         "tools": [],
         "schema_bytes": 0,
         "executor_loaded": false,
-        "cross_domain_tools": false
+        "cross_domain_tools": false,
+        "connectors": [],
+        "auto_connectors": []
       },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
@@ -219,7 +306,9 @@
         "tools": [],
         "schema_bytes": 0,
         "executor_loaded": false,
-        "cross_domain_tools": false
+        "cross_domain_tools": false,
+        "connectors": [],
+        "auto_connectors": []
       },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
@@ -239,7 +328,9 @@
         "tools": [],
         "schema_bytes": 0,
         "executor_loaded": false,
-        "cross_domain_tools": false
+        "cross_domain_tools": false,
+        "connectors": [],
+        "auto_connectors": []
       },
       "status": "waiting_for_approval",
       "status_label": "等待授權",

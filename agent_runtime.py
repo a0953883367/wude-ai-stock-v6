@@ -53,15 +53,26 @@ def _read_json(path: Path) -> dict[str, Any]:
         return {}
 
 
+def _private_inputs(root: Path, agent_id: str) -> dict[str, Any]:
+    """Read transient connector input; this directory is never committed."""
+    return _read_json(root / ".agent_private_inputs" / f"{agent_id}.json")
+
+
 def _stock_shadow_work(root: Path) -> dict[str, Any]:
     reports = root / "reports"
     validation = _read_json(reports / "validation_60d.json")
     learning = _read_json(reports / "model_learning.json")
     guard = _read_json(reports / "system_guard.json")
+    prediction = _read_json(reports / "prediction_engine.json")
+    unit_learning = _read_json(reports / "model_unit_learning.json")
+    coach = _read_json(reports / "weekly_shadow_coach.json")
     required = {
         "validation_60d.json": bool(validation),
         "model_learning.json": bool(learning),
         "system_guard.json": bool(guard),
+        "prediction_engine.json": bool(prediction),
+        "model_unit_learning.json": bool(unit_learning),
+        "weekly_shadow_coach.json": bool(coach),
     }
     if not all(required.values()):
         missing = [name for name, exists in required.items() if not exists]
@@ -76,11 +87,19 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
     target = validation.get("target_trading_days", 60)
     error_learning = learning.get("error_learning") or {}
     guard_status = guard.get("status") or "unknown"
+    unit_summary = unit_learning.get("summary") or {}
+    prediction_policy = prediction.get("policy") or {}
+    self_learning_safe = (
+        prediction_policy.get("controlled_shadow_auto_promotion") is True
+        and prediction_policy.get("formal_v6_auto_promotion") is False
+        and prediction_policy.get("automatic_orders") is False
+        and (unit_learning.get("policy") or {}).get("formal_v6_unchanged") is True
+    )
     safe = guard_status in {"ok", "warning"}
     return {
         "status": "completed" if safe else "attention",
         "status_label": "已實際核對影子進度與安全鎖" if safe else "影子巡檢發現異常",
-        "summary": f"已讀取三份實際證據：向前驗證 {progress}/{target} 日、錯誤事件 {error_learning.get('independent_events', 0)} 筆、值班員 {guard_status}。",
+        "summary": f"已讀取影子證據：向前驗證 {progress}/{target} 日、錯誤事件 {error_learning.get('independent_events', 0)} 筆、成熟學習 {unit_summary.get('matured_rows', 0)} 筆；影子自動升退版已啟用。",
         "evidence": {
             "checked_files": required,
             "validation_days": progress,
@@ -88,6 +107,14 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
             "eligible_samples": validation.get("eligible_samples", 0),
             "independent_error_events": error_learning.get("independent_events", 0),
             "guard_status": guard_status,
+            "learning_units": unit_summary.get("registered_units", 0),
+            "matured_learning_rows": unit_summary.get("matured_rows", 0),
+            "active_shadow_trust_streams": unit_summary.get("active_shadow_trust_streams", 0),
+            "self_learning_enabled": self_learning_safe,
+            "automatic_shadow_promotion": prediction_policy.get("controlled_shadow_auto_promotion") is True,
+            "automatic_shadow_rollback_after_failures": prediction_policy.get("automatic_shadow_rollback_after_failures", 0),
+            "weekly_coach_status": coach.get("status") or "unknown",
+            "weekly_coach_mode": coach.get("mode") or "unknown",
             "formal_v6_locked": not bool((validation.get("rules") or {}).get("automatic_weight_changes", True)),
             "automatic_orders_blocked": not bool((validation.get("rules") or {}).get("automatic_orders", True)),
         },
@@ -100,15 +127,20 @@ def _wt_work(root: Path) -> dict[str, Any]:
     spec = _read_json(workspace / "商品資料輸入規格.json")
     workbook = workspace / str(spec.get("workbook") or "WT商品與毛利輸入表.xlsx")
     required = list(spec.get("required_inputs") or [])
+    private = _private_inputs(root, "wt_fasteners")
+    supplied = private.get("known_inputs") if isinstance(private.get("known_inputs"), dict) else private
+    missing = [name for name in required if supplied.get(name) in (None, "")]
     return {
-        "status": "waiting_input",
-        "status_label": "已檢查表格；等待真實成本",
-        "summary": f"商品骨架與試算檔已存在；{len(required)} 項必要成本尚未提供，因此沒有捏造毛利。",
+        "status": "waiting_input" if missing else "completed",
+        "status_label": "已自動讀取成本來源" if not missing else "已自動搜尋；等待真實成本",
+        "summary": f"已自動檢查工作區與授權輸入來源；仍缺 {len(missing)} 項必要成本，因此沒有捏造毛利。",
         "evidence": {
             "spec_found": bool(spec),
             "workbook_found": workbook.is_file(),
             "required_input_count": len(required),
-            "missing_inputs": required,
+            "private_connector_input_found": bool(private),
+            "resolved_input_count": len(required) - len(missing),
+            "missing_inputs": missing,
             "profit_calculated": False,
         },
         "next_action": "填入售價、螺絲、包材、人工、運費、平台與廣告成本後自動重算。",
@@ -118,8 +150,11 @@ def _wt_work(root: Path) -> dict[str, Any]:
 def _packaging_work(root: Path) -> dict[str, Any]:
     workspace = root / "agent_workspaces" / "packaging_startup"
     inputs = _read_json(workspace / "包裝創業試算輸入.json")
-    known = inputs.get("known_inputs") or {}
-    missing = list(inputs.get("missing_inputs") or [])
+    known = dict(inputs.get("known_inputs") or {})
+    private = _private_inputs(root, "packaging_startup")
+    private_known = private.get("known_inputs") if isinstance(private.get("known_inputs"), dict) else private
+    known.update({key: value for key, value in private_known.items() if value not in (None, "")})
+    missing = [name for name in (inputs.get("missing_inputs") or []) if known.get(name) in (None, "")]
     workbook = workspace / str(inputs.get("workbook") or "包裝創業產能與損益試算.xlsx")
     per_minute = float(known.get("每分鐘桶數") or 0)
     hours = float(known.get("每日工時") or 0)
@@ -129,22 +164,46 @@ def _packaging_work(root: Path) -> dict[str, Any]:
     daily_design = per_minute * 60 * hours
     daily_effective = daily_design * utilization
     monthly_capacity = daily_effective * workdays
-    monthly_revenue_ceiling = monthly_capacity * unit_revenue
+    order_limit = float(known.get("每月訂單上限") or monthly_capacity)
+    monthly_orders = min(monthly_capacity, order_limit)
+    monthly_revenue_ceiling = monthly_orders * unit_revenue
+    profit = None
+    payback_months = None
+    if not missing:
+        total_cost = (
+            float(known.get("人數") or 0) * float(known.get("每人月薪與雇主成本") or 0)
+            + float(known.get("每月租金") or 0)
+            + float(known.get("每月水電") or 0)
+            + monthly_orders * float(known.get("每桶包材") or 0)
+        )
+        profit = monthly_revenue_ceiling - total_cost
+        equipment = float(known.get("設備總價") or 0)
+        payback_months = equipment / profit if profit > 0 else None
+    summary = (
+        f"依現有輸入實算月有效產能 {monthly_capacity:,.0f} 桶、月可接單 {monthly_orders:,.0f} 桶、"
+        f"加工收入 {monthly_revenue_ceiling:,.0f} 元；完整試算月損益 {profit:,.0f} 元。"
+        if profit is not None else
+        f"依現有輸入實算月有效產能 {monthly_capacity:,.0f} 桶、滿載加工收入上限 {monthly_revenue_ceiling:,.0f} 元；缺 {len(missing)} 項資料，暫不顯示獲利。"
+    )
     return {
         "status": "waiting_input" if missing else "completed",
         "status_label": "已完成產能試算；等待成本" if missing else "產能與損益試算完成",
-        "summary": f"依現有輸入實算月有效產能 {monthly_capacity:,.0f} 桶、滿載加工收入上限 {monthly_revenue_ceiling:,.0f} 元；缺 {len(missing)} 項資料，暫不顯示獲利。",
+        "summary": summary,
         "evidence": {
             "input_file_found": bool(inputs),
             "workbook_found": workbook.is_file(),
+            "private_connector_input_found": bool(private),
             "known_input_count": len(known),
             "missing_input_count": len(missing),
             "missing_inputs": missing,
             "daily_design_capacity": round(daily_design, 2),
             "daily_effective_capacity": round(daily_effective, 2),
             "monthly_effective_capacity": round(monthly_capacity, 2),
+            "monthly_order_capacity": round(monthly_orders, 2),
             "monthly_revenue_ceiling": round(monthly_revenue_ceiling, 2),
             "profit_calculated": not bool(missing),
+            "monthly_profit": round(profit, 2) if profit is not None else None,
+            "payback_months": round(payback_months, 2) if payback_months is not None else None,
         },
         "next_action": "補齊重量、人事、水電、包材、設備報價與訂單上限後才計算損益與回收期。",
     }
@@ -215,6 +274,11 @@ def execute_safe_task(
             "schema_bytes": capabilities["usage"]["schema_bytes"],
             "executor_loaded": capabilities["executor_loaded"],
             "cross_domain_tools": capabilities["cross_domain_tools"],
+            "connectors": capabilities.get("connectors") or [],
+            "auto_connectors": [
+                item["name"] for item in capabilities.get("connectors") or []
+                if item.get("auto_connect")
+            ],
         }
         if action == "draft_report":
             validation_spec = payload.get("artifact_validation") if isinstance(payload, Mapping) else None
@@ -273,6 +337,8 @@ def execute_safe_task(
             "schema_bytes": capabilities["usage"]["schema_bytes"],
             "executor_loaded": capabilities["executor_loaded"],
             "cross_domain_tools": capabilities["cross_domain_tools"],
+            "connectors": [],
+            "auto_connectors": [],
         }
         result.update(
             status=decision["decision"],
