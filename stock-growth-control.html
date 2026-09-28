@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="trend-arrow-apple-v2.png">
   <link rel="stylesheet" href="app_shell.css?v=1">
   <link rel="stylesheet" href="human_ui.css?v=1">
-  <title>股票成長控制塔</title>
+  <title>系統監控與影子驗證中心</title>
   <style>
     :root{--bg:#07111f;--panel:#0d1b2d;--line:#294c70;--text:#f4f8ff;--muted:#9db0c8;--green:#55e6a5;--blue:#38bdf8;--yellow:#f8ca65;--orange:#fb923c;--red:#fb7185}
     *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#102b48 0,#07111f 34%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif}
@@ -18,7 +18,8 @@
     .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:14px 0}.metric{padding:12px;border:1px solid var(--line);border-radius:16px;background:#0a1728}.metric span{display:block;color:var(--muted);font-size:11px}.metric b{display:block;margin-top:4px;font-size:19px}
     h2{margin:24px 3px 10px;font-size:21px}.section-note{margin:-5px 3px 11px;color:var(--muted);font-size:12px;line-height:1.6}.grid{display:grid;gap:10px}.card{padding:15px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#0d1d31,#091624)}.card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.card-title{font-weight:950}.badge{white-space:nowrap;border:1px solid currentColor;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900}.detail{margin-top:8px;color:#b8c9dc;font-size:12px;line-height:1.55}.progress{height:8px;margin-top:11px;overflow:hidden;border-radius:999px;background:#07101b}.progress i{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#55e6a5)}.stage-index{display:inline-grid;place-items:center;width:27px;height:27px;margin-right:7px;border-radius:50%;background:#143550;color:#7dd3fc;font-size:12px}.stage-card{position:relative}.stage-card:not(:last-child)::after{content:"";position:absolute;left:28px;bottom:-11px;width:2px;height:10px;background:#31597c}
     .actions .card{border-color:#725825;background:#251f11}.actions .urgent{border-color:#9f3347;background:#351822}.actions .owner{border-color:#9a5729;background:#382213}.empty{padding:24px;border:1px dashed var(--line);border-radius:18px;color:var(--muted);text-align:center}.safety{margin-top:18px;padding:15px;border:1px solid #28765e;border-radius:18px;background:#0a2c26;color:#c7f9e5;font-size:12px;line-height:1.65}.footer{margin:18px 3px;color:#8296af;font-size:11px;line-height:1.6}
-    @media(min-width:720px){.summary{grid-template-columns:repeat(4,1fr)}.layer-grid,.model-grid{grid-template-columns:repeat(2,1fr)}.workflow{grid-template-columns:repeat(2,1fr)}.stage-card:not(:last-child)::after{display:none}}
+    .shadow-grid{display:grid;grid-template-columns:1fr;gap:9px}.shadow-link{display:block;padding:14px;border:1px solid #3f4f67;border-radius:16px;background:#101b2d;color:#e7f1ff;text-decoration:none}.shadow-link b{display:block}.shadow-link span{display:block;margin-top:5px;color:#aebed2;font-size:11px;line-height:1.55}.shadow-link .shadow-tag{display:inline-block;margin:0 0 7px;padding:4px 7px;border:1px solid #9a772d;border-radius:999px;color:#f8ca65;font-size:10px;font-weight:900}.shadow-policy{margin-top:10px;padding:13px;border:1px solid #725825;border-radius:15px;background:#251f11;color:#fde68a;font-size:12px;line-height:1.65}
+    @media(min-width:720px){.summary{grid-template-columns:repeat(4,1fr)}.layer-grid,.model-grid,.shadow-grid{grid-template-columns:repeat(2,1fr)}.workflow{grid-template-columns:repeat(2,1fr)}.stage-card:not(:last-child)::after{display:none}}
   </style>
 </head>
 <body>
@@ -26,7 +27,7 @@
     <div class="top"><a href="index.html">← 股票總覽</a><button class="refresh" id="refresh">更新資料</button></div>
     <section class="hero">
       <div class="eyebrow">流程化成長，不靠臨時判斷</div>
-      <h1>股票成長控制塔</h1>
+      <h1>系統監控與影子驗證中心</h1>
       <p>每一份資料依序經過品質檢查、正式分析、影子驗證與人工畢業閘門；六層監控一起顯示，但互不混用權限。</p>
       <div class="overall"><span class="lamp blue" id="overallLamp"></span><b id="overallLabel">正在讀取</b><span id="updatedAt"></span></div>
     </section>
@@ -43,6 +44,18 @@
     <h2>模型成長位置</h2>
     <p class="section-note">20日只能初評，60日才進正式人工審查；126日持續追蹤長期穩定性。</p>
     <section class="grid model-grid" id="models"></section>
+
+    <h2>影子驗證中心</h2>
+    <p class="section-note">影子是正式決策旁邊的驗證層，只記錄事前答案與事後結果，不會直接成為可買訊號。</p>
+    <section class="shadow-grid" aria-label="影子驗證功能">
+      <a class="shadow-link" href="next-session-shadow.html"><span class="shadow-tag">影子｜不影響正式</span><b>🔭 明日方向驗證</b><span>固定收盤答案，追蹤下一交易日，不用當日結果回頭改預測。</span></a>
+      <a class="shadow-link" href="prediction-engine.html"><span class="shadow-tag">多週期分離</span><b>🧭 10日／1月／3月／半年</b><span>不同持有期間分開驗證，不把期間本身混成一個總分。</span></a>
+      <a class="shadow-link" href="chart-pattern-shadow.html"><span class="shadow-tag">影子｜1／3／5日</span><b>📐 K線型態驗證</b><span>當日凍結、隔日確認，追蹤命中、平均報酬與最大跌幅。</span></a>
+      <a class="shadow-link" href="inverse-etf-shadow.html"><span class="shadow-tag">獨立資料庫</span><b>↘️ 反向ETF驗證</b><span>不與一般股票及正向ETF混分，也不改正式候選名單。</span></a>
+      <a class="shadow-link" href="valuation-risk-shadow.html"><span class="shadow-tag">風險證據</span><b>🧮 估值風險驗證</b><span>檢查估值與追價風險，避免相同證據在排名中重複加權。</span></a>
+      <a class="shadow-link" href="agent-control.html"><span class="shadow-tag">安全控制</span><b>🤖 中央 Agent 權限</b><span>查看影子助理、任務路由與正式排名／自動下單安全鎖。</span></a>
+    </section>
+    <div class="shadow-policy"><b>影子升級規則：</b>未滿20日只累積；20日只能初評；滿60日才可交由人工審查；126日繼續檢查穩定性。任何階段都不會自動改正式 V6、權重、排名或送出交易。</div>
 
     <h2>目前要做的事</h2>
     <section class="grid actions" id="actions"></section>
