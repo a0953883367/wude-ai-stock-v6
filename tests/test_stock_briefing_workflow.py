@@ -97,6 +97,17 @@ def test_official_report_cannot_be_cancelled_by_a_later_request():
     assert "程式更新後安全刷新" not in text
 
 
+def test_report_publish_rebases_and_retries_when_another_guard_pushes():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    guard = (WORKFLOW.parent / "system-guard.yml").read_text(encoding="utf-8")
+
+    for workflow in (text, guard):
+        assert "for attempt in 1 2 3" in workflow
+        assert "git fetch origin main" in workflow
+        assert "git rebase -X theirs origin/main" in workflow
+        assert "git push origin HEAD:main" in workflow
+
+
 def test_history_archive_phase2_only_removes_verified_duplicate_source() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 

@@ -311,7 +311,16 @@ jobs:
           git add reports
           git diff --cached --quiet && exit 0
           git commit -m "${{ steps.period.outputs.commit_message }}"
-          git push
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase -X theirs origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "Report commit could not be published after 3 attempts." >&2
+          exit 1
       - name: Confirm private settlement for stale fixed report
         if: >-
           ${{ steps.generate.outcome == 'success' &&
