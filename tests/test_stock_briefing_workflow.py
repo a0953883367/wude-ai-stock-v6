@@ -36,6 +36,20 @@ def test_fixed_reports_are_prepared_early_and_delivered_only_after_verification(
     assert "--period \"${{ steps.period.outputs.value }}\"" in text
     assert "steps.verified_delivery.outcome != 'success'" in text
     assert "timeout-minutes: 60" in text
+    assert "Prevent duplicate or expired fixed report" in text
+    assert "--mode gate" in text
+    assert "inputs.recovery" in text
+
+
+def test_system_guard_can_dispatch_one_protected_recovery_run():
+    text = (WORKFLOW.parent / "system-guard.yml").read_text(encoding="utf-8")
+
+    assert "actions: write" in text
+    assert "briefing_watchdog.py" in text
+    assert "should_dispatch == 'true'" in text
+    assert "gh run list --workflow stock-briefing.yml" in text
+    assert "gh workflow run stock-briefing.yml" in text
+    assert "-f recovery=true" in text
 
 
 def test_stale_fixed_report_still_advances_private_ledgers_without_publication():

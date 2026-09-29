@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: system-guard
@@ -23,6 +24,26 @@ jobs:
           python-version: "3.12"
       - name: Install guard dependency
         run: python -m pip install "requests>=2.32,<3"
+      - name: Check whether a fixed briefing needs recovery
+        id: briefing_watchdog
+        run: >-
+          python briefing_watchdog.py
+          --mode watchdog
+          --github-output "$GITHUB_OUTPUT"
+      - name: Dispatch one protected recovery run
+        if: ${{ steps.briefing_watchdog.outputs.should_dispatch == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          active="$(gh run list --workflow stock-briefing.yml --limit 20 --json status --jq '[.[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length')"
+          if [ "$active" -gt 0 ]; then
+            echo "A briefing run is already active; recovery dispatch is not needed."
+            exit 0
+          fi
+          gh workflow run stock-briefing.yml \
+            -f period="${{ steps.briefing_watchdog.outputs.period }}" \
+            -f recovery=true
       - name: Inspect report health
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

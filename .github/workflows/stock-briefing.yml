@@ -30,6 +30,11 @@ on:
           - morning
           - noon
           - evening
+      recovery:
+        description: 值班員補跑（套用固定時段、防重與逾時保護）
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -43,7 +48,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prevent duplicate or expired fixed report
+        id: check
+        shell: bash
+        run: |
+          args=(--mode gate --schedule "${{ github.event.schedule }}" --github-output "$GITHUB_OUTPUT")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.recovery }}" = "true" ]; then
+            args+=(--recovery --period "${{ inputs.period }}")
+          fi
+          python briefing_watchdog.py "${args[@]}"
+
   briefing:
+    needs: gate
+    if: ${{ needs.gate.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     # The full 337-symbol universe can exceed 25 minutes when upstream market
     # or news providers respond slowly. Keep one atomic run instead of writing
@@ -88,6 +111,16 @@ jobs:
             period="${{ inputs.period }}"
             save_prediction="true"
             commit_message="更新 AI 股票${period}報"
+            if [ "${{ inputs.recovery }}" = "true" ]; then
+              no_telegram="true"
+              defer_delivery="true"
+              case "$period" in
+                morning) delivery_target="06:00" ;;
+                noon) delivery_target="12:00" ;;
+                evening) delivery_target="20:00" ;;
+              esac
+              commit_message="補跑 AI 股票${period}報"
+            fi
           else
             case "${{ github.event.schedule }}" in
               "45 21 * * *")
