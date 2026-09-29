@@ -348,24 +348,31 @@ def execute_safe_task(
     return result
 
 
-def build_runtime_report(reports_dir: Path) -> dict[str, Any]:
+def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict[str, Any]:
+    """Build the runtime report from an explicit repository root.
+
+    Keeping ``root`` explicit makes the safety checks reproducible: a CI run
+    must not change result merely because a generated report in the checkout
+    happens to contain a warning from an earlier monitoring run.
+    """
+    root = root or reports_dir.parent
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     control = _read_json(reports_dir / "agent_control.json")
     ledger = UsageLedger()
     validations = [
-        execute_safe_task(agent_id, action, title, {"validation": True}, ledger)
+        execute_safe_task(agent_id, action, title, {"validation": True}, ledger, root=root)
         for agent_id, action, title in BOOTSTRAP_TASKS
     ]
     gates = [
-        execute_safe_task(agent_id, action, title, {"validation": True}, ledger)
+        execute_safe_task(agent_id, action, title, {"validation": True}, ledger, root=root)
         for agent_id, action, title in BOUNDARY_CHECKS
     ]
     completed = sum(task["status"] == "completed" for task in validations)
     waiting_input = sum(task["status"] == "waiting_input" for task in validations)
     actual_work = sum(bool(task.get("actual_work_performed")) for task in validations)
     protected = sum(task["status"] == "waiting_for_approval" for task in gates)
-    governance = audit_catalog(root=Path("."))
-    efficiency = build_efficiency_report(root=Path("."))
+    governance = audit_catalog(root=root)
+    efficiency = build_efficiency_report(root=root)
     return {
         "schema": "wude.central_agent_runtime.v1",
         "version": RUNTIME_VERSION,
