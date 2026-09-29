@@ -9,7 +9,9 @@ def test_stock_briefing_keeps_reports_and_adds_silent_taiwan_close_settlement():
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert re.findall(r'- cron: "([^"]+)"', text) == [
+        "35 21 * * *",
         "45 21 * * *",
+        "55 21 * * *",
         "45 3 * * *",
         "15 9 * * 1-5",
         "30 11 * * *",
@@ -52,6 +54,9 @@ def test_system_guard_can_dispatch_one_protected_recovery_run():
     assert "gh run list --workflow stock-briefing.yml" in text
     assert "gh workflow run stock-briefing.yml" in text
     assert "-f recovery=true" in text
+    assert re.findall(r'- cron: "([^"]+)"', text) == [
+        "23 * * * *", "10,25,40,55 22 * * *",
+    ]
 
 
 def test_stale_fixed_report_still_advances_private_ledgers_without_publication():
