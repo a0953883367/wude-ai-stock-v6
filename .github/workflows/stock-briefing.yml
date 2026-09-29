@@ -12,9 +12,12 @@ on:
     # Code pushes must not start a competing refresh or replace a close
     # checkpoint. A newly merged change takes effect at the next fixed report,
     # or can be verified with an explicit workflow_dispatch run.
-    - cron: "0 22 * * *"
-    - cron: "0 4 * * *"
-    - cron: "0 9 * * 1-5"
+    # Prepare fixed reports away from the top of the UTC hour, where GitHub
+    # documents heavier schedule load. Verified delivery still occurs at the
+    # official Taipei time below.
+    - cron: "45 21 * * *"
+    - cron: "45 3 * * *"
+    - cron: "15 9 * * 1-5"
     - cron: "30 11 * * *"
   workflow_dispatch:
     inputs:
@@ -77,6 +80,7 @@ jobs:
           commit_message=""
           no_telegram="false"
           defer_delivery="false"
+          delivery_target=""
           save_prediction="false"
           taiwan_hour="$(TZ=Asia/Taipei date +%H)"
           taiwan_weekday="$(TZ=Asia/Taipei date +%u)"
@@ -86,12 +90,15 @@ jobs:
             commit_message="更新 AI 股票${period}報"
           else
             case "${{ github.event.schedule }}" in
-              "0 22 * * *")
+              "45 21 * * *")
                 period="morning"
+                no_telegram="true"
+                defer_delivery="true"
+                delivery_target="06:00"
                 save_prediction="true"
                 commit_message="更新 AI 股票morning報"
                 ;;
-              "0 4 * * *")
+              "45 3 * * *")
                 # GitHub scheduled runs can be delayed for hours.  If the noon
                 # run starts after Taiwan market close, use it as the missing
                 # silent close settlement instead of publishing a stale noon
@@ -104,10 +111,13 @@ jobs:
                   commit_message="補跑延遲的台股收盤結算"
                 else
                   period="noon"
+                  no_telegram="true"
+                  defer_delivery="true"
+                  delivery_target="12:00"
                   commit_message="更新 AI 股票noon報"
                 fi
                 ;;
-              "0 9 * * 1-5")
+              "15 9 * * 1-5")
                 period="evening"
                 no_telegram="true"
                 save_prediction="true"
@@ -117,6 +127,7 @@ jobs:
                 period="evening"
                 no_telegram="true"
                 defer_delivery="true"
+                delivery_target="20:00"
                 save_prediction="true"
                 commit_message="更新 AI 股票evening報"
                 ;;
@@ -131,7 +142,16 @@ jobs:
           echo "no_telegram=$no_telegram" >> "$GITHUB_OUTPUT"
           echo "save_prediction=$save_prediction" >> "$GITHUB_OUTPUT"
           echo "defer_delivery=$defer_delivery" >> "$GITHUB_OUTPUT"
+          echo "delivery_target=$delivery_target" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
+      - name: Reject expired fixed-report slot
+        if: ${{ steps.period.outputs.defer_delivery == 'true' }}
+        run: >-
+          python report_schedule.py
+          --target "${{ steps.period.outputs.delivery_target }}"
+          --mode check
+          --max-early-minutes 60
+          --max-late-minutes 120
       - name: Generate report
         id: generate
         env:
@@ -151,31 +171,25 @@ jobs:
             args+=(--no-telegram)
           fi
           python briefing.py "${args[@]}"
-      - name: Wait for official 20:00 evening delivery window
+      - name: Wait for official fixed-report delivery window
         if: ${{ steps.period.outputs.defer_delivery == 'true' }}
-        shell: bash
-        run: |
-          python - <<'PY'
-          from datetime import datetime, time
-          from time import sleep
-          from zoneinfo import ZoneInfo
-
-          zone = ZoneInfo("Asia/Taipei")
-          now = datetime.now(zone)
-          target = datetime.combine(now.date(), time(20, 0), tzinfo=zone)
-          seconds = max(0, min(30 * 60, (target - now).total_seconds()))
-          if seconds:
-              print(f"Waiting {seconds:.0f}s for the official 20:00 delivery window")
-              sleep(seconds)
-          PY
-      - name: Deliver verified evening report
+        run: >-
+          python report_schedule.py
+          --target "${{ steps.period.outputs.delivery_target }}"
+          --mode wait
+          --max-early-minutes 60
+          --max-late-minutes 120
+      - name: Deliver verified fixed report
         id: verified_delivery
         if: ${{ steps.period.outputs.defer_delivery == 'true' }}
         continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python report_delivery.py --period evening --max-age-minutes 120
+        run: >-
+          python report_delivery.py
+          --period "${{ steps.period.outputs.value }}"
+          --max-age-minutes 120
       - name: Publish sanitized friend-site data
         id: friend_publish
         continue-on-error: true
@@ -235,7 +249,7 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "${{ steps.period.outputs.commit_message }}"
           git push
-      - name: Fail when verified evening delivery was blocked
+      - name: Fail when verified fixed-report delivery was blocked
         if: >-
           ${{ always() && steps.period.outputs.defer_delivery == 'true' &&
           steps.verified_delivery.outcome != 'success' }}

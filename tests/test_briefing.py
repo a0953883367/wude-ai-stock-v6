@@ -221,9 +221,9 @@ def test_institution_coverage_gate_requires_95_percent_same_session():
     assert blocked["ai_eligible"] is False
 
 
-def test_noon_and_intraday_defer_taiwan_price_fetch_until_close():
+def test_morning_noon_and_intraday_defer_taiwan_price_fetch_until_close():
     assert _freeze_tw_prices_until_close("noon") is True
-    assert _freeze_tw_prices_until_close("morning") is False
+    assert _freeze_tw_prices_until_close("morning") is True
     assert _freeze_tw_prices_until_close("evening") is False
     assert _freeze_tw_prices_until_close("evening", intraday=True) is True
 

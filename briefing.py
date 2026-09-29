@@ -747,8 +747,14 @@ def _previous_rows() -> dict[str, dict]:
 
 
 def _freeze_tw_prices_until_close(period: str, intraday: bool = False) -> bool:
-    """Never request or publish Taiwan prices during its regular session."""
-    return intraday or period == "noon"
+    """Use the last verified Taiwan close before the close-settlement run.
+
+    Morning reports run before Taiwan opens, and noon reports run during the
+    regular session. Neither may mix partial/current upstream rows with the
+    last completed official session. The evening close-settlement path is the
+    only fixed report allowed to advance Taiwan close prices.
+    """
+    return intraday or period in {"morning", "noon"}
 
 
 def _tw_watchlist_enrichment_ids(
