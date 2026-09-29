@@ -1,4 +1,5 @@
 import json
+import pytest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -67,3 +68,27 @@ def test_silent_close_settlement_is_not_suppressed_by_fixed_report_gate():
     )
 
     assert should_run is True
+
+
+@pytest.mark.parametrize("schedule", ["35 21 * * *", "45 21 * * *", "55 21 * * *"])
+def test_all_morning_triggers_allow_missing_report_and_suppress_completed_duplicate(schedule):
+    now = _dt("2026-09-30T05:55:00")
+    assert scheduled_gate_decision(
+        _report("evening", "2026-09-29 20:00:00"), now=now, schedule=schedule
+    )[0] is True
+    assert scheduled_gate_decision(
+        _report("morning", "2026-09-30 05:36:00"),
+        now=_dt("2026-09-30T06:01:00"), schedule=schedule,
+    )[0] is False
+
+
+def test_morning_recovery_pulses_respect_grace_freshness_and_expiry():
+    stale = _report("evening", "2026-09-29 20:00:00")
+    assert not recovery_decision(stale, now=_dt("2026-09-30T06:09:00"), period="morning")[0]
+    for clock in ["06:10", "06:25", "06:40", "06:55"]:
+        now = _dt(f"2026-09-30T{clock}:00")
+        assert recovery_decision(stale, now=now, period="morning")[0]
+        assert not recovery_decision(
+            _report("morning", "2026-09-30 05:36:00"), now=now, period="morning"
+        )[0]
+    assert not recovery_decision(stale, now=_dt("2026-09-30T08:01:00"), period="morning")[0]

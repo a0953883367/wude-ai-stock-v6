@@ -15,7 +15,12 @@ on:
     # Prepare fixed reports away from the top of the UTC hour, where GitHub
     # documents heavier schedule load. Verified delivery still occurs at the
     # official Taipei time below.
+    # Morning has separate 05:35 / 05:45 / 05:55 Taipei triggers. The shared
+    # concurrency group and freshness gate suppress completed duplicates;
+    # every trigger still waits until 06:00 before verified delivery.
+    - cron: "35 21 * * *"
     - cron: "45 21 * * *"
+    - cron: "55 21 * * *"
     - cron: "45 3 * * *"
     - cron: "15 9 * * 1-5"
     - cron: "30 11 * * *"
@@ -123,7 +128,7 @@ jobs:
             fi
           else
             case "${{ github.event.schedule }}" in
-              "45 21 * * *")
+              "35 21 * * *" | "55 21 * * *" | "45 21 * * *")
                 period="morning"
                 no_telegram="true"
                 defer_delivery="true"

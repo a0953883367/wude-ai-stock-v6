@@ -22,7 +22,9 @@ TARGETS = {
     "evening": time(20, 0),
 }
 SCHEDULE_PERIODS = {
+    "35 21 * * *": "morning",
     "45 21 * * *": "morning",
+    "55 21 * * *": "morning",
     "45 3 * * *": "noon",
     "30 11 * * *": "evening",
 }
