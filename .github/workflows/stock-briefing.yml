@@ -144,14 +144,25 @@ jobs:
           echo "defer_delivery=$defer_delivery" >> "$GITHUB_OUTPUT"
           echo "delivery_target=$delivery_target" >> "$GITHUB_OUTPUT"
           echo "commit_message=$commit_message" >> "$GITHUB_OUTPUT"
-      - name: Reject expired fixed-report slot
+      - name: Classify fixed-report delivery window
+        id: delivery_window
         if: ${{ steps.period.outputs.defer_delivery == 'true' }}
-        run: >-
-          python report_schedule.py
-          --target "${{ steps.period.outputs.delivery_target }}"
-          --mode check
-          --max-early-minutes 60
-          --max-late-minutes 120
+        shell: bash
+        run: |
+          if python report_schedule.py \
+            --target "${{ steps.period.outputs.delivery_target }}" \
+            --mode check \
+            --max-early-minutes 60 \
+            --max-late-minutes 120
+          then
+            echo "timely=true" >> "$GITHUB_OUTPUT"
+          else
+            # A delayed fixed report must never be delivered as if it were
+            # current.  Keep running silently so the private prediction and
+            # evidence ledgers still receive the completed-market checkpoint.
+            echo "timely=false" >> "$GITHUB_OUTPUT"
+            echo "Fixed delivery is stale; continuing as private settlement only."
+          fi
       - name: Generate report
         id: generate
         env:
@@ -172,7 +183,9 @@ jobs:
           fi
           python briefing.py "${args[@]}"
       - name: Wait for official fixed-report delivery window
-        if: ${{ steps.period.outputs.defer_delivery == 'true' }}
+        if: >-
+          ${{ steps.period.outputs.defer_delivery == 'true' &&
+          steps.delivery_window.outputs.timely == 'true' }}
         run: >-
           python report_schedule.py
           --target "${{ steps.period.outputs.delivery_target }}"
@@ -181,7 +194,9 @@ jobs:
           --max-late-minutes 120
       - name: Deliver verified fixed report
         id: verified_delivery
-        if: ${{ steps.period.outputs.defer_delivery == 'true' }}
+        if: >-
+          ${{ steps.period.outputs.defer_delivery == 'true' &&
+          steps.delivery_window.outputs.timely == 'true' }}
         continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -192,6 +207,9 @@ jobs:
           --max-age-minutes 120
       - name: Publish sanitized friend-site data
         id: friend_publish
+        if: >-
+          ${{ steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true' }}
         continue-on-error: true
         env:
           FRIEND_SITE_URL: ${{ secrets.FRIEND_SITE_URL }}
@@ -202,12 +220,18 @@ jobs:
         # The report is already complete at this point. A temporary owner-site
         # 5xx must not prevent the verified snapshot from being committed and
         # published through the normal report channel.
+        if: >-
+          ${{ steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true' }}
         continue-on-error: true
         env:
           OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
         run: python tools/publish_owner_data.py
       - name: Verify and compact historical archive storage
-        if: ${{ always() && steps.generate.outcome == 'success' }}
+        if: >-
+          ${{ always() && steps.generate.outcome == 'success' &&
+          (steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true') }}
         run: >-
           python tools/compact_history_archive.py
           --archive-dir reports/archive
@@ -217,7 +241,10 @@ jobs:
           --compress
           --remove-source-after-verify
       - name: Run independent system guard
-        if: ${{ always() && steps.generate.outcome == 'success' }}
+        if: >-
+          ${{ always() && steps.generate.outcome == 'success' &&
+          (steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true') }}
         run: >-
           python system_guard.py
           --friend-publish "${{ steps.friend_publish.outcome }}"
@@ -240,7 +267,10 @@ jobs:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep reports and recent archive
-        if: ${{ steps.generate.outcome == 'success' }}
+        if: >-
+          ${{ steps.generate.outcome == 'success' &&
+          (steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true') }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -249,9 +279,17 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "${{ steps.period.outputs.commit_message }}"
           git push
+      - name: Confirm private settlement for stale fixed report
+        if: >-
+          ${{ steps.generate.outcome == 'success' &&
+          steps.period.outputs.defer_delivery == 'true' &&
+          steps.delivery_window.outputs.timely != 'true' }}
+        run: >-
+          echo "Stale public delivery suppressed; private prediction and evidence cache saved."
       - name: Fail when verified fixed-report delivery was blocked
         if: >-
           ${{ always() && steps.period.outputs.defer_delivery == 'true' &&
+          steps.delivery_window.outputs.timely == 'true' &&
           steps.verified_delivery.outcome != 'success' }}
         run: |
           echo "Evening report was generated but delivery freshness verification failed." >&2

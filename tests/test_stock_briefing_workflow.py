@@ -30,11 +30,27 @@ def test_fixed_reports_are_prepared_early_and_delivered_only_after_verification(
     assert 'delivery_target="06:00"' in text
     assert 'delivery_target="12:00"' in text
     assert 'delivery_target="20:00"' in text
-    assert "Reject expired fixed-report slot" in text
+    assert "Classify fixed-report delivery window" in text
+    assert 'echo "timely=false" >> "$GITHUB_OUTPUT"' in text
     assert "python report_schedule.py" in text
     assert "--period \"${{ steps.period.outputs.value }}\"" in text
     assert "steps.verified_delivery.outcome != 'success'" in text
     assert "timeout-minutes: 60" in text
+
+
+def test_stale_fixed_report_still_advances_private_ledgers_without_publication():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    classify = text.index("Classify fixed-report delivery window")
+    generate = text.index("name: Generate report")
+    save_private = text.index("name: Save private AI prediction database")
+    confirm_private = text.index("name: Confirm private settlement for stale fixed report")
+
+    assert classify < generate < save_private < confirm_private
+    assert "continuing as private settlement only" in text
+    assert "steps.delivery_window.outputs.timely == 'true'" in text
+    assert "steps.delivery_window.outputs.timely != 'true'" in text
+    assert "Stale public delivery suppressed" in text
 
 
 def test_delayed_noon_run_becomes_silent_close_settlement():
