@@ -179,6 +179,17 @@ def render_markdown(report: dict[str, Any]) -> str:
             lines.append(
                 f"🌐 總體風險：{macro.get('regime', '中性')} {macro.get('score', 50):.1f}分｜尚差 {remaining} 個交易日，暫不計分"
             )
+    treasury = report.get("treasury_stress") or {}
+    if treasury:
+        parts = [f"{treasury.get('light', '⚪')} 美債監控：{treasury.get('label', '等待資料')}"]
+        if treasury.get("tlt_change_pct") is not None:
+            parts.append(f"TLT {_change(treasury['tlt_change_pct'])}")
+        if treasury.get("ief_change_pct") is not None:
+            parts.append(f"IEF {_change(treasury['ief_change_pct'])}")
+        if treasury.get("us10y_yield_change_bps") is not None:
+            parts.append(f"10年債殖利率 {treasury['us10y_yield_change_bps']:+.1f}bp")
+        parts.append("影子風險層，不改正式排名")
+        lines.append("｜".join(parts))
     lines.extend(["", "🌏 國際與大盤"])
     for name, item in report["market"].items():
         lines.append(f"{name}｜{_num(item.get('price'))}｜{_change(item.get('change_pct'))}")

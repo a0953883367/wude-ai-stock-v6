@@ -104,7 +104,9 @@ def normalize_sip_snapshot(snapshot: dict[str, Any], feed: str = "sip") -> dict[
     ask_size = _number(quote.get("as"))
     vwap = _number(daily.get("vw"))
     day_volume = _number(daily.get("v"))
+    previous_close = _number(previous.get("c"))
     previous_volume = _number(previous.get("v"))
+    reference_price = _number(daily.get("c")) or last_price
 
     spread_pct = None
     if bid is not None and ask is not None and ask >= bid and bid + ask > 0:
@@ -115,6 +117,9 @@ def normalize_sip_snapshot(snapshot: dict[str, Any], feed: str = "sip") -> dict[
     vwap_distance_pct = None
     if last_price is not None and vwap:
         vwap_distance_pct = (last_price / vwap - 1) * 100
+    change_pct = None
+    if reference_price is not None and previous_close:
+        change_pct = (reference_price / previous_close - 1) * 100
 
     available = any(value is not None for value in (last_price, bid, ask, vwap))
     if not available:
@@ -134,6 +139,8 @@ def normalize_sip_snapshot(snapshot: dict[str, Any], feed: str = "sip") -> dict[
         "us_live_vwap": vwap,
         "us_live_vwap_distance_pct": None if vwap_distance_pct is None else round(vwap_distance_pct, 3),
         "us_live_day_volume": day_volume,
+        "us_live_previous_close": previous_close,
+        "us_live_change_pct": None if change_pct is None else round(change_pct, 3),
         "us_live_previous_volume": previous_volume,
     }
 

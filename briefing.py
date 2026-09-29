@@ -31,6 +31,11 @@ from data_fetcher import (
     load_search_universe,
 )
 from macro_regime import update_macro_regime
+from treasury_stress import (
+    TREASURY_SIP_SYMBOLS,
+    attach_treasury_market,
+    evaluate_treasury_stress,
+)
 from notifier import render_markdown, save_report, send_telegram
 from report_delivery import record_delivery
 from news_risk import fetch_news_risks, merge_official_announcements
@@ -1264,7 +1269,10 @@ def main() -> int:
     }
     us_live = _stage(
         "美股即時行情",
-        lambda: fetch_us_sip_snapshots(us_symbols, timeout=SETTINGS.request_timeout),
+        lambda: fetch_us_sip_snapshots(
+            us_symbols | set(TREASURY_SIP_SYMBOLS.values()),
+            timeout=SETTINGS.request_timeout,
+        ),
     )
     us_extended_hours = _stage(
         "美股盤前盤後", lambda: download_us_extended_hours(list(us_symbols))
@@ -1477,6 +1485,8 @@ def main() -> int:
         ),
     )
     market = apply_stockq_market_fallback(market, stockq_market_context)
+    market = attach_treasury_market(market, us_live)
+    treasury_stress = evaluate_treasury_stress(market)
     tw_market_context = build_tw_market_context(features, market)
     nasdaq_raw = (market.get("Nasdaq") or {}).get("change_pct")
     nasdaq_change = float(nasdaq_raw) if nasdaq_raw is not None else None
@@ -1664,6 +1674,7 @@ def main() -> int:
             tiingo_us_close_fallback
         ),
         "macro_regime": macro_regime,
+        "treasury_stress": treasury_stress,
         "tw_market_context": tw_market_context,
         "data_status": {
             "finmind_configured": bool(SETTINGS.finmind_token),
@@ -1690,7 +1701,10 @@ def main() -> int:
             "broker_optional": True,
             "us_short_volume_count": len(us_short_volume),
             "us_extended_hours_count": len(us_extended_hours),
-            "us_sip_count": len(us_live),
+            "us_sip_count": sum(1 for symbol in us_symbols if symbol in us_live),
+            "us_treasury_sip_count": sum(
+                1 for symbol in TREASURY_SIP_SYMBOLS.values() if symbol in us_live
+            ),
             "us_opra_count": len(us_options),
             "us_sec_company_count": sum(
                 1 for item in us_company_metadata.values()

@@ -23,7 +23,7 @@ def test_normalize_sip_snapshot_builds_nbbo_and_vwap_signals():
         "latestTrade": {"p": 183},
         "latestQuote": {"bp": 182.9, "ap": 183.1, "bs": 300, "as": 100},
         "dailyBar": {"c": 183, "v": 2_000_000, "vw": 180},
-        "prevDailyBar": {"v": 3_000_000},
+        "prevDailyBar": {"c": 180, "v": 3_000_000},
     })
 
     assert result["us_live_source"] == "Alpaca SIP"
@@ -31,6 +31,8 @@ def test_normalize_sip_snapshot_builds_nbbo_and_vwap_signals():
     assert result["us_live_quote_imbalance_pct"] == 50
     assert result["us_live_vwap_distance_pct"] == 1.667
     assert result["us_live_spread_pct"] > 0
+    assert result["us_live_previous_close"] == 180
+    assert result["us_live_change_pct"] == 1.667
 
 
 def test_normalize_opra_chain_uses_near_money_iv_and_skew():
