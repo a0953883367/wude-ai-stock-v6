@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
-  "checked_at": "2026-09-30T07:03:37+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-09-30T07:06:42+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-09-29 23:46:36",
-  "report_age_minutes": 437.0,
+  "report_updated_at": "2026-09-30 07:04:31",
+  "report_age_minutes": 2.2,
   "counts": {
     "ok": 26,
-    "info": 7,
-    "warning": 1,
+    "info": 8,
+    "warning": 0,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 347.3 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 353.2 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -26,7 +26,7 @@
       "title": "影子證據私人備份",
       "level": "ok",
       "label": "正常",
-      "detail": "完整資料庫備份已校驗（5.3 MB）；未發布至網站，正式V6未變更",
+      "detail": "完整資料庫備份已校驗（5.5 MB）；未發布至網站，正式V6未變更",
       "action": ""
     },
     {
@@ -40,17 +40,17 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 7.3 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 2 分鐘",
+      "action": ""
     },
     {
       "code": "report_delivery",
       "title": "V6 通知派發",
-      "level": "info",
-      "label": "資訊",
-      "detail": "本次是排程指定的靜默資料更新，未發送通知",
+      "level": "ok",
+      "label": "正常",
+      "detail": "morning 報表已驗證並由 Telegram 送達",
       "action": ""
     },
     {
@@ -74,7 +74,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-09-29 33/33；TW_STOCK 2026-09-29 158/158；US_ETF 2026-09-29 35/35；US_STOCK 2026-09-29 152/153",
+      "detail": "TW_ETF 2026-09-29 33/33；TW_STOCK 2026-09-29 158/158；US_ETF 2026-09-29 35/35；US_STOCK 2026-09-29 153/153",
       "action": ""
     },
     {
@@ -90,7 +90,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 191、法人 192、信用 188",
+      "detail": "價格 191、法人 191、信用 191（沿用最近完整收盤）",
       "action": ""
     },
     {
@@ -128,10 +128,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "ok",
-      "label": "正常",
-      "detail": "私密完整快取涵蓋 186 檔；原始價格未進入網站或計算",
-      "action": ""
+      "level": "info",
+      "label": "資訊",
+      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
       "code": "us_sec_fundamentals",
@@ -146,7 +146,7 @@
       "title": "60日向前驗證",
       "level": "ok",
       "label": "正常",
-      "detail": "真實交易日 27/60；進度監控正常；TW 2026-09-29／26天、US 2026-09-25／24天",
+      "detail": "真實交易日 27/60；進度監控正常；TW 2026-09-29／26天、US 2026-09-29／25天",
       "action": ""
     },
     {
@@ -162,7 +162,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 2939 筆錯誤列合併為 587 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
+      "detail": "已將 2981 筆錯誤列合併為 598 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -170,7 +170,7 @@
       "title": "11個證據單元獨立學習",
       "level": "ok",
       "label": "正常",
-      "detail": "專屬帳本 11/11；已成熟 56233 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
+      "detail": "專屬帳本 11/11；已成熟 58279 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
       "action": ""
     },
     {
@@ -186,10 +186,10 @@
       "title": "多期間真實答案帳本",
       "level": "ok",
       "label": "正常",
-      "detail": "台美股共 30 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+      "detail": "台美股共 31 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
-      "cohort_count": 30,
-      "ledger_updated_at": "2026-09-29 23:46:36"
+      "cohort_count": 31,
+      "ledger_updated_at": "2026-09-30 07:04:31"
     },
     {
       "code": "unified_evidence",
@@ -259,10 +259,10 @@
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近一次已送達：2026-09-29T19:59:49+00:00",
-      "action": ""
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
+      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
     },
     {
       "code": "device_authorization",
@@ -285,7 +285,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
