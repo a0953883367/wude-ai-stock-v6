@@ -1,4 +1,5 @@
 import json
+import shutil
 import zipfile
 from pathlib import Path
 
@@ -6,8 +7,46 @@ from agent_control import UsageLedger
 from agent_runtime import BOOTSTRAP_TASKS, build_runtime_report, execute_safe_task
 
 
+def _runtime_root(tmp_path: Path) -> Path:
+    """Create stable evidence so runtime tests never depend on live reports."""
+    shutil.copytree("agent_workspaces", tmp_path / "agent_workspaces")
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    evidence = {
+        "validation_60d.json": {
+            "trading_days_collected": 23,
+            "target_trading_days": 60,
+            "eligible_samples": 120,
+            "rules": {"automatic_weight_changes": False, "automatic_orders": False},
+        },
+        "model_learning.json": {"error_learning": {"independent_events": 7}},
+        "system_guard.json": {"status": "ok"},
+        "prediction_engine.json": {
+            "policy": {
+                "controlled_shadow_auto_promotion": True,
+                "formal_v6_auto_promotion": False,
+                "automatic_orders": False,
+                "automatic_shadow_rollback_after_failures": 3,
+            }
+        },
+        "model_unit_learning.json": {
+            "summary": {
+                "registered_units": 11,
+                "matured_rows": 54132,
+                "active_shadow_trust_streams": 0,
+            },
+            "policy": {"formal_v6_unchanged": True},
+        },
+        "weekly_shadow_coach.json": {"status": "ok", "mode": "shadow_only"},
+    }
+    for name, payload in evidence.items():
+        (reports / name).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return tmp_path
+
+
 def test_all_three_agents_execute_one_safe_validation(tmp_path: Path):
-    report = build_runtime_report(Path("."))
+    root = _runtime_root(tmp_path)
+    report = build_runtime_report(root / "reports", root=root)
     assert report["status"] == "active"
     assert report["summary"]["agent_count"] == 3
     assert report["summary"]["actual_work_performed"] == 3
@@ -54,8 +93,9 @@ def test_external_side_effect_waits_for_approval():
     assert row["capability_plan"]["tools"] == []
 
 
-def test_every_safe_task_gets_a_bounded_context_plan():
-    row = execute_safe_task("stock_shadow", "shadow_validate", "股票影子驗證", {"validation": True}, UsageLedger())
+def test_every_safe_task_gets_a_bounded_context_plan(tmp_path: Path):
+    root = _runtime_root(tmp_path)
+    row = execute_safe_task("stock_shadow", "shadow_validate", "股票影子驗證", {"validation": True}, UsageLedger(), root=root)
     assert row["status"] == "completed"
     assert row["context_plan"]["profile"] == "research"
     assert row["context_plan"]["cross_domain_reads"] is False
@@ -63,9 +103,10 @@ def test_every_safe_task_gets_a_bounded_context_plan():
     assert row["capability_plan"]["cross_domain_tools"] is False
 
 
-def test_actual_work_reports_evidence_instead_of_fake_completion():
-    stock = execute_safe_task("stock_shadow", "shadow_validate", "股票影子驗證", {"validation": True}, UsageLedger())
-    packaging = execute_safe_task("packaging_startup", "simulate_workflow", "包裝試算", {"validation": True}, UsageLedger())
+def test_actual_work_reports_evidence_instead_of_fake_completion(tmp_path: Path):
+    root = _runtime_root(tmp_path)
+    stock = execute_safe_task("stock_shadow", "shadow_validate", "股票影子驗證", {"validation": True}, UsageLedger(), root=root)
+    packaging = execute_safe_task("packaging_startup", "simulate_workflow", "包裝試算", {"validation": True}, UsageLedger(), root=root)
     assert stock["actual_work_performed"] is True
     assert stock["evidence"]["validation_days"] > 0
     assert stock["evidence"]["formal_v6_locked"] is True
