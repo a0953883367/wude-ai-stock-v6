@@ -45,6 +45,8 @@ def test_system_guard_can_dispatch_one_protected_recovery_run():
     text = (WORKFLOW.parent / "system-guard.yml").read_text(encoding="utf-8")
 
     assert "actions: write" in text
+    assert 'branches: [main]' in text
+    assert '"briefing_watchdog.py"' in text
     assert "briefing_watchdog.py" in text
     assert "should_dispatch == 'true'" in text
     assert "gh run list --workflow stock-briefing.yml" in text
