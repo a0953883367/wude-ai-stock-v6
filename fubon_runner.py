@@ -22,6 +22,8 @@ import briefing
 from config import ROOT, TAIPEI
 from data_fetcher import download_intraday as yahoo_download_intraday
 from fubon_credentials import FubonCredentials, load_fubon_credentials
+from fubon_ownership import collect_ownership
+from watchlist import load_watchlist
 
 LOG = logging.getLogger("fubon_runner")
 
@@ -344,6 +346,14 @@ def main() -> int:
 
     if rc == 0:
         _write_fubon_snapshot(quote_results)
+        try:
+            report = collect_ownership(
+                sdk.marketdata.rest_client.stock, load_watchlist(),
+                ROOT / "reports" / "fubon_ownership.json",
+            )
+            LOG.info("Fubon ownership: %d datasets available", report["available_count"])
+        except Exception as exc:
+            LOG.warning("Ownership supplement unavailable (%s)", type(exc).__name__)
         if args.auto_git:
             os.environ["FUBON_AUTO_GIT"] = "1"
         _git_publish(args.period)

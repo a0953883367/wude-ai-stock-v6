@@ -304,6 +304,16 @@ jobs:
         with:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Refresh read-only Fubon ownership supplement
+        if: >-
+          ${{ steps.generate.outcome == 'success' &&
+          (steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true') }}
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
+        run: python fubon_ownership_relay.py
       - name: Keep reports and recent archive
         if: >-
           ${{ steps.generate.outcome == 'success' &&

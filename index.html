@@ -182,7 +182,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 <script src="capital_test.js"></script>
 <script>
 'use strict';
-var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,modelLearning:null,modelUnitLearning:null,reports:{},fubonLive:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,rotationShadow:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,missedStrengthValidation:null,forwardOutcomeLedger:null,systemGuard:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
+var STATE={stockData:null,allLegacy:[],normalized:[],allAnalysis:null,tw:[],us:[],etf:[],quantum:null,optical:null,latest:null,accuracy:null,modelLearning:null,modelUnitLearning:null,reports:{},fubonLive:null,fubonOwnership:null,fubonQuotes:{},millionSimulation:null,weightExperiment:null,rotationShadow:null,holdingSimulation:null,historicalLab:null,exitHorizonForward:null,inverseExperiment:null,missedStrengthValidation:null,forwardOutcomeLedger:null,systemGuard:null,view:'TW',liveStock:null,liveTimer:null,liveRequest:null,liveRealtime:true};
 try{WudeLiveClient.saveTokenFromHash(window.location,window.history,window.localStorage);}catch(error){}
 try{
   if(new URLSearchParams(window.location.search).get('transfer_live_token')==='1'){
@@ -422,7 +422,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',buyQualification,quality,extended,nextSession,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
+    '</div>',ownershipPanel(stock),buyQualification,quality,extended,nextSession,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
     '<div class="buybox">'+(stock.entryProfile?'規則：<b>'+esc(stock.entryProfile)+'</b>｜資料 '+esc(stock.entryCoverage)+'/'+esc(stock.entryDataTotal)+'｜進場分上限 '+esc(number(stock.entryScoreCap,0))+'<br>':'')+(stock.pricePlanQuality?'價格計畫：<b>'+esc(stock.pricePlanQuality)+'</b>｜'+esc(stock.pricePlanNote||'')+'<br>':'')+'🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
@@ -431,6 +431,25 @@ function stockCard(stock,index){
     '<div data-capital-result="'+esc(stock.symbol)+'">'+capitalTestHtml(stock)+'</div>',
     '<button class="live-button" data-live-symbol="'+esc(stock.symbol)+'">🧠 查看自動即時判斷</button></article>'
   ].join('');
+}
+function ownershipPanel(stock){
+  if(stock.market!=='TW')return '';
+  var data=STATE.fubonOwnership&&STATE.fubonOwnership.data;
+  var row=data&&data[String(stock.symbol).toUpperCase()];
+  if(!row)return '<div class="databox">富邦盤後籌碼：等待執行端建立資料</div>';
+  var names={institutional_trades:'三大法人買賣超',tdcc_distribution:'集保股權分散',director_holdings:'董監持股'};
+  var labels={available:'已取得',no_data:'查無資料',not_applicable:'不適用',sdk_upgrade_required:'等待更新富邦SDK',rate_limited:'限速，等待下次更新',fetch_error:'取得失敗，等待重試',relay_unavailable:'連線未完成，等待重試'};
+  var lines=Object.keys(names).map(function(key){
+    var item=row[key]||{},rows=item.rows||[],status=labels[item.status]||'等待資料';
+    var title=esc(names[key])+'：'+esc(status)+(item.data_date?'｜資料期別 '+esc(item.data_date):'');
+    if(item.fetched_at)title+='｜取得 '+esc(item.fetched_at);
+    if(item.status!=='available')return title+(rows.length?'（保留舊資料，未作本次有效資訊）':'');
+    var fetched=Date.parse(item.fetched_at),age=Date.now()-fetched;
+    if(!Number.isFinite(fetched)||age>48*3600000)title+='｜⚠️ 快取可能過期';
+    if(key==='institutional_trades'&&rows[0]&&Number.isFinite(rows[0].total))title+='｜最近合計 '+esc(rows[0].total)+' 股';
+    return title+'<details><summary>查看最近資料</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(rows.slice(0,2),null,2))+'</pre></details>';
+  });
+  return '<div class="databox"><b>富邦盤後籌碼補充</b><br>'+lines.join('<br>')+'<br><span class="muted">僅供資料核對；資料期別不等於取得時間。</span></div>';
 }
 function renderStocks(stocks){
   var box=document.getElementById('results');
@@ -1155,10 +1174,11 @@ async function loadAll(){
       fetchJSON('reports/model_learning.json').catch(function(){return null;}),
       fetchJSON('reports/model_unit_learning.json').catch(function(){return null;}),
       fetchJSON('reports/system_guard.json').catch(function(){return null;}),
-      fetch('https://api.github.com/repos/a0953883367/wude-ai-stock-v6/actions/workflows/system-guard.yml/runs?per_page=1&t='+Date.now(),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error('GitHub Actions HTTP '+response.status);return response.json();}).catch(function(){return null;})
+      fetch('https://api.github.com/repos/a0953883367/wude-ai-stock-v6/actions/workflows/system-guard.yml/runs?per_page=1&t='+Date.now(),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error('GitHub Actions HTTP '+response.status);return response.json();}).catch(function(){return null;}),
+      fetchJSON('reports/fubon_ownership.json').catch(function(){return null;})
     ]);
     var live=pair[0],raw=pair[1],all=Array.isArray(raw)?raw:(Array.isArray(raw.data)?raw.data:[]);
-    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.rotationShadow=pair[9];STATE.holdingSimulation=pair[10];STATE.historicalLab=pair[11];STATE.exitHorizonForward=pair[12];STATE.accuracy=pair[13];STATE.inverseExperiment=pair[14];STATE.missedStrengthValidation=pair[15];STATE.forwardOutcomeLedger=pair[16];STATE.modelLearning=pair[17];STATE.modelUnitLearning=pair[18];STATE.systemGuard=pair[19];STATE.guardWorkflow=pair[20];STATE.fubonQuotes={};
+    STATE.stockData=raw;STATE.allLegacy=all;STATE.latest=pair[2];STATE.quantum=pair[3];STATE.optical=pair[4];STATE.allAnalysis=pair[5];STATE.fubonLive=pair[6];STATE.millionSimulation=pair[7];STATE.weightExperiment=pair[8];STATE.rotationShadow=pair[9];STATE.holdingSimulation=pair[10];STATE.historicalLab=pair[11];STATE.exitHorizonForward=pair[12];STATE.accuracy=pair[13];STATE.inverseExperiment=pair[14];STATE.missedStrengthValidation=pair[15];STATE.forwardOutcomeLedger=pair[16];STATE.modelLearning=pair[17];STATE.modelUnitLearning=pair[18];STATE.systemGuard=pair[19];STATE.guardWorkflow=pair[20];STATE.fubonOwnership=pair[21];STATE.fubonQuotes={};
     if(STATE.fubonLive&&STATE.fubonLive.data){Object.keys(STATE.fubonLive.data).forEach(function(symbol){var row=STATE.fubonLive.data[symbol]||{};STATE.fubonQuotes[String(symbol).toUpperCase()]={lastPrice:row.lastPrice,bidTotal:row.bidTotal,askTotal:row.askTotal,fetchedAt:row.fetchedAt||STATE.fubonLive.updated_at};});}
     if(STATE.latest)STATE.reports[STATE.latest.period]=STATE.latest;
     var legacy=all.map(normalizeLegacy);
