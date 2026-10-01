@@ -30,6 +30,8 @@ from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
 from fubon_runner import _login_fubon, parse_fubon_quote
+from fubon_ownership import collect_ownership
+from watchlist import load_watchlist
 from fubon_broker import FubonTradingSession
 from large_buy_monitor import LargeBuyAlertService
 from large_buy_streams import LargeBuyStreams, market_live_window
@@ -407,6 +409,32 @@ class LiveDataService:
         self._option_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._fubon_sdk: Any = None
         self._lock = threading.RLock()
+        self._ownership_lock = threading.RLock()
+
+    def ownership(self, symbols: list[str]) -> dict[str, Any]:
+        """Read-only supplement, limited to five canonical Taiwan symbols."""
+        if not isinstance(symbols, list) or len(symbols) > 5:
+            raise ValueError("ownership batch must contain at most five symbols")
+        pool = {row["symbol"]: row for row in load_watchlist()
+                if row["symbol"].endswith((".TW", ".TWO"))}
+        if any(not isinstance(symbol, str) or symbol not in pool for symbol in symbols):
+            raise ValueError("ownership symbol outside canonical pool")
+        data = {}
+        with self._ownership_lock:
+            with self._lock:
+                if self._fubon_sdk is None:
+                    configure_fubon_certificate()
+                    self._fubon_sdk = self.fubon_login()
+                sdk = self._fubon_sdk
+            for symbol in dict.fromkeys(symbols):
+                result = collect_ownership(
+                    sdk.marketdata.rest_client.stock, [pool[symbol]],
+                    _runtime_state_path("fubon_ownership_" + symbol + ".json"),
+                )
+                data.update(result["data"])
+                if any(row.get("status") == "rate_limited" for row in data[symbol].values()):
+                    break
+        return data
 
     def _cached(self, key: tuple[str, str]) -> dict[str, Any] | None:
         row = self._cache.get(key)
@@ -935,7 +963,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 verify_github_oidc_token(token)
                 payload = self._read_json()
                 kind = str(payload.get("kind") or "").lower()
-                if kind == "sip":
+                if kind == "ownership":
+                    data = self.service.ownership(payload.get("symbols"))
+                elif kind == "sip":
                     symbols = [
                         str(symbol).upper() for symbol in list(payload.get("symbols") or [])[:200]
                         if re.fullmatch(r"[A-Z0-9.\-]{1,16}", str(symbol).upper())
