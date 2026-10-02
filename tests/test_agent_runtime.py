@@ -119,6 +119,34 @@ def test_actual_work_reports_evidence_instead_of_fake_completion(tmp_path: Path)
     assert packaging["evidence"]["profit_calculated"] is False
 
 
+def test_critical_report_freshness_stays_attention_and_recovers(tmp_path: Path):
+    """Regression for run 36970903458: a stale guard is not completed work."""
+    root = _runtime_root(tmp_path)
+    guard_path = root / "reports" / "system_guard.json"
+    guard_path.write_text(json.dumps({
+        "status": "critical",
+        "checks": [{"code": "report_freshness", "level": "critical",
+                    "detail": "已 15.2 小時沒有完成新報表"}],
+    }, ensure_ascii=False), encoding="utf-8")
+    report = build_runtime_report(root / "reports", root=root)
+    stock = next(row for row in report["validations"] if row["agent_id"] == "stock_shadow")
+    assert stock["status"] == "attention"
+    assert stock["evidence"]["guard_status"] == "critical"
+    assert stock["evidence"]["formal_v6_locked"] is True
+    assert stock["evidence"]["automatic_orders_blocked"] is True
+    assert report["summary"]["validation_completed"] == 0
+    assert report["summary"]["actual_work_performed"] == 3
+    assert report["summary"]["waiting_input"] == 2
+    assert report["summary"]["approval_gates_protected"] == 3
+    assert report["summary"]["external_calls"] == 0
+    assert report["summary"]["paid_model_calls"] == 0
+    assert all(row["external_side_effect"] is False for row in report["validations"])
+
+    guard_path.write_text(json.dumps({"status": "ok"}), encoding="utf-8")
+    recovered = build_runtime_report(root / "reports", root=root)
+    assert recovered["summary"]["validation_completed"] == 1
+
+
 def test_private_connector_inputs_are_consumed_without_being_exposed(tmp_path: Path):
     import shutil
     shutil.copytree("agent_workspaces", tmp_path / "agent_workspaces")
