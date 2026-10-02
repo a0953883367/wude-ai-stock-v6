@@ -1,16 +1,16 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "critical",
-  "status_label": "🔴 需要處理",
-  "checked_at": "2026-10-02T15:08:23+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-10-02T18:08:03+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-01 18:29:00",
-  "report_age_minutes": 1239.4,
+  "report_updated_at": "2026-10-02 18:04:31",
+  "report_age_minutes": 3.5,
   "counts": {
-    "ok": 26,
-    "info": 7,
+    "ok": 28,
+    "info": 6,
     "warning": 0,
-    "critical": 1
+    "critical": 0
   },
   "checks": [
     {
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 356.4 MB；可壓縮 3 份；未發現校驗錯誤",
+      "detail": "封存容量 355.8 MB；可壓縮 3 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -26,7 +26,7 @@
       "title": "影子證據私人備份",
       "level": "ok",
       "label": "正常",
-      "detail": "完整資料庫備份已校驗（6.2 MB）；未發布至網站，正式V6未變更",
+      "detail": "完整資料庫備份已校驗（6.6 MB）；未發布至網站，正式V6未變更",
       "action": ""
     },
     {
@@ -40,10 +40,10 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "critical",
-      "label": "異常",
-      "detail": "已 20.7 小時沒有完成新報表",
-      "action": "檢查 GitHub Actions、電腦排程及上游行情來源"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 4 分鐘",
+      "action": ""
     },
     {
       "code": "report_delivery",
@@ -66,7 +66,7 @@
       "title": "分析輸出",
       "level": "ok",
       "label": "正常",
-      "detail": "完成 379/380 檔；排行 231 檔",
+      "detail": "完成 380/380 檔；排行 232 檔",
       "action": ""
     },
     {
@@ -74,7 +74,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-10-01 33/33；TW_STOCK 2026-10-01 158/158；US_ETF 2026-09-30 35/35；US_STOCK 2026-09-30 153/153",
+      "detail": "TW_ETF 2026-10-02 33/33；TW_STOCK 2026-10-02 159/159；US_ETF 2026-10-01 35/35；US_STOCK 2026-10-01 153/153",
       "action": ""
     },
     {
@@ -90,7 +90,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 191、法人 191、信用 188",
+      "detail": "價格 192、法人 192、信用 188",
       "action": ""
     },
     {
@@ -146,7 +146,7 @@
       "title": "60日向前驗證",
       "level": "ok",
       "label": "正常",
-      "detail": "真實交易日 29/60；進度監控正常；TW 2026-10-01／28天、US 2026-09-29／25天",
+      "detail": "真實交易日 30/60；進度監控正常；TW 2026-10-02／29天、US 2026-09-29／25天",
       "action": ""
     },
     {
@@ -162,7 +162,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 3134 筆錯誤列合併為 645 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
+      "detail": "已將 3213 筆錯誤列合併為 661 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -170,7 +170,7 @@
       "title": "11個證據單元獨立學習",
       "level": "ok",
       "label": "正常",
-      "detail": "專屬帳本 11/11；已成熟 64549 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
+      "detail": "專屬帳本 11/11；已成熟 68718 筆；啟用影子信任 0 路；近期升級／退版事件 0 件，正式V6未變更",
       "action": ""
     },
     {
@@ -186,17 +186,17 @@
       "title": "多期間真實答案帳本",
       "level": "ok",
       "label": "正常",
-      "detail": "台美股共 34 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+      "detail": "台美股共 36 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
-      "cohort_count": 34,
-      "ledger_updated_at": "2026-10-01 18:29:00"
+      "cohort_count": 36,
+      "ledger_updated_at": "2026-10-02 18:04:31"
     },
     {
       "code": "unified_evidence",
       "title": "統一證據格式",
       "level": "ok",
       "label": "正常",
-      "detail": "已驗證 3790 筆證據，格式錯誤 0 筆",
+      "detail": "已驗證 3800 筆證據，格式錯誤 0 筆",
       "action": ""
     },
     {
@@ -251,9 +251,9 @@
     {
       "code": "stream_us",
       "title": "美股即時串流",
-      "level": "info",
-      "label": "資訊",
-      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "level": "ok",
+      "label": "正常",
+      "detail": "盤前已連線，訂閱 188 檔",
       "action": ""
     },
     {
@@ -261,7 +261,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-10-02T05:30:06+00:00",
+      "detail": "最近一次已送達：2026-10-02T10:08:00+00:00",
       "action": ""
     },
     {
@@ -285,13 +285,11 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     }
   ],
-  "action_required": [
-    "檢查 GitHub Actions、電腦排程及上游行情來源"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,
