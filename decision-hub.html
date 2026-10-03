@@ -33,8 +33,9 @@
     @media(min-width:720px){.status{grid-template-columns:repeat(4,1fr)}.horizons{grid-template-columns:repeat(3,1fr);gap:10px}.horizon{padding:12px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.card{margin:0}.bottom a{font-size:12px}}
   </style>
   <link rel="stylesheet" href="human_ui.css?v=1">
+  <link rel="stylesheet" href="decision_layout.css?v=1">
 </head>
-<body>
+<body class="decision-page">
   <main class="app">
     <div class="top"><a class="back" href="index.html">← 完整原版</a><button class="refresh" id="refresh">更新資料</button></div>
     <section class="hero">
@@ -44,6 +45,7 @@
       <div class="chips"><span class="chip ok">明日預判隔離</span><span class="chip ok">正式排名鎖定</span><span class="chip ok">正式權重鎖定</span><span class="chip ok">影子信任受控成長</span><span class="chip ok">不連券商下單</span><span class="chip warn" id="updatedChip">等待資料</span></div>
     </section>
     <section class="single-answer hold_cash" id="singleAnswer"><span>中央唯一答案</span><b>正在整理全部證據</b><p>完成載入後顯示可行動、等待或維持現金。</p></section>
+    <details class="dashboard-details"><summary>系統驗證與分析工具<span>查看進度 ›</span></summary>
     <a class="next-session-entry" href="next-session-shadow.html">🔭 查看完整下一交易日上漲機率與可買性排名</a>
     <a class="next-session-entry" href="practical-ranking.html">🏆 查看實用權重排名：10日／1個月／3個月／半年</a>
     <a class="next-session-entry" href="trade-plan-shadow.html">🧮 查看交易計畫：可買多久、買進區、停損與分批賣出</a>
@@ -52,6 +54,7 @@
     <div class="status-feedback" id="statusFeedback" role="status" hidden></div>
     <div class="live-link" id="liveLink"><b>即時資金連動準備中</b><span>靜態決策載入後再連接大量買賣與反向 ETF 即時影子。</span></div>
     <div class="notice" id="notice" hidden></div>
+    </details>
     <div class="mode-tabs" id="viewModes"><button data-mode="decision" class="active">中央決策</button><button data-mode="shadow">綜合影子排名</button><button data-mode="compare">正式基準／影子比較</button></div>
     <div class="shadow-note" id="shadowNote" hidden><b>獨立試走：</b>全部影子證據依時段分開排名；正式 V6 不變，20日初評、60日後才可人工決定是否整合。</div>
     <div class="shadow-horizons" id="shadowHorizons" hidden><button data-horizon="short" class="active">1～5日</button><button data-horizon="medium">45日</button><button data-horizon="long">6個月</button></div>
@@ -59,8 +62,10 @@
     <section class="controls">
       <div class="tabs" id="markets"><button data-market="ALL" class="active">全部</button><button data-market="TW">台股</button><button data-market="US">美股</button><button data-market="ETF">ETF</button></div>
       <div class="decision-periods" id="decisionPeriods" aria-label="持有期間"><button data-period="10d" class="active" aria-pressed="true">10日</button><button data-period="21d" aria-pressed="false">1個月</button><button data-period="63d" aria-pressed="false">3個月</button><button data-period="126d" aria-pressed="false">半年</button></div>
-      <div class="search"><input id="search" type="search" placeholder="輸入股票名稱或代號（下列篩選沿用舊制判斷）" autocomplete="off"></div>
+      <div class="search"><input id="search" type="search" placeholder="搜尋股票名稱或代號" autocomplete="off"></div>
+      <details class="filter-details"><summary>進階篩選<span>沿用舊制判斷 ›</span></summary>
       <div class="filters" id="filters" aria-label="舊制中央判斷與價格計畫篩選"><button data-filter="all" class="active">全部</button><button data-filter="entry_zone">價格到買進區</button><button data-filter="no_chase">高於買進區</button><button data-filter="exit_signal">停損／獲利出場</button><button data-filter="can_scale">可進場</button><button data-filter="wait_pullback">等進場價</button><button data-filter="conflict">有衝突</button><button data-filter="watch">觀察</button><button data-filter="avoid">不進場／退出</button><button data-filter="data_insufficient">資料不足</button></div>
+      </details>
     </section>
     <div class="section-title"><h2>個股決策卡</h2><span id="count">0 檔</span></div>
     <section class="cards" id="cards"><div class="empty">正在載入中央決策資料…</div></section>
@@ -68,7 +73,7 @@
   </main>
   <script src="live_config.js"></script>
   <script src="decision_overview.js?v=1"></script>
-  <script src="decision_hub.js?v=13"></script>
+  <script src="decision_hub.js?v=14"></script>
   <script src="human_ui.js?v=1"></script>
   <script src="app_shell.js?v=2"></script>
 </body>

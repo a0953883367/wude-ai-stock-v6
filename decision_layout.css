@@ -1,0 +1,53 @@
+/* Scoped to the decision page: shared pages and model outputs stay unchanged. */
+.decision-page {background:#07111f;}
+.decision-page .app {max-width:960px;padding-bottom:calc(110px + env(safe-area-inset-bottom)) !important;}
+.decision-page .hero {box-shadow:none;border-color:#234363;}
+.decision-page .hero h1 {font-size:26px !important;}
+.decision-page .hero p {font-size:13px;line-height:1.65;}
+.decision-page .chips {gap:6px;}
+.decision-page .chip {font-size:10px;padding:5px 8px;}
+.decision-page .single-answer {padding:14px 16px;}
+.decision-page .single-answer b {font-size:20px;}
+.decision-page .controls {position:static;margin:12px 0;padding:12px;background:#0d1b2d;border:1px solid #28476a;border-radius:16px;}
+.decision-page .tabs,.decision-page .decision-periods {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;overflow:visible;}
+.decision-page.human-ui-ready .tabs button,.decision-page .decision-periods button {min-width:0;min-height:44px !important;padding:8px 3px !important;font-size:13px;border-radius:10px;line-height:1.25;}
+.decision-page .search input {min-width:0;font-size:14px;padding:11px 12px;border-radius:11px;}
+.decision-page .dashboard-details,.decision-page .filter-details {padding:0;border:1px solid #28476a;border-radius:13px;background:#0a1728;margin:12px 0;}
+.decision-page .dashboard-details>summary,.decision-page .filter-details>summary {display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:11px 12px;font-size:13px;list-style:none;}
+.decision-page .dashboard-details>summary::-webkit-details-marker,.decision-page .filter-details>summary::-webkit-details-marker {display:none;}
+.decision-page summary>span {color:#92a6c3;font-size:11px;font-weight:500;}
+.decision-page .dashboard-details[open] {padding:0 10px 10px;}
+.decision-page .filter-details {margin:8px 0 0;}
+.decision-page .filter-details[open] {padding-bottom:8px;}
+.decision-page .filters {flex-wrap:wrap;overflow:visible;padding:0 8px;gap:6px;}
+.decision-page.human-ui-ready .filters button {font-size:12px;min-height:44px !important;padding:8px 10px !important;}
+.decision-page .mode-tabs {gap:6px;margin:12px 0;}
+.decision-page .mode-tabs button {font-size:12px;padding:9px 11px;border-radius:10px;}
+.decision-page .card {border-color:#28476a;box-shadow:none;background:#0c1c2d;}
+.decision-page .card-head {align-items:flex-start;gap:8px;}
+.decision-page .card-head>div:first-child {min-width:0;}
+.decision-page .name {font-size:21px;overflow-wrap:anywhere;}
+.decision-page .decision {min-width:96px;}
+.decision-page .decision b {font-size:12px;padding:6px 8px;}
+.decision-page .decision small {font-size:10px;}
+.decision-page .card>.next-session-entry {margin:10px 0;padding:9px 10px;font-size:12px;background:#10243a;border-color:#28476a;}
+.decision-page .decision-overview {padding:13px;background:#0c2539;border-color:#2a5877;}
+.decision-page .overview-heading {align-items:center;font-size:14px;}
+.decision-page .overview-heading span {font-size:10px;}
+.decision-page .overview-grid {gap:8px;}
+.decision-page .overview-grid div {padding:12px;border:1px solid #17364e;}
+.decision-page .overview-grid span {font-size:11px;}
+.decision-page .overview-grid b {font-size:22px;margin-top:4px;line-height:1.25;}
+.decision-page .decision-overview p {font-size:12px;line-height:1.7;margin:12px 0;}
+.decision-page .decision-overview .overview-date {font-size:10px;color:#a2b6cb;}
+.decision-page .overview-wait {border-left:2px solid #b99a4e;padding:7px 9px;background:#282514;border-radius:0 8px 8px 0;color:#e8cf8c;}
+.decision-page .legacy-analysis>summary {font-size:12px;}
+.decision-page.human-ui-ready .app-shell-nav a {font-size:10px !important;line-height:1.2;min-height:52px;padding:6px 0;gap:5px;}
+.decision-page .app-shell-nav {border-radius:16px;padding:5px;gap:2px;}
+.decision-page .app-shell-nav-icon {font-size:19px;}
+.decision-page .app-shell-nav a>span:last-child {white-space:nowrap;font-size:10px;}
+.decision-page .app-shell-nav a {border-radius:11px;}
+@media(min-width:720px){.decision-page .controls{padding:16px;}.decision-page .app-shell-nav a>span:last-child{font-size:12px;}.decision-page.human-ui-ready .app-shell-nav a{font-size:12px !important;}.decision-page .card{min-width:0;}}
+@media(max-width:360px){.decision-page .overview-grid b{font-size:19px;}.decision-page .card-head{flex-wrap:wrap;}.decision-page .decision{text-align:left;}.decision-page .overview-heading{flex-wrap:wrap;}}
+
+.decision-page .filter-details[hidden]{display:none;}

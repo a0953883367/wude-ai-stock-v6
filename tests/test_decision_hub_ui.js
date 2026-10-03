@@ -38,7 +38,7 @@ assert(js.includes('ranking_files'));
 assert(js.includes('loadShadowSelection'));
 assert(js.includes("state.mode==='compare'"));
 assert(js.includes('影子覆蓋'));
-assert(html.includes('decision_hub.js?v=13'));
+assert(html.includes('decision_hub.js?v=14'));
 assert(js.includes('K線型態5日驗證'));
 assert(html.includes('id="statusFeedback"'));
 assert(js.includes('data-status-action'));
