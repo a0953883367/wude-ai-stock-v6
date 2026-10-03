@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-03T11:37:45+00:00",
+  "generated_at": "2026-10-03T11:45:13+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -17,13 +17,45 @@
     "paid_model_calls": 0
   },
   "stock_maintenance": {
-    "connected": false,
-    "executor": "尚未取得維護執行證據",
-    "checked_at": null,
-    "capabilities": {},
-    "limits": {},
-    "incidents": {},
-    "blockers": [],
+    "connected": true,
+    "executor": "existing system-guard workflow / stock_shadow maintenance",
+    "checked_at": "2026-10-03T19:37:42.811868+08:00",
+    "capabilities": {
+      "actions_read_confirmed": true,
+      "protected_briefing_retry": true,
+      "actions_write_confirmed": false,
+      "arbitrary_code_repair": false,
+      "paid_model_executor": false
+    },
+    "limits": {
+      "recovery_attempts_per_date_period": 2,
+      "cooldown_minutes": 20,
+      "max_late_minutes": 120
+    },
+    "incidents": {
+      "2026-10-03:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
+      },
+      "2026-10-03:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "verified_delivered",
+        "verified_at": "2026-10-03T19:37:42.811868+08:00",
+        "reason": "fresh verified Telegram delivery receipt"
+      },
+      "2026-10-03:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      }
+    },
+    "blockers": [
+      "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
+    ],
     "paid_model_calls": 0,
     "dispatch_accepted_is_recovery": false
   },
