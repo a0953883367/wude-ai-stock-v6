@@ -44,6 +44,7 @@ jobs:
       - name: Diagnose and reserve bounded stock recovery
         env:
           GH_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python agent_stock_recovery.py
       - name: Publish reservation before any external action
         shell: bash

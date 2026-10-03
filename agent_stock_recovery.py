@@ -84,6 +84,48 @@ class GitHubExecutor:
         response.raise_for_status()
 
 
+def model_access_probe(key: str, get=requests.get) -> dict:
+    if not key:
+        return {'status': 'blocked', 'reason': 'missing OPENAI_API_KEY', 'configured': False}
+    try:
+        response = get('https://api.openai.com/v1/models',
+                       headers={'Authorization': f'Bearer {key}'}, timeout=15)
+        response.raise_for_status()
+        return {'status': 'read_access_verified', 'configured': True,
+                'inference_verified': False, 'reason': 'model listing only; no paid inference performed'}
+    except requests.RequestException as exc:
+        return {'status': 'blocked', 'configured': True, 'reason': type(exc).__name__,
+                'http_status': getattr(getattr(exc, 'response', None), 'status_code', None)}
+
+
+def reserve_permission_probe(state: dict, now: datetime, run_id: str, model: dict) -> None:
+    state['code_repair_access'] = model
+    if model['status'] == 'blocked':
+        state['blockers'].append('程式修復模型憑證阻塞：' + model['reason'])
+    probe = state.setdefault('permission_probe', {})
+    if not probe and state['capabilities']['actions_read_confirmed']:
+        probe.update(status='reserved', nonce=run_id, reserved_at=now.isoformat())
+
+
+def execute_permission_probe(state: dict, executor: GitHubExecutor, expected_run_id: str | None) -> None:
+    probe = state.get('permission_probe', {})
+    if probe.get('status') != 'reserved' or not expected_run_id or probe.get('nonce') != expected_run_id:
+        return
+    # Persisting a reservation before this call bounds the capability probe to
+    # one request; it never consumes or impersonates a real report receipt.
+    try:
+        response = requests.post(
+            f'https://api.github.com/repos/{REPOSITORY}/actions/workflows/stock-briefing.yml/dispatches',
+            headers={'Authorization': f'Bearer {executor.token}', 'Accept': 'application/vnd.github+json'},
+            json={'ref': 'main', 'inputs': {'period': 'evening', 'recovery': 'true',
+                  'validation_only': 'true', 'validation_nonce': probe['nonce']}}, timeout=15)
+        response.raise_for_status()
+        probe['status'] = 'awaiting_validation'
+        state['capabilities']['actions_write_confirmed'] = True
+    except requests.RequestException as exc:
+        probe.update(status='blocked', reason=type(exc).__name__)
+
+
 def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
             capability_error: str = '') -> dict:
     now = now.astimezone(TAIPEI)
@@ -139,6 +181,8 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         'schema': 'wude.stock_agent_recovery.v1', 'checked_at': now.isoformat(),
         'executor': 'existing system-guard workflow / stock_shadow maintenance',
         'incidents': incidents, 'next_actions': actions[:1], 'web_probe': web,
+        'permission_probe': previous.get('permission_probe', {}),
+        'code_repair_access': previous.get('code_repair_access', {}),
         'diagnosis': sorted(set(failures)),
         'data_recovery_status': 'waiting_next_eligible_fixed_report' if failures else 'no_required_data_fault_detected',
         'capabilities': {'actions_read_confirmed': runs is not None,
@@ -152,6 +196,14 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         'safety': {'changes_rankings': False, 'changes_weights': False, 'changes_shadow_source_data': False,
                    'changes_promotion_thresholds': False, 'places_orders': False, 'executes_model_generated_code': False},
     }
+    probe = state['permission_probe']
+    for run in runs or []:
+        if probe.get('nonce') and run.get('display_title') == 'Agent permission probe ' + probe['nonce']:
+            probe['run_id'] = run['id']
+            probe['url'] = run.get('html_url')
+            if run.get('status') == 'completed':
+                probe['status'] = 'verified' if run.get('conclusion') == 'success' else 'failed_stopped'
+                probe['conclusion'] = run.get('conclusion')
     return state
 
 
@@ -166,6 +218,7 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
     state = load_report(reports / 'agent_recovery.json')
     # Recheck both delivery and active runs after reservation is published.
     runs = executor.runs()
+    execute_permission_probe(state, executor, expected_run_id)
     delivery = load_daily_delivery(reports / 'report_delivery_status.json', now)
     for action in state.get('next_actions', [])[:1]:
         period, key = action['period'], action['incident_key']
@@ -225,6 +278,8 @@ def main() -> None:
         except (requests.RequestException, PermissionError) as exc:
             runs, error = None, f'actions read blocked: {type(exc).__name__}'
         state = inspect(args.reports_dir, now, runs=runs, web=probe_public(), capability_error=error)
+        reserve_permission_probe(state, now, os.environ.get('GITHUB_RUN_ID', 'local'),
+                                 model_access_probe(os.environ.get('OPENAI_API_KEY', '')))
         reserve(state, now, os.environ.get('GITHUB_RUN_ID', 'local'))
         save(args.reports_dir / 'agent_recovery.json', state)
     print(json.dumps({'checked_at': state.get('checked_at'), 'reserved_actions': len(state.get('next_actions', [])),

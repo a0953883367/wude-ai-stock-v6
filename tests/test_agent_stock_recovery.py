@@ -166,3 +166,49 @@ def test_execution_rechecks_retry_limit_even_if_plan_was_modified(tmp_path):
     result = execute_reserved(tmp_path, NOW, executor)
     assert executor.sent == []
     assert result['incidents']['2026-10-03:evening']['status'] == 'exhausted'
+
+
+def test_capability_probe_dispatch_is_non_delivering_and_once(tmp_path, monkeypatch):
+    from agent_stock_recovery import reserve_permission_probe, execute_permission_probe
+    setup_report(tmp_path)
+    state = planned(tmp_path)
+    reserve_permission_probe(state, NOW, 'probe-owner', {'status': 'blocked', 'reason': 'missing OPENAI_API_KEY'})
+    post = Mock(return_value=Mock())
+    monkeypatch.setattr('agent_stock_recovery.requests.post', post)
+    executor = GitHubExecutor('masked-test')
+    execute_permission_probe(state, executor, 'wrong-owner')
+    assert not post.called
+    execute_permission_probe(state, executor, 'probe-owner')
+    assert post.call_args.kwargs['json']['inputs']['validation_only'] == 'true'
+    assert state['capabilities']['actions_write_confirmed']
+    execute_permission_probe(state, executor, 'probe-owner')
+    assert post.call_count == 1
+    assert '程式修復模型憑證阻塞：missing OPENAI_API_KEY' in state['blockers']
+    save(tmp_path / 'agent_recovery.json', state)
+    verified = inspect(tmp_path, NOW, runs=[{'id': 123, 'display_title': 'Agent permission probe probe-owner',
+                         'status': 'completed', 'conclusion': 'success'}], web=WEB)
+    assert verified['permission_probe']['status'] == 'verified'
+    assert verified['incidents']['2026-10-03:evening']['status'] != 'verified_delivered'
+
+
+def test_model_permission_probe_reports_missing_and_denied_without_key_content():
+    from agent_stock_recovery import model_access_probe
+    get = Mock()
+    assert model_access_probe('', get)['reason'] == 'missing OPENAI_API_KEY'
+    assert not get.called
+    error = requests.HTTPError('secret response must not be persisted')
+    error.response = Mock(status_code=401)
+    get.side_effect = error
+    result = model_access_probe('test-secret', get)
+    assert result['http_status'] == 401
+    assert 'test-secret' not in json.dumps(result)
+    assert 'secret response' not in json.dumps(result)
+
+
+def test_validation_mode_bypasses_all_report_production():
+    workflow = Path('.github/workflows/stock-briefing.yml').read_text()
+    check = workflow.split('name: Prevent duplicate or expired fixed report', 1)[1].split('  briefing:', 1)[0]
+    assert check.index('should_run=false') < check.index('args=(--mode gate')
+    assert 'exit 0' in check.split('args=(--mode gate')[0]
+    assert "needs.gate.outputs.should_run == 'true'" in workflow
+    assert "inputs.validation_only == true" in workflow
