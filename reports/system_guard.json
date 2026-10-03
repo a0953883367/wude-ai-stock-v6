@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-03T13:30:33+08:00",
+  "checked_at": "2026-10-03T18:55:28+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-03 12:28:25",
-  "report_age_minutes": 62.1,
+  "report_age_minutes": 387.1,
   "counts": {
-    "ok": 26,
-    "info": 7,
-    "warning": 1,
+    "ok": 27,
+    "info": 8,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 1.0 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 6.5 小時",
       "action": ""
     },
     {
@@ -51,6 +51,30 @@
       "level": "ok",
       "label": "正常",
       "detail": "noon 報表已驗證並由 Telegram 送達",
+      "action": ""
+    },
+    {
+      "code": "fixed_delivery_morning",
+      "title": "今日早報送達",
+      "level": "warning",
+      "label": "注意",
+      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
+      "action": "補送窗口已過，不送過期報表"
+    },
+    {
+      "code": "fixed_delivery_noon",
+      "title": "今日午報送達",
+      "level": "ok",
+      "label": "正常",
+      "detail": "已確認 Telegram 送達：2026-10-03T12:29:55+08:00",
+      "action": ""
+    },
+    {
+      "code": "fixed_delivery_evening",
+      "title": "今日晚報送達",
+      "level": "info",
+      "label": "資訊",
+      "detail": "尚未到 20:00 發送時間",
       "action": ""
     },
     {
@@ -290,7 +314,8 @@
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "補送窗口已過，不送過期報表"
   ],
   "safety": {
     "changes_rankings": false,
