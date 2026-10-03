@@ -21,9 +21,13 @@ on:
     - cron: "35 21 * * *"
     - cron: "45 21 * * *"
     - cron: "55 21 * * *"
+    - cron: "35 3 * * *"
     - cron: "45 3 * * *"
+    - cron: "55 3 * * *"
     - cron: "15 9 * * 1-5"
+    - cron: "10 11 * * *"
     - cron: "30 11 * * *"
+    - cron: "50 11 * * *"
   workflow_dispatch:
     inputs:
       period:
@@ -136,7 +140,7 @@ jobs:
                 save_prediction="true"
                 commit_message="更新 AI 股票morning報"
                 ;;
-              "45 3 * * *")
+              "35 3 * * *" | "45 3 * * *" | "55 3 * * *")
                 # GitHub scheduled runs can be delayed for hours.  If the noon
                 # run starts after Taiwan market close, use it as the missing
                 # silent close settlement instead of publishing a stale noon
@@ -161,7 +165,7 @@ jobs:
                 save_prediction="true"
                 commit_message="更新台股17:00收盤結算"
                 ;;
-              "30 11 * * *")
+              "10 11 * * *" | "30 11 * * *" | "50 11 * * *")
                 period="evening"
                 no_telegram="true"
                 defer_delivery="true"
