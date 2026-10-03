@@ -145,3 +145,24 @@ def test_workflow_persists_reservation_before_dispatch_and_reuses_guard():
     assert 'actions: write' in workflow
     assert 'reports/agent_recovery.json' in workflow
     assert 'if: ${{ always() }}' in workflow
+
+
+def test_only_reserving_workflow_may_execute_the_action(tmp_path):
+    setup_report(tmp_path)
+    planned(tmp_path)
+    executor = Executor()
+    state = execute_reserved(tmp_path, NOW, executor, expected_run_id='another-run')
+    assert executor.sent == []
+    assert state['incidents']['2026-10-03:evening']['status'] == 'blocked_permission'
+
+
+def test_execution_rechecks_retry_limit_even_if_plan_was_modified(tmp_path):
+    setup_report(tmp_path)
+    state = planned(tmp_path)
+    item = state['incidents']['2026-10-03:evening']
+    item['attempts'].extend([dict(item['attempts'][0]), dict(item['attempts'][0])])
+    save(tmp_path / 'agent_recovery.json', state)
+    executor = Executor()
+    result = execute_reserved(tmp_path, NOW, executor)
+    assert executor.sent == []
+    assert result['incidents']['2026-10-03:evening']['status'] == 'exhausted'
