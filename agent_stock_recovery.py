@@ -162,7 +162,7 @@ def reserve(state: dict, now: datetime, run_id: str) -> None:
         item['status'] = 'reserved'
 
 
-def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor) -> dict:
+def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, expected_run_id: str | None = None) -> dict:
     state = load_report(reports / 'agent_recovery.json')
     # Recheck both delivery and active runs after reservation is published.
     runs = executor.runs()
@@ -177,8 +177,7 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor) -> 
             attempt['state'] = 'skipped_retry_limit'
             item['status'] = 'exhausted'
             continue
-        expected_run = os.environ.get('GITHUB_RUN_ID')
-        if expected_run and attempt.get('guard_run_id') != expected_run:
+        if expected_run_id and attempt.get('guard_run_id') != expected_run_id:
             attempt['state'] = 'skipped_reservation_owner'
             item['status'] = 'blocked_permission'
             continue
@@ -215,7 +214,7 @@ def main() -> None:
     executor = GitHubExecutor(os.environ.get('GH_TOKEN', ''))
     if args.execute_reserved:
         try:
-            state = execute_reserved(args.reports_dir, now, executor)
+            state = execute_reserved(args.reports_dir, now, executor, expected_run_id=os.environ.get('GITHUB_RUN_ID'))
         except (requests.RequestException, PermissionError) as exc:
             state = load_report(args.reports_dir / 'agent_recovery.json')
             state['blockers'] = [f'active-run check failed: {type(exc).__name__}; no dispatch performed']
