@@ -6,7 +6,7 @@ existing full CI. No protected financial files or report data enter the diff.
 """
 from __future__ import annotations
 import argparse, base64, hashlib, json, os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import requests
 from agent_stock_recovery import REPOSITORY, TAIPEI, load_report, save
@@ -53,7 +53,7 @@ def plan(root: Path, run_id: str) -> dict:
     if fixed:
         fingerprint = hashlib.sha256(source.encode()).hexdigest()
         if fingerprint not in state['attempts']:
-            state['attempts'][fingerprint] = {'status': 'reserved', 'owner': run_id}
+            state['attempts'][fingerprint] = {'status': 'reserved', 'owner': run_id, 'started_at': state['checked_at']}
         state['candidate'] = fingerprint
     elif 'candidate' not in state:
         state['status'] = 'healthy_no_matching_fault'
@@ -93,6 +93,9 @@ def _advance(state, api, run_id):
     item = state['attempts'][key]
     if state['permission_probe'].get('status') != 'verified_branch_and_pr':
         item.update(status='blocked_permission')
+        return
+    if item['status'] in {'waiting_full_ci', 'waiting_public_verification'} and item.get('started_at') and datetime.now(TAIPEI) > datetime.fromisoformat(item['started_at']) + timedelta(minutes=120):
+        item['status'] = 'stopped_verification_timeout'
         return
     if item['status'] == 'reserved' and item['owner'] == run_id:
         data, source = api.file(PATH, 'main')
@@ -159,6 +162,8 @@ def execute(root, run_id, api):
     state = load_report(path)
     try:
         permission_probe(state, api, run_id)
+        if state['permission_probe'].get('status') == 'blocked_stopped':
+            state['status'] = 'blocked_permission'
         advance(state, api, run_id)
     except (requests.RequestException, PermissionError) as exc:
         state.update(status='blocked_stopped', reason=type(exc).__name__,
