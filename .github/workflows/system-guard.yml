@@ -21,7 +21,8 @@ permissions:
   actions: write
 
 concurrency:
-  group: system-guard
+  # Both workflows publish agent_runtime.json; serialize their writers.
+  group: stock-agent-state-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
