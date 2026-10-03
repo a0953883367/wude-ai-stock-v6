@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-03T20:17:46.833225+08:00",
+  "checked_at": "2026-10-03T20:17:51.374155+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -22,22 +22,17 @@
         {
           "at": "2026-10-03T20:17:46.833225+08:00",
           "guard_run_id": "37122389189",
-          "state": "reserved"
+          "state": "dispatch_accepted"
         }
       ],
-      "status": "reserved",
+      "status": "awaiting_verification",
       "reason": "retry existing verified briefing inside fixed delivery window",
       "diagnosis": [
         "missing_verified_delivery"
       ]
     }
   },
-  "next_actions": [
-    {
-      "incident_key": "2026-10-03:evening",
-      "period": "evening"
-    }
-  ],
+  "next_actions": [],
   "web_probe": {
     "ok": true,
     "endpoints": {

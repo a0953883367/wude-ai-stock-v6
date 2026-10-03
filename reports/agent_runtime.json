@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-03T12:05:23+00:00",
+  "generated_at": "2026-10-03T12:17:58+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -19,24 +19,38 @@
   "stock_code_repair": {
     "attempts": {},
     "permission_probe": {
-      "status": "blocked_stopped",
-      "owner": "37121682596",
+      "status": "verified_branch_and_pr",
+      "owner": "37122389189",
       "branch_write_verified": true,
-      "reason": "HTTPError",
-      "http_status": 403,
-      "required_permission": "contents:write; pull-requests:write; repository Allow GitHub Actions to create pull requests"
+      "pr_write_verified": true,
+      "pr_number": 297,
+      "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-03T20:05:22.730530+08:00",
+    "checked_at": "2026-10-03T20:17:57.700805+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
     ],
-    "status": "blocked_permission"
+    "status": "healthy_no_matching_fault",
+    "permission_probe_history": [
+      {
+        "status": "blocked_stopped",
+        "owner": "37121682596",
+        "branch_write_verified": true,
+        "reason": "HTTPError",
+        "http_status": 403,
+        "required_permission": "contents:write; pull-requests:write; repository Allow GitHub Actions to create pull requests"
+      }
+    ],
+    "permission_recheck_20261003": {
+      "reason": "owner confirmed Actions PR setting enabled",
+      "owner": "37122389189"
+    }
   },
   "stock_maintenance": {
     "connected": true,
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-03T20:05:19.611905+08:00",
+    "checked_at": "2026-10-03T20:17:51.374155+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -60,14 +74,23 @@
         "period": "noon",
         "attempts": [],
         "status": "verified_delivered",
-        "verified_at": "2026-10-03T20:05:12.880768+08:00",
+        "verified_at": "2026-10-03T20:17:46.833225+08:00",
         "reason": "fresh verified Telegram delivery receipt"
       },
       "2026-10-03:evening": {
         "period": "evening",
-        "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "attempts": [
+          {
+            "at": "2026-10-03T20:17:46.833225+08:00",
+            "guard_run_id": "37122389189",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "retry existing verified briefing inside fixed delivery window",
+        "diagnosis": [
+          "missing_verified_delivery"
+        ]
       }
     },
     "blockers": [
