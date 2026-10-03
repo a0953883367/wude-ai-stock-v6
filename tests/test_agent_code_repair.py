@@ -93,3 +93,29 @@ def test_waiting_ci_has_deadline_and_stops_without_more_api_calls():
     advance(state, api, 'test')
     assert state['status'] == 'stopped_verification_timeout'
     assert not api.call.called
+
+
+def test_authorized_permission_recheck_preserves_failure_and_only_reserves_once(tmp_path):
+    from agent_code_repair import AUTHORIZED_RECHECK_OWNER, save
+    old = {'status': 'blocked_stopped', 'owner': AUTHORIZED_RECHECK_OWNER, 'http_status': 403}
+    (tmp_path / 'decision_hub.js').write_text(GOOD)
+    save(tmp_path / 'reports/agent_code_repair.json', {'permission_probe': old})
+    first = plan(tmp_path, 'new-run')
+    assert first['permission_probe_history'] == [old]
+    assert first['permission_probe'] == {'status': 'reserved', 'owner': 'new-run'}
+    first['permission_probe']['status'] = 'blocked_stopped'
+    save(tmp_path / 'reports/agent_code_repair.json', first)
+    second = plan(tmp_path, 'later-run')
+    assert second['permission_probe']['owner'] == 'new-run'
+    assert second['permission_probe']['status'] == 'blocked_stopped'
+    assert len(second['permission_probe_history']) == 1
+
+
+def test_other_permission_failures_remain_stopped(tmp_path):
+    from agent_code_repair import save
+    old = {'status': 'blocked_stopped', 'owner': 'unrelated', 'http_status': 403}
+    (tmp_path / 'decision_hub.js').write_text(GOOD)
+    save(tmp_path / 'reports/agent_code_repair.json', {'permission_probe': old})
+    state = plan(tmp_path, 'new-run')
+    assert state['permission_probe'] == old
+    assert not state.get('permission_probe_history')
