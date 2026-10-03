@@ -57,7 +57,9 @@ jobs:
       - name: 檢查獨立估值風險雷達
         run: node tests/test_valuation_risk_shadow_ui.js
       - name: 檢查中央 AI 決策中樞
-        run: node tests/test_decision_hub_ui.js
+        run: |
+          node tests/test_decision_hub_ui.js
+          node tests/test_decision_overview_ui.js
       - name: 檢查影子交易計畫
         run: node tests/test_trade_plan_shadow_ui.js
       - name: 檢查影子交易計畫前向驗證
