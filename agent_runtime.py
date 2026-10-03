@@ -392,6 +392,7 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
             "external_calls": 0,
             "paid_model_calls": 0,
         },
+        "stock_code_repair": _read_json(reports_dir / "agent_code_repair.json"),
         "stock_maintenance": {
             "connected": bool(maintenance),
             "executor": maintenance.get("executor") or "尚未取得維護執行證據",

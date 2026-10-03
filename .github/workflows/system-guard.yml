@@ -14,11 +14,14 @@ on:
       - ".github/workflows/system-guard.yml"
       - "briefing_watchdog.py"
       - "agent_stock_recovery.py"
+      - "agent_code_repair.py"
       - "system_guard.py"
 
 permissions:
   contents: write
   actions: write
+  pull-requests: write
+  pages: write
 
 concurrency:
   # Both workflows publish agent_runtime.json; serialize their writers.
@@ -45,11 +48,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python agent_stock_recovery.py
+        run: |
+          python agent_stock_recovery.py
+          python agent_code_repair.py
       - name: Publish reservation before any external action
         shell: bash
         run: |
-          git add reports/agent_recovery.json reports/system_guard.json reports/stock_growth_control.json
+          git add reports/agent_recovery.json reports/agent_code_repair.json reports/system_guard.json reports/stock_growth_control.json
           git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -64,7 +69,9 @@ jobs:
       - name: Execute only the reserved protected recovery
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python agent_stock_recovery.py --execute-reserved
+        run: |
+          python agent_stock_recovery.py --execute-reserved
+          python agent_code_repair.py --execute
       - name: Verify and expose recovery evidence
         run: |
           python system_guard.py --state-change-only
@@ -73,7 +80,7 @@ jobs:
         if: ${{ always() }}
         shell: bash
         run: |
-          git add reports/system_guard.json reports/stock_growth_control.json reports/agent_recovery.json reports/agent_runtime.json
+          git add reports/system_guard.json reports/stock_growth_control.json reports/agent_recovery.json reports/agent_code_repair.json reports/agent_runtime.json
           git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
