@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-03T05:27:50+00:00",
+  "generated_at": "2026-10-03T11:37:45+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -16,6 +16,18 @@
     "external_calls": 0,
     "paid_model_calls": 0
   },
+  "stock_maintenance": {
+    "connected": false,
+    "executor": "尚未取得維護執行證據",
+    "checked_at": null,
+    "capabilities": {},
+    "limits": {},
+    "incidents": {},
+    "blockers": [],
+    "paid_model_calls": 0,
+    "dispatch_accepted_is_recovery": false
+  },
+  "counter_scope": "summary.external_calls/paid_model_calls only cover this deterministic validation runtime; stock maintenance has separate action evidence",
   "validations": [
     {
       "agent_id": "stock_shadow",
@@ -86,7 +98,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 30/60 日、錯誤事件 662 筆、成熟學習 70786 筆；影子自動升退版已啟用。",
+      "summary": "已讀取影子證據：向前驗證 30/60 日、錯誤事件 662 筆、成熟學習 70786 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
