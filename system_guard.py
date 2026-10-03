@@ -1139,6 +1139,21 @@ def build_guard(
     checks.extend(_live_runtime_checks(live_runtime_probe, previous, now=now))
     checks.append(_publish_check("friend", friend_publish, previous))
     checks.append(_publish_check("owner", owner_publish, previous))
+    recovery = _load(reports_dir / "agent_recovery.json")
+    if recovery:
+        today = now.date().isoformat()
+        current = [item for key, item in (recovery.get("incidents") or {}).items() if key.startswith(today + ":")]
+        stopped = [item for item in current if item.get("status") in {"exhausted", "blocked_permission", "dispatch_failed"}]
+        pending = [item for item in current if item.get("status") in {"reserved", "awaiting_verification", "cooldown", "waiting_active_run"}]
+        web_ok = (recovery.get("web_probe") or {}).get("ok") is True
+        checked = _parse_taipei(recovery.get("checked_at"))
+        fresh = checked is not None and timedelta(0) <= now - checked <= timedelta(hours=2)
+        checks.append(_check(
+            "stock_agent_recovery", "股票 Agent 自動處理", "warning" if stopped or not web_ok or not fresh else "info",
+            f"最近執行 {recovery.get('checked_at', '未知')}；待驗收 {len(pending)}、停止重試 {len(stopped)}；每日期時段最多 2 次",
+            "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好",
+        ))
+
     severity = max((LEVEL_ORDER.get(item["level"], 0) for item in checks), default=0)
     overall = "critical" if severity >= 2 else "warning" if severity == 1 else "ok"
     counts = {level: sum(item["level"] == level for item in checks) for level in ("ok", "info", "warning", "critical")}
@@ -1158,6 +1173,7 @@ def build_guard(
             "places_orders": False,
             "deletes_data": False,
             "automatic_fix": False,
+            "bounded_stock_recovery": bool(recovery),
             "note": "只監控、診斷與通報；不改模型、不下單、不刪除資料。",
         },
         "monitoring_boundaries": {
