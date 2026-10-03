@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-03T19:56:31.715254+08:00",
+  "checked_at": "2026-10-03T20:05:12.880768+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -13,7 +13,7 @@
       "period": "noon",
       "attempts": [],
       "status": "verified_delivered",
-      "verified_at": "2026-10-03T19:56:26.477647+08:00",
+      "verified_at": "2026-10-03T20:05:12.880768+08:00",
       "reason": "fresh verified Telegram delivery receipt"
     },
     "2026-10-03:evening": {
@@ -42,9 +42,12 @@
     "scope": "HTTP / JSON / required DOM nodes; not browser JavaScript execution"
   },
   "permission_probe": {
-    "status": "awaiting_validation",
+    "status": "verified",
     "nonce": "37121229815",
-    "reserved_at": "2026-10-03T19:56:26.477647+08:00"
+    "reserved_at": "2026-10-03T19:56:26.477647+08:00",
+    "run_id": 37121254340,
+    "url": "https://github.com/a0953883367/wude-ai-stock-v6/actions/runs/37121254340",
+    "conclusion": "success"
   },
   "code_repair_access": {
     "status": "read_access_verified",

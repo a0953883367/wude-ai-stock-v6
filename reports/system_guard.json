@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-03T19:56:34+08:00",
+  "checked_at": "2026-10-03T20:05:12+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-03 12:28:25",
-  "report_age_minutes": 448.2,
+  "report_age_minutes": 456.8,
   "counts": {
     "ok": 27,
-    "info": 9,
-    "warning": 2,
+    "info": 8,
+    "warning": 4,
     "critical": 0
   },
   "checks": [
@@ -42,8 +42,16 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 7.5 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 7.6 小時",
       "action": ""
+    },
+    {
+      "code": "report_period_alignment",
+      "title": "晚報時段同步",
+      "level": "warning",
+      "label": "注意",
+      "detail": "20:00 後最新報表仍是 noon",
+      "action": "等待晚報排程；通知不得把午報標示成 V6 晚報"
     },
     {
       "code": "report_delivery",
@@ -72,10 +80,10 @@
     {
       "code": "fixed_delivery_evening",
       "title": "今日晚報送達",
-      "level": "info",
-      "label": "資訊",
-      "detail": "尚未到 20:00 發送時間",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
+      "action": "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
     },
     {
       "code": "report_consistency",
@@ -323,7 +331,9 @@
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "補送窗口已過，不送過期報表"
+    "等待晚報排程；通知不得把午報標示成 V6 晚報",
+    "補送窗口已過，不送過期報表",
+    "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
   ],
   "safety": {
     "changes_rankings": false,
