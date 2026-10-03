@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-02T18:00:34+00:00",
+  "generated_at": "2026-10-03T05:27:50+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -33,7 +33,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 199363,
+        "bytes": 128443,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -86,7 +86,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 30/60 日、錯誤事件 661 筆、成熟學習 68718 筆；影子自動升退版已啟用。",
+      "summary": "已讀取影子證據：向前驗證 30/60 日、錯誤事件 662 筆、成熟學習 70786 筆；影子自動升退版已啟用。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -98,11 +98,11 @@
         },
         "validation_days": 30,
         "target_days": 60,
-        "eligible_samples": 1514,
-        "independent_error_events": 661,
-        "guard_status": "ok",
+        "eligible_samples": 1528,
+        "independent_error_events": 662,
+        "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 68718,
+        "matured_learning_rows": 70786,
         "active_shadow_trust_streams": 0,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
@@ -354,7 +354,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.36,
+    "average_reduction_pct": 36.38,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
