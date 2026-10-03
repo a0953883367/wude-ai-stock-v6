@@ -25,7 +25,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: agent-control-${{ github.ref }}
+  # Both workflows publish agent_runtime.json; serialize their writers.
+  group: stock-agent-state-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
