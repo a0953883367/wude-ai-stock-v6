@@ -15,6 +15,8 @@ PATH = 'decision_hub.js'
 BAD = "filters.closest('.filter-details').hidden=shadowMode;"
 GOOD = "var filterDetails=filters.closest('.filter-details');if(filterDetails)filterDetails.hidden=shadowMode;"
 API = f'https://api.github.com/repos/{REPOSITORY}'
+# One authorized recheck after the owner enabled Actions PR creation on 2026-10-03.
+AUTHORIZED_RECHECK_OWNER = '37121682596'
 
 
 def repair(source: str) -> str | None:
@@ -43,6 +45,13 @@ def plan(root: Path, run_id: str) -> dict:
     state = load_report(root / 'reports/agent_code_repair.json')
     state.setdefault('attempts', {})
     state.setdefault('permission_probe', {})
+    probe = state['permission_probe']
+    if (probe.get('status') == 'blocked_stopped'
+            and probe.get('owner') == AUTHORIZED_RECHECK_OWNER
+            and not state.get('permission_recheck_20261003')):
+        state.setdefault('permission_probe_history', []).append(dict(probe))
+        state['permission_recheck_20261003'] = {'reason': 'owner confirmed Actions PR setting enabled', 'owner': run_id}
+        state['permission_probe'] = {}
     if not state['permission_probe']:
         state['permission_probe'] = {'status': 'reserved', 'owner': run_id}
     source = (root / PATH).read_text()
