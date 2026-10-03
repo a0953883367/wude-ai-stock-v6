@@ -38,7 +38,7 @@ assert(js.includes('ranking_files'));
 assert(js.includes('loadShadowSelection'));
 assert(js.includes("state.mode==='compare'"));
 assert(js.includes('影子覆蓋'));
-assert(html.includes('decision_hub.js?v=14'));
+assert(html.includes('decision_hub.js?v=15'));
 assert(js.includes('K線型態5日驗證'));
 assert(html.includes('id="statusFeedback"'));
 assert(js.includes('data-status-action'));
@@ -88,3 +88,19 @@ assert(shadowRows.some(row=>row.rank_change===0));
 assert(shadowRows.every(row=>row.rank_change===row.baseline_rank-row.shadow_rank));
 assert(shadowRows.every(row=>row.formal_ranking_unchanged===true));
 console.log('decision hub UI checks passed');
+
+// Old cached HTML can load current JS during a deployment. The wrapper is optional.
+const vm=require('vm');
+const renderSource=js.slice(js.indexOf('function render(){'),js.indexOf('function fetchJSON(',js.indexOf('function render(){')));
+assert(renderSource.startsWith('function render(){'));
+for(const hasWrapper of [false,true])for(const mode of ['decision','shadow','compare']){
+  const wrapper={hidden:false};
+  const nodes={filters:{hidden:false,closest:()=>hasWrapper?wrapper:null},decisionPeriods:{},shadowHorizons:{},compareFilters:{},shadowNote:{},count:{},cards:{}};
+  const context={state:{payload:{},mode,compareFilter:'up',shadow:{}},renderStatus:()=>{},renderLiveStatus:()=>{},
+    document:{getElementById:id=>nodes[id],querySelector:()=>({})},filtered:()=>[{}],shadowRows:()=>[{}],card:()=>'<article>decision</article>',shadowCard:()=>'<article>shadow</article>',esc:String};
+  vm.runInNewContext(renderSource+';render();',context);
+  assert(nodes.cards.innerHTML.includes('<article>'));
+  assert.strictEqual(nodes.filters.hidden,mode!=='decision');
+  if(hasWrapper)assert.strictEqual(wrapper.hidden,mode!=='decision');
+}
+console.log('cached HTML compatibility passed: all three modes with and without filter wrapper');
