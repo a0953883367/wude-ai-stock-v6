@@ -82,3 +82,14 @@ def test_existing_workflow_persists_code_reservation_before_execution():
     assert workflow.index('python agent_code_repair.py\n') < workflow.index('git add reports/agent_recovery.json reports/agent_code_repair.json') < workflow.index('python agent_code_repair.py --execute')
     assert 'pull-requests: write' in workflow and 'pages: write' in workflow
     assert 'workflow_dispatch:' in Path('.github/workflows/ci.yml').read_text()
+
+
+def test_waiting_ci_has_deadline_and_stops_without_more_api_calls():
+    from datetime import datetime, timedelta
+    from agent_code_repair import TAIPEI
+    state = pending()
+    state['attempts']['key']['started_at'] = (datetime.now(TAIPEI) - timedelta(hours=3)).isoformat()
+    api = Mock()
+    advance(state, api, 'test')
+    assert state['status'] == 'stopped_verification_timeout'
+    assert not api.call.called
