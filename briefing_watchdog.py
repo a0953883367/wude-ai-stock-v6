@@ -25,8 +25,12 @@ SCHEDULE_PERIODS = {
     "35 21 * * *": "morning",
     "45 21 * * *": "morning",
     "55 21 * * *": "morning",
+    "35 3 * * *": "noon",
     "45 3 * * *": "noon",
+    "55 3 * * *": "noon",
+    "10 11 * * *": "evening",
     "30 11 * * *": "evening",
+    "50 11 * * *": "evening",
 }
 
 
@@ -71,18 +75,35 @@ def report_is_fresh(
     )
 
 
+def delivery_is_current(delivery: dict[str, Any] | None, *, period: str, target: datetime) -> bool:
+    """A generated file alone is not proof of successful fixed delivery."""
+    receipt = delivery or {}
+    checked = _parse_updated_at(receipt.get("checked_at"))
+    updated = _parse_updated_at(receipt.get("report_updated_at"))
+    return bool(
+        receipt.get("period") == period
+        and receipt.get("channel") == "telegram_v6"
+        and receipt.get("state") == "delivered"
+        and receipt.get("delivered") is True
+        and checked is not None and updated is not None
+        and target <= checked <= target + timedelta(minutes=120)
+        and target - timedelta(minutes=60) <= updated <= checked
+    )
+
+
 def recovery_decision(
     report: dict[str, Any],
     *,
     now: datetime,
     period: str,
+    delivery: dict[str, Any] | None = None,
     grace_minutes: int = 10,
     max_late_minutes: int = 120,
 ) -> tuple[bool, str]:
     current = now.astimezone(TAIPEI)
     target = target_datetime(current, period)
-    if report_is_fresh(report, period=period, target=target):
-        return False, "current report already exists"
+    if delivery_is_current(delivery, period=period, target=target):
+        return False, "current report already delivered"
     if current < target + timedelta(minutes=grace_minutes):
         return False, "still inside primary delivery grace period"
     if current > target + timedelta(minutes=max_late_minutes):
@@ -95,13 +116,14 @@ def scheduled_gate_decision(
     *,
     now: datetime,
     schedule: str,
+    delivery: dict[str, Any] | None = None,
 ) -> tuple[bool, str]:
     period = SCHEDULE_PERIODS.get(schedule)
     if not period:
         return True, "non-fixed settlement schedule"
     target = target_datetime(now, period)
-    if report_is_fresh(report, period=period, target=target):
-        return False, "another run already produced the fixed report"
+    if delivery_is_current(delivery, period=period, target=target):
+        return False, "another run already delivered the fixed report"
     return True, "fixed report still required"
 
 
@@ -117,6 +139,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["watchdog", "gate"], required=True)
     parser.add_argument("--report", default="reports/latest.json")
+    parser.add_argument("--delivery", default="reports/report_delivery_status.json")
     parser.add_argument("--period", choices=sorted(TARGETS))
     parser.add_argument("--schedule", default="")
     parser.add_argument("--recovery", action="store_true")
@@ -130,19 +153,20 @@ def main() -> int:
         else datetime.now(TAIPEI)
     )
     report = load_report(args.report)
+    delivery = load_report(args.delivery)
 
     if args.mode == "watchdog":
         selected = next(
             (
                 period
                 for period in ("morning", "noon", "evening")
-                if recovery_decision(report, now=now, period=period)[0]
+                if recovery_decision(report, now=now, period=period, delivery=delivery)[0]
             ),
             "",
         )
         should_dispatch = bool(selected)
         reason = (
-            recovery_decision(report, now=now, period=selected)[1]
+            recovery_decision(report, now=now, period=selected, delivery=delivery)[1]
             if selected
             else "no fixed report requires recovery"
         )
@@ -155,12 +179,12 @@ def main() -> int:
         if not args.period:
             parser.error("--period is required for a recovery gate")
         should_run, reason = recovery_decision(
-            report, now=now, period=args.period, grace_minutes=0
+            report, now=now, period=args.period, delivery=delivery, grace_minutes=0
         )
         values = {"should_run": str(should_run).lower(), "reason": reason}
     else:
         should_run, reason = scheduled_gate_decision(
-            report, now=now, schedule=args.schedule
+            report, now=now, schedule=args.schedule, delivery=delivery
         )
         values = {"should_run": str(should_run).lower(), "reason": reason}
 
