@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-03T19:51:18.856070+08:00",
+  "checked_at": "2026-10-03T19:56:26.477647+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -13,7 +13,7 @@
       "period": "noon",
       "attempts": [],
       "status": "verified_delivered",
-      "verified_at": "2026-10-03T19:51:16.125021+08:00",
+      "verified_at": "2026-10-03T19:56:26.477647+08:00",
       "reason": "fresh verified Telegram delivery receipt"
     },
     "2026-10-03:evening": {
@@ -40,6 +40,17 @@
       }
     },
     "scope": "HTTP / JSON / required DOM nodes; not browser JavaScript execution"
+  },
+  "permission_probe": {
+    "status": "reserved",
+    "nonce": "37121229815",
+    "reserved_at": "2026-10-03T19:56:26.477647+08:00"
+  },
+  "code_repair_access": {
+    "status": "read_access_verified",
+    "configured": true,
+    "inference_verified": false,
+    "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [],
   "data_recovery_status": "no_required_data_fault_detected",
