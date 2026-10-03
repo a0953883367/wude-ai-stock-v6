@@ -63,6 +63,19 @@ def record_delivery(
         },
     }
     _atomic_json(reports_dir / "report_delivery_status.json", payload)
+    # Keep period-specific evidence: a later noon/evening or silent update must
+    # not erase proof of an earlier successful delivery. Failed retries retain
+    # the success as well as the actual latest attempt.
+    if period in {"morning", "noon", "evening"}:
+        receipt_path = reports_dir / "delivery_receipts" / f"{now.date().isoformat()}-{period}.json"
+        try:
+            previous = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            previous = {}
+        if not isinstance(previous, dict):
+            previous = {}
+        success = payload if delivered and state == "delivered" else previous.get("last_success", {})
+        _atomic_json(receipt_path, {"last_attempt": payload, "last_success": success})
     return payload
 
 
