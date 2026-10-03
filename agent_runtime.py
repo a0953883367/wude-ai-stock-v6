@@ -400,6 +400,8 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
             "limits": maintenance.get("limits") or {},
             "incidents": maintenance.get("incidents") or {},
             "blockers": maintenance.get("blockers") or [],
+            "permission_probe": maintenance.get("permission_probe") or {},
+            "code_repair_access": maintenance.get("code_repair_access") or {},
             "paid_model_calls": 0,
             "dispatch_accepted_is_recovery": False,
         },
