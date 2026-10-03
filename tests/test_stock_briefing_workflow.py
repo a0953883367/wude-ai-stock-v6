@@ -12,9 +12,13 @@ def test_stock_briefing_keeps_reports_and_adds_silent_taiwan_close_settlement():
         "35 21 * * *",
         "45 21 * * *",
         "55 21 * * *",
+        "35 3 * * *",
         "45 3 * * *",
+        "55 3 * * *",
         "15 9 * * 1-5",
+        "10 11 * * *",
         "30 11 * * *",
+        "50 11 * * *",
     ]
     assert "  push:" not in text
     assert '"15 9 * * 1-5")' in text
@@ -27,7 +31,7 @@ def test_stock_briefing_keeps_reports_and_adds_silent_taiwan_close_settlement():
 def test_fixed_reports_are_prepared_early_and_delivered_only_after_verification():
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    assert '"30 11 * * *")' in text
+    assert '"30 11 * * *"' in text
     assert 'defer_delivery="true"' in text
     assert 'delivery_target="06:00"' in text
     assert 'delivery_target="12:00"' in text
@@ -55,7 +59,7 @@ def test_system_guard_can_dispatch_one_protected_recovery_run():
     assert "gh workflow run stock-briefing.yml" in text
     assert "-f recovery=true" in text
     assert re.findall(r'- cron: "([^"]+)"', text) == [
-        "23 * * * *", "10,25,40,55 22 * * *",
+        "23 * * * *", "10,25,40,55 4,12,22 * * *",
     ]
 
 
