@@ -40,6 +40,12 @@
     document.getElementById('runtimeHeadline').textContent=(report.status_label||'等待驗收')+'｜實際巡檢 '+(summary.actual_work_performed||0)+'／'+(summary.validation_total||0)+'｜等待輸入 '+(summary.waiting_input||0)+'｜授權閘門 '+(summary.approval_gates_protected||0)+'／'+(summary.approval_gates_total||0)+' 已保護｜動態載入估計減少 '+esc(efficiency.average_reduction_pct||0)+'%｜付費模型呼叫 '+(summary.paid_model_calls||0)+' 次';
     document.getElementById('runtimeUpdatedAt').textContent='更新：'+new Date(report.generated_at).toLocaleString('zh-TW',{hour12:false});
     document.getElementById('runtimeTasks').innerHTML=tasks.map(function(task){var icon=task.status==='completed'?'✅':task.status==='waiting_input'?'⏳':'⚠️';return '<div class="runtime-task" data-runtime-agent="'+esc(task.agent_id)+'"><b>'+icon+' '+esc(task.agent_name)+'</b><span>'+esc(task.title)+'：'+esc(task.status_label)+'｜'+esc(task.summary)+'</span></div>';}).join('')||'<div class="empty">尚無安全任務執行紀錄。</div>';
+    var maintenance=report.stock_maintenance||{},caps=maintenance.capabilities||{},incidents=maintenance.incidents||{},labels={waiting_window:'等待正式時段',expired:'補送已逾時',verified_delivered:'送達已確認',verified_recovered:'補送恢復已驗收',waiting_active_run:'等待目前報表完成',blocked_permission:'權限不足',exhausted:'重試已停止',cooldown:'等待下次驗收',reserved:'已預約處理',awaiting_verification:'已觸發，等待驗收',dispatch_failed:'觸發失敗',skipped_expired:'已停止過期補送',skipped_active_run:'已有報表，不重複觸發',skipped_already_delivered:'已送達，不重複觸發'};
+    if(maintenance.connected){
+      var latestDay=String(maintenance.checked_at||'').slice(0,10),entries=Object.keys(incidents).filter(function(key){return key.indexOf(latestDay+':')===0;});
+      var proof=entries.map(function(key){var item=incidents[key],name={morning:'早報',noon:'午報',evening:'晚報'}[item.period]||item.period;return name+'：'+(labels[item.status]||item.status)+'（處理 '+(item.attempts||[]).length+'/2 次）';}).join('｜');
+      document.getElementById('runtimeTasks').innerHTML+='<div class="runtime-task"><b>🛠️ 股票限次自動處理</b><span>查核 '+esc(maintenance.checked_at||'—')+'｜'+esc(proof)+'</span><span>Actions 讀取：'+(caps.actions_read_confirmed?'已驗證':'未確認')+'｜觸發權限：'+(caps.actions_write_confirmed?'已有成功紀錄':'尚無本流程成功紀錄')+'｜程式自動改寫：未接通</span><span>'+esc((maintenance.blockers||[]).join('；'))+'</span></div>';
+    }
   }
   function deliveryClass(status){return status==='ready_for_handoff'?'done':status==='in_progress'?'running':status==='waiting_approval'?'approval':'waiting';}
   function renderDeliveries(report){

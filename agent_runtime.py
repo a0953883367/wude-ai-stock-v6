@@ -99,7 +99,7 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
     return {
         "status": "completed" if safe else "attention",
         "status_label": "已實際核對影子進度與安全鎖" if safe else "影子巡檢發現異常",
-        "summary": f"已讀取影子證據：向前驗證 {progress}/{target} 日、錯誤事件 {error_learning.get('independent_events', 0)} 筆、成熟學習 {unit_summary.get('matured_rows', 0)} 筆；影子自動升退版已啟用。",
+        "summary": f"已讀取影子證據：向前驗證 {progress}/{target} 日、錯誤事件 {error_learning.get('independent_events', 0)} 筆、成熟學習 {unit_summary.get('matured_rows', 0)} 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
         "evidence": {
             "checked_files": required,
             "validation_days": progress,
@@ -358,6 +358,7 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
     root = root or reports_dir.parent
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     control = _read_json(reports_dir / "agent_control.json")
+    maintenance = _read_json(reports_dir / "agent_recovery.json")
     ledger = UsageLedger()
     validations = [
         execute_safe_task(agent_id, action, title, {"validation": True}, ledger, root=root)
@@ -391,6 +392,18 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
             "external_calls": 0,
             "paid_model_calls": 0,
         },
+        "stock_maintenance": {
+            "connected": bool(maintenance),
+            "executor": maintenance.get("executor") or "尚未取得維護執行證據",
+            "checked_at": maintenance.get("checked_at"),
+            "capabilities": maintenance.get("capabilities") or {},
+            "limits": maintenance.get("limits") or {},
+            "incidents": maintenance.get("incidents") or {},
+            "blockers": maintenance.get("blockers") or [],
+            "paid_model_calls": 0,
+            "dispatch_accepted_is_recovery": False,
+        },
+        "counter_scope": "summary.external_calls/paid_model_calls only cover this deterministic validation runtime; stock maintenance has separate action evidence",
         "validations": validations,
         "approval_gate_checks": gates,
         "privacy": {

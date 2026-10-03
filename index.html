@@ -938,7 +938,7 @@ function showSystemGuard(){
   var cards=checks.map(function(item){var level=String(item.level||'info'),icon=level==='critical'?'🔴':level==='warning'?'🟡':level==='ok'?'🟢':'⚪';return '<section class="guard-card '+esc(level)+'"><div class="guard-head"><span>'+icon+' '+esc(item.title||item.code)+'</span><span>'+esc(item.label||level)+'</span></div><div class="guard-detail">'+esc(item.detail||'—')+'</div>'+(item.action?'<div class="guard-action">處理方式：'+esc(item.action)+'</div>':'')+'</section>';}).join('');
   var safety=guard.safety||{};
   var hero='<div class="guard-hero '+esc(status)+'"><div class="guard-title">'+esc(runtime.statusLabel)+'</div><div>App、Railway、台／美股串流、Telegram、手機授權與正式報表分開判斷；值班員不會更動任何股票分數。</div></div>';
-  var safetyHtml='<div class="guard-safety">🔒 '+esc(safety.note||'只監控與診斷')+'<br>自動改排名：關閉｜自動下單：關閉｜自動刪除：關閉｜自動修復：關閉</div>';
+  var safetyHtml='<div class="guard-safety">🔒 '+esc(safety.note||'只監控與診斷')+'<br>自動改排名：關閉｜自動下單：關閉｜自動刪除：關閉｜'+(safety.bounded_stock_recovery?'限次補抓／補送：已接通｜程式自動改寫：未接通':'限次補抓／補送：等待執行證據')+'</div>';
   document.getElementById('results').innerHTML=hero+'<div class="guard-grid">'+cards+'</div>'+safetyHtml;
 }
 function revealTrainingContent(){
