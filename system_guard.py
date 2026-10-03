@@ -18,6 +18,8 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from briefing_watchdog import delivery_is_current, load_daily_delivery, target_datetime
+
 
 TAIPEI = ZoneInfo("Asia/Taipei")
 LEVEL_ORDER = {"ok": 0, "info": 0, "warning": 1, "critical": 2}
@@ -697,6 +699,28 @@ def build_guard(
                 "report_delivery", "V6 通知派發", "warning",
                 str(delivery_status.get("detail") or "通知狀態與最新報表不一致"),
                 "保留報表但停止標示為已派發；檢查資料新鮮度與 Telegram",
+            ))
+
+    daily_delivery = load_daily_delivery(reports_dir / "report_delivery_status.json", now)
+    for period, name in (("morning", "早報"), ("noon", "午報"), ("evening", "晚報")):
+        target = target_datetime(now, period)
+        if delivery_is_current(daily_delivery, period=period, target=target):
+            receipt = daily_delivery.get("successful_receipts", {}).get(period) or daily_delivery
+            checks.append(_check(
+                f"fixed_delivery_{period}", f"今日{name}送達", "ok",
+                f"已確認 Telegram 送達：{receipt.get('checked_at', '')}",
+            ))
+        elif now < target:
+            checks.append(_check(
+                f"fixed_delivery_{period}", f"今日{name}送達", "info",
+                f"尚未到 {target.strftime('%H:%M')} 發送時間",
+            ))
+        else:
+            expired = now > target + timedelta(minutes=120)
+            checks.append(_check(
+                f"fixed_delivery_{period}", f"今日{name}送達", "warning",
+                "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
+                "補送窗口已過，不送過期報表" if expired else "由既有 watchdog 在 120 分鐘內重試；產報不等於送達",
             ))
 
     timestamps = {
