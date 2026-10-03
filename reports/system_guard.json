@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-04T04:01:19+08:00",
+  "checked_at": "2026-10-04T07:11:39+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-03 20:18:48",
-  "report_age_minutes": 462.5,
+  "report_age_minutes": 652.9,
   "counts": {
     "ok": 26,
-    "info": 11,
-    "warning": 1,
+    "info": 10,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -32,17 +32,17 @@
     {
       "code": "corporate_actions_shadow",
       "title": "股票更名／停復牌監控",
-      "level": "warning",
-      "label": "注意",
-      "detail": "官方身分符合 342/380 檔（個股 312、ETF 68）；事件 37 件；來源失敗 3 個；已有替代來源覆蓋 1 個受限來源",
-      "action": "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+      "level": "info",
+      "label": "資訊",
+      "detail": "官方身分符合 380/380 檔（個股 312、ETF 68）；事件 0 件；來源失敗 0 個；已有替代來源覆蓋 1 個受限來源；替代官方名單已確認代號仍有效，正式資料維持鎖定",
+      "action": "持續重試受限來源；不得據此自動更名、下市或拼接歷史價格"
     },
     {
       "code": "report_freshness",
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 7.7 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 10.9 小時",
       "action": ""
     },
     {
@@ -56,10 +56,10 @@
     {
       "code": "fixed_delivery_morning",
       "title": "今日早報送達",
-      "level": "info",
-      "label": "資訊",
-      "detail": "尚未到 06:00 發送時間",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
+      "action": "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
     },
     {
       "code": "fixed_delivery_noon",
@@ -315,14 +315,15 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票 Agent 自動處理",
-      "level": "info",
-      "label": "資訊",
+      "level": "warning",
+      "label": "注意",
       "detail": "最近執行 2026-10-04T04:01:17.120851+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+    "由既有 watchdog 在 120 分鐘內重試；產報不等於送達",
+    "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
   ],
   "safety": {
     "changes_rankings": false,
