@@ -1,0 +1,69 @@
+{
+  "schema": "wude.stock_agent_recovery.v1",
+  "checked_at": "2026-10-03T19:37:42.811868+08:00",
+  "executor": "existing system-guard workflow / stock_shadow maintenance",
+  "incidents": {
+    "2026-10-03:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-10-03:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "verified_delivered",
+      "verified_at": "2026-10-03T19:37:42.811868+08:00",
+      "reason": "fresh verified Telegram delivery receipt"
+    },
+    "2026-10-03:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    }
+  },
+  "next_actions": [],
+  "web_probe": {
+    "ok": true,
+    "endpoints": {
+      "html": {
+        "ok": true,
+        "read_attempts": 1,
+        "error": null
+      },
+      "json": {
+        "ok": true,
+        "read_attempts": 1,
+        "updated_at": "2026-10-03 12:28:25",
+        "error": null
+      }
+    },
+    "scope": "HTTP / JSON / required DOM nodes; not browser JavaScript execution"
+  },
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
+  "capabilities": {
+    "actions_read_confirmed": true,
+    "protected_briefing_retry": true,
+    "actions_write_confirmed": false,
+    "arbitrary_code_repair": false,
+    "paid_model_executor": false
+  },
+  "blockers": [
+    "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
+  ],
+  "limits": {
+    "recovery_attempts_per_date_period": 2,
+    "cooldown_minutes": 20,
+    "max_late_minutes": 120
+  },
+  "safety": {
+    "changes_rankings": false,
+    "changes_weights": false,
+    "changes_shadow_source_data": false,
+    "changes_promotion_thresholds": false,
+    "places_orders": false,
+    "executes_model_generated_code": false
+  }
+}
