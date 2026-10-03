@@ -106,3 +106,39 @@ def test_stale_report_is_blocked_before_sender(tmp_path):
     assert delivered is False
     assert sent == []
     assert status["state"] == "blocked_stale_or_incomplete"
+
+
+def test_period_receipts_survive_later_reports_and_failed_retry(tmp_path):
+    from report_delivery import record_delivery
+    from briefing_watchdog import load_daily_delivery, delivery_is_current
+
+    def record(period, hour, delivered):
+        return record_delivery(
+            tmp_path, period=period, report_updated_at=f"2026-10-03 {hour:02d}:00:00",
+            state="delivered" if delivered else "delivery_failed", delivered=delivered,
+            expected_delivery=True, detail="test", checked_at=datetime(2026, 10, 3, hour, 1, tzinfo=TAIPEI),
+        )
+
+    record("morning", 6, True)
+    record("noon", 12, True)
+    record("morning", 6, False)
+    record("evening", 20, True)
+    data = load_daily_delivery(tmp_path / "report_delivery_status.json", datetime(2026, 10, 3, 21, tzinfo=TAIPEI))
+    for period, hour in (("morning", 6), ("noon", 12), ("evening", 20)):
+        assert delivery_is_current(data, period=period, target=datetime(2026, 10, 3, hour, tzinfo=TAIPEI))
+    morning = json.loads((tmp_path / "delivery_receipts/2026-10-03-morning.json").read_text())
+    assert morning["last_attempt"]["delivered"] is False
+    assert morning["last_success"]["delivered"] is True
+    tomorrow = load_daily_delivery(tmp_path / "report_delivery_status.json", datetime(2026, 10, 4, 7, tzinfo=TAIPEI))
+    assert not delivery_is_current(tomorrow, period="morning", target=datetime(2026, 10, 4, 6, tzinfo=TAIPEI))
+
+
+def test_failed_delivery_never_creates_success_evidence(tmp_path):
+    from report_delivery import record_delivery
+    from briefing_watchdog import load_daily_delivery, delivery_is_current
+    now = datetime(2026, 10, 3, 20, 1, tzinfo=TAIPEI)
+    record_delivery(tmp_path, period="evening", report_updated_at="2026-10-03 20:00:00",
+                    state="delivery_failed", delivered=False, expected_delivery=True,
+                    detail="failed", checked_at=now)
+    receipt = load_daily_delivery(tmp_path / "report_delivery_status.json", now)
+    assert not delivery_is_current(receipt, period="evening", target=now.replace(minute=0))
