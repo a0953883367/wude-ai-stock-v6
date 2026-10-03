@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-03T20:22:37+08:00",
+  "checked_at": "2026-10-04T00:13:58+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-03 20:18:48",
-  "report_age_minutes": 3.8,
+  "report_age_minutes": 235.2,
   "counts": {
-    "ok": 28,
-    "info": 8,
-    "warning": 3,
+    "ok": 26,
+    "info": 10,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -42,15 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 0.1 小時",
-      "action": ""
-    },
-    {
-      "code": "report_period_alignment",
-      "title": "晚報時段同步",
-      "level": "ok",
-      "label": "正常",
-      "detail": "20:00 後的最新固定報表已是 evening",
+      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 3.9 小時",
       "action": ""
     },
     {
@@ -64,25 +56,25 @@
     {
       "code": "fixed_delivery_morning",
       "title": "今日早報送達",
-      "level": "warning",
-      "label": "注意",
-      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
-      "action": "補送窗口已過，不送過期報表"
+      "level": "info",
+      "label": "資訊",
+      "detail": "尚未到 06:00 發送時間",
+      "action": ""
     },
     {
       "code": "fixed_delivery_noon",
       "title": "今日午報送達",
-      "level": "warning",
-      "label": "注意",
-      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
-      "action": "補送窗口已過，不送過期報表"
+      "level": "info",
+      "label": "資訊",
+      "detail": "尚未到 12:00 發送時間",
+      "action": ""
     },
     {
       "code": "fixed_delivery_evening",
       "title": "今日晚報送達",
-      "level": "ok",
-      "label": "正常",
-      "detail": "已確認 Telegram 送達：2026-10-03T20:21:48+08:00",
+      "level": "info",
+      "label": "資訊",
+      "detail": "尚未到 20:00 發送時間",
       "action": ""
     },
     {
@@ -317,22 +309,21 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
       "code": "stock_agent_recovery",
       "title": "股票 Agent 自動處理",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近執行 2026-10-03T20:17:46.833225+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近執行 2026-10-03T20:17:51.374155+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "補送窗口已過，不送過期報表",
-    "補送窗口已過，不送過期報表"
+    "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
   ],
   "safety": {
     "changes_rankings": false,

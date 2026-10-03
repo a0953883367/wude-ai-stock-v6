@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-03T20:17:51.374155+08:00",
+  "checked_at": "2026-10-04T00:13:58.648259+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -30,6 +30,24 @@
       "diagnosis": [
         "missing_verified_delivery"
       ]
+    },
+    "2026-10-04:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-04:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-04:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -44,7 +62,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-03 12:28:25",
+        "updated_at": "2026-10-03 20:18:48",
         "error": null
       }
     },
