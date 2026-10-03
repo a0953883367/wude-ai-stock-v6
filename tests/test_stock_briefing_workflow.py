@@ -54,10 +54,13 @@ def test_system_guard_can_dispatch_one_protected_recovery_run():
     assert 'branches: [main]' in text
     assert '"briefing_watchdog.py"' in text
     assert "briefing_watchdog.py" in text
-    assert "should_dispatch == 'true'" in text
-    assert "gh run list --workflow stock-briefing.yml" in text
-    assert "gh workflow run stock-briefing.yml" in text
-    assert "-f recovery=true" in text
+    assert "python agent_stock_recovery.py --execute-reserved" in text
+    assert text.index("Publish reservation before any external action") < text.index("--execute-reserved")
+    executor = Path("agent_stock_recovery.py").read_text(encoding="utf-8")
+    assert "stock-briefing.yml/dispatches" in executor
+    assert "'recovery': 'true'" in executor
+    assert "delivery_is_current" in executor
+    assert "RETRY_LIMIT = 2" in executor
     assert re.findall(r'- cron: "([^"]+)"', text) == [
         "23 * * * *", "10,25,40,55 4,12,22 * * *",
     ]
@@ -113,8 +116,12 @@ def test_report_publish_rebases_and_retries_when_another_guard_pushes():
     for workflow in (text, guard):
         assert "for attempt in 1 2 3" in workflow
         assert "git fetch origin main" in workflow
-        assert "git rebase -X theirs origin/main" in workflow
+        assert "git rebase" in workflow and "origin/main" in workflow
         assert "git push origin HEAD:main" in workflow
+    # The persisted recovery reservation must never be silently overwritten by
+    # a conflict-resolution preference: fail closed before external dispatch.
+    assert "git rebase origin/main" in guard
+    assert "git rebase -X theirs" not in guard
 
 
 def test_history_archive_phase2_only_removes_verified_duplicate_source() -> None:
