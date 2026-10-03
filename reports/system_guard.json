@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-04T07:11:39+08:00",
+  "checked_at": "2026-10-04T07:11:49+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-03 20:18:48",
-  "report_age_minutes": 652.9,
+  "report_age_minutes": 653.0,
   "counts": {
     "ok": 26,
-    "info": 10,
-    "warning": 2,
+    "info": 11,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -315,15 +315,14 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票 Agent 自動處理",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近執行 2026-10-04T04:01:17.120851+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近執行 2026-10-04T07:11:45.141375+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
       "action": "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
-    "由既有 watchdog 在 120 分鐘內重試；產報不等於送達",
-    "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
+    "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
   ],
   "safety": {
     "changes_rankings": false,
