@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-03T12:17:58+00:00",
+  "generated_at": "2026-10-03T16:14:06+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-03T20:17:57.700805+08:00",
+    "checked_at": "2026-10-04T00:14:05.031368+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -50,7 +50,7 @@
   "stock_maintenance": {
     "connected": true,
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-03T20:17:51.374155+08:00",
+    "checked_at": "2026-10-04T00:14:04.051455+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -91,6 +91,24 @@
         "diagnosis": [
           "missing_verified_delivery"
         ]
+      },
+      "2026-10-04:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-04:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-04:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "blockers": [
@@ -130,8 +148,8 @@
           "reference",
           "research"
         ],
-        "files": 11,
-        "bytes": 128443,
+        "files": 10,
+        "bytes": 194811,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -452,7 +470,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.38,
+    "average_reduction_pct": 36.36,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
