@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-03T19:56:26.477647+08:00",
+  "checked_at": "2026-10-03T19:56:31.715254+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -42,7 +42,7 @@
     "scope": "HTTP / JSON / required DOM nodes; not browser JavaScript execution"
   },
   "permission_probe": {
-    "status": "reserved",
+    "status": "awaiting_validation",
     "nonce": "37121229815",
     "reserved_at": "2026-10-03T19:56:26.477647+08:00"
   },
@@ -57,7 +57,7 @@
   "capabilities": {
     "actions_read_confirmed": true,
     "protected_briefing_retry": true,
-    "actions_write_confirmed": false,
+    "actions_write_confirmed": true,
     "arbitrary_code_repair": false,
     "paid_model_executor": false
   },
