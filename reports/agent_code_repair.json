@@ -1,13 +1,17 @@
 {
   "attempts": {},
   "permission_probe": {
-    "status": "reserved",
-    "owner": "37121682596"
+    "status": "blocked_stopped",
+    "owner": "37121682596",
+    "branch_write_verified": true,
+    "reason": "HTTPError",
+    "http_status": 403,
+    "required_permission": "contents:write; pull-requests:write; repository Allow GitHub Actions to create pull requests"
   },
-  "checked_at": "2026-10-03T20:05:17.004625+08:00",
+  "checked_at": "2026-10-03T20:05:22.730530+08:00",
   "scope": "exact approved DOM-null repair only; unknown bugs require review",
   "allowed_paths": [
     "decision_hub.js"
   ],
-  "status": "healthy_no_matching_fault"
+  "status": "blocked_permission"
 }

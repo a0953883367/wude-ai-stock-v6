@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-03T12:04:44+00:00",
+  "generated_at": "2026-10-03T12:05:23+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -16,11 +16,27 @@
     "external_calls": 0,
     "paid_model_calls": 0
   },
-  "stock_code_repair": {},
+  "stock_code_repair": {
+    "attempts": {},
+    "permission_probe": {
+      "status": "blocked_stopped",
+      "owner": "37121682596",
+      "branch_write_verified": true,
+      "reason": "HTTPError",
+      "http_status": 403,
+      "required_permission": "contents:write; pull-requests:write; repository Allow GitHub Actions to create pull requests"
+    },
+    "checked_at": "2026-10-03T20:05:22.730530+08:00",
+    "scope": "exact approved DOM-null repair only; unknown bugs require review",
+    "allowed_paths": [
+      "decision_hub.js"
+    ],
+    "status": "blocked_permission"
+  },
   "stock_maintenance": {
     "connected": true,
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-03T19:56:31.715254+08:00",
+    "checked_at": "2026-10-03T20:05:19.611905+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -44,7 +60,7 @@
         "period": "noon",
         "attempts": [],
         "status": "verified_delivered",
-        "verified_at": "2026-10-03T19:56:26.477647+08:00",
+        "verified_at": "2026-10-03T20:05:12.880768+08:00",
         "reason": "fresh verified Telegram delivery receipt"
       },
       "2026-10-03:evening": {
@@ -58,9 +74,12 @@
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
     ],
     "permission_probe": {
-      "status": "awaiting_validation",
+      "status": "verified",
       "nonce": "37121229815",
-      "reserved_at": "2026-10-03T19:56:26.477647+08:00"
+      "reserved_at": "2026-10-03T19:56:26.477647+08:00",
+      "run_id": 37121254340,
+      "url": "https://github.com/a0953883367/wude-ai-stock-v6/actions/runs/37121254340",
+      "conclusion": "success"
     },
     "code_repair_access": {
       "status": "read_access_verified",
