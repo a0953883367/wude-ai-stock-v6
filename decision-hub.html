@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="app_shell.css?v=1">
   <title>中央 AI 決策中樞</title>
   <style>
+    .decision-overview{margin-top:12px;padding:13px;border:1px solid #365f87;background:#0b2238;border-radius:14px;font-size:12px;line-height:1.65}.overview-heading{display:flex;justify-content:space-between;gap:8px}.overview-heading b{color:#7dd3fc}.overview-heading span,.overview-date{color:#92a6c3;font-size:10px}.overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.overview-grid div{padding:9px;background:#091522;border-radius:9px}.overview-grid span{display:block;color:#92a6c3;font-size:10px}.overview-grid b{display:block;font-size:14px}.overview-wait{color:#fde68a}.decision-periods{display:flex;gap:7px;margin-top:9px}.decision-periods[hidden]{display:none}.decision-periods button{flex:1;border:1px solid #365373;border-radius:12px;padding:10px 4px;color:#cbdcf0;background:#102139;font-size:12px}.decision-periods button.active{background:#0e7490;border-color:#38bdf8;color:white}.legacy-analysis>summary{padding:8px 0;line-height:1.5}
+
     :root{--bg:#07111f;--panel:#0d1b2d;--panel2:#101f34;--line:#28476a;--text:#f4f8ff;--muted:#92a6c3;--blue:#38bdf8;--green:#55e6a5;--yellow:#f8ca65;--red:#fb7185;--violet:#a78bfa}
     *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:linear-gradient(180deg,#0b2440 0,#07111f 35%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;min-height:100vh}
     button,input{font:inherit}.app{width:min(920px,100%);margin:auto;padding:18px 16px 108px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.back{color:#dbeafe;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:9px 13px;background:#0c192a;font-weight:800}.refresh{border:1px solid #176b75;color:#cffafe;background:#134e5e;border-radius:999px;padding:9px 14px;font-weight:900}.hero{margin-top:14px;padding:20px;border-radius:24px;border:1px solid #2a5c85;background:linear-gradient(145deg,#102a49,#0b182a);box-shadow:0 18px 42px #0005}.eyebrow{color:var(--blue);font-weight:900;font-size:13px}.hero h1{font-size:30px;margin:7px 0 8px}.hero p{color:#bdd0e8;line-height:1.7;margin:0;font-size:14px}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.chip{border:1px solid #2b4b70;border-radius:999px;padding:6px 9px;color:#bfd4ec;background:#0a1728;font-size:11px;font-weight:800}.chip.ok{color:#a7f3d0;border-color:#1e765c;background:#0b2d27}.chip.warn{color:#fde68a;border-color:#805f19;background:#33270d}
@@ -38,11 +40,13 @@
     <section class="hero">
       <div class="eyebrow">所有模型的共同證據層</div>
       <h1>中央 AI 決策中樞</h1>
-      <p>把下一交易日預判、正式排名、台股官方法人、台美資金流、1～5 日、45 日、6 個月、估值與族群風險放在同一張決策卡。台股與美股分開，衝突會先完成裁決。</p>
+      <p>先選10日、1個月、3個月或半年，在同一張卡查看期間排名、模型依據、風險與驗證進度。舊制價格計畫另行標示；資料不足明確等待。台股、美股與ETF保留既有分組。</p>
       <div class="chips"><span class="chip ok">明日預判隔離</span><span class="chip ok">正式排名鎖定</span><span class="chip ok">正式權重鎖定</span><span class="chip ok">影子信任受控成長</span><span class="chip ok">不連券商下單</span><span class="chip warn" id="updatedChip">等待資料</span></div>
     </section>
     <section class="single-answer hold_cash" id="singleAnswer"><span>中央唯一答案</span><b>正在整理全部證據</b><p>完成載入後顯示可行動、等待或維持現金。</p></section>
-    <a class="next-session-entry" href="next-session-shadow.html">🔭 查看完整下一交易日上漲機率與可買性排名</a>\n    <a class="next-session-entry" href="practical-ranking.html">🏆 查看實用權重排名：10日／1個月／3個月／半年</a>\n    <a class="next-session-entry" href="trade-plan-shadow.html">🧮 查看交易計畫：可買多久、買進區、停損與分批賣出</a>
+    <a class="next-session-entry" href="next-session-shadow.html">🔭 查看完整下一交易日上漲機率與可買性排名</a>
+    <a class="next-session-entry" href="practical-ranking.html">🏆 查看實用權重排名：10日／1個月／3個月／半年</a>
+    <a class="next-session-entry" href="trade-plan-shadow.html">🧮 查看交易計畫：可買多久、買進區、停損與分批賣出</a>
     <a class="next-session-entry" href="stock-growth-control.html">🏭 查看股票成長控制塔：七階段流程與六層監控</a>
     <section class="status" id="status"><div class="metric"><span>載入狀態</span><b>讀取中</b></div></section>
     <div class="status-feedback" id="statusFeedback" role="status" hidden></div>
@@ -54,15 +58,17 @@
     <div class="compare-filters" id="compareFilters" hidden><button data-compare-filter="up" class="active">影子上調最多</button><button data-compare-filter="down">影子下調最多</button><button data-compare-filter="flat">名次不變</button></div>
     <section class="controls">
       <div class="tabs" id="markets"><button data-market="ALL" class="active">全部</button><button data-market="TW">台股</button><button data-market="US">美股</button><button data-market="ETF">ETF</button></div>
-      <div class="search"><input id="search" type="search" placeholder="輸入股票名稱或代號" autocomplete="off"></div>
-      <div class="filters" id="filters"><button data-filter="all" class="active">全部</button><button data-filter="entry_zone">價格到買進區</button><button data-filter="no_chase">高於買進區</button><button data-filter="exit_signal">停損／獲利出場</button><button data-filter="can_scale">可進場</button><button data-filter="wait_pullback">等進場價</button><button data-filter="conflict">有衝突</button><button data-filter="watch">觀察</button><button data-filter="avoid">不進場／退出</button><button data-filter="data_insufficient">資料不足</button></div>
+      <div class="decision-periods" id="decisionPeriods" aria-label="持有期間"><button data-period="10d" class="active" aria-pressed="true">10日</button><button data-period="21d" aria-pressed="false">1個月</button><button data-period="63d" aria-pressed="false">3個月</button><button data-period="126d" aria-pressed="false">半年</button></div>
+      <div class="search"><input id="search" type="search" placeholder="輸入股票名稱或代號（下列篩選沿用舊制判斷）" autocomplete="off"></div>
+      <div class="filters" id="filters" aria-label="舊制中央判斷與價格計畫篩選"><button data-filter="all" class="active">全部</button><button data-filter="entry_zone">價格到買進區</button><button data-filter="no_chase">高於買進區</button><button data-filter="exit_signal">停損／獲利出場</button><button data-filter="can_scale">可進場</button><button data-filter="wait_pullback">等進場價</button><button data-filter="conflict">有衝突</button><button data-filter="watch">觀察</button><button data-filter="avoid">不進場／退出</button><button data-filter="data_insufficient">資料不足</button></div>
     </section>
     <div class="section-title"><h2>個股決策卡</h2><span id="count">0 檔</span></div>
     <section class="cards" id="cards"><div class="empty">正在載入中央決策資料…</div></section>
     <p class="footer">中央頁只整合既有資料與解釋衝突，不保證獲利。你的按鈕只保存在這支裝置，不會改排名、傳送券商或自動下單。</p>
   </main>
   <script src="live_config.js"></script>
-  <script src="decision_hub.js?v=12"></script>
+  <script src="decision_overview.js?v=1"></script>
+  <script src="decision_hub.js?v=13"></script>
   <script src="human_ui.js?v=1"></script>
   <script src="app_shell.js?v=2"></script>
 </body>
