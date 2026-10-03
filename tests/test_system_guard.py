@@ -25,6 +25,14 @@ def _healthy_reports(tmp_path: Path) -> None:
         "inverse-etf-shadow.html", "valuation-risk-shadow.html", "app_shell.js",
     ):
         (tmp_path.parent / name).write_text("ok", encoding="utf-8")
+    receipt_dir = tmp_path / "delivery_receipts"
+    receipt_dir.mkdir()
+    for period, hour in (("morning", 6), ("noon", 12)):
+        _write(receipt_dir / f"2026-08-24-{period}.json", {"last_success": {
+            "period": period, "channel": "telegram_v6", "state": "delivered", "delivered": True,
+            "checked_at": f"2026-08-24T{hour:02d}:01:00+08:00",
+            "report_updated_at": f"2026-08-24 {hour:02d}:00:00",
+        }})
     timestamp = "2026-08-24 16:00:00"
     status = {
         "expected_tw_count": 67,
@@ -787,3 +795,19 @@ def test_guard_marks_matching_verified_evening_delivery_green(tmp_path: Path) ->
     delivery = next(item for item in guard["checks"] if item["code"] == "report_delivery")
     assert period["level"] == "ok"
     assert delivery["level"] == "ok"
+
+
+def test_daily_delivery_checks_keep_all_three_periods_independent(tmp_path):
+    _healthy_reports(tmp_path)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    guard = build_guard(tmp_path, now=now)
+    checks = {item["code"]: item for item in guard["checks"]}
+    assert checks["fixed_delivery_morning"]["level"] == "ok"
+    assert checks["fixed_delivery_noon"]["level"] == "ok"
+    assert checks["fixed_delivery_evening"]["level"] == "info"
+    (tmp_path / "delivery_receipts/2026-08-24-noon.json").unlink()
+    guard = build_guard(tmp_path, now=now)
+    checks = {item["code"]: item for item in guard["checks"]}
+    assert checks["fixed_delivery_morning"]["level"] == "ok"
+    assert checks["fixed_delivery_noon"]["level"] == "warning"
+    assert "窗口已過" in checks["fixed_delivery_noon"]["action"]

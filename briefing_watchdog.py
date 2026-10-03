@@ -75,9 +75,26 @@ def report_is_fresh(
     )
 
 
+def load_daily_delivery(delivery_path: str | Path, now: datetime) -> dict[str, Any]:
+    """Load preserved successes without inventing historical delivery proof."""
+    path = Path(delivery_path)
+    delivery = load_report(path)
+    day = now.astimezone(TAIPEI).date().isoformat()
+    successes = {}
+    for period in TARGETS:
+        record = load_report(path.parent / "delivery_receipts" / f"{day}-{period}.json")
+        success = record.get("last_success")
+        if isinstance(success, dict):
+            successes[period] = success
+    return {**delivery, "successful_receipts": successes}
+
+
 def delivery_is_current(delivery: dict[str, Any] | None, *, period: str, target: datetime) -> bool:
     """A generated file alone is not proof of successful fixed delivery."""
     receipt = delivery or {}
+    successes = receipt.get("successful_receipts")
+    if isinstance(successes, dict) and isinstance(successes.get(period), dict) and successes[period]:
+        receipt = successes[period]
     checked = _parse_updated_at(receipt.get("checked_at"))
     updated = _parse_updated_at(receipt.get("report_updated_at"))
     return bool(
@@ -153,7 +170,7 @@ def main() -> int:
         else datetime.now(TAIPEI)
     )
     report = load_report(args.report)
-    delivery = load_report(args.delivery)
+    delivery = load_daily_delivery(args.delivery, now)
 
     if args.mode == "watchdog":
         selected = next(
