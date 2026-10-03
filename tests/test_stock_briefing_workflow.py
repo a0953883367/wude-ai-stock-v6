@@ -132,3 +132,16 @@ def test_history_archive_phase2_only_removes_verified_duplicate_source() -> None
     assert "--compress" in text
     assert "--remove-source-after-verify" in text
     assert "-delete" not in text
+
+
+def test_agent_state_writers_share_non_cancelling_lock():
+    import re
+    workflows = [WORKFLOW.parent / name for name in ("system-guard.yml", "agent-control.yml")]
+    groups = []
+    for path in workflows:
+        workflow = path.read_text(encoding="utf-8")
+        assert "reports/agent_runtime.json" in workflow
+        groups.append(re.search(r"^  group: (.+)$", workflow, re.MULTILINE).group(1))
+        assert "cancel-in-progress: false" in workflow
+    assert groups[0] == groups[1] == "stock-agent-state-${{ github.ref }}"
+    assert "group: stock-briefing" in WORKFLOW.read_text(encoding="utf-8")
