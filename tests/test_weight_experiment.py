@@ -1,4 +1,5 @@
 import pandas as pd
+from copy import deepcopy
 
 from weight_experiment import (
     ALLOCATION_TWD,
@@ -25,6 +26,8 @@ def row(index: int, session_date: str = "2026-08-21") -> dict:
         "tw_accumulation_available": True,
         "tw_accumulation_score": accumulation,
         "official_session_date": session_date,
+        "tw_official_session_date": session_date,
+        "tw_official_price_available": True,
         "official_open_price": 100,
         "official_close_price": 101,
         "market_contract_valid": True,
@@ -243,8 +246,9 @@ def test_intraday_does_nothing_and_evening_starts_next_cycle_after_five_days():
 def test_twenty_days_records_preliminary_failure_without_promoting_weight():
     state = empty_state()
     update_state(state, universe(), period="evening", updated_at="start")
-    for index in range(1, 21):
-        session_date = f"2026-09-{index:02d}"
+    # Twenty actual weekdays, rather than counting weekends as observations.
+    for timestamp in pd.bdate_range("2026-08-24", periods=20):
+        session_date = timestamp.date().isoformat()
         losing = universe(session_date)
         for item in losing:
             item["official_close_price"] = 99
@@ -353,3 +357,127 @@ def test_exact_historical_price_repairs_legacy_missing_position_before_settlemen
         assert repaired["historical_price_repair"] is True
         assert model["days"][0]["historical_price_repairs"] == [repaired["symbol"]]
         assert model["invalid_days"] == []
+
+
+def test_weekend_prices_never_settle_or_freeze_a_new_signal():
+    state = empty_state()
+    update_state(state, universe('2026-09-18'), period='evening', updated_at='signal')
+    frozen = deepcopy([m['pending']['picks'] for m in state['models'].values()])
+    weekend = universe('2026-09-20')
+    for item in weekend:
+        item['tw_official_session_date'] = '2026-09-18'
+    update_state(state, weekend, period='evening', updated_at='Sunday')
+    assert state['completed_days'] == 0
+    assert [m['pending']['picks'] for m in state['models'].values()] == frozen
+    empty = empty_state()
+    update_state(empty, weekend, period='evening', updated_at='Sunday')
+    assert all(m['pending'] is None for m in empty['models'].values())
+
+
+def test_exchange_date_mismatch_holds_cash_and_cannot_supply_tenth_position():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='signal')
+    rows = universe('2026-08-24')
+    # Make every model lose exactly its first pick, without trusting its price.
+    for model in state['models'].values():
+        rows_for_model = deepcopy(rows)
+        bad = model['pending']['picks'][0]['symbol']
+        for item in rows_for_model:
+            item['tw_official_session_date'] = '2026-08-21' if item['symbol'] == bad else '2026-08-24'
+        single = empty_state()
+        single['models'] = {model['key']: deepcopy(model)}
+        update_state(single, rows_for_model, period='morning', updated_at='outcome')
+        day = single['models'][model['key']]['days'][0]
+        assert day['available_positions'] == 9
+        assert day['idle_twd'] == ALLOCATION_TWD
+        position = next(p for p in day['positions'] if p['symbol'] == bad)
+        assert position['data_available'] is False
+        assert position['open_price'] is None
+        assert position['net_profit_twd'] == 0
+
+
+def test_legacy_sunday_is_preserved_but_excluded_and_prior_verdict_kept_once():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='signal')
+    update_state(state, universe('2026-08-24'), period='morning', updated_at='outcome')
+    originals = {}
+    for key, model in state['models'].items():
+        bad = deepcopy(model['days'][0])
+        bad.update(day=2, session_date='2026-09-20', signal_session_date='2026-09-18', ranking_snapshot_id='legacy-Sunday')
+        model['days'].append(bad)
+        originals[key] = deepcopy(bad)
+    previous = deepcopy(state['preliminary_assessment'])
+    update_state(state, universe('2026-08-24'), period='morning', updated_at='audit')
+    assert state['completed_days'] == 1
+    for key, model in state['models'].items():
+        assert model['days'][1] == originals[key]
+        assert model['session_validation']['raw_days'] == 2
+        assert model['session_validation']['valid_days'] == 1
+        assert model['session_validation']['excluded_days'][0]['reason'] == 'non_trading_weekend'
+        assert model['metrics']['evaluated_positions'] == 10
+        assert sum(c['completed_days'] for c in model['cycles']) == 1
+    assert state['assessment_before_session_validation'][0]['assessment'] == previous
+    update_state(state, universe('2026-08-24'), period='morning', updated_at='repeat')
+    assert len(state['assessment_before_session_validation']) == 1
+    assert state['completed_days'] == 1
+
+
+def test_duplicate_and_non_forward_outcomes_are_excluded_from_metrics():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='signal')
+    update_state(state, universe('2026-08-24'), period='morning', updated_at='outcome')
+    for model in state['models'].values():
+        duplicate = deepcopy(model['days'][0])
+        backwards = deepcopy(duplicate)
+        backwards.update(session_date='2026-08-21', signal_session_date='2026-08-24')
+        model['days'].extend([duplicate, backwards])
+    update_state(state, universe('2026-08-24'), period='morning', updated_at='audit')
+    assert state['completed_days'] == 1
+    assert state['diagnostics']['valid_sessions_compared'] == 1
+    for model in state['models'].values():
+        assert len(model['days']) == 3
+        reasons = {x['reason'] for x in model['session_validation']['excluded_days']}
+        assert reasons == {'duplicate_outcome_session', 'outcome_not_after_signal'}
+
+
+def test_invalid_legacy_pending_is_preserved_and_valid_collection_resumes():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='signal')
+    for model in state['models'].values():
+        model['pending']['signal_session_date'] = '2026-09-20'
+    update_state(state, universe('2026-09-21'), period='evening', updated_at='resume')
+    assert state['completed_days'] == 0
+    for model in state['models'].values():
+        assert model['invalid_pending'][0]['original_pending']['signal_session_date'] == '2026-09-20'
+        assert model['pending']['signal_session_date'] == '2026-09-21'
+    update_state(state, universe('2026-09-22'), period='morning', updated_at='next')
+    assert state['completed_days'] == 1
+    assert all(len(m['invalid_pending']) == 1 for m in state['models'].values())
+
+
+def test_missing_exchange_date_is_not_trusted_as_new_official_evidence():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='signal')
+    missing_source = universe('2026-08-24')
+    for item in missing_source:
+        item.pop('tw_official_session_date')
+    update_state(state, missing_source, period='evening', updated_at='missing source')
+    assert state['completed_days'] == 0
+    for model in state['models'].values():
+        assert set(model['pending']['rejected_prices'].values()) == {'exchange_session_unavailable'}
+    update_state(state, universe('2026-08-24'), period='morning', updated_at='verified retry')
+    assert state['completed_days'] == 1
+
+
+def test_readonly_reassessment_keeps_all_observations_and_pending_picks():
+    from weight_experiment import refresh_session_evaluation
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='signal')
+    update_state(state, universe('2026-08-24'), period='evening', updated_at='outcome')
+    raw = {key: {field: deepcopy(model.get(field)) for field in
+            ('days', 'invalid_days', 'pending', 'last_pick_symbols')}
+           for key, model in state['models'].items()}
+    refresh_session_evaluation(state, 'review only')
+    assert all(all(model.get(field) == value for field, value in raw[key].items())
+               for key, model in state['models'].items())
+    assert state['completed_days'] == 1
