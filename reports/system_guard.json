@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-05T07:20:06+08:00",
+  "checked_at": "2026-10-05T07:23:31+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-04 20:44:51",
-  "report_age_minutes": 635.3,
+  "report_updated_at": "2026-10-05 07:20:59",
+  "report_age_minutes": 2.5,
   "counts": {
-    "ok": 26,
-    "info": 9,
-    "warning": 3,
+    "ok": 27,
+    "info": 10,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 368.1 MB；可壓縮 3 份；未發現校驗錯誤",
+      "detail": "封存容量 371.7 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -40,26 +40,26 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近更新距今 10.6 小時",
-      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 2 分鐘",
+      "action": ""
     },
     {
       "code": "report_delivery",
       "title": "V6 通知派發",
       "level": "ok",
       "label": "正常",
-      "detail": "evening 報表已驗證並由 Telegram 送達",
+      "detail": "morning 報表已驗證並由 Telegram 送達",
       "action": ""
     },
     {
       "code": "fixed_delivery_morning",
       "title": "今日早報送達",
-      "level": "warning",
-      "label": "注意",
-      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
-      "action": "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
+      "level": "ok",
+      "label": "正常",
+      "detail": "已確認 Telegram 送達：2026-10-05T07:22:39+08:00",
+      "action": ""
     },
     {
       "code": "fixed_delivery_noon",
@@ -90,7 +90,7 @@
       "title": "分析輸出",
       "level": "ok",
       "label": "正常",
-      "detail": "完成 380/380 檔；排行 232 檔",
+      "detail": "完成 379/380 檔；排行 232 檔",
       "action": ""
     },
     {
@@ -98,7 +98,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-10-02 33/33；TW_STOCK 2026-10-02 159/159；US_ETF 2026-10-02 35/35；US_STOCK 2026-10-02 153/153",
+      "detail": "TW_ETF 2026-10-02 33/33；TW_STOCK 2026-10-02 159/159；US_ETF 2026-10-02 35/35；US_STOCK 2026-10-02 152/152",
       "action": ""
     },
     {
@@ -114,7 +114,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 192、法人 192、信用 188",
+      "detail": "價格 192、法人 192、信用 192（沿用最近完整收盤）",
       "action": ""
     },
     {
@@ -152,10 +152,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "ok",
-      "label": "正常",
-      "detail": "私密完整快取涵蓋 97 檔；原始價格未進入網站或計算",
-      "action": ""
+      "level": "info",
+      "label": "資訊",
+      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
       "code": "us_sec_fundamentals",
@@ -213,14 +213,14 @@
       "detail": "台美股共 37 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 37,
-      "ledger_updated_at": "2026-10-04 20:44:51"
+      "ledger_updated_at": "2026-10-05 07:20:59"
     },
     {
       "code": "unified_evidence",
       "title": "統一證據格式",
       "level": "ok",
       "label": "正常",
-      "detail": "已驗證 3800 筆證據，格式錯誤 0 筆",
+      "detail": "已驗證 3790 筆證據，格式錯誤 0 筆",
       "action": ""
     },
     {
@@ -309,7 +309,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     },
     {
@@ -317,14 +317,12 @@
       "title": "Telegram 三報 Agent 自動處理",
       "level": "info",
       "label": "資訊",
-      "detail": "最近執行 2026-10-05T07:20:03.075986+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
+      "detail": "最近執行 2026-10-05T07:19:58.591327+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
       "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "若已跨過下一個排程時間，檢查排程是否延遲",
-    "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
   ],
   "safety": {
     "changes_rankings": false,
