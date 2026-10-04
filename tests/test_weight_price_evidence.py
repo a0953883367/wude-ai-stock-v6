@@ -87,3 +87,40 @@ def test_production_update_preserves_every_legacy_observation(tmp_path):
     update_weight_experiment(tmp_path, [], period="morning", updated_at="2026-10-04 06:00:00", official_prices={})
     after = json.loads((tmp_path / "tw_weight_experiment.json").read_text())
     assert {k:v["days"] for k,v in after["models"].items()} == before
+
+
+def test_benchmark_uses_identical_entry_exit_and_matched_cohort():
+    dates = [f"2026-09-{i:02d}" for i in range(1, 21)]
+    def bars(opening, closing):
+        return {d: {"open": opening, "close": closing, "source": "TWSE", "response_sha256": "proof"} for d in dates}
+    days = [{"session_date": dates[0], "positions": [{"symbol": "2330.TW", "data_available": True}]}]
+    refs = {"2330.TW": bars(100, 110), "0050.TW": bars(50, 52)}
+    result = compare_horizons(days, refs, {"sessions": dates, "completed_through": dates[-1]})
+    matched = result["matched_sample_comparison"]
+    assert matched["positions"] == 1
+    assert matched["benchmark_verified"] is True
+    assert matched["average_excess_return_pct"] == {"1": 6.0, "5": 6.0, "20": 6.0}
+    assert result["promotion_allowed"] is False
+    refs["0050.TW"].pop(dates[4])
+    result = compare_horizons(days, refs, {"sessions": dates, "completed_through": dates[-1]})
+    assert result["horizons"]["5"]["excess_return_pct"] is None
+    assert result["matched_sample_comparison"]["benchmark_verified"] is False
+
+
+def test_empty_positions_do_not_claim_verified_portfolio():
+    result = audit_model({"days": [{"session_date": "2026-10-02", "positions": []}]})
+    assert result["status"] == "incomplete"
+    assert result["verified_portfolio_net_profit_twd"] is None
+
+
+def test_official_revaluation_keeps_mismatched_raw_observation():
+    model = {"days": [{"session_date": "2026-10-02", "positions": [{"symbol": "2330.TW", "data_available": True,
+        "allocation_twd": 100000, "open_price": 100, "sell_price": 110, "gross_profit_twd": 10000}]}]}
+    before = deepcopy(model)
+    refs = {"2330.TW": {"2026-10-02": {"open": 100, "close": 95, "source": "TWSE", "response_sha256": "proof"}}}
+    audit = audit_model(model, refs)
+    assert model == before
+    assert audit["official_priced_positions"] == 1
+    assert audit["official_subset_revalued_gross_profit_twd"] == -5000
+    assert audit["confirmed_price_error_delta_twd"] == -15000
+    assert audit["status"] == "incomplete"
