@@ -336,16 +336,6 @@ jobs:
         with:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Refresh read-only Fubon ownership supplement
-        if: >-
-          ${{ steps.generate.outcome == 'success' &&
-          (steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true') }}
-        continue-on-error: true
-        timeout-minutes: 10
-        env:
-          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
-        run: python fubon_ownership_relay.py
       - name: Keep reports and recent archive
         if: >-
           ${{ steps.generate.outcome == 'success' &&
@@ -358,6 +348,38 @@ jobs:
           git add reports
           git diff --cached --quiet && exit 0
           git commit -m "${{ steps.period.outputs.commit_message }}"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase -X theirs origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "Report commit could not be published after 3 attempts." >&2
+          exit 1
+      - name: Refresh read-only Fubon ownership supplement
+        if: >-
+          ${{ steps.generate.outcome == 'success' &&
+          (steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true') }}
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
+        run: python fubon_ownership_relay.py
+      - name: Publish optional ownership supplement
+        if: >-
+          ${{ steps.generate.outcome == 'success' &&
+          (steps.period.outputs.defer_delivery != 'true' ||
+          steps.delivery_window.outputs.timely == 'true') }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/fubon_ownership.json
+          git diff --cached --quiet && exit 0
+          git commit -m "更新唯讀盤後籌碼補充"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase -X theirs origin/main

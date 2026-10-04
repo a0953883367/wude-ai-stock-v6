@@ -44,8 +44,8 @@
     var code=report.stock_code_repair||{},codeProbe=code.permission_probe||{};
     if(maintenance.connected){
       var latestDay=String(maintenance.checked_at||'').slice(0,10),entries=Object.keys(incidents).filter(function(key){return key.indexOf(latestDay+':')===0;});
-      var proof=entries.map(function(key){var item=incidents[key],name={morning:'早報',noon:'午報',evening:'晚報'}[item.period]||item.period;return name+'：'+(labels[item.status]||item.status)+'（處理 '+(item.attempts||[]).length+'/2 次）';}).join('｜');
-      document.getElementById('runtimeTasks').innerHTML+='<div class="runtime-task"><b>🛠️ 股票限次自動處理</b><span>查核 '+esc(maintenance.checked_at||'—')+'｜'+esc(proof)+'</span><span>Actions 讀取：'+(caps.actions_read_confirmed?'已驗證':'未確認')+'｜觸發權限：'+(caps.actions_write_confirmed?'已有成功紀錄':'尚無本流程成功紀錄')+'｜任意程式改寫：未接通</span><span>'+esc((maintenance.blockers||[]).join('；'))+'</span></div>';
+      var proof=entries.map(function(key){var item=incidents[key],name={morning:'早報',noon:'午報',evening:'晚報'}[item.period]||item.period;return name+'（Telegram）：'+(labels[item.status]||item.status)+'（處理 '+(item.attempts||[]).length+'/2 次）';}).join('｜');
+      document.getElementById('runtimeTasks').innerHTML+='<div class="runtime-task"><b>🛠️ Telegram 三報限次自動處理</b><span>查核 '+esc(maintenance.checked_at||'—')+'｜'+esc(proof)+'</span><span>只驗收 Telegram 回執；ChatGPT 三報獨立，本 Agent 無法讀取其送達狀態，也未完成跨管道去重。</span><span>Actions 讀取：'+(caps.actions_read_confirmed?'已驗證':'未確認')+'｜觸發權限：'+(caps.actions_write_confirmed?'已有成功紀錄':'尚無本流程成功紀錄')+'｜任意程式改寫：未接通</span><span>'+esc((maintenance.blockers||[]).join('；'))+'</span></div>';
     }
     if(code.checked_at){
       document.getElementById('runtimeTasks').innerHTML+='<div class="runtime-task"><b>🔧 已核准程式修復</b><span>限選單空值防護｜狀態：'+esc(code.status||'等待驗收')+'｜分支／PR：'+esc(codeProbe.status||'未驗證')+'</span><span>'+esc(codeProbe.required_permission||codeProbe.reason||code.scope||'')+'</span></div>';

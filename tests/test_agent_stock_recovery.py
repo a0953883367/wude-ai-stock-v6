@@ -212,3 +212,12 @@ def test_validation_mode_bypasses_all_report_production():
     assert 'exit 0' in check.split('args=(--mode gate')[0]
     assert "needs.gate.outputs.should_run == 'true'" in workflow
     assert "inputs.validation_only == true" in workflow
+
+
+def test_agent_reports_telegram_scope_without_claiming_chatgpt_failure(tmp_path):
+    setup_report(tmp_path)
+    state = inspect(tmp_path, NOW, runs=[], web=WEB)
+    assert state['delivery_scope']['channel']=='telegram_v6'
+    assert state['delivery_scope']['chatgpt_delivery_status']=='not_observable'
+    assert state['delivery_scope']['cross_channel_deduplication'] is False
+    assert 'telegram_receipt_missing' in state['incidents']['2026-10-03:evening']['diagnosis']

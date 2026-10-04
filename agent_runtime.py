@@ -395,6 +395,7 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
         "stock_code_repair": _read_json(reports_dir / "agent_code_repair.json"),
         "stock_maintenance": {
             "connected": bool(maintenance),
+            "delivery_scope": maintenance.get("delivery_scope") or {"channel": "telegram_v6", "chatgpt_delivery_status": "not_observable", "cross_channel_deduplication": False},
             "executor": maintenance.get("executor") or "尚未取得維護執行證據",
             "checked_at": maintenance.get("checked_at"),
             "capabilities": maintenance.get("capabilities") or {},

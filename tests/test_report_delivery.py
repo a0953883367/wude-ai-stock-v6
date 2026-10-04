@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pytest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -142,3 +143,31 @@ def test_failed_delivery_never_creates_success_evidence(tmp_path):
                     detail="failed", checked_at=now)
     receipt = load_daily_delivery(tmp_path / "report_delivery_status.json", now)
     assert not delivery_is_current(receipt, period="evening", target=now.replace(minute=0))
+
+
+def test_send_boundary_recheck_preserves_success_and_never_resends(tmp_path):
+    from report_delivery import record_delivery
+    at = datetime(2026, 10, 3, 20, 5, tzinfo=TAIPEI)
+    record_delivery(tmp_path, period='evening', report_updated_at='2026-10-03 20:01:00',
+        state='delivered', delivered=True, expected_delivery=True, detail='first success', checked_at=at)
+    receipt = tmp_path / 'delivery_receipts/2026-10-03-evening.json'
+    original = receipt.read_bytes()
+    assert deliver_verified_report(tmp_path, period='evening', now=at,
+        sender=lambda _: pytest.fail('duplicate Telegram send'),
+        health_get=lambda *a, **kw: pytest.fail('already delivered'))
+    assert receipt.read_bytes() == original
+
+
+def test_chatgpt_receipt_never_counts_as_telegram_success(tmp_path):
+    report = _report(updated_at='2026-10-03 20:01:00')
+    (tmp_path / 'latest.json').write_text(json.dumps(report))
+    (tmp_path / 'latest.md').write_text('telegram report')
+    (tmp_path / 'report_delivery_status.json').write_text(json.dumps({
+        'period':'evening','channel':'chatgpt','state':'delivered','delivered':True,
+        'checked_at':'2026-10-03T20:02:00+08:00','report_updated_at':'2026-10-03 20:01:00'}))
+    sent=[]
+    assert deliver_verified_report(tmp_path, period='evening',
+        now=datetime(2026,10,3,20,5,tzinfo=TAIPEI),
+        sender=lambda m: sent.append(m) or True,
+        health_get=lambda *a,**kw:_healthy_response())
+    assert sent == ['telegram report']
