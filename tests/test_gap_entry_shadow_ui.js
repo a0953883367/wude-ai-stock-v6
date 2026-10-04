@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('fs'),assert=require('assert'),vm=require('vm');
+const html=fs.readFileSync('index.html','utf8');
+const source=html.slice(html.indexOf('function gapEntryShadowHtml('),html.indexOf('function weightAttributionHtml('));
+const c={esc:String,millionMoney:String};vm.runInNewContext(source,c);
+assert.ok(html.includes('gapEntryShadowHtml(experiment.entry_gap_shadow)'));
+const empty=c.gapEntryShadowHtml({completed_sessions:0,status:'waiting_for_verified_future_signal'});
+assert.ok(empty.includes('尚無樣本'));assert.ok(empty.includes('不把0筆當成獲利改善'));
+assert.ok(empty.includes('恰好2%仍照原規則'));
+const complete=c.gapEntryShadowHtml({completed_sessions:20,status:'preliminary_review_only',summary:{baseline_net_profit_twd:-100,gap_cash_net_profit_twd:0,incremental_net_profit_twd:100},days:[{execution_session_date:'2026-10-05',baseline_net_profit_twd:-100,gap_cash_net_profit_twd:0,incremental_net_profit_twd:100,skipped_gap_positions:1}]});
+assert.ok(complete.includes('20日初評，仍不升版'));assert.ok(complete.includes('2026-10-05'));
+console.log('gap entry shadow UI passed');
