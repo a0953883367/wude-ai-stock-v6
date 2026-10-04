@@ -50,6 +50,22 @@ def test_three_weights_rebuild_rank_without_changing_base_or_filling_missing_dat
     assert ranking_score(missing, 0) == ranking_score(missing, .1) == ranking_score(missing, .2)
 
 
+def test_settlement_preserves_signal_creation_receipt_without_claiming_verified_clock():
+    import hashlib
+    import json
+    state = empty_state()
+    update_state(state, universe(), period="evening", updated_at="2026-08-21 20:00:00")
+    pending = deepcopy(state["models"]["base_0"]["pending"])
+    expected = hashlib.sha256(json.dumps({"snapshot_id": pending["snapshot_id"],
+        "signal_session_date": pending["signal_session_date"], "created_at": pending["created_at"],
+        "picks": pending["picks"]}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    update_state(state, universe("2026-08-24"), period="evening", updated_at="2026-08-24 20:00:00")
+    day = state["models"]["base_0"]["days"][0]
+    assert day["signal_created_at"] == "2026-08-21 20:00:00"
+    assert day["signal_snapshot_receipt_sha256"] == expected
+    assert day["signal_timestamp_evidence_status"] == "recorded_not_independently_verified"
+
+
 def test_weight_models_use_same_capital_rules_but_can_select_different_top_ten():
     rows = universe()
     base = select_picks(rows, 0)
