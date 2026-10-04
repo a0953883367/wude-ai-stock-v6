@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-04T10:33:21+00:00",
+  "generated_at": "2026-10-04T12:44:02+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-04T18:33:20.225896+08:00",
+    "checked_at": "2026-10-04T20:44:01.179160+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -50,7 +50,7 @@
   "stock_maintenance": {
     "connected": true,
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-04T18:33:18.961863+08:00",
+    "checked_at": "2026-10-04T20:43:58.646292+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -106,7 +106,7 @@
         "diagnosis": [
           "missing_verified_delivery"
         ],
-        "verified_at": "2026-10-04T18:33:13.664844+08:00"
+        "verified_at": "2026-10-04T20:43:53.818399+08:00"
       },
       "2026-10-04:noon": {
         "period": "noon",
@@ -116,9 +116,18 @@
       },
       "2026-10-04:evening": {
         "period": "evening",
-        "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "attempts": [
+          {
+            "at": "2026-10-04T20:43:53.818399+08:00",
+            "guard_run_id": "37203094695",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "retry existing verified briefing inside fixed delivery window",
+        "diagnosis": [
+          "missing_verified_delivery"
+        ]
       }
     },
     "blockers": [
