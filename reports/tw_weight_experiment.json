@@ -32776,5 +32776,37 @@
     }
   ],
   "evidence_status": "official_price_audit_incomplete_no_promotion",
-  "loss_attribution_updated_at": "2026-10-04T11:18:47.185476+00:00"
+  "loss_attribution_updated_at": "2026-10-04T11:18:47.185476+00:00",
+  "entry_gap_shadow": {
+    "policy": {
+      "version": 1,
+      "source_model": "base_0",
+      "capital_twd": 1000000,
+      "planned_positions": 10,
+      "minimum_official_prices": 9,
+      "gap_cutoff_pct": 2.0,
+      "round_trip_cost_pct": 0.685,
+      "preliminary_sessions": 20,
+      "manual_review_sessions": 60,
+      "cash_earns_interest": false,
+      "cash_is_reallocated": false,
+      "price_basis": "signal_official_close_to_next_official_open",
+      "simulation_only": true,
+      "promotion_allowed": false
+    },
+    "activated_at": "2026-10-04 20:03:30",
+    "updated_at": "2026-10-04 20:03:30",
+    "status": "waiting_for_verified_future_signal",
+    "pending": null,
+    "days": [],
+    "invalid_days": [],
+    "blocked_events": [],
+    "completed_sessions": 0,
+    "summary": {
+      "baseline_net_profit_twd": null,
+      "gap_cash_net_profit_twd": null,
+      "incremental_net_profit_twd": null
+    },
+    "promotion_allowed": false
+  }
 }

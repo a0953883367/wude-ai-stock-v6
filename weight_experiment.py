@@ -1168,6 +1168,11 @@ def update_weight_experiment(
         audit_tmp.replace(reports_dir / "tw_weight_price_audit.json")
     for model in state["models"].values():
         model["loss_attribution"] = audit_model(model, reference.get("prices"), reference.get("calendar"))
+    from gap_entry_shadow import update as update_gap_shadow
+    state["entry_gap_shadow"] = update_gap_shadow(
+        state.get("entry_gap_shadow"), state["models"]["base_0"], safe_rows,
+        updated_at, intraday=intraday,
+    )
     state["evidence_status"] = "prices_verified" if all(m["loss_attribution"]["status"] == "prices_verified" for m in state["models"].values()) else "incomplete"
     tmp = reports_dir / "tw_weight_experiment.tmp"
     tmp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

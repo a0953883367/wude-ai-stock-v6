@@ -45,6 +45,8 @@ jobs:
         run: node tests/test_million_simulation_ui.js
       - name: 檢查法人權重五日比較
         run: node tests/test_weight_experiment_ui.js
+      - name: 檢查跳空追高影子對照
+        run: node tests/test_gap_entry_shadow_ui.js
       - name: 檢查中期與長期網頁試走
         run: node tests/test_holding_simulation_ui.js
       - name: 檢查獨立歷史驗證實驗室
