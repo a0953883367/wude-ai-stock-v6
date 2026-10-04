@@ -43,7 +43,7 @@ console.log('weight experiment UI: all tests passed');
 // Render real filtered observations: an excluded raw day must not shift the
 // visible five-session cycle labels or reappear in the result table.
 const vm = require('vm');
-const source = html.slice(html.indexOf('function weightModelHtml('), html.indexOf('function showWeightExperiment('));
+const source = html.slice(html.indexOf('function weightAttributionHtml('), html.indexOf('function showWeightExperiment('));
 const context = {
   esc: String, number: String, percent: String, millionMoney: String,
   millionProfitClass: () => '', drawdownMagnitude: String,
@@ -61,3 +61,9 @@ assert.ok(!rendered.includes('excluded-Sunday'));
 assert.ok(rendered.includes('第6區塊・第1日｜final-valid-session'));
 assert.ok(rendered.includes('交易日期異常排除 1 日'));
 console.log('weight session exclusion rendering: passed');
+const incomplete = context.weightAttributionHtml({loss_attribution: {status: 'incomplete', verified_positions: 41, unverified_positions: 219,
+  verified_subset_gross_profit_twd: -30785.5, worst_stocks: [{name: '華星光', gross_profit_twd: -23550.93}]}});
+assert.ok(incomplete.includes('官方價格已核實 41 筆'));
+assert.ok(incomplete.includes('不作正式績效或升版依據'));
+assert.ok(incomplete.includes('同期基準待核實，不判定優勝'));
+assert.ok(incomplete.includes('華星光'));
