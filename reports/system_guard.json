@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-04T10:47:05+08:00",
+  "checked_at": "2026-10-04T17:58:11+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-04 07:12:42",
-  "report_age_minutes": 214.4,
+  "report_age_minutes": 645.5,
   "counts": {
     "ok": 28,
-    "info": 9,
-    "warning": 1,
+    "info": 7,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 3.6 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-02 已正確入帳，報表距今 10.8 小時",
       "action": ""
     },
     {
@@ -64,10 +64,10 @@
     {
       "code": "fixed_delivery_noon",
       "title": "今日午報送達",
-      "level": "info",
-      "label": "資訊",
-      "detail": "尚未到 12:00 發送時間",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
+      "action": "補送窗口已過，不送過期報表"
     },
     {
       "code": "fixed_delivery_evening",
@@ -315,14 +315,16 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票 Agent 自動處理",
-      "level": "info",
-      "label": "資訊",
+      "level": "warning",
+      "label": "注意",
       "detail": "最近執行 2026-10-04T10:47:03.359685+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "補送窗口已過，不送過期報表",
+    "只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
   ],
   "safety": {
     "changes_rankings": false,

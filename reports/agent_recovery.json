@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-04T10:47:03.359685+08:00",
+  "checked_at": "2026-10-04T17:58:11.945954+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -45,13 +45,13 @@
       "diagnosis": [
         "missing_verified_delivery"
       ],
-      "verified_at": "2026-10-04T10:46:57.184424+08:00"
+      "verified_at": "2026-10-04T17:58:11.945954+08:00"
     },
     "2026-10-04:noon": {
       "period": "noon",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-10-04:evening": {
       "period": "evening",
