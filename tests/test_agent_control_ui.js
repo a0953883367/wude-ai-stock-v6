@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory() as directory:
   'Agent 控制中心','各事業資料仍完全分開','三個專屬 Agent','目前保持鎖定','資料隔離規則',
   '付款、寄送、下單及設備控制會停下等你同意','安全任務執行驗收','任務中心','交付驗收清冊'
 ].forEach(text=>assert(html.includes(text),`missing UI copy: ${text}`));
-assert(html.includes('agent_control.js?v=8'));
+assert(html.includes('agent_control.js?v=9'));
 assert(html.includes('agent_control.css?v=3'));
 assert(js.includes("reports/agent_control.json"));
 assert(js.includes('正式 V6 權重'));
@@ -81,3 +81,7 @@ const deliveries=JSON.parse(fs.readFileSync('reports/artifact_registry.json','ut
 assert.strictEqual(deliveries.items.length,2);
 assert.strictEqual(deliveries.safety.cross_domain_reads,false);
 console.log('agent control UI checks passed');
+
+assert(js.includes('Telegram 三報限次自動處理'));
+assert(js.includes('ChatGPT 三報獨立'));
+assert(js.includes('未完成跨管道去重'));

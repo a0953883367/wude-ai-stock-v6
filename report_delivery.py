@@ -142,6 +142,11 @@ def deliver_verified_report(
     health_get: Callable[..., Any] = requests.get,
 ) -> bool:
     current = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
+    # Recheck at the send boundary: a receipt may appear after the workflow gate.
+    from briefing_watchdog import load_daily_delivery, delivery_is_current, target_datetime
+    if delivery_is_current(load_daily_delivery(reports_dir / "report_delivery_status.json", current),
+                           period=period, target=target_datetime(current, period)):
+        return True  # Preserve the original success; do not call Telegram twice.
     report_path = reports_dir / "latest.json"
     markdown_path = reports_dir / "latest.md"
     try:

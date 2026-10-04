@@ -145,3 +145,12 @@ def test_agent_state_writers_share_non_cancelling_lock():
         assert "cancel-in-progress: false" in workflow
     assert groups[0] == groups[1] == "stock-agent-state-${{ github.ref }}"
     assert "group: stock-briefing" in WORKFLOW.read_text(encoding="utf-8")
+
+
+def test_verified_receipts_are_published_before_optional_ownership_refresh():
+    from pathlib import Path
+    text = Path('.github/workflows/stock-briefing.yml').read_text()
+    assert text.index('name: Keep reports and recent archive') < text.index('name: Refresh read-only Fubon ownership supplement')
+    assert text.index('name: Refresh read-only Fubon ownership supplement') < text.index('name: Publish optional ownership supplement')
+    supplement = text.split('name: Publish optional ownership supplement')[1].split('name: Confirm private settlement')[0]
+    assert 'git add reports/fubon_ownership.json' in supplement

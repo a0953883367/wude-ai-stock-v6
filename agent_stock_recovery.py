@@ -160,7 +160,7 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         if now > target + timedelta(minutes=120):
             incident.update(status='expired', reason='no valid receipt; expired reports must not be sent')
             continue
-        incident['diagnosis'] = sorted(set(['missing_verified_delivery'] + failures))
+        incident['diagnosis'] = sorted(set(['missing_verified_delivery', 'telegram_receipt_missing'] + failures))
         if runs is None:
             incident.update(status='blocked_permission', reason=capability_error or 'cannot confirm active workflows')
             continue
@@ -180,6 +180,9 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
     state = {
         'schema': 'wude.stock_agent_recovery.v1', 'checked_at': now.isoformat(),
         'executor': 'existing system-guard workflow / stock_shadow maintenance',
+        'delivery_scope': {'channel': 'telegram_v6', 'chatgpt_delivery_status': 'not_observable',
+                           'cross_channel_deduplication': False,
+                           'note': 'Telegram receipts only; ChatGPT reports are independent and are not classified as missing'},
         'incidents': incidents, 'next_actions': actions[:1], 'web_probe': web,
         'permission_probe': previous.get('permission_probe', {}),
         'code_repair_access': previous.get('code_repair_access', {}),
