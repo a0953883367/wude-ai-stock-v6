@@ -1820,6 +1820,7 @@ def main() -> int:
         updated_at=report["updated_at"],
         intraday=args.intraday,
         price_history=history,
+        official_prices=tw_official.get("prices", {}),
     )
     update_holding_simulation(
         SETTINGS.reports_dir,

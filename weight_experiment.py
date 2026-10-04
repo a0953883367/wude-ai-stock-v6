@@ -64,6 +64,11 @@ def _session_issue(value: str) -> str:
 
 
 def _row_session_issue(row: dict[str, Any]) -> str:
+    if row.get("shadow_price_contract_required"):
+        from weight_price_evidence import evidence_valid
+        proof = row.get("shadow_price_evidence") or {}
+        if not evidence_valid(proof, str(row.get("official_session_date") or "")):
+            return "official_price_evidence_unverified"
     session = str(row.get("official_session_date") or "")
     issue = _session_issue(session)
     if issue:
@@ -85,6 +90,8 @@ def _evaluation_days(model: dict[str, Any]) -> list[dict[str, Any]]:
         session = str(day.get("session_date") or "")
         signal = str(day.get("signal_session_date") or "")
         issue = _session_issue(session) or _session_issue(signal)
+        if not issue and not _day_completeness(day)["data_complete"]:
+            issue = "insufficient_original_positions"
         if not issue and session <= signal:
             issue = "outcome_not_after_signal"
         if not issue and session in seen:
@@ -123,6 +130,9 @@ def _session_date(rows: Iterable[dict[str, Any]]) -> str:
 def _price_snapshot(row: dict[str, Any] | None) -> tuple[str, float, float]:
     if not row or _row_session_issue(row):
         return "", 0.0, 0.0
+    if row.get("shadow_price_contract_required"):
+        proof = row["shadow_price_evidence"]
+        return str(proof["date"]), _finite(proof.get("open")), _finite(proof.get("close"))
     return (
         str(row.get("official_session_date") or ""),
         _finite(row.get("official_open_price")),
@@ -157,7 +167,9 @@ def _pending_readiness(
     candidate_session = (
         Counter(observed_dates).most_common(1)[0][0] if observed_dates else ""
     )
-    target_session = str(pending.get("execution_session_date") or candidate_session)
+    target_session = str(pending.get("expected_execution_session_date") or pending.get("execution_session_date") or candidate_session)
+    if any(row.get("shadow_price_contract_required") for row in rows) and not pending.get("expected_execution_session_date"):
+        target_session = ""  # Legacy frozen signal lacks verified next-session evidence.
     missing_symbols = [
         symbol for symbol, (session_date, open_price, close_price) in observations.items()
         if not target_session or session_date != target_session
@@ -680,8 +692,7 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
     gross_profit = net_profit = invested = 0.0
     for pick in pending.get("picks") or []:
         row = row_map.get(str(pick.get("symbol") or ""))
-        open_price = _finite(row.get("official_open_price")) if row else 0.0
-        close_price = _finite(row.get("official_close_price")) if row else 0.0
+        _, open_price, close_price = _price_snapshot(row)
         allocation = _finite(pick.get("allocation_twd"), ALLOCATION_TWD)
         available = bool(row and not _row_session_issue(row)
                          and str(row.get("official_session_date") or "") == session_date
@@ -704,6 +715,7 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
             "net_profit_twd": round(position_net, 2),
             "data_available": available,
             "tw_official_session_date": row.get("tw_official_session_date") if available else None,
+            "shadow_price_evidence": deepcopy(row.get("shadow_price_evidence")) if available else None,
         })
     capture = _capture_metrics(
         {str(pick.get("symbol") or "") for pick in pending.get("picks") or []},
@@ -1048,6 +1060,7 @@ def update_state(
     state: dict[str, Any], rows: list[dict[str, Any]], *,
     period: str, updated_at: str, intraday: bool = False,
     price_history: dict[str, Any] | None = None,
+    preserve_raw_records: bool = False,
 ) -> dict[str, Any]:
     # The morning report may safely settle an already-frozen Taiwan signal
     # when the prior evening workflow was delayed or missed. It must never
@@ -1077,8 +1090,9 @@ def update_state(
                 "quarantined_at": updated_at,
             })
             model["pending"] = None
-        _repair_incomplete_days(model, price_history)
-        _sanitize_existing_days(model, updated_at)
+        if not preserve_raw_records:
+            _repair_incomplete_days(model, price_history)
+            _sanitize_existing_days(model, updated_at)
         settled = _settle_pending(model, rows)
         if not settled and period == "evening":
             _expire_incomplete_pending(model, updated_at)
@@ -1086,6 +1100,14 @@ def update_state(
         if not settle_only and model.get("pending") is None:
             model["pending"] = _new_pending(rows, model, updated_at)
             if model["pending"]:
+                proof_dates = {str((r.get("shadow_price_evidence") or {}).get("next_session_date") or "") for r in rows if r.get("symbol") in {p["symbol"] for p in model["pending"]["picks"]} and r.get("shadow_price_contract_required")}
+                if proof_dates:
+                    if len(proof_dates) == 1 and "" not in proof_dates:
+                        model["pending"]["expected_execution_session_date"] = proof_dates.pop()
+                    else:
+                        model["pending"] = None
+                        model["status"] = "waiting_for_verified_calendar"
+                        continue
                 model["status"] = "collecting"
             else:
                 model["status"] = "waiting_for_signal"
@@ -1098,12 +1120,47 @@ def update_weight_experiment(
     reports_dir: Path, rows: list[dict[str, Any]], *,
     period: str, updated_at: str, intraday: bool = False,
     price_history: dict[str, Any] | None = None,
+    official_prices: dict[str, Any] | None = None,
 ) -> Path:
+    from weight_price_evidence import prepare_from_cache, audit_model
+    safe_rows = prepare_from_cache(reports_dir, rows, official_prices, updated_at)
     path = reports_dir / "tw_weight_experiment.json"
     state = update_state(
-        _load(path, updated_at), rows, period=period,
+        _load(path, updated_at), safe_rows, period=period,
         updated_at=updated_at, intraday=intraday, price_history=price_history,
+        preserve_raw_records=True,
     )
+    try:
+        reference = json.loads((reports_dir / "tw_weight_price_audit.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        reference = {}
+    for row in safe_rows:
+        from weight_price_evidence import evidence_valid
+        proof = row.get("shadow_price_evidence") or {}
+        session = str(proof.get("date") or "")
+        if not evidence_valid(proof, session):
+            continue
+        bars = reference.setdefault("prices", {}).setdefault(row["symbol"], {})
+        if session not in bars:
+            bars[session] = {"open": proof["open"], "close": proof["close"],
+                             "source": "TWSE" if proof["source"] == "TWSE OpenAPI" else "TPEx",
+                             "evidence_sha256": proof["sha256"], "captured_at": updated_at}
+        calendar = reference.setdefault("calendar", {})
+        calendar["completed_through"] = max(str(calendar.get("completed_through") or ""), session)
+    calendar_path = reports_dir / "official_market_calendar.json"
+    try:
+        cached = json.loads(calendar_path.read_text(encoding="utf-8"))
+        sessions = sorted({d for y in cached["markets"]["TW"]["years"].values() for d in y.get("sessions", [])})
+        reference.setdefault("calendar", {})["sessions"] = sessions
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    if reference:
+        audit_tmp = reports_dir / "tw_weight_price_audit.tmp"
+        audit_tmp.write_text(json.dumps(reference, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        audit_tmp.replace(reports_dir / "tw_weight_price_audit.json")
+    for model in state["models"].values():
+        model["loss_attribution"] = audit_model(model, reference.get("prices"), reference.get("calendar"))
+    state["evidence_status"] = "prices_verified" if all(m["loss_attribution"]["status"] == "prices_verified" for m in state["models"].values()) else "incomplete"
     tmp = reports_dir / "tw_weight_experiment.tmp"
     tmp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tmp.replace(path)
