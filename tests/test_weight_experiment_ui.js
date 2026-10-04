@@ -39,3 +39,25 @@ const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script
 inlineScripts.forEach((source) => new Function(source));
 
 console.log('weight experiment UI: all tests passed');
+
+// Render real filtered observations: an excluded raw day must not shift the
+// visible five-session cycle labels or reappear in the result table.
+const vm = require('vm');
+const source = html.slice(html.indexOf('function weightModelHtml('), html.indexOf('function showWeightExperiment('));
+const context = {
+  esc: String, number: String, percent: String, millionMoney: String,
+  millionProfitClass: () => '', drawdownMagnitude: String,
+  weightPendingHtml: () => '',
+};
+vm.runInNewContext(source, context);
+const rawDays = Array.from({length: 27}, (_, i) => ({
+  day: i + 1, cycle: Math.floor(i / 5) + 1, cycle_day: i % 5 + 1,
+  session_date: i === 19 ? 'excluded-Sunday' : i === 26 ? 'final-valid-session' : 'session-' + i,
+}));
+const rendered = context.weightModelHtml({days: rawDays, completed_days: 26,
+  session_validation: {excluded_days: [{raw_index: 19, session_date: '2026-09-20'}]},
+});
+assert.ok(!rendered.includes('excluded-Sunday'));
+assert.ok(rendered.includes('第6區塊・第1日｜final-valid-session'));
+assert.ok(rendered.includes('交易日期異常排除 1 日'));
+console.log('weight session exclusion rendering: passed');
