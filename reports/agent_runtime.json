@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-04T06:03:15+00:00",
+  "generated_at": "2026-10-04T09:58:20+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-04T10:47:04.517421+08:00",
+    "checked_at": "2026-10-04T17:58:18.513863+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -50,7 +50,7 @@
   "stock_maintenance": {
     "connected": true,
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-04T10:47:03.359685+08:00",
+    "checked_at": "2026-10-04T17:58:17.491066+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -106,13 +106,13 @@
         "diagnosis": [
           "missing_verified_delivery"
         ],
-        "verified_at": "2026-10-04T10:46:57.184424+08:00"
+        "verified_at": "2026-10-04T17:58:11.945954+08:00"
       },
       "2026-10-04:noon": {
         "period": "noon",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-10-04:evening": {
         "period": "evening",
