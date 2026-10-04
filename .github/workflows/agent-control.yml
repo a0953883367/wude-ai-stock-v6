@@ -36,6 +36,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          # The shared state writer can wait behind guard; read main after that wait.
+          ref: main
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
