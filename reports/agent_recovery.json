@@ -1,7 +1,13 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-04T20:43:58.646292+08:00",
+  "checked_at": "2026-10-04T21:04:50.023015+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
+  "delivery_scope": {
+    "channel": "telegram_v6",
+    "chatgpt_delivery_status": "not_observable",
+    "cross_channel_deduplication": false,
+    "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
+  },
   "incidents": {
     "2026-10-03:morning": {
       "period": "morning",
@@ -45,7 +51,7 @@
       "diagnosis": [
         "missing_verified_delivery"
       ],
-      "verified_at": "2026-10-04T20:43:53.818399+08:00"
+      "verified_at": "2026-10-04T21:04:50.023015+08:00"
     },
     "2026-10-04:noon": {
       "period": "noon",
@@ -62,11 +68,12 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry existing verified briefing inside fixed delivery window",
+      "status": "verified_recovered",
+      "reason": "fresh verified Telegram delivery receipt",
       "diagnosis": [
         "missing_verified_delivery"
-      ]
+      ],
+      "verified_at": "2026-10-04T21:04:50.023015+08:00"
     }
   },
   "next_actions": [],
@@ -81,7 +88,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-04 07:12:42",
+        "updated_at": "2026-10-04 20:44:51",
         "error": null
       }
     },
