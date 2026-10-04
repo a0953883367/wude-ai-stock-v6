@@ -8,6 +8,8 @@ module never imports a broker path and cannot place an order.
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
+from datetime import date
 import hashlib
 import json
 import math
@@ -51,17 +53,75 @@ def _is_tw_stock(row: dict[str, Any]) -> bool:
     )
 
 
+def _session_issue(value: str) -> str:
+    try:
+        parsed = date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return "invalid_session_date"
+    if parsed.isoformat() != value:
+        return "invalid_session_date"
+    return "non_trading_weekend" if parsed.weekday() >= 5 else ""
+
+
+def _row_session_issue(row: dict[str, Any]) -> str:
+    session = str(row.get("official_session_date") or "")
+    issue = _session_issue(session)
+    if issue:
+        return issue
+    source = str(row.get("tw_official_session_date") or "")
+    if not source:
+        return "exchange_session_unavailable"
+    if source != session:
+        return "exchange_session_mismatch"
+    if row.get("tw_official_price_available") is False:
+        return "exchange_price_unavailable"
+    return ""
+
+
+def _evaluation_days(model: dict[str, Any]) -> list[dict[str, Any]]:
+    """Exclude invalid observations from assessment without rewriting raw days."""
+    valid, excluded, seen = [], [], set()
+    for raw_index, day in enumerate(model.get("days") or []):
+        session = str(day.get("session_date") or "")
+        signal = str(day.get("signal_session_date") or "")
+        issue = _session_issue(session) or _session_issue(signal)
+        if not issue and session <= signal:
+            issue = "outcome_not_after_signal"
+        if not issue and session in seen:
+            issue = "duplicate_outcome_session"
+        if not issue and any(
+            position.get("data_available") and position.get("tw_official_session_date")
+            and str(position["tw_official_session_date"]) != session
+            for position in day.get("positions") or []
+        ):
+            issue = "exchange_session_mismatch"
+        if issue:
+            excluded.append({"raw_index": raw_index, "session_date": session, "ranking_snapshot_id": day.get("ranking_snapshot_id"), "reason": issue})
+        else:
+            seen.add(session)
+            valid.append(day)
+    model["session_validation"] = {
+        "raw_days": len(model.get("days") or []), "valid_days": len(valid),
+        "excluded_days": excluded, "raw_records_preserved": True,
+        "legacy_days_without_exchange_dates": sum(any(
+            p.get("data_available") and not p.get("tw_official_session_date")
+            for p in day.get("positions") or []
+        ) for day in valid),
+    }
+    return valid
+
+
 def _session_date(rows: Iterable[dict[str, Any]]) -> str:
     dates = [
         str(row.get("official_session_date") or "")
         for row in rows
-        if _is_tw_stock(row) and row.get("official_session_date")
+        if _is_tw_stock(row) and not _row_session_issue(row)
     ]
     return Counter(dates).most_common(1)[0][0] if dates else ""
 
 
 def _price_snapshot(row: dict[str, Any] | None) -> tuple[str, float, float]:
-    if not row:
+    if not row or _row_session_issue(row):
         return "", 0.0, 0.0
     return (
         str(row.get("official_session_date") or ""),
@@ -82,6 +142,12 @@ def _pending_readiness(
             row_map.get(str(pick.get("symbol") or ""))
         )
         for pick in picks
+    }
+    rejected_prices = {
+        str(pick.get("symbol") or ""): _row_session_issue(row_map[str(pick.get("symbol") or "")])
+        for pick in picks
+        if str(pick.get("symbol") or "") in row_map
+        and _row_session_issue(row_map[str(pick.get("symbol") or "")])
     }
     observed_dates = [
         session_date
@@ -108,6 +174,9 @@ def _pending_readiness(
     complete = bool(
         len(picks) == required
         and target_session
+        and not _session_issue(signal_date)
+        and not _session_issue(target_session)
+        and target_session > signal_date
         and available >= MIN_POSITIONS
     )
     return {
@@ -120,6 +189,7 @@ def _pending_readiness(
         "missing_symbols": missing_symbols,
         "nine_of_ten_settlement": complete and available < required,
         "observed_session_dates": sorted({date for date, _, _ in observations.values() if date}),
+        "rejected_prices": rejected_prices,
     }
 
 
@@ -189,6 +259,11 @@ def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
         for day in invalid_days
     }
     for day in model.get("days") or []:
+        if _session_issue(str(day.get("session_date") or "")):
+            # Keep the original invalid observation byte-for-byte in the ledger.
+            # It is excluded only by the derived evaluation view.
+            valid_days.append(day)
+            continue
         completeness = _day_completeness(day)
         if completeness["data_complete"]:
             _recalculate_day_from_positions(day)
@@ -210,6 +285,8 @@ def _sanitize_existing_days(model: dict[str, Any], updated_at: str) -> None:
             })
             invalid_keys.add(invalid_key)
     for index, day in enumerate(valid_days, 1):
+        if _session_issue(str(day.get("session_date") or "")):
+            continue
         day["day"] = index
         day["cycle"] = (index - 1) // CYCLE_DAYS + 1
         day["cycle_day"] = (index - 1) % CYCLE_DAYS + 1
@@ -263,6 +340,8 @@ def _repair_incomplete_days(
         return
     for day in model.get("days") or []:
         session_date = str(day.get("session_date") or "")
+        if _session_issue(session_date):
+            continue
         repaired_symbols: list[str] = []
         for position in day.get("positions") or []:
             if (
@@ -543,6 +622,8 @@ def _new_pending(
     if not signal_date or len(picks) < PICKS:
         return None
     row_map = {str(row.get("symbol") or ""): row for row in rows if _is_tw_stock(row)}
+    if any(_row_session_issue(row_map.get(pick["symbol"], {})) for pick in picks):
+        return None
     pick_dates = {
         str((row_map.get(pick["symbol"]) or {}).get("official_session_date") or "")
         for pick in picks
@@ -602,7 +683,8 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
         open_price = _finite(row.get("official_open_price")) if row else 0.0
         close_price = _finite(row.get("official_close_price")) if row else 0.0
         allocation = _finite(pick.get("allocation_twd"), ALLOCATION_TWD)
-        available = bool(row and str(row.get("official_session_date") or "") == session_date
+        available = bool(row and not _row_session_issue(row)
+                         and str(row.get("official_session_date") or "") == session_date
                          and open_price > 0 and close_price > 0)
         gross_return = (close_price / open_price - 1) * 100 if available else 0.0
         net_return = gross_return - ROUND_TRIP_COST_PCT if available else 0.0
@@ -621,6 +703,7 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
             "gross_profit_twd": round(position_gross, 2),
             "net_profit_twd": round(position_net, 2),
             "data_available": available,
+            "tw_official_session_date": row.get("tw_official_session_date") if available else None,
         })
     capture = _capture_metrics(
         {str(pick.get("symbol") or "") for pick in pending.get("picks") or []},
@@ -682,6 +765,7 @@ def _expire_incomplete_pending(model: dict[str, Any], updated_at: str) -> bool:
             "invalid_reason": "正式收盤後未達至少9/10檔同日官方開盤與收盤價",
             "invalidated_at": updated_at,
             "picks": list(pending.get("picks") or []),
+            "rejected_prices": deepcopy(pending.get("rejected_prices") or {}),
         })
     model["pending"] = None
     return True
@@ -690,7 +774,7 @@ def _expire_incomplete_pending(model: dict[str, Any], updated_at: str) -> bool:
 def _cycle_summaries(model: dict[str, Any]) -> list[dict[str, Any]]:
     """Return immutable-looking five-session views without rewriting day records."""
     summaries = []
-    days = model.get("days") or []
+    days = _evaluation_days(model)
     for offset in range(0, len(days), CYCLE_DAYS):
         cycle_days = days[offset:offset + CYCLE_DAYS]
         if not cycle_days:
@@ -713,7 +797,11 @@ def _cycle_summaries(model: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _refresh_metrics(model: dict[str, Any]) -> None:
-    days = model.get("days") or []
+    days = _evaluation_days(model)
+    model["completed_days"] = len(days)
+    model["completed_cycles"] = len(days) // CYCLE_DAYS
+    model["current_cycle"] = len(days) // CYCLE_DAYS + 1
+    model["current_cycle_completed_days"] = len(days) % CYCLE_DAYS
     positions = [
         position for day in days for position in day.get("positions") or []
         if position.get("data_available")
@@ -865,7 +953,7 @@ def _model_symbols(model: dict[str, Any], *, session_date: str | None = None) ->
         positions = (model.get("pending") or {}).get("picks") or []
     else:
         day = next((
-            item for item in model.get("days") or []
+            item for item in _evaluation_days(model)
             if str(item.get("session_date") or "") == session_date
         ), {})
         positions = day.get("positions") or []
@@ -893,14 +981,14 @@ def _refresh_diagnostics(state: dict[str, Any]) -> None:
     session_dates = sorted({
         str(day.get("session_date") or "")
         for model in models.values()
-        for day in model.get("days") or []
+        for day in _evaluation_days(model)
         if day.get("session_date")
     })
     daily = []
     for session_date in session_dates:
         if not all(any(
             str(day.get("session_date") or "") == session_date
-            for day in model.get("days") or []
+            for day in _evaluation_days(model)
         ) for model in models.values()):
             continue
         daily.append({"session_date": session_date, **_overlap_snapshot(state, session_date)})
@@ -919,6 +1007,41 @@ def _refresh_diagnostics(state: dict[str, Any]) -> None:
             "三組持股完全相同時，等權損益無法辨別法人權重；另以排名與次日漲幅相關性及強勢股捕捉率比較。"
         ),
     }
+
+
+def refresh_session_evaluation(state: dict[str, Any], updated_at: str) -> dict[str, Any]:
+    """Reassess existing observations without changing any raw day or pending pick."""
+    previous_assessment = deepcopy(state.get("preliminary_assessment") or {})
+    state["updated_at"] = updated_at
+    for model in state["models"].values():
+        _refresh_metrics(model)
+    base_metrics = state["models"].get("base_0", {}).get("metrics", {})
+    base_profit = _finite(base_metrics.get("net_profit_twd"))
+    base_return = _finite(base_metrics.get("net_return_pct"))
+    for key, model in state["models"].items():
+        metrics = model.get("metrics", {})
+        model["comparison_vs_base"] = {
+            "incremental_net_profit_twd": round(_finite(metrics.get("net_profit_twd")) - base_profit, 2),
+            "incremental_net_return_pct": round(_finite(metrics.get("net_return_pct")) - base_return, 4),
+            "interpretation": "原模型基準" if key == "base_0" else "法人權重相較原模型的額外效益",
+        }
+    completed_days = min(
+        (int(model.get("completed_days") or 0) for model in state["models"].values()),
+        default=0,
+    )
+    state["completed_days"] = completed_days
+    state["completed_cycles"] = completed_days // CYCLE_DAYS
+    state["current_cycle"] = completed_days // CYCLE_DAYS + 1
+    state["current_cycle_completed_days"] = completed_days % CYCLE_DAYS
+    _refresh_diagnostics(state)
+    _refresh_preliminary_assessment(state)
+    if any(model.get("session_validation", {}).get("excluded_days") for model in state["models"].values()):
+        history = state.setdefault("assessment_before_session_validation", [])
+        if not history:
+            history.append({"assessment": previous_assessment, "recorded_at": updated_at})
+    assessment_status = (state.get("preliminary_assessment") or {}).get("status")
+    state["status"] = assessment_status if completed_days >= PRELIMINARY_DAYS else "collecting"
+    return state
 
 
 def update_state(
@@ -942,9 +1065,18 @@ def update_state(
         "preliminary_days": PRELIMINARY_DAYS,
         "formal_review_days": FORMAL_REVIEW_DAYS,
         "material_edge_pct": MATERIAL_EDGE_PCT,
+        "session_validation_rule": "拒絕週末、已知交易所日期不一致及重複結算；原始觀察保留，評估排除",
+        "legacy_source_policy": "未保存交易所日期的歷史觀察仍需官方來源核對，不宣稱全部已驗證",
     })
     settle_only = period == "morning"
     for key, model in state["models"].items():
+        pending = model.get("pending")
+        if pending and _session_issue(str(pending.get("signal_session_date") or "")):
+            model.setdefault("invalid_pending", []).append({
+                "original_pending": deepcopy(pending), "reason": "invalid_signal_session",
+                "quarantined_at": updated_at,
+            })
+            model["pending"] = None
         _repair_incomplete_days(model, price_history)
         _sanitize_existing_days(model, updated_at)
         settled = _settle_pending(model, rows)
@@ -959,29 +1091,7 @@ def update_state(
                 model["status"] = "waiting_for_signal"
         elif model.get("pending"):
             model["status"] = "collecting"
-    base_metrics = state["models"].get("base_0", {}).get("metrics", {})
-    base_profit = _finite(base_metrics.get("net_profit_twd"))
-    base_return = _finite(base_metrics.get("net_return_pct"))
-    for key, model in state["models"].items():
-        metrics = model.get("metrics", {})
-        model["comparison_vs_base"] = {
-            "incremental_net_profit_twd": round(_finite(metrics.get("net_profit_twd")) - base_profit, 2),
-            "incremental_net_return_pct": round(_finite(metrics.get("net_return_pct")) - base_return, 4),
-            "interpretation": "原模型基準" if key == "base_0" else "法人權重相較原模型的額外效益",
-        }
-    completed_days = min(
-        (int(model.get("completed_days") or 0) for model in state["models"].values()),
-        default=0,
-    )
-    state["completed_days"] = completed_days
-    state["completed_cycles"] = completed_days // CYCLE_DAYS
-    state["current_cycle"] = completed_days // CYCLE_DAYS + 1
-    state["current_cycle_completed_days"] = completed_days % CYCLE_DAYS
-    _refresh_diagnostics(state)
-    _refresh_preliminary_assessment(state)
-    assessment_status = (state.get("preliminary_assessment") or {}).get("status")
-    state["status"] = assessment_status if completed_days >= PRELIMINARY_DAYS else "collecting"
-    return state
+    return refresh_session_evaluation(state, updated_at)
 
 
 def update_weight_experiment(
