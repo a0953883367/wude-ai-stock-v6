@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-04T07:11:45.141375+08:00",
+  "checked_at": "2026-10-04T08:35:21.235291+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "incidents": {
     "2026-10-03:morning": {
@@ -40,11 +40,12 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry existing verified briefing inside fixed delivery window",
+      "status": "verified_recovered",
+      "reason": "fresh verified Telegram delivery receipt",
       "diagnosis": [
         "missing_verified_delivery"
-      ]
+      ],
+      "verified_at": "2026-10-04T08:35:21.235291+08:00"
     },
     "2026-10-04:noon": {
       "period": "noon",
@@ -71,7 +72,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-03 20:18:48",
+        "updated_at": "2026-10-04 07:12:42",
         "error": null
       }
     },
