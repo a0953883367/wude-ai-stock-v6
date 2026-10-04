@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-05T03:43:40+08:00",
+  "checked_at": "2026-10-05T07:19:58+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-04 20:44:51",
-  "report_age_minutes": 418.8,
+  "report_age_minutes": 635.1,
   "counts": {
     "ok": 26,
-    "info": 10,
-    "warning": 2,
+    "info": 8,
+    "warning": 4,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "warning",
       "label": "注意",
-      "detail": "最近更新距今 7.0 小時",
+      "detail": "最近更新距今 10.6 小時",
       "action": "若已跨過下一個排程時間，檢查排程是否延遲"
     },
     {
@@ -56,10 +56,10 @@
     {
       "code": "fixed_delivery_morning",
       "title": "今日早報送達",
-      "level": "info",
-      "label": "資訊",
-      "detail": "尚未到 06:00 發送時間",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
+      "action": "由既有 watchdog 在 120 分鐘內重試；產報不等於送達"
     },
     {
       "code": "fixed_delivery_noon",
@@ -315,15 +315,17 @@
     {
       "code": "stock_agent_recovery",
       "title": "Telegram 三報 Agent 自動處理",
-      "level": "info",
-      "label": "資訊",
+      "level": "warning",
+      "label": "注意",
       "detail": "最近執行 2026-10-05T03:43:38.175251+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "若已跨過下一個排程時間，檢查排程是否延遲"
+    "若已跨過下一個排程時間，檢查排程是否延遲",
+    "由既有 watchdog 在 120 分鐘內重試；產報不等於送達",
+    "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
   ],
   "safety": {
     "changes_rankings": false,
