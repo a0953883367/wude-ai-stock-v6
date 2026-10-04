@@ -67,3 +67,7 @@ assert.ok(incomplete.includes('官方價格已核實 41 筆'));
 assert.ok(incomplete.includes('不作正式績效或升版依據'));
 assert.ok(incomplete.includes('同期基準待核實，不判定優勝'));
 assert.ok(incomplete.includes('華星光'));
+
+const benchmarkHtml = context.weightAttributionHtml({loss_attribution: {horizon_comparison: {horizons: {'1': {benchmark_verified: true, excess_return_pct: -2}}, matched_sample_comparison: {positions: 1, benchmark_verified: true, average_excess_return_pct: {'1': -2}}}}});
+assert.ok(benchmarkHtml.includes('同期0050毛超額'));
+assert.ok(benchmarkHtml.includes('不判定策略優勝'));

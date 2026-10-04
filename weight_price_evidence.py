@@ -93,6 +93,7 @@ def audit_model(model, references=None, calendar=None):
     excluded = {x["raw_index"] for x in model.get("session_validation", {}).get("excluded_days", [])}
     days = [d for i, d in enumerate(model.get("days", [])) if i not in excluded]
     stocks, dates, verified, missing, corrections = {}, [], [], [], []
+    official_priced_count, official_revalued_gross = 0, 0.0
     for day in days:
         date = day["session_date"]
         for p in day.get("positions", []):
@@ -107,18 +108,24 @@ def audit_model(model, references=None, calendar=None):
             price_match = reference.get("source") in {"TWSE", "TPEx"} and (reference.get("response_sha256") or reference.get("evidence_sha256")) and reference.get("open") == p.get("open_price") and reference.get("close") == p.get("sell_price")
             if evidence_valid(proof, date, p.get("open_price"), p.get("sell_price")) or price_match:
                 verified.append(p)
+                official_priced_count += 1
+                official_revalued_gross += float(p.get("gross_profit_twd") or 0)
             else:
                 known = reference.get("source") in {"TWSE", "TPEx"} and (reference.get("response_sha256") or reference.get("evidence_sha256"))
                 missing.append({"date": date, "symbol": p["symbol"], "reason": "official_price_mismatch" if known else "historical_official_evidence_missing"})
                 if known and reference.get("open") and reference.get("close"):
                     corrected = float(p.get("allocation_twd") or 0) * (reference["close"] / reference["open"] - 1)
+                    official_priced_count += 1
+                    official_revalued_gross += corrected
                     corrections.append({"date": date, "symbol": p["symbol"], "recorded_gross_profit_twd": p.get("gross_profit_twd"),
                                         "official_gross_profit_twd": round(corrected, 2),
                                         "delta_twd": round(corrected-float(p.get("gross_profit_twd") or 0), 2)})
         dates.append({"date": date, "gross_profit_twd": day.get("gross_profit_twd"), "net_profit_twd": day.get("net_profit_twd")})
-    full = bool(days) and not missing
+    full = bool(verified) and not missing
     result = {"status": "prices_verified" if full else "incomplete",
             "raw_records_preserved": True, "verified_positions": len(verified), "unverified_positions": len(missing),
+            "official_priced_positions": official_priced_count,
+            "official_subset_revalued_gross_profit_twd": round(official_revalued_gross, 2) if official_priced_count else None,
             "verified_subset_gross_profit_twd": round(sum(float(p.get("gross_profit_twd") or 0) for p in verified), 2) if verified else None,
             "verified_portfolio_net_profit_twd": round(sum(float(d.get("net_profit_twd") or 0) for d in days), 2) if full else None,
             "unverified": missing,
@@ -161,17 +168,29 @@ def compare_horizons(days, references, calendar):
                 o, c = start.get("open"), end.get("close")
                 if not o or not c:
                     continue
-                observations.append({"date": entry_date, "symbol": p["symbol"], "exit_date": exit_date,
-                                     "gross_return_pct": round((c/o-1)*100, 4)})
+                observation = {"date": entry_date, "symbol": p["symbol"], "exit_date": exit_date,
+                               "gross_return_pct": round((c/o-1)*100, 4)}
+                benchmark = references.get("0050.TW", {})
+                bstart, bend = benchmark.get(entry_date) or {}, benchmark.get(exit_date) or {}
+                if all(b.get("source") == "TWSE" and (b.get("response_sha256") or b.get("evidence_sha256")) for b in (bstart, bend)) and bstart.get("open", 0) > 0 and bend.get("close", 0) > 0:
+                    observation["benchmark_gross_return_pct"] = round((bend["close"] / bstart["open"] - 1) * 100, 4)
+                    observation["excess_return_pct"] = round(observation["gross_return_pct"] - observation["benchmark_gross_return_pct"], 4)
+                observations.append(observation)
+        benchmark_complete = bool(observations) and all("excess_return_pct" in p for p in observations)
         result["horizons"][str(horizon)] = {"verified_price_positions": len(observations),
             "average_gross_return_pct": round(sum(x["gross_return_pct"] for x in observations)/len(observations), 4) if observations else None,
             "observations": observations, "blocked": blocked,
             "complete_portfolio": bool(days) and not blocked,
-            "benchmark_verified": False, "excess_return_pct": None,
-            "comparison_status": "partial_samples_only_benchmark_unavailable"}
+            "benchmark_verified": benchmark_complete,
+            "excess_return_pct": round(sum(p["excess_return_pct"] for p in observations)/len(observations), 4) if benchmark_complete else None,
+            "comparison_status": "price_only_samples_benchmark_verified_no_strategy_verdict" if benchmark_complete else "partial_samples_only_benchmark_unavailable"}
     groups = [result["horizons"][str(h)]["observations"] for h in (1, 5, 20)]
     common = set.intersection(*[{(p["date"], p["symbol"]) for p in group} for group in groups])
-    result["matched_sample_comparison"] = {"positions": len(common), "benchmark_verified": False,
+    matched = [[p for p in group if (p["date"], p["symbol"]) in common] for group in groups]
+    benchmark_complete = bool(common) and all("excess_return_pct" in p for group in matched for p in group)
+    result["matched_sample_comparison"] = {"positions": len(common), "benchmark_verified": benchmark_complete,
         "average_gross_return_pct": {str(h): round(sum(p["gross_return_pct"] for p in group if (p["date"], p["symbol"]) in common)/len(common), 4) if common else None for h, group in zip((1, 5, 20), groups)},
+        "benchmark_average_gross_return_pct": {str(h): round(sum(p["benchmark_gross_return_pct"] for p in group)/len(common), 4) if benchmark_complete else None for h, group in zip((1, 5, 20), matched)},
+        "average_excess_return_pct": {str(h): round(sum(p["excess_return_pct"] for p in group)/len(common), 4) if benchmark_complete else None for h, group in zip((1, 5, 20), matched)},
         "status": "partial_same_cohort_prices_only_no_strategy_verdict"}
     return result
