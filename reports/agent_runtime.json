@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-05T09:17:19+00:00",
+  "generated_at": "2026-10-05T11:24:40+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-05T17:17:17.424747+08:00",
+    "checked_at": "2026-10-05T19:24:39.056534+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-05T17:17:16.075836+08:00",
+    "checked_at": "2026-10-05T19:24:37.537761+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -152,7 +152,7 @@
           "report_freshness",
           "telegram_receipt_missing"
         ],
-        "verified_at": "2026-10-05T17:17:09.923641+08:00"
+        "verified_at": "2026-10-05T19:24:31.128091+08:00"
       },
       "2026-10-05:noon": {
         "period": "noon",
@@ -205,7 +205,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 110562,
+        "bytes": 199490,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -258,7 +258,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 30/60 日、錯誤事件 662 筆、成熟學習 70786 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "summary": "已讀取影子證據：向前驗證 31/60 日、錯誤事件 682 筆、成熟學習 72898 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -268,13 +268,13 @@
           "model_unit_learning.json": true,
           "weekly_shadow_coach.json": true
         },
-        "validation_days": 30,
+        "validation_days": 31,
         "target_days": 60,
-        "eligible_samples": 1528,
-        "independent_error_events": 662,
+        "eligible_samples": 1583,
+        "independent_error_events": 682,
         "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 70786,
+        "matured_learning_rows": 72898,
         "active_shadow_trust_streams": 0,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
@@ -526,7 +526,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.39,
+    "average_reduction_pct": 36.36,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
