@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-05T17:17:09+08:00",
+  "checked_at": "2026-10-05T17:17:18+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-05 07:20:59",
-  "report_age_minutes": 596.2,
+  "report_age_minutes": 596.3,
   "counts": {
     "ok": 28,
-    "info": 7,
-    "warning": 3,
+    "info": 8,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -315,16 +315,15 @@
     {
       "code": "stock_agent_recovery",
       "title": "Telegram 三報 Agent 自動處理",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近執行 2026-10-05T10:12:54.689339+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近執行 2026-10-05T17:17:16.075836+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
     "若已跨過下一個排程時間，檢查排程是否延遲",
-    "補送窗口已過，不送過期報表",
-    "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
+    "補送窗口已過，不送過期報表"
   ],
   "safety": {
     "changes_rankings": false,

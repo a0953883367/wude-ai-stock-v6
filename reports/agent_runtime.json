@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-05T05:53:59+00:00",
+  "generated_at": "2026-10-05T09:17:19+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-05T10:12:55.764140+08:00",
+    "checked_at": "2026-10-05T17:17:17.424747+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-05T10:12:54.689339+08:00",
+    "checked_at": "2026-10-05T17:17:16.075836+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -152,13 +152,13 @@
           "report_freshness",
           "telegram_receipt_missing"
         ],
-        "verified_at": "2026-10-05T10:12:49.379529+08:00"
+        "verified_at": "2026-10-05T17:17:09.923641+08:00"
       },
       "2026-10-05:noon": {
         "period": "noon",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-10-05:evening": {
         "period": "evening",
@@ -272,7 +272,7 @@
         "target_days": 60,
         "eligible_samples": 1528,
         "independent_error_events": 662,
-        "guard_status": "ok",
+        "guard_status": "warning",
         "learning_units": 11,
         "matured_learning_rows": 70786,
         "active_shadow_trust_streams": 0,
