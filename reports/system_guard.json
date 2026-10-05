@@ -1,15 +1,15 @@
 {
   "system": "武得 AI 系統值班員 V1",
-  "status": "warning",
-  "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-05T07:23:31+08:00",
+  "status": "ok",
+  "status_label": "🟢 系統正常",
+  "checked_at": "2026-10-05T08:53:47+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-05 07:20:59",
-  "report_age_minutes": 2.5,
+  "report_age_minutes": 92.8,
   "counts": {
     "ok": 27,
-    "info": 10,
-    "warning": 1,
+    "info": 11,
+    "warning": 0,
     "critical": 0
   },
   "checks": [
@@ -32,17 +32,17 @@
     {
       "code": "corporate_actions_shadow",
       "title": "股票更名／停復牌監控",
-      "level": "warning",
-      "label": "注意",
-      "detail": "官方身分符合 342/380 檔（個股 312、ETF 68）；事件 37 件；來源失敗 2 個；已有替代來源覆蓋 1 個受限來源",
-      "action": "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+      "level": "info",
+      "label": "資訊",
+      "detail": "官方身分符合 380/380 檔（個股 312、ETF 68）；事件 0 件；來源失敗 0 個；已有替代來源覆蓋 1 個受限來源；替代官方名單已確認代號仍有效，正式資料維持鎖定",
+      "action": "持續重試受限來源；不得據此自動更名、下市或拼接歷史價格"
     },
     {
       "code": "report_freshness",
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 2 分鐘",
+      "detail": "最近更新距今 93 分鐘",
       "action": ""
     },
     {
@@ -309,7 +309,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
@@ -317,13 +317,11 @@
       "title": "Telegram 三報 Agent 自動處理",
       "level": "info",
       "label": "資訊",
-      "detail": "最近執行 2026-10-05T07:19:58.591327+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
+      "detail": "最近執行 2026-10-05T07:20:03.075986+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
       "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
-  "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
-  ],
+  "action_required": [],
   "safety": {
     "changes_rankings": false,
     "places_orders": false,

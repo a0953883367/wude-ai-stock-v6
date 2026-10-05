@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-05T07:20:03.075986+08:00",
+  "checked_at": "2026-10-05T08:53:48.309757+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -84,13 +84,14 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry existing verified briefing inside fixed delivery window",
+      "status": "verified_recovered",
+      "reason": "fresh verified Telegram delivery receipt",
       "diagnosis": [
         "missing_verified_delivery",
         "report_freshness",
         "telegram_receipt_missing"
-      ]
+      ],
+      "verified_at": "2026-10-05T08:53:48.309757+08:00"
     },
     "2026-10-05:noon": {
       "period": "noon",
@@ -117,7 +118,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-04 20:44:51",
+        "updated_at": "2026-10-05 07:20:59",
         "error": null
       }
     },
@@ -137,10 +138,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "report_freshness"
-  ],
-  "data_recovery_status": "waiting_next_eligible_fixed_report",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "capabilities": {
     "actions_read_confirmed": true,
     "protected_briefing_retry": true,
