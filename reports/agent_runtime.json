@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-04T23:20:06+00:00",
+  "generated_at": "2026-10-05T00:53:56+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-05T07:20:05.343916+08:00",
+    "checked_at": "2026-10-05T08:53:54.852601+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-05T07:20:03.075986+08:00",
+    "checked_at": "2026-10-05T08:53:53.768605+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -145,13 +145,14 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
-        "reason": "retry existing verified briefing inside fixed delivery window",
+        "status": "verified_recovered",
+        "reason": "fresh verified Telegram delivery receipt",
         "diagnosis": [
           "missing_verified_delivery",
           "report_freshness",
           "telegram_receipt_missing"
-        ]
+        ],
+        "verified_at": "2026-10-05T08:53:48.309757+08:00"
       },
       "2026-10-05:noon": {
         "period": "noon",
@@ -203,8 +204,8 @@
           "reference",
           "research"
         ],
-        "files": 10,
-        "bytes": 194402,
+        "files": 11,
+        "bytes": 110562,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -271,7 +272,7 @@
         "target_days": 60,
         "eligible_samples": 1528,
         "independent_error_events": 662,
-        "guard_status": "warning",
+        "guard_status": "ok",
         "learning_units": 11,
         "matured_learning_rows": 70786,
         "active_shadow_trust_streams": 0,
@@ -525,7 +526,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.36,
+    "average_reduction_pct": 36.39,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
