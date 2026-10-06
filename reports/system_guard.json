@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "critical",
   "status_label": "🔴 需要處理",
-  "checked_at": "2026-10-06T08:53:25+08:00",
+  "checked_at": "2026-10-06T10:16:38+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-05 19:02:05",
-  "report_age_minutes": 831.3,
+  "report_age_minutes": 914.6,
   "counts": {
-    "ok": 25,
-    "info": 11,
+    "ok": 27,
+    "info": 9,
     "warning": 1,
     "critical": 1
   },
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "critical",
       "label": "異常",
-      "detail": "已 13.9 小時沒有完成新報表",
+      "detail": "已 15.2 小時沒有完成新報表",
       "action": "檢查 GitHub Actions、電腦排程及上游行情來源"
     },
     {
@@ -267,9 +267,9 @@
     {
       "code": "stream_tw",
       "title": "台股即時串流",
-      "level": "info",
-      "label": "資訊",
-      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "level": "ok",
+      "label": "正常",
+      "detail": "正式盤已連線，訂閱 192 檔",
       "action": ""
     },
     {
@@ -283,10 +283,10 @@
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
-      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近一次已送達：2026-10-06T02:16:25+00:00",
+      "action": ""
     },
     {
       "code": "device_authorization",
