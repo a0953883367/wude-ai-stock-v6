@@ -7,6 +7,8 @@ it cannot change rankings, weights, forecasts, or orders.
 
 from __future__ import annotations
 
+from completed_us_session import completed_us_session
+
 from collections import Counter
 from datetime import datetime
 import json
@@ -712,7 +714,10 @@ def update_validation_progress_monitor(
     if not intraday:
         _sync_signal_contract_versions(state, performance, rows, updated_at)
         for market in MARKETS:
-            if period == CLOSED_PERIOD[market]:
+            if (
+                completed_us_session(rows, updated_at) if market == "US"
+                else period == CLOSED_PERIOD[market]
+            ):
                 _observe_market(state, validation, million, rows, market, updated_at)
                 _observe_signal_health(
                     state,
