@@ -8,6 +8,8 @@ verifiable proxy for a pre-close exit.  No broker order path imports this file.
 
 from __future__ import annotations
 
+from completed_us_session import completed_us_session
+
 from collections import Counter
 from datetime import datetime
 import hashlib
@@ -677,6 +679,25 @@ def _settle_pending(
     execution_date = str(pending.get("execution_session_date") or "")
     if not execution_date:
         execution_date = session_date
+        # A missed report must not move a frozen US entry to a later day.
+        # Discover sessions only from the benchmark's exact daily history;
+        # every frozen pick still has to pass the existing coverage checks.
+        if market == "US" and price_history:
+            benchmark = price_history.get(BENCHMARKS[market]["symbol"])
+            candidates = set()
+            if benchmark is not None and not getattr(benchmark, "empty", True):
+                for index in benchmark.index:
+                    try:
+                        stamp = pd.Timestamp(index)
+                        if stamp.tzinfo is not None:
+                            stamp = stamp.tz_convert("America/New_York")
+                        observed = stamp.date().isoformat()
+                    except (TypeError, ValueError):
+                        continue
+                    if signal_date < observed <= session_date:
+                        candidates.add(observed)
+                if candidates:
+                    execution_date = min(candidates)
         pending["execution_session_date"] = execution_date
     settlement_rows = _settlement_rows(
         pending, rows, market, execution_date, price_history
@@ -833,7 +854,10 @@ def update_state(
         _quarantine_incomplete_legacy_days(market_state)
         if market_state.get("status") == "complete" and market_state.get("completed_days", 0) < target_days:
             market_state["status"] = "running"
-        if intraday or period != CLOSED_PERIOD[market]:
+        if intraday or not (
+            completed_us_session(rows, updated_at) if market == "US"
+            else period == CLOSED_PERIOD[market]
+        ):
             continue
         if market_state.get("status") == "complete":
             continue

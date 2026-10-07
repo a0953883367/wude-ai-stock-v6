@@ -96,7 +96,7 @@ def test_medium_waits_until_all_five_prices_and_benchmark_are_available():
     monday = universe("2026-08-24", close_offset=2)
     missing = state["medium"]["US"]["pending"]["picks"][0]["symbol"]
     partial = [item for item in monday if item["symbol"] != missing]
-    update_state(state, partial, period="morning", updated_at="partial")
+    update_state(state, partial, period="morning", updated_at=after_us_close(partial))
 
     portfolio = state["medium"]["US"]
     assert portfolio["positions"] == []
@@ -104,7 +104,7 @@ def test_medium_waits_until_all_five_prices_and_benchmark_are_available():
     assert portfolio["pending"]["available_positions"] == 4
     assert missing in portfolio["pending"]["missing_symbols"]
 
-    update_state(state, monday, period="morning", updated_at="retry")
+    update_state(state, monday, period="morning", updated_at=after_us_close(monday))
     assert len(portfolio["positions"]) == 5
     assert portfolio["status"] == "active"
 
@@ -118,7 +118,7 @@ def test_stockq_close_only_row_cannot_open_a_new_holding():
             item["stockq_close_only"] = True
             item["official_price_source"] = "StockQ_after_close_close_only"
 
-    update_state(state, monday, period="morning", updated_at="stockq entry blocked")
+    update_state(state, monday, period="morning", updated_at=after_us_close(monday))
 
     assert state["medium"]["US"]["positions"] == []
     assert state["medium"]["US"]["status"] == "waiting_data"
@@ -128,7 +128,7 @@ def test_stockq_close_only_row_cannot_open_a_new_holding():
 def test_stockq_close_only_row_can_value_an_existing_holding_with_source_label():
     state = start_state()
     entry = universe("2026-08-24", close_offset=1)
-    update_state(state, entry, period="morning", updated_at="entry")
+    update_state(state, entry, period="morning", updated_at=after_us_close(entry))
     next_session = universe("2026-08-25", close_offset=4)
     symbol = state["medium"]["US"]["positions"][0]["symbol"]
     for item in next_session:
@@ -137,7 +137,7 @@ def test_stockq_close_only_row_can_value_an_existing_holding_with_source_label()
             item["official_open_price"] = None
             item["official_price_source"] = "StockQ_after_close_close_only"
 
-    update_state(state, next_session, period="morning", updated_at="stockq valuation")
+    update_state(state, next_session, period="morning", updated_at=after_us_close(next_session))
 
     position = next(
         item for item in state["medium"]["US"]["positions"] if item["symbol"] == symbol
@@ -155,11 +155,11 @@ def test_tiingo_close_only_row_can_value_but_not_open_a_holding():
             item["tiingo_close_only"] = True
             item["official_open_price"] = None
             item["official_price_source"] = "Tiingo_after_close_close_only"
-    update_state(pending_state, blocked, period="morning", updated_at="blocked")
+    update_state(pending_state, blocked, period="morning", updated_at=after_us_close(blocked))
     assert pending_state["medium"]["US"]["positions"] == []
 
     active_state = start_state()
-    update_state(active_state, universe("2026-08-24"), period="morning", updated_at="entry")
+    update_state(active_state, universe("2026-08-24"), period="morning", updated_at=after_us_close(universe("2026-08-24")))
     valuation = universe("2026-08-25", close_offset=4)
     active_symbol = active_state["medium"]["US"]["positions"][0]["symbol"]
     for item in valuation:
@@ -167,7 +167,7 @@ def test_tiingo_close_only_row_can_value_but_not_open_a_holding():
             item["tiingo_close_only"] = True
             item["official_open_price"] = None
             item["official_price_source"] = "Tiingo_after_close_close_only"
-    update_state(active_state, valuation, period="morning", updated_at="valuation")
+    update_state(active_state, valuation, period="morning", updated_at=after_us_close(valuation))
     position = next(
         item for item in active_state["medium"]["US"]["positions"]
         if item["symbol"] == active_symbol
@@ -178,12 +178,12 @@ def test_tiingo_close_only_row_can_value_but_not_open_a_holding():
 def test_legacy_partial_medium_positions_are_quarantined_and_reset():
     state = start_state()
     monday = universe("2026-08-24", close_offset=2)
-    update_state(state, monday, period="morning", updated_at="complete entry")
+    update_state(state, monday, period="morning", updated_at=after_us_close(monday))
     portfolio = state["medium"]["US"]
     portfolio["positions"] = portfolio["positions"][:2]
     portfolio["benchmark_positions"] = portfolio["benchmark_positions"][:1]
 
-    update_state(state, monday, period="morning", updated_at="migration")
+    update_state(state, monday, period="morning", updated_at=after_us_close(monday))
     assert portfolio["positions"] == []
     assert portfolio["status"] == "pending"
     assert len(portfolio["pending"]["picks"]) == 5
@@ -200,7 +200,7 @@ def test_medium_exits_after_45_valid_sessions_while_long_remains_active():
         session = (date(2026, 8, 24) + timedelta(days=index)).isoformat()
         maturity = universe(session, close_offset=10)
         update_state(state, maturity, period="evening", updated_at=session)
-        update_state(state, maturity, period="morning", updated_at=session)
+        update_state(state, maturity, period="morning", updated_at=after_us_close(maturity))
 
     assert state["medium"]["TW"]["status"] == "complete"
     assert state["medium"]["US"]["status"] == "complete"
@@ -235,7 +235,7 @@ def test_medium_missing_close_does_not_count_as_a_valid_session():
 def test_medium_applies_stock_split_without_recording_a_false_loss():
     state = start_state()
     entry = universe("2026-08-24", close_offset=1)
-    update_state(state, entry, period="morning", updated_at="entry")
+    update_state(state, entry, period="morning", updated_at=after_us_close(entry))
     portfolio = state["medium"]["US"]
     position = portfolio["positions"][0]
     symbol = position["symbol"]
@@ -245,7 +245,7 @@ def test_medium_applies_stock_split_without_recording_a_false_loss():
             item["official_close_price"] = position["entry_price"] / 2 + 1
             item["official_stock_splits"] = [{"date": "2026-09-03", "ratio": 2.0}]
 
-    update_state(state, split_session, period="morning", updated_at="split")
+    update_state(state, split_session, period="morning", updated_at=after_us_close(split_session))
     adjusted = next(item for item in portfolio["positions"] if item["symbol"] == symbol)
 
     assert adjusted["entry_price"] == position["entry_price"]
@@ -254,7 +254,7 @@ def test_medium_applies_stock_split_without_recording_a_false_loss():
     assert adjusted["gross_return_pct"] > 0
     assert adjusted["gross_return_pct"] < 5
 
-    update_state(state, split_session, period="morning", updated_at="rerun")
+    update_state(state, split_session, period="morning", updated_at=after_us_close(split_session))
     assert adjusted["split_adjustment_factor"] == 2.0
     assert len(adjusted["applied_stock_splits"]) == 1
 
@@ -262,7 +262,7 @@ def test_medium_applies_stock_split_without_recording_a_false_loss():
 def test_medium_quarantines_unexplained_split_sized_price_jump():
     state = start_state()
     entry = universe("2026-08-24", close_offset=1)
-    update_state(state, entry, period="morning", updated_at="entry")
+    update_state(state, entry, period="morning", updated_at=after_us_close(entry))
     portfolio = state["medium"]["US"]
     position = portfolio["positions"][0]
     previous_date = position["last_valuation_date"]
@@ -272,7 +272,7 @@ def test_medium_quarantines_unexplained_split_sized_price_jump():
         if item["symbol"] == position["symbol"]:
             item["official_close_price"] = position["last_price"] / 2
 
-    update_state(state, suspicious, period="morning", updated_at="suspicious")
+    update_state(state, suspicious, period="morning", updated_at=after_us_close(suspicious))
 
     assert position["last_valuation_date"] == previous_date
     assert position["gross_return_pct"] == previous_return
@@ -283,10 +283,10 @@ def test_medium_quarantines_unexplained_split_sized_price_jump():
 def test_sixty_day_validation_does_not_change_long_six_month_exit():
     state = start_state()
     entry = universe("2026-08-24", close_offset=1)
-    update_state(state, entry, period="morning", updated_at="entry")
+    update_state(state, entry, period="morning", updated_at=after_us_close(entry))
     for index in range(1, 61):
         session = (date(2026, 8, 24) + timedelta(days=index)).isoformat()
-        update_state(state, universe(session, close_offset=2), period="morning", updated_at=session)
+        update_state(state, universe(session, close_offset=2), period="morning", updated_at=after_us_close(universe(session, close_offset=2)))
     long = state["long"]
     assert long["validation_completed_days"]["US"] == 60
     assert long["status"] == "active"
@@ -336,7 +336,7 @@ def test_older_market_candle_never_rolls_valuations_backwards():
 
     stale = universe("2026-08-26", close_offset=-40)
     update_state(state, stale, period="evening", updated_at="stale TW")
-    update_state(state, stale, period="morning", updated_at="stale US")
+    update_state(state, stale, period="morning", updated_at=after_us_close(stale))
 
     assert state["medium"]["TW"]["last_valuation_date"] == "2026-08-27"
     assert state["medium"]["US"]["last_valuation_date"] == "2026-08-27"
@@ -424,3 +424,10 @@ def test_long_market_holding_and_benchmark_valuation_are_atomic():
     assert portfolio["net_profit_twd"] == baseline_profit
     assert portfolio["valuation_consistent"]["TW"] is True
     assert portfolio["valuation_pending"]["TW"]["missing_symbols"] == ["0050.TW"]
+
+
+def after_us_close(rows):
+    """Completed-session fixtures must carry a real post-close timestamp."""
+    from datetime import date, timedelta
+    session = max(row["official_session_date"] for row in rows if row.get("market") == "US")
+    return f"{date.fromisoformat(session) + timedelta(days=1)} 06:00:00"

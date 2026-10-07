@@ -9,6 +9,8 @@ and exits use official closes.  This module never imports a broker client.
 
 from __future__ import annotations
 
+from completed_us_session import completed_us_session
+
 from calendar import monthrange
 from collections import Counter
 from datetime import date, datetime
@@ -976,7 +978,10 @@ def update_state(
         state["long"].setdefault("valuation_consistent", {"TW": True, "US": True})
         state["long"].setdefault("valuation_pending", {"TW": None, "US": None})
         _migrate_horizon_tracking(state)
-        if intraday or period != CLOSED_PERIOD[market]:
+        if intraday or not (
+            completed_us_session(rows, updated_at) if market == "US"
+            else period == CLOSED_PERIOD[market]
+        ):
             continue
         prepare_pending(state, rows, market, updated_at)
         session_date = _session_date(rows, market)

@@ -67,16 +67,18 @@ def test_selects_exact_top_ten_per_strategy_and_excludes_etfs():
     assert short[0]["symbol"] == "TW15"
 
 
-def test_tw_and_us_start_only_after_their_completed_report_period():
+def test_us_can_start_from_completed_close_without_morning_report():
     state = empty_state()
     rows = universe()
 
     update_state(state, rows, period="evening", updated_at="2026-08-23 20:00:00")
     assert state["markets"]["TW"]["pending"] is not None
-    assert state["markets"]["US"]["pending"] is None
+    assert state["markets"]["US"]["pending"] is not None
+    frozen = state["markets"]["US"]["pending"].copy()
 
     update_state(state, rows, period="morning", updated_at="2026-08-24 06:00:00")
     assert state["markets"]["US"]["pending"] is not None
+    assert state["markets"]["US"]["pending"] == frozen
     assert state["policy"]["start_date"] == "2026-08-24"
 
 
@@ -149,9 +151,9 @@ def test_intraday_refresh_never_starts_or_settles_the_experiment():
     assert state["markets"]["TW"]["pending"] is None
     assert state["markets"]["TW"]["days"] == []
 
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     update_state(
-        state, universe("2026-08-24"), period="morning", updated_at="intraday",
+        state, universe("2026-08-24"), period="morning", updated_at=after_us_close(universe("2026-08-24")),
         intraday=True,
         price_history=history_for(universe("2026-08-24"), "2026-08-24"),
     )
@@ -161,12 +163,12 @@ def test_intraday_refresh_never_starts_or_settles_the_experiment():
 
 def test_one_missing_frozen_stock_per_strategy_settles_with_cash_held_idle():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     current = universe("2026-08-24")
     missing_symbol = state["markets"]["US"]["pending"]["strategies"]["overall"][0]["symbol"]
     current = [item for item in current if item["symbol"] != missing_symbol]
 
-    update_state(state, current, period="morning", updated_at="first close attempt")
+    update_state(state, current, period="morning", updated_at=after_us_close(current))
     market = state["markets"]["US"]
     assert market["completed_days"] == 1
     day = market["days"][0]
@@ -183,7 +185,7 @@ def test_one_missing_frozen_stock_per_strategy_settles_with_cash_held_idle():
 
 def test_two_missing_frozen_stocks_in_one_strategy_wait_without_counting_profit():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     current = universe("2026-08-24")
     missing_symbols = {
         pick["symbol"]
@@ -191,7 +193,7 @@ def test_two_missing_frozen_stocks_in_one_strategy_wait_without_counting_profit(
     }
     current = [item for item in current if item["symbol"] not in missing_symbols]
 
-    update_state(state, current, period="morning", updated_at="first close attempt")
+    update_state(state, current, period="morning", updated_at=after_us_close(current))
 
     market = state["markets"]["US"]
     assert market["completed_days"] == 0
@@ -204,16 +206,16 @@ def test_two_missing_frozen_stocks_in_one_strategy_wait_without_counting_profit(
 
 def test_unresolved_prices_are_quarantined_when_next_session_arrives():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     current = universe("2026-08-24")
     missing_symbols = {
         pick["symbol"]
         for pick in state["markets"]["US"]["pending"]["strategies"]["overall"][:2]
     }
     current = [item for item in current if item["symbol"] not in missing_symbols]
-    update_state(state, current, period="morning", updated_at="incomplete")
+    update_state(state, current, period="morning", updated_at=after_us_close(current))
 
-    update_state(state, universe("2026-08-25"), period="morning", updated_at="next close")
+    update_state(state, universe("2026-08-25"), period="morning", updated_at=after_us_close(universe("2026-08-25")))
     market = state["markets"]["US"]
     assert market["completed_days"] == 0
     assert market["days"] == []
@@ -225,14 +227,14 @@ def test_unresolved_prices_are_quarantined_when_next_session_arrives():
 
 def test_exact_historical_prices_settle_frozen_day_after_report_advances():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     current = universe("2026-08-24")
     missing_symbols = {
         pick["symbol"]
         for pick in state["markets"]["US"]["pending"]["strategies"]["overall"][:2]
     }
     current = [item for item in current if item["symbol"] not in missing_symbols]
-    update_state(state, current, period="morning", updated_at="incomplete")
+    update_state(state, current, period="morning", updated_at=after_us_close(current))
 
     history = history_for(universe("2026-08-24"), "2026-08-24")
     for missing_symbol in missing_symbols:
@@ -241,7 +243,7 @@ def test_exact_historical_prices_settle_frozen_day_after_report_advances():
             index=pd.to_datetime(["2026-08-24"]),
         )
     update_state(
-        state, universe("2026-08-25"), period="morning", updated_at="next report",
+        state, universe("2026-08-25"), period="morning", updated_at=after_us_close(universe("2026-08-25")),
         price_history=history,
     )
 
@@ -260,14 +262,14 @@ def test_exact_historical_prices_settle_frozen_day_after_report_advances():
 
 def test_historical_fallback_never_uses_a_different_session():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     current = universe("2026-08-24")
     missing_symbols = {
         pick["symbol"]
         for pick in state["markets"]["US"]["pending"]["strategies"]["overall"][:2]
     }
     current = [item for item in current if item["symbol"] not in missing_symbols]
-    update_state(state, current, period="morning", updated_at="incomplete")
+    update_state(state, current, period="morning", updated_at=after_us_close(current))
 
     wrong_date_history = history_for(universe("2026-08-24"), "2026-08-24")
     for missing_symbol in missing_symbols:
@@ -276,7 +278,7 @@ def test_historical_fallback_never_uses_a_different_session():
             index=pd.to_datetime(["2026-08-23"]),
         )
     update_state(
-        state, universe("2026-08-25"), period="morning", updated_at="next report",
+        state, universe("2026-08-25"), period="morning", updated_at=after_us_close(universe("2026-08-25")),
         price_history=wrong_date_history,
     )
 
@@ -289,8 +291,8 @@ def test_historical_fallback_never_uses_a_different_session():
 
 def test_legacy_nine_of_ten_day_is_kept_and_missing_allocation_becomes_cash():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
-    update_state(state, universe("2026-08-24"), period="morning", updated_at="close")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
+    update_state(state, universe("2026-08-24"), period="morning", updated_at=after_us_close(universe("2026-08-24")))
     market = state["markets"]["US"]
     market["days"][0]["strategies"]["overall"]["positions"][0].update({
         "data_available": False,
@@ -299,7 +301,7 @@ def test_legacy_nine_of_ten_day_is_kept_and_missing_allocation_becomes_cash():
     })
     assert market["completed_days"] == 1
 
-    update_state(state, universe("2026-08-24"), period="morning", updated_at="migration")
+    update_state(state, universe("2026-08-24"), period="morning", updated_at=after_us_close(universe("2026-08-24")))
     assert market["completed_days"] == 1
     assert market["invalid_days"] == []
     assert market["days"][0]["available_positions"] == 19
@@ -310,13 +312,13 @@ def test_legacy_nine_of_ten_day_is_kept_and_missing_allocation_becomes_cash():
 
 def test_legacy_day_with_only_eight_in_one_strategy_is_quarantined():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="signal")
-    update_state(state, universe("2026-08-24"), period="morning", updated_at="close")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
+    update_state(state, universe("2026-08-24"), period="morning", updated_at=after_us_close(universe("2026-08-24")))
     market = state["markets"]["US"]
     for position in market["days"][0]["strategies"]["overall"]["positions"][:2]:
         position.update({"data_available": False, "open_price": None, "sell_price": None})
 
-    update_state(state, universe("2026-08-24"), period="morning", updated_at="migration")
+    update_state(state, universe("2026-08-24"), period="morning", updated_at=after_us_close(universe("2026-08-24")))
 
     assert market["completed_days"] == 0
     assert market["days"] == []
@@ -343,13 +345,13 @@ def test_taiwan_experiment_continues_after_six_toward_sixty():
 
 def test_us_experiment_continues_after_six_toward_sixty():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="start")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     for day in range(24, 30):
         update_state(
             state,
             universe(f"2026-08-{day}"),
             period="morning",
-            updated_at=f"2026-08-{day} 06:00:00",
+            updated_at=after_us_close(universe(f"2026-08-{day}")),
         )
     market = state["markets"]["US"]
     assert market["completed_days"] == 6
@@ -360,13 +362,13 @@ def test_us_experiment_continues_after_six_toward_sixty():
 
 def test_legacy_us_five_day_completion_reopens_and_freezes_day_six():
     state = empty_state()
-    update_state(state, universe("2026-08-21"), period="morning", updated_at="start")
+    update_state(state, universe("2026-08-21"), period="morning", updated_at=after_us_close(universe("2026-08-21")))
     for day in range(24, 29):
         update_state(
             state,
             universe(f"2026-08-{day}"),
             period="morning",
-            updated_at=f"2026-08-{day} 06:00:00",
+            updated_at=after_us_close(universe(f"2026-08-{day}")),
         )
     market = state["markets"]["US"]
     assert market["completed_days"] == 5
@@ -387,14 +389,21 @@ def test_both_markets_stop_only_after_sixty_valid_sessions():
     dates = [day.strftime("%Y-%m-%d") for day in pd.bdate_range("2026-08-24", periods=60)]
     for market_name, period in (("TW", "evening"), ("US", "morning")):
         state = empty_state()
-        update_state(state, universe("2026-08-21"), period=period, updated_at="start")
+        update_state(state, universe("2026-08-21"), period=period, updated_at=after_us_close(universe("2026-08-21")))
         for session_date in dates:
             update_state(
                 state, universe(session_date), period=period,
-                updated_at=f"{session_date} 20:00:00",
+                updated_at=after_us_close(universe(session_date)),
             )
         market = state["markets"][market_name]
         assert market["completed_days"] == 60
         assert market["target_trading_days"] == 60
         assert market["status"] == "complete"
         assert market["pending"] is None
+
+
+def after_us_close(rows):
+    """Completed-session fixtures must carry a real post-close timestamp."""
+    from datetime import date, timedelta
+    session = max(row["official_session_date"] for row in rows if row.get("market") == "US")
+    return f"{date.fromisoformat(session) + timedelta(days=1)} 06:00:00"
