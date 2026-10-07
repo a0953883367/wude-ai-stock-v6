@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-07T22:39:29.021064+08:00",
+  "checked_at": "2026-10-08T02:55:23.682009+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -140,6 +140,24 @@
       "attempts": [],
       "status": "expired",
       "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-10-08:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-08:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-08:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -174,8 +192,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "report_freshness"
+  ],
+  "data_recovery_status": "waiting_next_eligible_fixed_report",
   "capabilities": {
     "actions_read_confirmed": true,
     "protected_briefing_retry": true,
