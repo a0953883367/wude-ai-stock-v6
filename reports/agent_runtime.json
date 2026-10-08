@@ -1,13 +1,13 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-07T20:41:26+00:00",
+  "generated_at": "2026-10-08T01:07:07+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
   "summary": {
     "agent_count": 3,
-    "validation_completed": 1,
+    "validation_completed": 0,
     "validation_total": 3,
     "actual_work_performed": 3,
     "waiting_input": 2,
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-08T04:41:25.311495+08:00",
+    "checked_at": "2026-10-08T09:07:06.604195+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-08T04:41:24.136027+08:00",
+    "checked_at": "2026-10-08T09:07:05.536547+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -205,8 +205,8 @@
       "2026-10-08:morning": {
         "period": "morning",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-10-08:noon": {
         "period": "noon",
@@ -310,8 +310,8 @@
           "openai_shadow_coach"
         ]
       },
-      "status": "completed",
-      "status_label": "已實際核對影子進度與安全鎖",
+      "status": "attention",
+      "status_label": "影子巡檢發現異常",
       "summary": "已讀取影子證據：向前驗證 33/60 日、錯誤事件 713 筆、成熟學習 81258 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
@@ -326,7 +326,7 @@
         "target_days": 60,
         "eligible_samples": 1668,
         "independent_error_events": 713,
-        "guard_status": "warning",
+        "guard_status": "critical",
         "learning_units": 11,
         "matured_learning_rows": 81258,
         "active_shadow_trust_streams": 0,
