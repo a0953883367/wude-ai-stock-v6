@@ -966,6 +966,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 verify_github_oidc_token(token)
                 payload = self._read_json()
                 kind = str(payload.get("kind") or "").lower()
+                private_daily_shadow_samples = None
                 if kind == "calendar":
                     data = self.large_buy_service.weight_shadow.calendar.relay_us_year(payload.get("year"))
                 elif kind == "ownership":
@@ -975,7 +976,14 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         str(symbol).upper() for symbol in list(payload.get("symbols") or [])[:200]
                         if re.fullmatch(r"[A-Z0-9.\-]{1,16}", str(symbol).upper())
                     ]
-                    data = fetch_us_sip_snapshots(symbols)
+                    if payload.get("include_daily_shadow") is True:
+                        private_daily_shadow_samples = {}
+                        data = fetch_us_sip_snapshots(
+                            symbols, daily_shadow_samples=private_daily_shadow_samples,
+                            calendar=self.large_buy_service.weight_shadow.calendar,
+                        )
+                    else:
+                        data = fetch_us_sip_snapshots(symbols)
                 elif kind == "opra":
                     candidates = []
                     for row in list(payload.get("candidates") or [])[:30]:
@@ -995,7 +1003,10 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 LOG.exception("internal market-data relay failed")
                 self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "market-data relay unavailable"})
             else:
-                self._send(HTTPStatus.OK, {"ok": True, "kind": kind, "count": len(data), "data": data})
+                result = {"ok": True, "kind": kind, "count": len(data), "data": data}
+                if private_daily_shadow_samples is not None:
+                    result["private_daily_shadow_samples"] = private_daily_shadow_samples
+                self._send(HTTPStatus.OK, result)
             return
         if parsed.path not in {
             "/api/device-auth/request", "/api/device-auth/verify",

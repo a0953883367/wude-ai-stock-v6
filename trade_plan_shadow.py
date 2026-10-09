@@ -10,11 +10,16 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 2
-MODEL_VERSION = "TRADE-PLAN-SHADOW-V2"
+from market_calendar import OfficialMarketCalendar
+from shadow_stock_conclusion import build_conclusion, observed_by
+from shadow_evidence_ablation import build_evidence_ablation_report
+
+SCHEMA_VERSION = 3
+MODEL_VERSION = "TRADE-PLAN-SHADOW-V3"
 
 HORIZON_POLICY = {
     "short": {
@@ -334,18 +339,22 @@ def _preferred_horizon(plans: dict[str, dict[str, Any]]) -> str:
     return candidates[0][-1] if candidates else "short"
 
 
-def _compact_row(row: dict[str, Any]) -> dict[str, Any]:
+def _compact_row(row: dict[str, Any], *, calendar: OfficialMarketCalendar,
+                 now: datetime, source_coherent: bool = True) -> dict[str, Any]:
     plans = {h: _plan_for_horizon(row, h) for h in ("short", "medium", "long")}
+    for plan in plans.values():
+        conclusion = build_conclusion(row, plan, calendar=calendar, now=now,
+                                      source_coherent=source_coherent)
+        plan["conclusion"] = conclusion
+        if conclusion["code"] != "eligible":
+            if conclusion["code"] in {"insufficient", "avoid"}:
+                plan["active_entry_plan"] = False
+            plan["no_buy_reason"] = "；".join(conclusion["reasons"])
     preferred = _preferred_horizon(plans)
     preferred_plan = plans[preferred]
     price = _round_price(row.get("price"))
-    status = "ready"
-    if preferred_plan["recommendation"] in {"avoid", "data_insufficient"}:
-        status = "blocked"
-    elif preferred_plan.get("no_buy_reason"):
-        status = "wait"
-    elif preferred_plan.get("active_entry_plan"):
-        status = "candidate"
+    status = {"eligible": "candidate", "wait": "wait", "avoid": "blocked",
+              "insufficient": "blocked"}[preferred_plan["conclusion"]["code"]]
 
     return {
         "symbol": row.get("symbol"),
@@ -354,6 +363,8 @@ def _compact_row(row: dict[str, Any]) -> dict[str, Any]:
         "asset_type": row.get("asset_type"),
         "industry": row.get("industry"),
         "session_date": row.get("session_date"),
+        "input_evidence_categories": row.get("input_evidence_categories") or [],
+        "shadow_events": row.get("shadow_events") or {},
         "price": price,
         "formal_rank": row.get("formal_rank"),
         "formal_score": row.get("formal_score"),
@@ -385,21 +396,43 @@ def _compact_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_trade_plan_report(reports_dir: Path) -> dict[str, Any]:
+def build_trade_plan_report(reports_dir: Path, *, now: datetime | None = None,
+                            research_state_sink: dict[str, Any] | None = None) -> dict[str, Any]:
+    now = now or datetime.now(timezone.utc)
+    calendar = OfficialMarketCalendar(reports_dir / "official_market_calendar.json",
+                                     auto_refresh=False, allow_network=False)
     hub = _read_json(reports_dir / "decision_hub.json")
     rows: list[dict[str, Any]] = []
+    observed_files = []
     chunk_no = 1
     while True:
         chunk_path = reports_dir / f"decision_hub_{chunk_no:02d}.json"
         if not chunk_path.is_file():
             break
         chunk = _read_json(chunk_path)
+        observed_files.append(chunk_path.name)
         decisions = chunk.get("decisions")
         if isinstance(decisions, list):
-            rows.extend(item for item in decisions if isinstance(item, dict))
+            for item in decisions:
+                if isinstance(item, dict):
+                    rows.append({**item, "_source_coherent": bool(hub.get("updated_at"))
+                                 and chunk.get("updated_at") == hub.get("updated_at")})
         chunk_no += 1
 
-    plans = [_compact_row(row) for row in rows if row.get("symbol")]
+    complete_manifest = (isinstance(hub.get("decision_files"), list)
+                         and hub["decision_files"] == observed_files
+                         and observed_by(hub.get("updated_at"), now))
+    # Duplicate symbols across stale/overlapping chunks cannot create two conclusions.
+    keyed = {}
+    for row in rows:
+        key = (row.get("market"), row.get("symbol"))
+        if row.get("symbol"):
+            if key in keyed:
+                row["_source_coherent"] = False
+            keyed[key] = row
+    plans = [_compact_row(row, calendar=calendar, now=now,
+                          source_coherent=complete_manifest and row["_source_coherent"])
+             for row in keyed.values()]
     plans.sort(
         key=lambda row: (
             {"candidate": 0, "wait": 1, "ready": 2, "blocked": 3}.get(str(row.get("status")), 9),
@@ -414,19 +447,45 @@ def build_trade_plan_report(reports_dir: Path) -> dict[str, Any]:
         "blocked": sum(row["status"] == "blocked" for row in plans),
     }
     validation = (hub.get("readiness") or {}).get("validation_60d") or {}
+    private_dir = reports_dir.parent / ".prediction_engine"
+    observations = _read_json(private_dir / "shadow_evidence_ablation_records.json")
+    state_path = private_dir / "shadow_evidence_ablation_state.json"
+    previous_state = _read_json(state_path)
+    private_state = None
+    try:
+        if state_path.exists() and not previous_state:
+            raise ValueError("unreadable existing ablation state")
+        if observations.get("records") is not None and not isinstance(observations["records"], list):
+            raise ValueError("ablation records must be a list")
+        ablation = build_evidence_ablation_report(
+            observations.get("records"), previous_state or None, generated_at=now,
+            round_trip_cost_pct=observations.get("round_trip_cost_pct"),
+        )
+        private_state = ablation.pop("state")
+    except (TypeError, ValueError, KeyError):
+        ablation = {"status": "insufficient", "label": "配對驗證資料契約異常，保留原始資料待檢查",
+                    "shadow_only": True, "affects_formal_v6": False, "automatic_promotion": False,
+                    "accuracy_improvement": None, "blocked_reasons": ["invalid_private_ablation_input"],
+                    "registered_pairs": 0, "matched_completed_pairs": 0}
+    if research_state_sink is not None and private_state is not None:
+        research_state_sink.update(private_state)
     return {
         "schema_version": SCHEMA_VERSION,
         "model_version": MODEL_VERSION,
         "mode": "shadow_trade_plan_only",
         "updated_at": hub.get("updated_at"),
+        "evaluated_at": now.isoformat(),
         "status": "ready" if plans else "waiting_source",
         "source_model_version": hub.get("model_version"),
         "source_decision_hub_updated_at": hub.get("updated_at"),
         "validation": {
             "trading_days_collected": int(validation.get("collected_trading_days") or 0),
             "target_trading_days": int(validation.get("target_trading_days") or 60),
-            "formal_adoption_ready": bool(validation.get("ready")),
+            "formal_adoption_ready": False,
+            "source_model_readiness_only": bool(validation.get("ready")),
+            "conclusion_validation_status": "pending_out_of_sample_forward_cost_drawdown",
         },
+        "evidence_ablation": ablation,
         "policy": {
             "formal_v6_unchanged": True,
             "formal_rankings_unchanged": True,
@@ -447,7 +506,18 @@ def build_trade_plan_report(reports_dir: Path) -> dict[str, Any]:
 
 
 def write_trade_plan_report(reports_dir: Path) -> Path:
-    report = build_trade_plan_report(reports_dir)
+    research_state = {}
+    report = build_trade_plan_report(reports_dir, research_state_sink=research_state)
+    state_path = reports_dir.parent / ".prediction_engine" / "shadow_evidence_ablation_state.json"
+    try:
+        if research_state:
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = state_path.with_suffix(".tmp")
+            temporary.write_text(json.dumps(research_state, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+            temporary.replace(state_path)
+    except OSError:
+        report["evidence_ablation"]["status"] = "insufficient"
+        report["evidence_ablation"]["label"] = "私有驗證狀態未保存，不列為有效驗證"
     target = reports_dir / "trade_plan_shadow.json"
     temp = reports_dir / "trade_plan_shadow.tmp"
     temp.write_text(json.dumps(report, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

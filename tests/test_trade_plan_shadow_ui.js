@@ -26,9 +26,19 @@ assert(js.includes('停損／失效'));
 assert(js.includes('目標1'));
 assert(js.includes('計畫品質'));
 assert(js.includes('stop_too_tight'));
+['資料不足', '依據與風險', '來源交易日', '評估時間', '絕對到期時間', '原始買進窗口末日（非結論有效期）',
+  '僅影子驗證', '尚未正式採用', '分數不是上漲機率', '參考出場價位'].forEach(text =>
+  assert(js.includes(text), 'missing safe-conclusion UI copy: ' + text));
+assert(js.includes('使用哪些資料（既有模型參考，不另加權）'));
+assert(js.includes('input_evidence_categories'));
+['事前時間資料可用', '不影響分數與結論', '證據配對前向檢查', '尚無準確率改善結論',
+  '不代表正式採用就緒', '不改正式 V6、不自動晉升'].forEach(text => assert(js.includes(text)));
 assert(js.includes("params.get('symbol')"));
 assert(hub.includes('trade-plan-shadow.html'));
 assert(hub.includes('查看交易計畫'));
 assert(hubJs.includes('查看本檔交易計畫'));
 assert(hubJs.includes('trade-plan-shadow.html?symbol='));
 console.log('trade plan shadow UI checks passed');
+
+// Keep behavioral regressions in the existing CI entry point as well.
+require('./test_trade_plan_shadow_behavior.js');

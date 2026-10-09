@@ -24,7 +24,10 @@ OPTION_SYMBOL = re.compile(r"(\d{6})([CP])(\d{8})$")
 OIDC_AUDIENCE = "wude-live-data-relay"
 
 
-def _relay_request(kind: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
+def _relay_request(
+    kind: str, payload: dict[str, Any], timeout: int,
+    *, daily_shadow_samples: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Use Railway's existing Alpaca credentials from an authenticated Action."""
     base = os.getenv("WUDE_LIVE_API_BASE", "").strip()
     request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "").strip()
@@ -50,6 +53,12 @@ def _relay_request(kind: str, payload: dict[str, Any], timeout: int) -> dict[str
         )
         response.raise_for_status()
         result = response.json()
+        if kind == "sip" and daily_shadow_samples is not None and isinstance(result, dict):
+            private = result.get("private_daily_shadow_samples")
+            if isinstance(private, dict):
+                requested = set(payload.get("symbols") or [])
+                daily_shadow_samples.update({key: value for key, value in private.items()
+                                             if key in requested and isinstance(value, dict)})
         return result.get("data") if isinstance(result, dict) and isinstance(result.get("data"), dict) else {}
     except (requests.RequestException, ValueError) as exc:
         LOG.warning("Railway %s relay failed: %s", kind, exc)
@@ -149,10 +158,24 @@ def fetch_us_sip_snapshots(
     symbols: set[str] | list[str],
     timeout: int = 20,
     session: requests.Session | None = None,
+    *,
+    daily_shadow_samples: dict[str, Any] | None = None,
+    calendar: Any = None,
+    observed_at: datetime | None = None,
 ) -> dict[str, dict[str, Any]]:
+    """Return existing live fields; optional daily samples use a private collector.
+
+    Never merge that collector into feature rows or published reports. It uses
+    the same snapshot request and does not make history or calendar requests.
+    """
     credentials = _credentials()
     if not credentials:
-        relayed = _relay_request("sip", {"symbols": sorted({str(s).upper() for s in symbols if s})}, timeout)
+        payload = {"symbols": sorted({str(s).upper() for s in symbols if s})}
+        if daily_shadow_samples is None:
+            relayed = _relay_request("sip", payload, timeout)
+        else:
+            payload["include_daily_shadow"] = True
+            relayed = _relay_request("sip", payload, timeout, daily_shadow_samples=daily_shadow_samples)
         if relayed:
             LOG.info("US SIP layer received %s symbols from the authenticated Railway relay", len(relayed))
             return relayed
@@ -170,10 +193,16 @@ def fetch_us_sip_snapshots(
                 timeout=timeout,
             )
             response.raise_for_status()
+            captured_at = observed_at or datetime.now(timezone.utc)
             for symbol, snapshot in _snapshot_rows(response.json()).items():
                 normalized = normalize_sip_snapshot(snapshot or {}, feed)
                 if normalized:
                     output[str(symbol).upper()] = normalized
+                if daily_shadow_samples is not None:
+                    from us_daily_shadow_sample import build_us_daily_shadow_sample
+                    daily_shadow_samples[str(symbol).upper()] = build_us_daily_shadow_sample(
+                        str(symbol), snapshot, feed=feed, calendar=calendar, observed_at=captured_at,
+                    )
         except requests.RequestException as exc:
             LOG.warning("US %s snapshot batch failed (%s): %s", feed.upper(), ",".join(chunk[:3]), exc)
     return output

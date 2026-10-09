@@ -2,68 +2,169 @@
   'use strict';
   var params=new URLSearchParams(window.location.search);
   var state={payload:null,validation:null,market:'ALL',status:'ALL',horizon:'preferred',query:String(params.get('symbol')||'').trim()};
+  var expiryTimer=null;
+  var conclusionLabels={eligible:'可評估進場',wait:'等待',avoid:'先不買',insufficient:'資料不足'};
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
-  function num(v,d){var n=Number(v);return Number.isFinite(n)?n.toFixed(d==null?2:d):'—';}
-  function price(v){var n=Number(v);if(!Number.isFinite(n))return '—';return n.toLocaleString('zh-TW',{maximumFractionDigits:n>=1000?1:n>=10?2:3});}
-  function pct(v){var n=Number(v);return Number.isFinite(n)?n.toFixed(1)+'%':'—';}
+  function numeric(v){if(v==null||typeof v==='boolean'||String(v).trim()==='')return null;var n=Number(v);return Number.isFinite(n)?n:null;}
+  function num(v,d){var n=numeric(v);return n==null?'—':n.toFixed(d==null?2:d);}
+  function price(v){var n=numeric(v);if(n==null)return '—';return n.toLocaleString('zh-TW',{maximumFractionDigits:n>=1000?1:n>=10?2:3});}
+  function pct(v){var n=numeric(v);return n==null?'—':n.toFixed(1)+'%';}
   function fetchJSON(path){return fetch(path+'?ts='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(path+' HTTP '+r.status);return r.json();});}
-  function statusLabel(status){return {candidate:'有計畫',wait:'等待',blocked:'先不買',ready:'觀察'}[status]||status;}
   function planFor(row){var h=state.horizon==='preferred'?row.preferred_horizon:state.horizon;return (row.plans||{})[h]||{};}
-  function card(row){
-    var p=planFor(row), summary=p||{}, noBuy=summary.no_buy_reason||'', cls=row.status||'ready';
+  function expiryTime(conclusion){
+    var value=conclusion&&conclusion.expires_at;
+    // An absolute, timezone-qualified expiry is required even for cached reports.
+    return typeof value==='string'&&/(Z|[+-]\d{2}:\d{2})$/i.test(value)?Date.parse(value):NaN;
+  }
+  function conclusionFor(plan,now){
+    var raw=plan.conclusion, reasons=raw&&Array.isArray(raw.reasons)?raw.reasons.slice():[];
+    var code=raw&&raw.code, expiry=expiryTime(raw), invalid='';
+    if(!raw||!Object.prototype.hasOwnProperty.call(conclusionLabels,code))invalid='缺少有效結論，請更新資料後重新計算。';
+    else if(!Number.isFinite(expiry))invalid='有效期限尚未驗證，請更新資料後重新計算。';
+    else if(now>=expiry)invalid='結論已到期，請更新最新收盤資料並重新計算。';
+    if(invalid){code='insufficient';reasons.unshift(invalid);}
+    return {code:code,label:invalid?conclusionLabels.insufficient:(raw.label||conclusionLabels[code]),reasons:reasons,raw:raw||{}};
+  }
+  function riskReasons(row,plan,conclusion){
+    var reasons=conclusion.reasons.slice();
+    var gates=Array.isArray(conclusion.raw.gates)?conclusion.raw.gates:[];
+    gates.forEach(function(gate){if(gate&&gate.passed===false&&gate.reason)reasons.push(gate.reason);});
+    (Array.isArray(row.risk_blocks)?row.risk_blocks:[]).forEach(function(risk){
+      if(typeof risk==='string')reasons.push(risk);
+      else if(risk&&(risk.reason||risk.label))reasons.push(risk.reason||risk.label);
+    });
+    if(plan.no_buy_reason)reasons.push(plan.no_buy_reason);
+    return reasons.filter(function(reason,i,all){return typeof reason==='string'&&reason.trim()&&all.indexOf(reason)===i;});
+  }
+  function evidenceValue(value){
+    if(typeof value==='number'&&Number.isFinite(value))return esc(value);
+    if(typeof value==='string'&&value.trim())return esc(value);
+    return '未提供';
+  }
+  function evidenceDetails(row){
+    var categories=Array.isArray(row.input_evidence_categories)?row.input_evidence_categories:[];
+    var body=categories.filter(function(category){return category&&typeof category==='object';}).map(function(category){
+      var status=category.applicable===false||category.status==='not_applicable'?'not_applicable':category.status==='reference'?'reference':'missing';
+      var label={reference:'既有模型參考',missing:'未提供',not_applicable:'不適用'}[status];
+      var items=Array.isArray(category.items)?category.items:[];
+      var values=status==='reference'?items.filter(function(item){return item&&typeof item==='object';}).map(function(item){
+        return '<div>'+esc(item.label||item.key||'未命名欄位')+'：'+evidenceValue(item.value)+'</div>';
+      }).join(''):'';
+      return '<div class="sell" data-evidence-id="'+esc(category.id||'')+'" data-evidence-status="'+status+'">'+
+        '<b>'+esc(category.label||'未命名資料類別')+'</b>｜'+label+
+        '<div>'+(values||(status==='reference'?'未提供':label))+'</div>'+
+        '<div class="meta">資料日期 '+esc(category.as_of||'未知')+'｜來源 '+esc(category.source||'未知')+'</div>'+
+        (category.note?'<div class="reason">'+esc(category.note)+'</div>':'')+
+      '</div>';
+    }).join('');
+    return '<details class="input-evidence reason"><summary>使用哪些資料（既有模型參考，不另加權）</summary>'+
+      (body||'<div class="reason">未提供分類資料；無法確認各類輸入。</div>')+'</details>';
+  }
+  function eventDetails(row){
+    var snapshot=row.shadow_events, counts=(snapshot||{}).counts||{}, exclusions=counts.exclusion_reasons||{};
+    var reasonLabels={missing_or_imprecise_publication_time:'發布時間缺失或僅有日期',missing_or_imprecise_first_seen:'首次觀測時間缺失或不精確',missing_or_imprecise_revision_time:'修訂時間缺失或不精確',not_available_at_cutoff:'截至當時尚不可取得',missing_identity_or_revision:'缺少事件身分或版本',unsupported_event_type:'未支援的事件類型',invalid_record:'事件格式無效',revision_precedes_publication:'修訂早於發布',first_seen_precedes_publication:'觀測早於發布',conflicting_revision:'同版內容衝突',ambiguous_latest_revision:'最新版本不明確'};
+    var excluded=Object.keys(exclusions).map(function(reason){
+      return esc(Object.prototype.hasOwnProperty.call(reasonLabels,reason)?reasonLabels[reason]:reason)+' '+num(exclusions[reason],0);
+    }).join('；');
+    var body=snapshot?'<div>'+esc(snapshot.label||'事前事件時間檢查')+'</div>'+
+      '<div>輸入事件 '+num(counts.input,0)+'｜事前時間資料可用 '+num(counts.eligible_events,0)+'｜重複 '+num(counts.duplicates,0)+'</div>'+
+      '<div class="meta">檢查截止時間 '+esc(snapshot.cutoff||'未知')+'</div>'+
+      (excluded?'<div>排除原因：'+excluded+'</div>':''):'<div>未提供事前事件時間資料。</div>';
+    return '<details class="shadow-events reason"><summary>事前事件時間檢查（影子診斷）</summary><div class="sell">'+body+
+      '<div>僅有日期或缺少精確時間的資料可能被排除；資料可用不代表可進場，不影響分數與結論。</div></div></details>';
+  }
+  function card(row,now){
+    var summary=planFor(row), conclusion=conclusionFor(summary,now), raw=conclusion.raw;
+    var cls={eligible:'candidate',wait:'wait',avoid:'blocked',insufficient:'blocked'}[conclusion.code];
+    var reference=conclusion.code!=='eligible', ref=reference?'（參考）':'', reasons=riskReasons(row,summary,conclusion);
     var sell=[];
-    if(summary.target1!=null) sell.push('目標1 '+price(summary.target1)+' → 賣 '+Number(summary.target1_pct||0)+'%');
-    if(summary.target2!=null) sell.push('目標2 '+price(summary.target2)+' → 再賣 '+Number(summary.target2_pct||0)+'%');
-    if(Number(summary.runner_pct||0)>0) sell.push('剩餘 '+Number(summary.runner_pct||0)+'% 趨勢續抱');
+    if(summary.target1!=null)sell.push('目標1 '+price(summary.target1)+' → 賣 '+num(summary.target1_pct,0)+'%');
+    if(summary.target2!=null)sell.push('目標2 '+price(summary.target2)+' → 再賣 '+num(summary.target2_pct,0)+'%');
+    if(numeric(summary.runner_pct)>0)sell.push('剩餘 '+num(summary.runner_pct,0)+'% 趨勢續抱');
     var rr=[];
     if(summary.reward_risk_1!=null)rr.push('RR1 '+num(summary.reward_risk_1,2));
     if(summary.reward_risk_2!=null)rr.push('RR2 '+num(summary.reward_risk_2,2));
-    return '<article class="card '+esc(cls)+'">'+
+    var validWindow=!reference&&numeric(summary.buy_window_sessions)>0;
+    return '<article class="card '+cls+'" data-conclusion="'+conclusion.code+'">'+
       '<div class="head"><div><div class="symbol">'+esc(row.market)+'｜'+esc(row.symbol)+'</div><div class="name">'+esc(row.name)+'</div></div>'+
-      '<div class="status"><b>'+esc(statusLabel(cls))+'</b><small>'+esc(summary.label||'')+'</small></div></div>'+
+      '<div class="status"><b>'+esc(conclusion.label)+'</b><small>'+esc(summary.label||'')+'｜僅影子驗證</small></div></div>'+
+      '<div class="reason'+(reference?' bad':'')+'">'+(reference?'目前不可依此計畫進場；下列價位僅供參考。':'符合影子計畫條件；仍須確認最新量價與風險，不保證獲利。')+'</div>'+
       '<div class="planline">'+
-        '<div class="box"><span>現價</span><b>'+price(row.price)+'</b></div>'+
-        '<div class="box"><span>買進期限</span><b class="'+(summary.buy_window_sessions?'good':'warn')+'">'+(summary.buy_window_sessions?summary.buy_window_sessions+' 個有效交易日':'目前無')+'</b></div>'+
-        '<div class="box"><span>買進區</span><b>'+price(summary.entry_low)+' ～ '+price(summary.entry_high)+'</b></div>'+
-        '<div class="box"><span>高於這裡不追</span><b class="warn">'+price(summary.do_not_chase_above)+'</b></div>'+
-        '<div class="box"><span>停損／失效</span><b class="bad">'+price(summary.stop)+(summary.stop_sell_pct?'｜退出 '+summary.stop_sell_pct+'%':'')+'</b></div>'+
-        '<div class="box"><span>計畫品質</span><b>'+esc((summary.plan_quality||{}).label||'—')+'</b></div>'+
-        '<div class="box"><span>最長持有</span><b>'+esc(summary.max_hold_sessions||'—')+' 個有效交易日</b></div>'+
+        '<div class="box"><span>來源快照價格</span><b>'+price(row.price)+'</b></div>'+
+        '<div class="box"><span>買進期限</span><b class="'+(validWindow?'good':'warn')+'">'+(validWindow?num(summary.buy_window_sessions,0)+' 個有效交易日（以到期時間為準）':'目前無有效進場期限')+'</b></div>'+
+        '<div class="box"><span>買進區'+ref+'</span><b>'+price(summary.entry_low)+' ～ '+price(summary.entry_high)+'</b></div>'+
+        '<div class="box"><span>高於這裡不追'+ref+'</span><b class="warn">'+price(summary.do_not_chase_above)+'</b></div>'+
+        '<div class="box"><span>停損／失效'+ref+'</span><b class="bad">'+price(summary.stop)+(numeric(summary.stop_sell_pct)>0?'｜退出 '+num(summary.stop_sell_pct,0)+'%':'')+'</b></div>'+
+        '<div class="box"><span>計畫品質（結構參考）</span><b>'+esc((summary.plan_quality||{}).label||'—')+'</b></div>'+
+        '<div class="box"><span>最長持有'+ref+'</span><b>'+num(summary.max_hold_sessions,0)+' 個有效交易日</b></div>'+
       '</div>'+
-      '<div class="sell">'+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+
+      '<div class="sell">'+(reference?'參考出場價位：':'')+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+
       (summary.stop_too_tight?'<br>🛡️ 停損距離過窄：系統不自動放寬，先等待重算。參考安全距離價 '+price(summary.reference_stop_floor):'')+'</div>'+
-      (noBuy?'<div class="reason bad">目前不直接買：'+esc(noBuy)+'</div>':'<div class="reason">計畫有效；仍需依買進區、量價確認與最新收盤資料執行。</div>')+
-      '<div class="meta">分數 '+num(summary.score,1)+'｜信心 '+pct(summary.confidence)+'｜資料品質 '+pct(summary.data_quality_pct)+'｜正式排名 '+esc(row.formal_rank||'—')+'</div>'+
+      '<div class="reason'+(reference?' bad':'')+'">依據與風險：'+(reasons.length?reasons.map(esc).join('<br>'):'未提供完整風險說明；進場前仍須重新確認。')+'</div>'+
+      '<div class="meta">來源交易日 '+esc(raw.as_of||row.session_date||'—')+'<br>評估時間 '+esc(raw.evaluated_at||'—')+'<br>絕對到期時間 '+esc(raw.expires_at||'未驗證')+'<br>原始買進窗口末日（非結論有效期） '+esc(raw.valid_through_session||'—')+'</div>'+
+      '<div class="reason">'+esc((raw.validation||{}).label||'前向驗證待累積')+'｜僅影子驗證，尚未正式採用</div>'+
+      '<div class="meta">模型分數 '+num(summary.score,1)+'｜信心分數 '+num(summary.confidence,1)+'｜資料品質 '+pct(summary.data_quality_pct)+'｜正式排名 '+num(row.formal_rank,0)+'<br>分數不是上漲機率；不自動下單。</div>'+
+      evidenceDetails(row)+
+      eventDetails(row)+
     '</article>';
   }
-  function filtered(){
+  function filtered(now){
     if(!state.payload)return [];
     var q=state.query.toUpperCase();
     return (state.payload.plans||[]).filter(function(row){
       if(state.market!=='ALL'&&row.market!==state.market)return false;
-      if(state.status!=='ALL'&&row.status!==state.status)return false;
+      if(state.status!=='ALL'&&conclusionFor(planFor(row),now).code!==state.status)return false;
       if(q&&String(row.symbol||'').toUpperCase().indexOf(q)<0&&String(row.name||'').toUpperCase().indexOf(q)<0)return false;
       return true;
     });
   }
+  function renderSummary(now){
+    var counts={eligible:0,wait:0,avoid:0,insufficient:0};
+    ((state.payload||{}).plans||[]).forEach(function(row){counts[conclusionFor(planFor(row),now).code]+=1;});
+    document.getElementById('summary').innerHTML=Object.keys(counts).map(function(code){
+      var cls=code==='eligible'?'good':code==='wait'?'warn':'bad';
+      return '<div class="metric" data-conclusion="'+code+'"><span>'+conclusionLabels[code]+'</span><b class="'+cls+'">'+counts[code]+'</b></div>';
+    }).join('');
+  }
+  function scheduleExpiry(now){
+    if(expiryTimer!=null)window.clearTimeout(expiryTimer);
+    expiryTimer=null;
+    var next=Infinity;
+    ((state.payload||{}).plans||[]).forEach(function(row){
+      var expiry=expiryTime(planFor(row).conclusion);
+      if(Number.isFinite(expiry)&&expiry>now)next=Math.min(next,expiry);
+    });
+    if(Number.isFinite(next))expiryTimer=window.setTimeout(render,Math.min(2147483647,Math.max(1,next-now)));
+  }
   function render(){
-    var rows=filtered();
+    var now=Date.now(),rows=filtered(now);
+    renderSummary(now);
     document.getElementById('count').textContent='共 '+rows.length+' 檔｜目前顯示 '+(state.horizon==='preferred'?'系統建議週期':({short:'1～5日',medium:'45日',long:'約6個月'}[state.horizon]||state.horizon));
-    document.getElementById('cards').innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">沒有符合條件的股票。</div>';
+    document.getElementById('cards').innerHTML=rows.length?rows.map(function(row){return card(row,now);}).join(''):'<div class="empty">沒有符合條件的股票。</div>';
+    scheduleExpiry(now);
   }
   function setActive(container,attr,value){
     document.querySelectorAll(container+' button').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute(attr)===value);});
   }
+  function ablationSummary(){
+    var audit=(state.payload||{}).evidence_ablation||{};
+    var status=audit.status==='descriptive_only'?'僅描述統計':'資料不足';
+    var reasonLabels={missing_baseline_candidate_ledger:'缺少基準／候選策略配對紀錄',no_valid_matched_forward_outcomes:'尚無有效且已完成的前向配對',cost_assumption_not_configured:'尚未設定交易成本假設',invalid_registration_or_changed_cost_policy:'登記資料無效或成本規則變更'};
+    var reasons=Array.isArray(audit.blocked_reasons)?audit.blocked_reasons.filter(function(reason){return typeof reason==='string'&&reason.trim();}):[];
+    return ' 證據配對前向檢查｜'+status+'｜'+String(audit.label||'尚未提供配對前向驗證資料')+
+      '｜已登記 '+num(audit.registered_pairs,0)+' 組｜已完成配對 '+num(audit.matched_completed_pairs,0)+' 組。'+
+      (reasons.length?'限制：'+reasons.map(function(reason){return Object.prototype.hasOwnProperty.call(reasonLabels,reason)?reasonLabels[reason]:reason;}).join('；')+'。':'')+
+      '尚無準確率改善結論；僅影子檢查，不代表正式採用就緒，不改正式 V6、不自動晉升。';
+  }
   function renderValidation(){
     var box=document.getElementById('validationSummary');
     var v=state.validation||{},s=v.summary||{},by=s.by_horizon||{};
-    if(!v.status){box.textContent='前向驗證尚未建立；交易計畫仍維持影子模式。';return;}
+    if(!v.status){box.textContent='前向驗證尚未建立；交易計畫仍維持影子模式，尚未正式採用。'+ablationSummary();return;}
     function h(key,label){
       var row=by[key]||{};
-      var rate=row.target1_hit_rate_pct==null?'—':Number(row.target1_hit_rate_pct).toFixed(1)+'%';
-      return label+'：訊號 '+Number(row.signals||0)+'｜觸發 '+Number(row.triggered||0)+'｜成熟 '+Number(row.matured_triggered||0)+'｜目標1命中 '+rate;
+      return label+'：訊號 '+num(row.signals,0)+'｜觸發 '+num(row.triggered,0)+'｜成熟 '+num(row.matured_triggered,0)+'｜目標1命中 '+pct(row.target1_hit_rate_pct);
     }
-    box.textContent='前向驗證｜等待進場 '+Number(s.waiting_entry||0)+'｜進行中 '+Number(s.active||0)+'｜已成熟 '+Number(s.matured||0)+'。'+h('short','短線')+'；'+h('medium','45日')+'；'+h('long','6個月');
+    box.textContent='前向驗證｜等待進場 '+num(s.waiting_entry,0)+'｜進行中 '+num(s.active,0)+'｜已成熟 '+num(s.matured,0)+'。'+h('short','短線')+'；'+h('medium','45日')+'；'+h('long','6個月')+'。僅影子驗證，尚未正式採用。'+ablationSummary();
   }
   function load(){
     Promise.all([
@@ -73,17 +174,12 @@
       var payload=pair[0];
       state.validation=pair[1]||{};
       state.payload=payload;
-      var s=payload.summary||{},v=payload.validation||{};
-      document.getElementById('summary').innerHTML=
-        '<div class="metric"><span>全部計畫</span><b>'+Number(s.total||0)+'</b></div>'+
-        '<div class="metric"><span>有計畫</span><b class="good">'+Number(s.candidate||0)+'</b></div>'+
-        '<div class="metric"><span>等待</span><b class="warn">'+Number(s.wait||0)+'</b></div>'+
-        '<div class="metric"><span>先不買</span><b class="bad">'+Number(s.blocked||0)+'</b></div>';
-      document.getElementById('progressChip').textContent='前向驗證 '+Number(v.trading_days_collected||0)+' / '+Number(v.target_trading_days||60)+' 日';
+      var v=payload.validation||{};
+      document.getElementById('progressChip').textContent='前向驗證 '+num(v.trading_days_collected,0)+' / '+num(v.target_trading_days==null?60:v.target_trading_days,0)+' 日';
       renderValidation();
       if(state.query){
         var input=document.getElementById('search');
-        if(input) input.value=state.query;
+        if(input)input.value=state.query;
       }
       render();
     }).catch(function(err){
@@ -91,10 +187,14 @@
       document.getElementById('count').textContent='資料尚未產生';
     });
   }
+  // Replace legacy status controls too, so cached HTML uses the selected conclusion.
+  document.getElementById('statuses').innerHTML='<button class="active" data-status="ALL">全部</button>'+Object.keys(conclusionLabels).map(function(code){return '<button data-status="'+code+'">'+conclusionLabels[code]+'</button>';}).join('');
   document.getElementById('markets').addEventListener('click',function(e){var b=e.target.closest('button[data-market]');if(!b)return;state.market=b.dataset.market;setActive('#markets','data-market',state.market);render();});
   document.getElementById('statuses').addEventListener('click',function(e){var b=e.target.closest('button[data-status]');if(!b)return;state.status=b.dataset.status;setActive('#statuses','data-status',state.status);render();});
   document.getElementById('horizons').addEventListener('click',function(e){var b=e.target.closest('button[data-horizon]');if(!b)return;state.horizon=b.dataset.horizon;setActive('#horizons','data-horizon',state.horizon);render();});
   document.getElementById('search').addEventListener('input',function(){state.query=this.value.trim();render();});
   document.getElementById('refresh').addEventListener('click',function(){location.reload();});
+  window.addEventListener('focus',function(){if(state.payload)render();});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&state.payload)render();});
   load();
 }());

@@ -13,11 +13,15 @@ import argparse
 import copy
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from comprehensive_shadow_ranking import update_comprehensive_shadow_ranking
 from evidence_contract import build_unified_evidence_report, make_evidence
+from shadow_stock_conclusion import input_evidence_categories, source_snapshot
+from point_in_time_events import build_event_snapshot
 from next_session_ranking import update_next_session_ranking
 from portfolio_control import build_portfolio_control
 from practical_weighted_ranking import update_practical_weighted_ranking
@@ -661,6 +665,25 @@ def _resolved_institution_status(
     }
 
 
+def _shadow_event_summary(row: dict[str, Any], updated_at: str) -> dict[str, Any]:
+    """Publish only compact event timing diagnostics, never new model votes."""
+    try:
+        cutoff = datetime.fromisoformat(str(updated_at).replace("Z", "+00:00"))
+        if cutoff.tzinfo is None:
+            cutoff = cutoff.replace(tzinfo=ZoneInfo("Asia/Taipei"))
+        snapshot = build_event_snapshot(row, cutoff=cutoff)
+    except (TypeError, ValueError):
+        return {"status": "invalid_cutoff", "shadow_only": True, "affects_scores": False,
+                "counts": {}, "events": [], "label": "事件時間基準不足，不加入判斷"}
+    fields = ("event_id", "symbol", "source", "event_type", "revision", "published_at", "first_seen")
+    return {key: value for key, value in snapshot.items()
+            if key not in {"events", "available_revision_history", "excluded"}} | {
+        "events": [{key: event.get(key) for key in fields} for event in snapshot["events"][:20]],
+        "event_metadata_limit": 20,
+        "label": "事件只作事前可得性核對，不另加權；缺發布時刻／修訂紀錄不補猜",
+    }
+
+
 def _build_decision(
     row: dict[str, Any],
     *,
@@ -1142,6 +1165,9 @@ def _build_decision(
         "industry": row.get("industry"),
         "price": price,
         "session_date": row.get("official_session_date"),
+        "source_snapshot": source_snapshot(row),
+        "input_evidence_categories": input_evidence_categories(row),
+        "shadow_events": _shadow_event_summary(row, updated_at),
         "formal_rank": row.get("overall_rank") or row.get("rank"),
         "formal_score": _number(row.get("overall_ranking_score") or row.get("score")),
         "formal_ranking_unchanged": True,

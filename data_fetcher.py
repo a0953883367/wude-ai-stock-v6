@@ -21,6 +21,7 @@ import yfinance as yf
 from zoneinfo import ZoneInfo
 
 from config import SETTINGS
+from daily_price_provenance import attest_yahoo_daily
 from sec_edgar import fetch_sec_company_fundamentals, merge_sec_fallback
 
 
@@ -313,7 +314,7 @@ def _retry_stale_us_daily_history(
                     raw, symbol, isinstance(raw.columns, pd.MultiIndex)
                 )
                 if _frame_session_date(frame) > previous_session:
-                    result[symbol] = frame
+                    result[symbol] = attest_yahoo_daily(frame, symbol)
                     advanced.append(symbol)
                     break
             except Exception as exc:
@@ -362,7 +363,7 @@ def download_history(
             for symbol in chunk:
                 frame = _extract_frame(raw, symbol, multi)
                 if not frame.empty:
-                    result[symbol] = frame
+                    result[symbol] = attest_yahoo_daily(frame, symbol)
         except Exception as exc:
             LOG.warning("daily batch failed (%s): %s", ",".join(chunk[:3]), exc)
         time.sleep(0.3)
@@ -384,7 +385,7 @@ def download_history(
                     )
                     frame = _extract_frame(raw, symbol, isinstance(raw.columns, pd.MultiIndex))
                     if not frame.empty:
-                        result[symbol] = frame
+                        result[symbol] = attest_yahoo_daily(frame, symbol)
                         break
                 except Exception as exc:
                     LOG.warning("daily individual retry failed (%s, %s/2): %s", symbol, attempt + 1, exc)
