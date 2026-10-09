@@ -8,7 +8,7 @@ import logging
 import os
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 
 from config import SETTINGS, TAIPEI
@@ -62,6 +62,7 @@ from inverse_etf_shadow import (
 )
 from missed_strength_validation import update_missed_strength_validation
 from us_market_data import fetch_us_opra_signals, fetch_us_sip_snapshots
+from daily_price_provenance import tw_official_daily_metadata
 import strategy
 from tw_official_data import (
     fetch_taiwan_official_data,
@@ -96,6 +97,43 @@ def _stage(label: str, action):
     result = action()
     logging.info("資料階段完成：%s（%.1f 秒）", label, time.monotonic() - started)
     return result
+
+
+def _preserve_alpaca_daily_samples_safely(reports_dir, samples, *, now=None) -> bool:
+    """Keep already-returned SIP candles private, separate from model inputs."""
+    if not samples:
+        return False
+    from hashlib import sha256
+    from pathlib import Path
+    from market_calendar import OfficialMarketCalendar
+    from us_daily_shadow_sample import build_daily_shadow_samples
+
+    captured = now or datetime.now(timezone.utc)
+    if captured.tzinfo is None:
+        raise ValueError("private sample capture requires a timezone")
+    reports_dir = Path(reports_dir)
+    try:
+        calendar = OfficialMarketCalendar(reports_dir / "official_market_calendar.json",
+                                          auto_refresh=False, allow_network=False)
+        report = build_daily_shadow_samples(samples, calendar, captured)
+        if not report.get("sample_count"):
+            return False
+        body = json.dumps(report, ensure_ascii=False, sort_keys=True,
+                          separators=(",", ":"), allow_nan=False).encode("utf-8")
+        # Outside the prediction-engine Actions cache and Docker build context.
+        # This run-local sample archive is not a durable approved history store.
+        directory = reports_dir.parent / ".alpaca_daily_shadow"
+        directory.mkdir(parents=True, exist_ok=True)
+        stamp = captured.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        target = directory / f"{stamp}_{sha256(body).hexdigest()[:16]}.json"
+        if not target.exists():
+            temporary = target.with_suffix(".tmp")
+            temporary.write_bytes(body)
+            temporary.replace(target)
+        return True
+    except (OSError, ValueError, TypeError):
+        logging.warning("Alpaca daily shadow sample not persisted; formal inputs unchanged")
+        return False
 
 
 def _tiingo_public_summary(payload: dict) -> dict:
@@ -1267,13 +1305,16 @@ def main() -> int:
         for item in universe
         if item.get("market") == "US"
     }
+    us_daily_shadow_samples = {}
     us_live = _stage(
         "美股即時行情",
         lambda: fetch_us_sip_snapshots(
             us_symbols | set(TREASURY_SIP_SYMBOLS.values()),
             timeout=SETTINGS.request_timeout,
+            daily_shadow_samples=us_daily_shadow_samples,
         ),
     )
+    _preserve_alpaca_daily_samples_safely(SETTINGS.reports_dir, us_daily_shadow_samples)
     us_extended_hours = _stage(
         "美股盤前盤後", lambda: download_us_extended_hours(list(us_symbols))
     )
@@ -1418,6 +1459,7 @@ def main() -> int:
                         "tw_official_session_date": official_price.get("date"),
                         "tw_price_source": official_price.get("tw_price_source"),
                         "tw_price_unit": official_price.get("tw_price_unit"),
+                        **tw_official_daily_metadata(daily, official_price),
                     })
                 if institution:
                     row.update({

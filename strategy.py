@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from config import TAIPEI
+from daily_price_provenance import observed_daily_volume, us_daily_metadata
 from tw_market_context import attach_tw_context
 
 
@@ -901,6 +902,13 @@ def build_features(
     official_high = _finite(high.iloc[-1], official_open)
     official_low = _finite(low.iloc[-1], official_open)
     official_close = _finite(close.iloc[-1])
+    # Do not manufacture volume when the provider omitted it. A promoted
+    # intraday aggregate is not an attested daily-provider OHLCV candle.
+    official_volume = None if promoted_us_session else observed_daily_volume(daily)
+    daily_provenance = (
+        us_daily_metadata(daily, symbol, promoted=promoted_us_session)
+        if market == "US" else {}
+    )
     adjusted_close = daily.get("adj close", close).astype(float).dropna()
     official_adjusted_close = _finite(
         adjusted_close.iloc[-1] if len(adjusted_close) else official_close,
@@ -963,6 +971,10 @@ def build_features(
         "official_high_price": round(official_high, 4),
         "official_low_price": round(official_low, 4),
         "official_close_price": round(official_close, 4),
+        "official_volume": official_volume,
+        "source_daily_ohlcv_complete": False,
+        "source_daily_ohlcv_session_date": None,
+        **daily_provenance,
         "official_adjusted_open_price": round(official_adjusted_open, 4),
         "official_adjusted_high_price": round(official_adjusted_high, 4),
         "official_adjusted_low_price": round(official_adjusted_low, 4),
