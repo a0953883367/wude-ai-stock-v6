@@ -257,8 +257,10 @@ def test_input_categories_are_references_separate_assets_and_hide_synthetic_ohlc
            'institution_net': 1000, 'financial_report_date': '2026-06-30', 'per': 20}
     original = deepcopy(raw)
     groups = {g['id']: g for g in input_evidence_categories(raw)}
-    assert groups['daily_candle']['status'] == 'missing'
-    assert all(i['value'] is None for i in groups['daily_candle']['items'])
+    assert groups['daily_candle']['status'] == 'unverified'
+    vals={i['key']:i['value'] for i in groups['daily_candle']['items']}
+    assert vals['official_open_price']==100
+    assert vals['kline_pattern'] is vals['official_volume'] is None
     assert groups['fundamentals']['status'] == 'not_applicable'
     assert groups['tw_institution']['status'] == 'not_applicable'
     assert groups['price_indicators']['status'] == 'reference'
@@ -289,3 +291,58 @@ def test_hub_carries_attested_source_and_actual_inputs_without_changing_formal_r
     assert next(i for i in candle['items'] if i['key'] == 'official_volume')['value'] == 12345
     assert decision['formal_score'] == original['overall_ranking_score']
     assert raw == original
+
+
+def test_news_after_price_session_before_evaluation_is_not_future_data(tmp_path):
+    row=row_for()
+    row['evidence'].append({'source_id':'verified_news','horizon':'risk','affects_decision':True,
+        'market':'TW','symbol':row['symbol'],'as_of':'2026-10-05T21:00:00Z',
+        'provenance':'news scan','direction':'neutral','status':'available'})
+    # Taipei Oct6 scan is after Oct5 price session but before NOW Oct5 22:00Z.
+    assert conclude(tmp_path,row)['code']=='eligible'
+    row['evidence'][-1]['direction']='oppose'
+    row['risk_blocks']=['已確認新聞風險']
+    assert conclude(tmp_path,row)['code']=='avoid'
+
+
+@pytest.mark.parametrize('stamp',['2026-10-05T23:00:00Z','2026-10-04T00:00:00Z','2026-10-05'])
+def test_news_observation_future_stale_or_date_only_blocks(tmp_path,stamp):
+    row=row_for()
+    row['evidence'].append({'source_id':'verified_news','horizon':'risk','affects_decision':True,
+        'market':'TW','symbol':row['symbol'],'as_of':stamp,'provenance':'news scan','direction':'neutral'})
+    assert conclude(tmp_path,row)['code']=='insufficient'
+
+
+def test_news_stale_fallback_cannot_become_fresh(tmp_path):
+    row=row_for();row['source_snapshot']['news_cache_stale']=True
+    row['evidence'].append({'source_id':'verified_news','horizon':'risk','affects_decision':True,
+        'market':'TW','symbol':row['symbol'],'as_of':'2026-10-05T21:00:00Z','provenance':'news scan','direction':'neutral'})
+    assert conclude(tmp_path,row)['code']=='insufficient'
+
+
+def test_missing_new_attestation_is_pending_not_claim_missing_prices(tmp_path):
+    row=row_for();row['source_snapshot'].update(attestation_status='pending',ohlcv_complete=False)
+    result=conclude(tmp_path,row)
+    assert result['code']=='insufficient'
+    assert result['data_status']['code']=='source_attestation_pending'
+    assert result['price_basis']['aligned'] is True
+
+
+def test_quote_and_completed_close_mismatch_stays_noneligible(tmp_path):
+    row=row_for();row['price']=1002
+    result=conclude(tmp_path,row)
+    assert result['code']=='insufficient'
+    assert result['data_status']['code']=='price_basis_mismatch'
+    assert result['price_basis']['reported_quote']==1002
+    assert result['price_basis']['completed_close']==1000
+
+
+def test_news_freshness_expiry_limits_cached_conclusion(tmp_path):
+    row=row_for()
+    row['evidence'].append({'source_id':'verified_news','horizon':'risk','affects_decision':True,
+        'market':'TW','symbol':row['symbol'],'as_of':'2026-10-05T10:00:00Z',
+        'provenance':'news scan','direction':'neutral'})
+    result=conclude(tmp_path,row)
+    assert result['code']=='eligible'
+    assert datetime.fromisoformat(result['expires_at'])==datetime(2026,10,6,4,tzinfo=timezone.utc)
+    assert conclude(tmp_path,row,now=datetime(2026,10,6,4,tzinfo=timezone.utc))['code']=='insufficient'

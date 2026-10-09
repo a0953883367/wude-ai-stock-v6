@@ -7,6 +7,7 @@ on:
       - "decision_hub.py"
       - "shadow_stock_conclusion.py"
       - "point_in_time_events.py"
+      - "tw_daily_shadow_attestation.py"
       - "trade_plan_shadow.py"
       - "trade_plan_validation.py"
       - ".github/workflows/trade-plan-shadow.yml"
@@ -35,7 +36,7 @@ jobs:
       - name: 安裝測試工具
         run: python -m pip install -r requirements.txt "pytest>=8,<10"
       - name: 更新同批次唯讀影子資料欄位
-        run: python decision_hub.py --reports-dir reports --refresh-shadow-inputs-only
+        run: python decision_hub.py --reports-dir reports --refresh-shadow-inputs-only --attest-tw-official
       - name: 建立影子交易計畫
         run: python trade_plan_shadow.py --reports-dir reports
       - name: 更新前向驗證帳本
@@ -54,4 +55,3 @@ jobs:
           git commit -m "chore: 更新影子交易計畫"
           git pull --rebase origin main
           git push origin HEAD:main
-

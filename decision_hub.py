@@ -1798,7 +1798,7 @@ def update_decision_hub(
     return payload
 
 
-def refresh_shadow_inputs(reports_dir: Path) -> int:
+def refresh_shadow_inputs(reports_dir: Path, *, attest_tw_official: bool = False) -> int:
     """Attach diagnostic fields to the SAME frozen batch, without model execution."""
     analysis = _read_json(reports_dir / "all_analysis.json") or {}
     index = _read_json(reports_dir / "decision_hub.json") or {}
@@ -1808,8 +1808,12 @@ def refresh_shadow_inputs(reports_dir: Path) -> int:
     files = index.get("decision_files")
     if not isinstance(files, list) or not files or len(files) != len(set(files)):
         raise ValueError("invalid decision chunk manifest")
+    source_rows = analysis.get("data", [])
+    if attest_tw_official:
+        from tw_daily_shadow_attestation import enrich_frozen_tw_rows
+        source_rows, _audit = enrich_frozen_tw_rows(source_rows)
     rows = {}
-    for row in analysis.get("data", []):
+    for row in source_rows:
         key = (str(row.get("market") or "").upper(), str(row.get("symbol") or "").upper())
         if not all(key) or key in rows:
             raise ValueError("missing or duplicate source identity")
@@ -1845,10 +1849,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the Central AI Decision Hub report")
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--refresh-shadow-inputs-only", action="store_true")
+    parser.add_argument("--attest-tw-official", action="store_true")
     args = parser.parse_args()
     reports_dir = Path(args.reports_dir)
     if args.refresh_shadow_inputs_only:
-        print(f"Shadow input refresh: {refresh_shadow_inputs(reports_dir)} frozen rows")
+        print(f"Shadow input refresh: {refresh_shadow_inputs(reports_dir, attest_tw_official=args.attest_tw_official)} frozen rows")
         return 0
     analysis = _read_json(reports_dir / "all_analysis.json") or {}
     rows = analysis.get("data") if isinstance(analysis.get("data"), list) else []

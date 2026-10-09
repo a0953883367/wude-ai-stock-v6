@@ -187,7 +187,7 @@ function mainLabels(app) {
     row('MISSINGPLAN', plan('eligible'), {plans: {}}),
   ];
   const invalidApp = await boot(invalids, {failValidation: true});
-  assert.deepStrictEqual(mainLabels(invalidApp), invalids.map(() => '資料不足'));
+  assert.deepStrictEqual(mainLabels(invalidApp), ['待核對', '資料需更新', '資料需更新', '待核對', '待核對', '待核對', '待核對', '待核對']);
   assert.strictEqual(countFor(invalidApp, 'insufficient'), invalids.length);
   assert.strictEqual(countFor(invalidApp, 'eligible'), 0);
   assert(!invalidApp.nodes.cards.innerHTML.includes('符合影子進場條件'));
@@ -200,6 +200,91 @@ function mainLabels(app) {
   invalidApp.click('statuses', 'status', 'insufficient');
   assert.strictEqual(mainLabels(invalidApp).length, invalids.length);
 
+  const dataStates = [
+    ['market_not_closed', '市場未收盤', '當日市場尚未收盤，待完整日K確認。'],
+    ['source_attestation_pending', '來源完整性待驗證', '已有行情資料，來源完整性仍待驗證。'],
+    ['price_basis_mismatch', '價格基準待核對', '行情快照與已完成日K收盤不一致。'],
+    ['stale_snapshot', '資料需更新', '來源快照已過期。'],
+    ['evidence_review_pending', '證據時間待核對', '消息證據的可用時間仍待核對。'],
+    ['data_missing', '關鍵資料缺漏', '必要價格欄位未提供。'],
+    ['validation_pending', '研究待驗證', '研究驗證仍在累積，不表示行情資料缺漏。'],
+  ];
+  const statusRows = dataStates.map(([code, label, detail]) => row(code, plan('insufficient', {
+    conclusion: conclusion('insufficient', {expires_at: null, data_status: {code, label, detail}}),
+  })));
+  const dataApp = await boot(statusRows.concat([
+    row('ACTUAL_AVOID', plan('avoid')), row('ACTUAL_WAIT', plan('wait')),
+    row('READY', plan('eligible', {conclusion: conclusion('eligible', {data_status: {code: 'ready', label: '來源已核對', detail: '來源驗證已完成。'}, gates: [{code: 'source', passed: true}]})})),
+  ]));
+  assert.deepStrictEqual(mainLabels(dataApp), dataStates.map(item => item[1]).concat(['暫不進場', '等待量價確認', '符合影子進場條件']));
+  dataStates.forEach(([code, label, detail]) => {
+    assert(dataApp.nodes.cards.innerHTML.includes('data-source-status="' + code + '"'));
+    assert(dataApp.nodes.cards.innerHTML.includes('資料狀態：' + label));
+    assert(dataApp.nodes.cards.innerHTML.includes(detail));
+  });
+  assert.strictEqual(countFor(dataApp, 'insufficient'), dataStates.length);
+  assert.strictEqual(countFor(dataApp, 'avoid'), 1, 'only an actual avoid conclusion contributes to avoid');
+  assert.strictEqual(countFor(dataApp, 'wait'), 1);
+  assert.strictEqual(countFor(dataApp, 'eligible'), 1);
+  assert(dataApp.nodes.summary.innerHTML.includes('data-conclusion="insufficient"><span>待核對</span><b class="warn">7</b>'));
+  assert(dataApp.nodes.statuses.innerHTML.includes('data-status="insufficient">待核對</button>'));
+  assert.strictEqual((dataApp.nodes.cards.innerHTML.match(/class="card blocked"/g) || []).length, 1, 'unverified data must not get the red avoid card styling');
+  assert.strictEqual((dataApp.nodes.cards.innerHTML.match(/class="card wait" data-conclusion="insufficient"/g) || []).length, dataStates.length);
+  assert(dataApp.nodes.cards.innerHTML.includes('完成資料核對前，不提供可進場判定；下列價位僅供參考。'));
+  dataApp.click('statuses', 'status', 'avoid');
+  assert.deepStrictEqual(mainLabels(dataApp), ['暫不進場']);
+  dataApp.click('statuses', 'status', 'insufficient');
+  assert.deepStrictEqual(mainLabels(dataApp), dataStates.map(item => item[1]));
+  dataApp.click('statuses', 'status', 'eligible');
+  assert.deepStrictEqual(mainLabels(dataApp), ['符合影子進場條件']);
+
+  const unverifiedCandle = {id: 'daily_candle', label: '每日K線', applicable: true, status: 'unverified', as_of: '2026-10-09', source: 'reported_candle',
+    note: '已有 O/H/L/C 參考資料；完整性尚未驗證，成交量與衍生指標待核對。', items: [
+      {label: '開盤', value: 100}, {label: '最高', value: 102}, {label: '最低', value: 99}, {label: '收盤', value: 101},
+      {label: '成交量', value: null}, {label: 'K線衍生指標', value: null},
+    ]};
+  const basisApp = await boot([row('BASIS', plan('insufficient', {conclusion: conclusion('insufficient', {
+    expires_at: null,
+    data_status: {code: 'price_basis_mismatch', label: '價格基準待核對', detail: '來源價格須先核對。'},
+    price_basis: {reported_quote: 103.5, completed_close: 101, aligned: false, note: '行情快照與已完成日K分開顯示，尚未對齊。'},
+  })}), {price: 103.5, input_evidence_categories: [unverifiedCandle]})]);
+  const basisHtml = basisApp.nodes.cards.innerHTML;
+  assert.deepStrictEqual(mainLabels(basisApp), ['價格基準待核對']);
+  assert(basisHtml.includes('<span>來源快照價格（待對齊）</span><b>103.5</b>'));
+  assert(basisHtml.includes('<span>已完成日K收盤（參考）</span><b>101</b>'));
+  assert(basisHtml.includes('行情快照與已完成日K分開顯示，尚未對齊。'));
+  assert(basisHtml.includes('data-evidence-id="daily_candle" data-evidence-status="unverified"><b>每日K線</b>｜尚未驗證'));
+  ['開盤：100', '最高：102', '最低：99', '收盤：101', '成交量：未提供', 'K線衍生指標：未提供'].forEach(text => assert(basisHtml.includes(text), text));
+  assert(!basisHtml.includes('成交量：0'));
+  assert(!basisHtml.includes('資料不存在'));
+  assert(basisHtml.includes('買進區（參考）'));
+
+  const inconsistent = await boot([
+    row('FAILED_GATE', plan('eligible', {conclusion: conclusion('eligible', {gates: [{code: 'source', passed: false, reason: '來源待核對'}]})})),
+    row('PENDING_SOURCE', plan('eligible', {conclusion: conclusion('eligible', {data_status: {code: 'source_attestation_pending', label: '來源完整性待驗證'}})})),
+    row('LEGACY_INSUFFICIENT', plan('insufficient')),
+  ]);
+  assert.deepStrictEqual(mainLabels(inconsistent), ['待核對', '來源完整性待驗證', '待核對']);
+  assert.strictEqual(countFor(inconsistent, 'eligible'), 0, 'copy changes cannot bypass failed gates or pending attestations');
+  assert(!inconsistent.nodes.cards.innerHTML.includes('符合影子進場條件'));
+  const statusAttack = '<img src=x onerror="alert(1)">';
+  const escapedStatus = await boot([row('ESCAPED_STATUS', plan('insufficient', {conclusion: conclusion('insufficient', {
+    data_status: {code: 'source_attestation_pending', label: statusAttack, detail: '<script>details</script>'},
+    price_basis: {reported_quote: null, completed_close: null, aligned: false, note: '<script>basis</script>'},
+  })}))]);
+  assert(!escapedStatus.nodes.cards.innerHTML.includes('<img'));
+  assert(!escapedStatus.nodes.cards.innerHTML.includes('<script>'));
+  assert(escapedStatus.nodes.cards.innerHTML.includes('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;'));
+  assert(escapedStatus.nodes.cards.innerHTML.includes('&lt;script&gt;details&lt;/script&gt;'));
+  assert(escapedStatus.nodes.cards.innerHTML.includes('&lt;script&gt;basis&lt;/script&gt;'));
+  assert(escapedStatus.nodes.cards.innerHTML.includes('<span>已完成日K收盤（參考）</span><b>—</b>'));
+  const expiredStatus = await boot([row('EXPIRED_STATUS', plan('eligible', {conclusion: conclusion('eligible', {
+    expires_at: '2026-10-09T15:59:59Z', data_status: {code: 'ready', label: '來源已核對', detail: '先前來源驗證已完成。'},
+  })}))]);
+  assert.deepStrictEqual(mainLabels(expiredStatus), ['資料需更新']);
+  assert(expiredStatus.nodes.cards.innerHTML.includes('data-source-status="stale_snapshot"'));
+  assert(!expiredStatus.nodes.cards.innerHTML.includes('先前來源驗證已完成'));
+
   const expiry = NOW + 1000;
   const clockApp = await boot([row('TIMER', plan('eligible', {conclusion: conclusion('eligible', {expires_at: new Date(expiry).toISOString()})}))]);
   clockApp.click('statuses', 'status', 'eligible');
@@ -210,13 +295,13 @@ function mainLabels(app) {
   assert(clockApp.nodes.cards.innerHTML.includes('沒有符合條件'), 'expiry must update active filters without clicks');
   assert.strictEqual(countFor(clockApp, 'insufficient'), 1);
   clockApp.click('statuses', 'status', 'insufficient');
-  assert.deepStrictEqual(mainLabels(clockApp), ['資料不足']);
+  assert.deepStrictEqual(mainLabels(clockApp), ['資料需更新']);
   assert.strictEqual(clockApp.timers.size, 0);
   for (const event of ['focus', 'becomeVisible']) {
     const resumed = await boot([row('RESUME', plan('eligible', {conclusion: conclusion('eligible', {expires_at: new Date(expiry).toISOString()})}))]);
     resumed.advanceTo(expiry, false);
     resumed[event]();
-    assert.deepStrictEqual(mainLabels(resumed), ['資料不足'], event + ' must catch suspended timers');
+    assert.deepStrictEqual(mainLabels(resumed), ['資料需更新'], event + ' must catch suspended timers');
   }
 
   const unsafe = '<img src=x onerror="alert(1)">';
@@ -340,7 +425,7 @@ function mainLabels(app) {
   assert(noTimeEvents.nodes.cards.innerHTML.includes('事前時間資料可用 0'));
   assert.deepStrictEqual(mainLabels(noTimeEvents), ['符合影子進場條件'], 'diagnostics do not change existing conclusions in either direction');
   const absentConclusionEvents = await boot([row('NO_CONCLUSION', plan('eligible', {conclusion: null}), {shadow_events: shadowEvents})]);
-  assert.deepStrictEqual(mainLabels(absentConclusionEvents), ['資料不足'], 'available events cannot rescue absent conclusions');
+  assert.deepStrictEqual(mainLabels(absentConclusionEvents), ['待核對'], 'available events cannot rescue absent conclusions');
   const escapedEvents = await boot([row('ESCAPED_EVENTS', plan('avoid'), {shadow_events: {
     ...shadowEvents, label: unsafe, cutoff: '<time onmouseover="bad">',
     counts: {input: null, eligible_events: null, duplicates: null, exclusion_reasons: {'<script>bad</script>': 1}},
@@ -412,5 +497,5 @@ function mainLabels(app) {
   filters.search('missing');
   assert(filters.nodes.cards.innerHTML.includes('沒有符合條件'));
 
-  console.log('trade plan shadow behavior passed: safe conclusions, selected horizons, filters, expiry, escaping, nulls, input evidence, event diagnostics, paired audit');
+  console.log('trade plan shadow behavior passed: safe conclusions, selected horizons, filters, expiry, escaping, nulls, input evidence, event diagnostics, paired audit, data status and price basis');
 })().catch(error => { console.error(error); process.exitCode = 1; });

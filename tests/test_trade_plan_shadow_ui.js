@@ -31,6 +31,8 @@ assert(js.includes('stop_too_tight'));
   assert(js.includes(text), 'missing safe-conclusion UI copy: ' + text));
 assert(js.includes('使用哪些資料（既有模型參考，不另加權）'));
 assert(js.includes('input_evidence_categories'));
+['待核對', '來源完整性待驗證', '價格基準待核對', '資料需更新', '證據時間待核對', '關鍵資料缺漏',
+  '尚未驗證', '已完成日K收盤（參考）'].forEach(text => assert(js.includes(text)));
 ['事前時間資料可用', '不影響分數與結論', '證據配對前向檢查', '尚無準確率改善結論',
   '不代表正式採用就緒', '不改正式 V6、不自動晉升'].forEach(text => assert(js.includes(text)));
 assert(js.includes("params.get('symbol')"));
