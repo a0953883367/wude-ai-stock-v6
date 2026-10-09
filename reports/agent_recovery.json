@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-09T23:07:55.029337+08:00",
+  "checked_at": "2026-10-09T23:19:01.785834+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -190,7 +190,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-09 19:06:26",
+        "updated_at": "2026-10-09 23:08:55",
         "error": null
       }
     },
@@ -213,8 +213,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "current data requires silent refresh; no delivery receipt is created"
+      "status": "blocked_manual",
+      "reason": "github_alpaca_calendar_credentials_missing"
     }
   },
   "permission_probe": {
@@ -232,15 +232,19 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [],
-  "data_recovery_status": "ready_silent_refresh",
+  "data_recovery_status": "blocked_manual",
   "us_direction_verification": {
-    "status": "ready_silent_refresh",
-    "reason": "calendar_bootstrap_required",
-    "needs_silent_refresh": true,
+    "status": "blocked_manual",
+    "reason": "github_alpaca_calendar_credentials_missing",
+    "needs_silent_refresh": false,
     "verified_recovered": false,
     "last_source_session_date": "2026-10-02",
-    "latest_official_session_date": "2026-10-08",
-    "historical_backfill_allowed": false
+    "latest_official_session_date": "2026-10-09",
+    "historical_backfill_allowed": false,
+    "required_secrets": [
+      "ALPACA_API_KEY_ID",
+      "ALPACA_API_SECRET_KEY"
+    ]
   },
   "capabilities": {
     "actions_read_confirmed": true,
