@@ -18,6 +18,8 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from us_direction_agent import inspect_us_direction
+
 from briefing_watchdog import delivery_is_current, load_daily_delivery, target_datetime
 
 
@@ -751,6 +753,13 @@ def build_guard(
     else:
         checks.append(_check("analysis_output", "分析輸出", "ok", f"完成 {analyzed}/{universe or analyzed} 檔；排行 {len(ranking_rows)} 檔"))
 
+    direction = inspect_us_direction(reports_dir, now)
+    checks.append(_check(
+        "us_direction_ledger", "美股方向原始帳本",
+        "ok" if direction["verified_recovered"] else "info" if direction["status"] == "not_observable" else "warning",
+        f"行情 {direction['latest_official_session_date'] or '未知'}；已驗證帳本 {direction['last_source_session_date'] or '無'}；{direction['reason']}",
+        "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測",
+    ))
     checks.append(_market_session_check(analysis_rows))
     checks.append(_holding_valuation_check(holding))
 
