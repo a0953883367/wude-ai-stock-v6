@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-10-09 19:06:26",
+  "updated_at": "2026-10-09 23:08:55",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -571,6 +571,259 @@
         "affects_formal_model": false
       }
     ]
+  },
+  "direction_calibration_validation": {
+    "registered_at": "2026-10-09 23:08:55",
+    "rule": {
+      "id": "direction_strength_abstention_65_v1",
+      "horizon": "1",
+      "minimum_strength": 65.0,
+      "action": "abstain_only",
+      "track": "full_day"
+    },
+    "decisions": {},
+    "excluded_snapshot_ids": [
+      "TW:2026-08-21",
+      "TW:2026-08-24",
+      "TW:2026-08-25",
+      "TW:2026-08-26",
+      "TW:2026-08-27",
+      "TW:2026-08-31",
+      "TW:2026-09-01",
+      "TW:2026-09-02",
+      "TW:2026-09-03",
+      "TW:2026-09-04",
+      "TW:2026-09-07",
+      "TW:2026-09-08",
+      "TW:2026-09-09",
+      "TW:2026-09-10",
+      "TW:2026-09-11",
+      "TW:2026-09-14",
+      "TW:2026-09-15",
+      "TW:2026-09-16",
+      "TW:2026-09-17",
+      "TW:2026-09-18",
+      "TW:2026-09-20",
+      "TW:2026-09-21",
+      "TW:2026-09-22",
+      "TW:2026-09-23",
+      "TW:2026-09-24",
+      "TW:2026-09-29",
+      "TW:2026-09-30",
+      "TW:2026-10-01",
+      "TW:2026-10-02",
+      "TW:2026-10-05",
+      "TW:2026-10-06",
+      "TW:2026-10-07",
+      "TW:2026-10-08",
+      "US:2026-08-21",
+      "US:2026-08-24",
+      "US:2026-08-25",
+      "US:2026-08-26",
+      "US:2026-08-27",
+      "US:2026-08-28",
+      "US:2026-08-31",
+      "US:2026-09-01",
+      "US:2026-09-02",
+      "US:2026-09-03",
+      "US:2026-09-04",
+      "US:2026-09-08",
+      "US:2026-09-09",
+      "US:2026-09-10",
+      "US:2026-09-11",
+      "US:2026-09-14",
+      "US:2026-09-15",
+      "US:2026-09-16",
+      "US:2026-09-17",
+      "US:2026-09-18",
+      "US:2026-09-21",
+      "US:2026-09-22",
+      "US:2026-09-23",
+      "US:2026-09-24",
+      "US:2026-09-25",
+      "US:2026-09-29",
+      "US:2026-10-02"
+    ],
+    "mode": "prospective_shadow_only",
+    "affects_formal_v6": false,
+    "automatic_promotion": false,
+    "broker_orders": false,
+    "score_semantics": "heuristic_strength_not_probability",
+    "brier_score": null,
+    "classification_note": "direction_calibration 是未能進一步歸因的方向錯誤，並非已證實門檻失準。",
+    "metric_note": "一日方向結果按市場／資產分開；個股列彼此可能相關，交易日數不代表獨立事件數。方向報酬不是實際交易損益，未扣交易成本。",
+    "status": "collecting",
+    "blocked_reasons": [],
+    "cohorts": {
+      "TW_STOCK": {
+        "completed_rows": 0,
+        "completed_sessions": 0,
+        "baseline": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "candidate": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "newly_abstained_rows": 0
+      },
+      "TW_ETF": {
+        "completed_rows": 0,
+        "completed_sessions": 0,
+        "baseline": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "candidate": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "newly_abstained_rows": 0
+      },
+      "US_STOCK": {
+        "completed_rows": 0,
+        "completed_sessions": 0,
+        "baseline": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "candidate": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "newly_abstained_rows": 0
+      },
+      "US_ETF": {
+        "completed_rows": 0,
+        "completed_sessions": 0,
+        "baseline": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "candidate": {
+          "samples": 0,
+          "eligible_samples": 0,
+          "abstain_samples": 0,
+          "coverage_pct": 0.0,
+          "win_rate_pct": null,
+          "avg_return_pct": null,
+          "worst_return_pct": null,
+          "lowest_actual_return_pct": null,
+          "highest_actual_return_pct": null,
+          "sample_status": "樣本不足"
+        },
+        "newly_abstained_rows": 0
+      }
+    },
+    "registered_rows": 0,
+    "verdict": "尚無晉升或改善結論；維持20／60日門檻，結果只供人工審查。",
+    "exclusion_history": []
+  },
+  "shadow_execution_audit": {
+    "mode": "read_only_execution_audit",
+    "candidates": {
+      "direction_calibration": {
+        "status": "collecting",
+        "source": "model_learning.json:direction_calibration_validation",
+        "registered_rows": 0,
+        "completed_rows": 0,
+        "paired_rule_registered": true,
+        "limitation": "列數不是獨立事件數；目前無改善或晉升結論。"
+      },
+      "event_gap_risk": {
+        "status": "collecting",
+        "source": "tw_weight_experiment.json:entry_gap_shadow",
+        "completed_sessions": 0,
+        "invalid_sessions": 1,
+        "pending_receipt": true,
+        "last_block_reason": null,
+        "paired_rule_registered": true,
+        "limitation": "只驗證台股跳空進場／留現金規則，不能代表全部新聞事件風險已接通。"
+      },
+      "missed_strength_rotation": {
+        "status": "baseline_audit_only",
+        "source": "missed_strength_validation.json",
+        "baseline_valid_sessions": {
+          "TW": 31,
+          "US": 23
+        },
+        "paired_rule_registered": false,
+        "limitation": "已有強勢股漏選診斷；尚無固定輪動改善規則的前向A/B，錯誤事件數不是候選績效。"
+      },
+      "intraday_reversal": {
+        "status": "diagnostics_only",
+        "source": "tw_signal_confirmation_shadow.json",
+        "tracked_signals": 0,
+        "settled_signals": 0,
+        "paired_rule_registered": false,
+        "limitation": "日週KD與RSI診斷不等於15／30分鐘進場規則的前向比較；零筆訊號尚無驗收證據。"
+      },
+      "etf_model_separation": {
+        "status": "proposal_only",
+        "source": "performance.json:groups",
+        "paired_rule_registered": false,
+        "limitation": "市場／資產已分組統計，但ETF候選尚未定義固定挑戰規則，不能宣稱已執行模型改善。"
+      }
+    },
+    "all_candidates_execution_verified": false,
+    "note": "治理已連線不等於候選已執行；只讀診斷，不自動產生、晉升或修改策略。"
   },
   "signal_health": {
     "TW_STOCK": {
