@@ -209,6 +209,59 @@ def _candidate_registry(
     return candidates
 
 
+def _shadow_execution_audit(reports_dir: Path, direction: dict, weight: dict) -> dict:
+    """Separate error evidence and baseline diagnostics from executed challengers."""
+    gap = weight.get("entry_gap_shadow") or {}
+    confirmation = _read(reports_dir / "tw_signal_confirmation_shadow.json")
+    missed = _read(reports_dir / "missed_strength_validation.json")
+    gap_count = int(gap.get("completed_sessions") or 0)
+    gap_reason = gap.get("last_block_reason")
+    direction_count = sum(int(c.get("completed_rows") or 0) for c in (direction.get("cohorts") or {}).values())
+    entries = {
+        "direction_calibration": {
+            "status": direction.get("status", "not_registered"),
+            "source": "model_learning.json:direction_calibration_validation",
+            "registered_rows": int(direction.get("registered_rows") or 0),
+            "completed_rows": direction_count,
+            "paired_rule_registered": bool(direction.get("rule")),
+            "limitation": "列數不是獨立事件數；目前無改善或晉升結論。",
+        },
+        "event_gap_risk": {
+            "status": "collecting" if gap_count or gap.get("pending") else "blocked" if gap_reason else "waiting_for_future_signal",
+            "source": "tw_weight_experiment.json:entry_gap_shadow",
+            "completed_sessions": gap_count,
+            "invalid_sessions": len(gap.get("invalid_days") or []),
+            "pending_receipt": bool(gap.get("pending")),
+            "last_block_reason": gap_reason,
+            "paired_rule_registered": bool(gap.get("policy")),
+            "limitation": "只驗證台股跳空進場／留現金規則，不能代表全部新聞事件風險已接通。",
+        },
+        "missed_strength_rotation": {
+            "status": "baseline_audit_only", "source": "missed_strength_validation.json",
+            "baseline_valid_sessions": {market: int(((state.get("summary") or {}).get("overall") or {}).get("valid_sessions") or 0)
+                                        for market, state in (missed.get("markets") or {}).items()},
+            "paired_rule_registered": False,
+            "limitation": "已有強勢股漏選診斷；尚無固定輪動改善規則的前向A/B，錯誤事件數不是候選績效。",
+        },
+        "intraday_reversal": {
+            "status": "signal_confirmation_only" if int((confirmation.get("summary") or {}).get("tracked_signals") or 0) else "diagnostics_only",
+            "source": "tw_signal_confirmation_shadow.json",
+            "tracked_signals": int((confirmation.get("summary") or {}).get("tracked_signals") or 0),
+            "settled_signals": int((confirmation.get("summary") or {}).get("settled") or 0),
+            "paired_rule_registered": False,
+            "limitation": "日週KD與RSI診斷不等於15／30分鐘進場規則的前向比較；零筆訊號尚無驗收證據。",
+        },
+        "etf_model_separation": {
+            "status": "proposal_only", "source": "performance.json:groups",
+            "paired_rule_registered": False,
+            "limitation": "市場／資產已分組統計，但ETF候選尚未定義固定挑戰規則，不能宣稱已執行模型改善。",
+        },
+    }
+    return {"mode": "read_only_execution_audit", "candidates": entries,
+            "all_candidates_execution_verified": False,
+            "note": "治理已連線不等於候選已執行；只讀診斷，不自動產生、晉升或修改策略。"}
+
+
 def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[str, Any]:
     reports_dir = Path(reports_dir)
     previous = _read(reports_dir / "model_learning.json")
@@ -234,6 +287,10 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
     generated_at = updated_at or str(performance.get("updated_at") or datetime.now().isoformat(timespec="seconds"))
     complete_catalog = build_complete_learning_catalog(reports_dir)
     weight_assessment = weight_experiment.get("preliminary_assessment") or {}
+    direction_validation = build_direction_validation(
+        _read(reports_dir / "prediction_history.json"),
+        previous.get("direction_calibration_validation") or {}, generated_at,
+    )
 
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -255,10 +312,8 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
             "cause_counts": error_cases.get("cause_counts") or (previous_errors.get("cause_counts") if not has_event_level_errors else {}) or {},
             "recent_events": events[:20],
         },
-        "direction_calibration_validation": build_direction_validation(
-            _read(reports_dir / "prediction_history.json"),
-            previous.get("direction_calibration_validation") or {}, generated_at,
-        ),
+        "direction_calibration_validation": direction_validation,
+        "shadow_execution_audit": _shadow_execution_audit(reports_dir, direction_validation, weight_experiment),
         "signal_health": signal_health,
         "institution_weight_learning": {
             "source": "tw_weight_experiment.json",
