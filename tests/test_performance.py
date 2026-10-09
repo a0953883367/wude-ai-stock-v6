@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import pytest
 
 from model_lab import MODEL_NAMES, consensus_prediction, model_predictions, track_predictions
 from performance import (
@@ -14,6 +15,18 @@ from performance import (
     load_performance_context,
     update_performance,
 )
+
+
+@pytest.fixture(autouse=True)
+def official_us_calendar(tmp_path):
+    # Fixed simulated official sessions for pre-existing US receipt tests.
+    sessions = ["2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24"]
+    (tmp_path / "official_market_calendar.json").write_text(json.dumps({
+        "version": 1, "markets": {"US": {"years": {"2026": {
+            "status": "verified_alpaca", "sessions": sessions,
+            "session_details": {day: {"open": "09:30", "close": "16:00"} for day in sessions}
+        }}}, "TW": {"years": {}}}
+    }))
 
 
 def test_overlapping_error_rows_are_one_learning_event():
@@ -738,3 +751,108 @@ def test_missing_source_data_is_frozen_but_never_counted_as_valid_sample(tmp_pat
     frozen = history["snapshots"][0]["predictions"][0]
     assert frozen["validation_eligible"] is False
     assert "market_data_quality" in frozen["validation_missing_fields"]
+
+
+def _october_us_calendar(tmp_path):
+    sessions = ["2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07",
+                "2026-10-08", "2026-10-09", "2026-10-12", "2026-10-13"]
+    (tmp_path / "official_market_calendar.json").write_text(json.dumps({
+        "version": 1, "markets": {"US": {"years": {"2026": {
+            "status": "verified_alpaca", "sessions": sessions,
+            "session_details": {day: {"open": "09:30", "close": "16:00"} for day in sessions}
+        }}}, "TW": {"years": {}}}
+    }))
+
+
+@pytest.mark.parametrize("period", ["noon", "evening"])
+def test_us_missed_morning_can_freeze_before_next_open(tmp_path, period):
+    _october_us_calendar(tmp_path)
+    row = _row(100, "2026-10-08", "US", "NVDA", "US")
+    rows_before = json.dumps(row, sort_keys=True)
+    update_performance(tmp_path, [row], [row], "2026-10-09 19:00:00", period)
+    history = json.loads((tmp_path / "prediction_history.json").read_text())
+    assert [s["id"] for s in history["snapshots"]] == ["US:2026-10-08"]
+    assert history["snapshots"][0]["captured_at"] == "2026-10-09 19:00:00"
+    assert _snapshot_integrity(history["snapshots"][0]) == "verified"
+    original = history["snapshots"][0]
+    changed = {**row, "score": 1}
+    update_performance(tmp_path, [changed], [changed], "2026-10-09 20:00:00", "evening")
+    assert json.loads((tmp_path / "prediction_history.json").read_text())["snapshots"] == [original]
+    assert json.dumps(row, sort_keys=True) == rows_before
+
+
+@pytest.mark.parametrize("stamp,reason", [
+    ("2026-10-09 03:59:00", "source_session_not_closed"),
+    ("2026-10-09 21:30:00", "forecast_window_missed_no_backfill"),
+    ("2026-10-09 22:42:00", "forecast_window_missed_no_backfill"),
+])
+def test_us_no_late_or_unclosed_forecast(tmp_path, stamp, reason):
+    _october_us_calendar(tmp_path)
+    row = _row(100, "2026-10-08", "US", "NVDA", "US")
+    update_performance(tmp_path, [row], [row], stamp, "evening")
+    assert json.loads((tmp_path / "prediction_history.json").read_text())["snapshots"] == []
+    state = json.loads((tmp_path / "us_direction_progress.json").read_text())
+    assert state["reason"] == reason
+    assert state["historical_predictions_backfilled"] is False
+    update_performance(tmp_path, [row], [row], stamp, "evening")
+    assert len(json.loads((tmp_path / "us_direction_progress.json").read_text())["blocked_history"]) == 1
+
+
+def test_us_missing_calendar_and_incomplete_contract_fail_closed(tmp_path, monkeypatch):
+    monkeypatch.delenv("ALPACA_API_KEY_ID", raising=False)
+    monkeypatch.delenv("ALPACA_API_SECRET_KEY", raising=False)
+    (tmp_path / "official_market_calendar.json").unlink()
+    row = _row(100, "2026-10-08", "US", "NVDA", "US")
+    update_performance(tmp_path, [row], [row], "2026-10-09 12:00:00", "noon")
+    state = json.loads((tmp_path / "us_direction_progress.json").read_text())
+    assert state["reason"] == "official_calendar_unavailable"
+    _october_us_calendar(tmp_path)
+    bad = {**row, "market_contract_valid": False}
+    update_performance(tmp_path, [bad], [bad], "2026-10-09 12:00:00", "noon")
+    assert json.loads((tmp_path / "prediction_history.json").read_text())["snapshots"] == []
+    assert json.loads((tmp_path / "us_direction_progress.json").read_text())["reason"] == "official_session_contract_incomplete"
+
+
+def test_us_weekend_uses_official_next_open_and_gap_is_not_one_day(tmp_path):
+    _october_us_calendar(tmp_path)
+    old = _row(100, "2026-10-02", "US", "NVDA", "US")
+    update_performance(tmp_path, [old], [old], "2026-10-03 12:00:00", "noon")
+    before = json.loads((tmp_path / "prediction_history.json").read_text())["snapshots"][0]
+    current = _row(110, "2026-10-09", "US", "NVDA", "US")
+    update_performance(tmp_path, [current], [current], "2026-10-10 12:00:00", "noon")
+    history = json.loads((tmp_path / "prediction_history.json").read_text())["snapshots"]
+    assert [s["session_date"] for s in history] == ["2026-10-02", "2026-10-09"]
+    assert "1" not in history[0]["predictions"][0]["outcomes"]
+    assert history[0]["predictions"][0]["outcomes"]["5"]["evaluated_session_date"] == "2026-10-09"
+    assert history[0]["integrity_sha256"] == before["integrity_sha256"]
+    assert _snapshot_integrity(history[0]) == "verified"
+    state = json.loads((tmp_path / "us_direction_progress.json").read_text())
+    assert state["next_session_date"] == "2026-10-12"
+    assert state["last_captured_session_date"] == "2026-10-09"
+
+
+def test_us_calendar_failure_is_recorded_and_not_retried(tmp_path, monkeypatch):
+    import performance
+    (tmp_path / "official_market_calendar.json").unlink()
+    monkeypatch.setenv("ALPACA_API_KEY_ID", "test-only")
+    monkeypatch.setenv("ALPACA_API_SECRET_KEY", "test-only")
+    calls = []
+    monkeypatch.setattr(performance.OfficialMarketCalendar, "refresh", lambda self, years: calls.append(years))
+    row = _row(100, "2026-10-08", "US", "NVDA", "US")
+    for stamp in ["2026-10-09 12:00:00", "2026-10-09 20:00:00"]:
+        update_performance(tmp_path, [row], [row], stamp, "noon")
+    assert calls == [[2026]]
+    state = json.loads((tmp_path / "us_direction_progress.json").read_text())
+    assert state["calendar_refresh_attempts"][0]["status"] == "failed_stop_no_retry"
+    assert state["last_captured_session_date"] == ""
+
+
+def test_us_gap_dates_are_reported_not_backfilled(tmp_path):
+    _october_us_calendar(tmp_path)
+    row = _row(100, "2026-10-02", "US", "NVDA", "US")
+    update_performance(tmp_path, [row], [row], "2026-10-03 12:00:00", "noon")
+    newer = _row(110, "2026-10-08", "US", "NVDA", "US")
+    update_performance(tmp_path, [newer], [newer], "2026-10-09 12:00:00", "noon")
+    state = json.loads((tmp_path / "us_direction_progress.json").read_text())
+    assert state["unrecorded_source_sessions"] == ["2026-10-05", "2026-10-06", "2026-10-07"]
+    assert [s["session_date"] for s in json.loads((tmp_path / "prediction_history.json").read_text())["snapshots"]] == ["2026-10-02", "2026-10-08"]
