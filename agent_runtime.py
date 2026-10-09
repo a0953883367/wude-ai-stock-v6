@@ -401,6 +401,8 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
             "capabilities": maintenance.get("capabilities") or {},
             "limits": maintenance.get("limits") or {},
             "incidents": maintenance.get("incidents") or {},
+            "data_incidents": maintenance.get("data_incidents") or {},
+            "us_direction_verification": maintenance.get("us_direction_verification") or {},
             "blockers": maintenance.get("blockers") or [],
             "permission_probe": maintenance.get("permission_probe") or {},
             "code_repair_access": maintenance.get("code_repair_access") or {},

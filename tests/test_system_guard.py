@@ -52,6 +52,18 @@ def _healthy_reports(tmp_path: Path) -> None:
         {"symbol": "AAPL", "market": "US", "type": "個股", "official_session_date": "2026-08-23"},
         {"symbol": "VOO", "market": "US", "type": "ETF", "official_session_date": "2026-08-23"},
     ]
+    _write(tmp_path / "official_market_calendar.json", {"version": 1, "markets": {
+        "TW": {"years": {}}, "US": {"years": {"2026": {
+            "status": "verified_alpaca", "sessions": ["2026-08-23", "2026-08-24"],
+            "session_details": {s: {"open": "09:30", "close": "16:00"} for s in ["2026-08-23", "2026-08-24"]}
+        }}}}})
+    from performance import _snapshot_hash
+    receipt = {"id": "US:2026-08-23", "market": "US", "session_date": "2026-08-23",
+               "audit_schema_version": 4, "captured_at": timestamp, "period": "morning",
+               "predictions": [{"symbol": "AAPL", "cohort": "US_STOCK", "validation_eligible": True},
+                               {"symbol": "VOO", "cohort": "US_ETF", "validation_eligible": True}]}
+    receipt["integrity_sha256"] = _snapshot_hash(receipt)
+    _write(tmp_path / "prediction_history.json", {"version": 6, "snapshots": [receipt]})
     _write(tmp_path / "rankings.json", {"updated_at": timestamp, "data": rows})
     _write(tmp_path / "all_analysis.json", {"updated_at": timestamp, "candidate_count": 337, "analyzed_count": 330, "data": rows})
     _write(tmp_path / "holding_simulation.json", {

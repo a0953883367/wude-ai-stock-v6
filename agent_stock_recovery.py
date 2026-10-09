@@ -15,6 +15,7 @@ from typing import Any, Callable
 import requests
 
 from agent_control import authorize_task
+from us_direction_agent import inspect_us_direction
 from briefing_watchdog import TAIPEI, TARGETS, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at, data_refresh_needed, refresh_period
 
 REPOSITORY = "a0953883367/wude-ai-stock-v6"
@@ -186,11 +187,16 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
     period = refresh_period(now)
     data_key = f'{now.date().isoformat()}:{period}'
     data_item = data_incidents.setdefault(data_key, {'period': period, 'attempts': [], 'status': 'waiting'})
-    needs_refresh = data_refresh_needed(latest, now=now)
+    direction = inspect_us_direction(reports, now)
+    needs_refresh = data_refresh_needed(latest, now=now) or direction["needs_silent_refresh"]
     data_status = 'no_required_data_fault_detected'
     if not needs_refresh:
-        data_item.update(status='verified_fresh', verified_at=now.isoformat(),
-                         report_updated_at=latest.get('updated_at'))
+        if direction['status'] not in {'verified_current', 'not_observable'}:
+            data_status = direction['status']
+            data_item.update(status=data_status, reason=direction['reason'])
+        else:
+            data_item.update(status='verified_fresh', verified_at=now.isoformat(),
+                             report_updated_at=latest.get('updated_at'))
     else:
         attempts = data_item['attempts']
         last = _parse_updated_at(attempts[-1].get('at')) if attempts else None
@@ -220,6 +226,7 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         'code_repair_access': previous.get('code_repair_access', {}),
         'diagnosis': sorted(set(failures)),
         'data_recovery_status': data_status,
+        'us_direction_verification': direction,
         'capabilities': {'actions_read_confirmed': runs is not None,
                          'protected_briefing_retry': True,
                          'actions_write_confirmed': previous.get('capabilities', {}).get('actions_write_confirmed', False),
@@ -277,7 +284,8 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
         target = target_datetime(now, period)
         if key != f'{now.astimezone(TAIPEI).date().isoformat()}:{period}' or (is_data and period != refresh_period(now)) or (not is_data and now > target + timedelta(minutes=120)):
             attempt['state'] = 'skipped_expired'
-        elif is_data and not data_refresh_needed(load_report(reports / 'latest.json'), now=now):
+        elif is_data and not (data_refresh_needed(load_report(reports / 'latest.json'), now=now)
+                             or inspect_us_direction(reports, now)['needs_silent_refresh']):
             attempt['state'] = 'skipped_already_fresh'
         elif not is_data and delivery_is_current(delivery, period=period, target=target):
             attempt['state'] = 'skipped_already_delivered'
