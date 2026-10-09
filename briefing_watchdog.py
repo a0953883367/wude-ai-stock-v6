@@ -74,6 +74,15 @@ def data_refresh_needed(report: dict[str, Any], *, now: datetime) -> bool:
                 not quality.get("us_sip_count") or not quality.get("us_opra_count"))
 
 
+def silent_refresh_needed(report: dict[str, Any], *, reports: Path, now: datetime) -> bool:
+    if data_refresh_needed(report, now=now):
+        return True
+    # Recompute the same diagnosis; a fresh price report does not prove that
+    # the independent immutable direction ledger or calendar is available.
+    from us_direction_agent import inspect_us_direction
+    return inspect_us_direction(reports, now).get("needs_silent_refresh") is True
+
+
 def report_is_fresh(
     report: dict[str, Any],
     *,
@@ -208,7 +217,7 @@ def main() -> int:
             "reason": reason,
         }
     elif args.data_refresh:
-        should_run = args.period == refresh_period(now) and data_refresh_needed(report, now=now)
+        should_run = args.period == refresh_period(now) and silent_refresh_needed(report, reports=Path(args.report).parent, now=now)
         values = {"should_run": str(should_run).lower(),
                   "reason": "silent current-data refresh" if should_run else "data refresh no longer required"}
     elif args.recovery:

@@ -134,3 +134,20 @@ def test_silent_refresh_gate_rechecks_data_and_current_checkpoint(tmp_path):
     report.write_text(json.dumps({'updated_at': '2026-10-09 17:20:00', 'data_status': {'us_sip_count': 190, 'us_opra_count': 28}}))
     result = subprocess.run(args, check=True, capture_output=True, text=True)
     assert json.loads(result.stdout)['should_run'] == 'false'
+
+
+def test_fresh_price_report_does_not_suppress_direction_calendar_repair(tmp_path, monkeypatch):
+    from briefing_watchdog import silent_refresh_needed
+    import us_direction_agent
+    now = _dt("2026-10-09T23:46:00")
+    report = {"updated_at": "2026-10-09 23:08:55", "data_status": {"us_sip_count": 187, "us_opra_count": 29}}
+    seen = []
+    def diagnosis(reports, clock):
+        seen.append((reports, clock))
+        return {"needs_silent_refresh": True, "reason": "calendar_bootstrap_required"}
+    monkeypatch.setattr(us_direction_agent, "inspect_us_direction", diagnosis)
+    assert silent_refresh_needed(report, reports=tmp_path, now=now)
+    assert seen == [(tmp_path, now)]
+    for reason in ("source_session_not_closed", "forecast_window_missed_no_backfill", "calendar_refresh_failed_stopped", "immutable_eligible_snapshot_matches_official_session"):
+        monkeypatch.setattr(us_direction_agent, "inspect_us_direction", lambda *args: {"needs_silent_refresh": False, "reason": reason})
+        assert not silent_refresh_needed(report, reports=tmp_path, now=now)
