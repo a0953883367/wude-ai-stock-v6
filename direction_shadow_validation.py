@@ -89,7 +89,7 @@ def build_direction_validation(history: dict, previous: dict, generated_at: str)
             if not isinstance(outcome, dict):
                 continue
             evaluated = str(outcome.get("evaluated_session_date") or "")
-            if not evaluated or evaluated <= str(snapshot.get("session_date") or "") or evaluated > generated_at[:10]:
+            if not evaluated or evaluated <= str(snapshot.get("session_date") or "") or evaluated > generated_at[:10] or evaluated < decision["registered_at"][:10]:
                 continue
             try:
                 value = float(outcome["close_to_close_return_pct"])
@@ -117,6 +117,7 @@ def build_direction_validation(history: dict, previous: dict, generated_at: str)
         }
     state["registered_rows"] = len(decisions)
     state["verdict"] = "尚無晉升或改善結論；維持20／60日門檻，結果只供人工審查。"
+    state["exclusion_history"] = sorted(set(state.get("exclusion_history") or []) | set(state["blocked_reasons"]))
     if state["blocked_reasons"]:
         state["status"] = "collecting_with_exclusions"
     return state
