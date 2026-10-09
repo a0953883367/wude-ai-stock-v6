@@ -57,6 +57,9 @@ def inspect_us_direction(reports: Path, now: datetime) -> dict:
     if window.get('status') == 'ready':
         return {**result, 'status': 'ready_silent_refresh', 'reason': 'direction_receipt_missing_inside_forecast_window',
                 'needs_silent_refresh': True}
+    if reason == 'official_calendar_unavailable' and progress.get('calendar_credentials_available') is False:
+        return {**result, 'status': 'blocked_manual', 'reason': 'github_alpaca_calendar_credentials_missing',
+                'required_secrets': ['ALPACA_API_KEY_ID', 'ALPACA_API_SECRET_KEY']}
     if reason == 'official_calendar_unavailable' and any(item.get('status') == 'failed_stop_no_retry' for item in progress.get('calendar_refresh_attempts', [])):
         return {**result, 'status': 'blocked_manual', 'reason': 'calendar_refresh_failed_stopped'}
     if reason == 'official_calendar_unavailable' and completed_us_session(rows, now.isoformat()):
