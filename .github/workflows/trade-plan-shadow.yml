@@ -8,6 +8,7 @@ on:
       - "shadow_stock_conclusion.py"
       - "point_in_time_events.py"
       - "tw_daily_shadow_attestation.py"
+      - "tools/publish_shadow_report_batch.py"
       - "trade_plan_shadow.py"
       - "trade_plan_validation.py"
       - ".github/workflows/trade-plan-shadow.yml"
@@ -30,28 +31,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: main
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: 安裝測試工具
         run: python -m pip install -r requirements.txt "pytest>=8,<10"
-      - name: 更新同批次唯讀影子資料欄位
-        run: python decision_hub.py --reports-dir reports --refresh-shadow-inputs-only --attest-tw-official
-      - name: 建立影子交易計畫
-        run: python trade_plan_shadow.py --reports-dir reports
-      - name: 更新前向驗證帳本
-        run: python trade_plan_validation.py --reports-dir reports
-      - name: 驗證交易計畫
-        run: python -m pytest -q tests/test_trade_plan_shadow.py tests/test_trade_plan_validation.py
-      - name: 保存最新計畫
-        run: |
-          if [ -z "$(git status --porcelain -- reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json reports/trade_plan_validation.json reports/decision_hub_[0-9][0-9].json)" ]; then
-            echo "交易計畫沒有變更"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json reports/trade_plan_validation.json reports/decision_hub_[0-9][0-9].json
-          git commit -m "chore: 更新影子交易計畫"
-          git pull --rebase origin main
-          git push origin HEAD:main
+      - name: 從最新完整批次重建並安全保存影子計畫
+        run: python tools/publish_shadow_report_batch.py --max-attempts 3
