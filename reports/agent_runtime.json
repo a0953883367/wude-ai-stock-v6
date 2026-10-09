@@ -1,13 +1,13 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-09T09:24:04+00:00",
+  "generated_at": "2026-10-09T11:09:04+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
   "summary": {
     "agent_count": 3,
-    "validation_completed": 0,
+    "validation_completed": 1,
     "validation_total": 3,
     "actual_work_performed": 3,
     "waiting_input": 2,
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-09T17:24:02.961713+08:00",
+    "checked_at": "2026-10-09T19:09:03.392499+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-09T17:24:02.019962+08:00",
+    "checked_at": "2026-10-09T19:09:02.395457+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -66,6 +66,7 @@
     },
     "limits": {
       "recovery_attempts_per_date_period": 2,
+      "data_refresh_attempts_per_date_period": 2,
       "cooldown_minutes": 20,
       "max_late_minutes": 120
     },
@@ -277,7 +278,7 @@
           "research"
         ],
         "files": 10,
-        "bytes": 195657,
+        "bytes": 193756,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -328,9 +329,9 @@
           "openai_shadow_coach"
         ]
       },
-      "status": "attention",
-      "status_label": "影子巡檢發現異常",
-      "summary": "已讀取影子證據：向前驗證 34/60 日、錯誤事件 729 筆、成熟學習 85438 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "status": "completed",
+      "status_label": "已實際核對影子進度與安全鎖",
+      "summary": "已讀取影子證據：向前驗證 34/60 日、錯誤事件 729 筆、成熟學習 87506 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -344,10 +345,10 @@
         "target_days": 60,
         "eligible_samples": 1700,
         "independent_error_events": 729,
-        "guard_status": "critical",
+        "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 85438,
-        "active_shadow_trust_streams": 0,
+        "matured_learning_rows": 87506,
+        "active_shadow_trust_streams": 3,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
         "automatic_shadow_rollback_after_failures": 2,
