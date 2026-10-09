@@ -153,3 +153,21 @@ def test_agent_rejects_hashed_but_late_forecast(tmp_path):
     result = inspect_us_direction(tmp_path, datetime(2026, 10, 9, 23, tzinfo=ZONE))
     assert result['verified_recovered'] is False
     assert result['status'] == 'blocked_manual'
+
+
+def test_missing_github_calendar_credentials_stop_future_bootstrap(tmp_path):
+    from pathlib import Path
+    assert '- "us_direction_agent.py"' in Path(".github/workflows/system-guard.yml").read_text()
+    setup(tmp_path, calendar=False)
+    save(tmp_path / 'us_direction_progress.json', {'calendar_credentials_available': False,
+         'updated_at': '2026-10-09 23:08:55', 'calendar_refresh_attempts': []})
+    now = datetime(2026, 10, 10, 12, tzinfo=ZONE)
+    status = inspect_us_direction(tmp_path, now)
+    assert status['status'] == 'blocked_manual'
+    assert status['reason'] == 'github_alpaca_calendar_credentials_missing'
+    assert status['required_secrets'] == ['ALPACA_API_KEY_ID', 'ALPACA_API_SECRET_KEY']
+    assert status['needs_silent_refresh'] is False
+    # Actual restored calendar evidence permits verification without wiping history.
+    setup(tmp_path)
+    receipt(tmp_path)
+    assert inspect_us_direction(tmp_path, now)['verified_recovered'] is True
