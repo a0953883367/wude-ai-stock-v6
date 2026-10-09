@@ -1798,11 +1798,58 @@ def update_decision_hub(
     return payload
 
 
+def refresh_shadow_inputs(reports_dir: Path) -> int:
+    """Attach diagnostic fields to the SAME frozen batch, without model execution."""
+    analysis = _read_json(reports_dir / "all_analysis.json") or {}
+    index = _read_json(reports_dir / "decision_hub.json") or {}
+    stamp = index.get("updated_at")
+    if not stamp or stamp != analysis.get("updated_at"):
+        raise ValueError("shadow refresh requires the same frozen analysis/hub batch")
+    files = index.get("decision_files")
+    if not isinstance(files, list) or not files or len(files) != len(set(files)):
+        raise ValueError("invalid decision chunk manifest")
+    rows = {}
+    for row in analysis.get("data", []):
+        key = (str(row.get("market") or "").upper(), str(row.get("symbol") or "").upper())
+        if not all(key) or key in rows:
+            raise ValueError("missing or duplicate source identity")
+        rows[key] = row
+    pending, seen = [], set()
+    for filename in files:
+        if not isinstance(filename, str) or Path(filename).name != filename or not filename.startswith("decision_hub_") or not filename.endswith(".json"):
+            raise ValueError("invalid chunk path")
+        chunk = _read_json(reports_dir / filename) or {}
+        if chunk.get("updated_at") != stamp or not isinstance(chunk.get("decisions"), list):
+            raise ValueError("chunk batch mismatch")
+        for decision in chunk["decisions"]:
+            key = (str(decision.get("market") or "").upper(), str(decision.get("symbol") or "").upper())
+            if key not in rows or key in seen:
+                raise ValueError("missing or duplicate decision identity")
+            seen.add(key)
+            row = rows[key]
+            if decision.get("session_date") != row.get("official_session_date"):
+                raise ValueError("source session mismatch")
+            decision["source_snapshot"] = source_snapshot(row)
+            decision["input_evidence_categories"] = input_evidence_categories(row)
+            decision["shadow_events"] = _shadow_event_summary(row, str(stamp))
+        pending.append((reports_dir / filename, chunk))
+    if seen != set(rows):
+        raise ValueError("incomplete frozen universe")
+    # Validate every file before any write; the workflow publishes one git commit.
+    for path, chunk in pending:
+        _write_json(path, chunk)
+    return len(seen)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the Central AI Decision Hub report")
     parser.add_argument("--reports-dir", default="reports")
+    parser.add_argument("--refresh-shadow-inputs-only", action="store_true")
     args = parser.parse_args()
     reports_dir = Path(args.reports_dir)
+    if args.refresh_shadow_inputs_only:
+        print(f"Shadow input refresh: {refresh_shadow_inputs(reports_dir)} frozen rows")
+        return 0
     analysis = _read_json(reports_dir / "all_analysis.json") or {}
     rows = analysis.get("data") if isinstance(analysis.get("data"), list) else []
     payload = update_decision_hub(
