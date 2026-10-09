@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-09T11:17:43+00:00",
+  "generated_at": "2026-10-09T15:08:00+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-09T19:17:42.028980+08:00",
+    "checked_at": "2026-10-09T23:07:57.813002+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-09T19:17:40.899753+08:00",
+    "checked_at": "2026-10-09T23:07:55.029337+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -236,9 +236,39 @@
       "2026-10-09:evening": {
         "period": "evening",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       }
+    },
+    "data_incidents": {
+      "2026-10-09:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "verified_fresh",
+        "verified_at": "2026-10-09T19:17:35.635384+08:00",
+        "report_updated_at": "2026-10-09 19:06:26"
+      },
+      "2026-10-09:evening": {
+        "period": "evening",
+        "attempts": [
+          {
+            "at": "2026-10-09T23:07:47.977583+08:00",
+            "guard_run_id": "37949336604",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
+      }
+    },
+    "us_direction_verification": {
+      "status": "ready_silent_refresh",
+      "reason": "calendar_bootstrap_required",
+      "needs_silent_refresh": true,
+      "verified_recovered": false,
+      "last_source_session_date": "2026-10-02",
+      "latest_official_session_date": "2026-10-08",
+      "historical_backfill_allowed": false
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
