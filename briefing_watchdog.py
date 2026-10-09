@@ -60,6 +60,20 @@ def target_datetime(now: datetime, period: str) -> datetime:
     return datetime.combine(current.date(), TARGETS[period], tzinfo=TAIPEI)
 
 
+def refresh_period(now: datetime) -> str:
+    """Select the current data checkpoint, never a historical report slot."""
+    hour = now.astimezone(TAIPEI).hour
+    return "evening" if hour >= 20 else "noon" if hour >= 12 else "morning"
+
+
+def data_refresh_needed(report: dict[str, Any], *, now: datetime) -> bool:
+    updated = _parse_updated_at(report.get("updated_at"))
+    quality = report.get("data_status") or {}
+    return bool(updated is None or updated > now or
+                now - updated > timedelta(minutes=120) or
+                not quality.get("us_sip_count") or not quality.get("us_opra_count"))
+
+
 def report_is_fresh(
     report: dict[str, Any],
     *,
@@ -160,6 +174,7 @@ def main() -> int:
     parser.add_argument("--period", choices=sorted(TARGETS))
     parser.add_argument("--schedule", default="")
     parser.add_argument("--recovery", action="store_true")
+    parser.add_argument("--data-refresh", action="store_true")
     parser.add_argument("--now", help="Test override in ISO-8601 format")
     parser.add_argument("--github-output")
     args = parser.parse_args()
@@ -192,6 +207,10 @@ def main() -> int:
             "period": selected,
             "reason": reason,
         }
+    elif args.data_refresh:
+        should_run = args.period == refresh_period(now) and data_refresh_needed(report, now=now)
+        values = {"should_run": str(should_run).lower(),
+                  "reason": "silent current-data refresh" if should_run else "data refresh no longer required"}
     elif args.recovery:
         if not args.period:
             parser.error("--period is required for a recovery gate")

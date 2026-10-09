@@ -15,7 +15,7 @@ from typing import Any, Callable
 import requests
 
 from agent_control import authorize_task
-from briefing_watchdog import TAIPEI, TARGETS, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at
+from briefing_watchdog import TAIPEI, TARGETS, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at, data_refresh_needed, refresh_period
 
 REPOSITORY = "a0953883367/wude-ai-stock-v6"
 RETRY_LIMIT = 2
@@ -73,13 +73,16 @@ class GitHubExecutor:
         response.raise_for_status()
         return response.json()['workflow_runs']
 
-    def dispatch(self, period: str) -> None:
+    def dispatch(self, period: str, *, data_refresh: bool = False) -> None:
         if period not in TARGETS or not self.token or not authorize_task('stock_shadow', 'protected_briefing_retry')['executable']:
             raise PermissionError('workflow/period not authorized')
+        inputs = {'period': period, 'recovery': 'true'}
+        if data_refresh:
+            inputs['data_refresh'] = 'true'
         response = requests.post(
             f'https://api.github.com/repos/{REPOSITORY}/actions/workflows/stock-briefing.yml/dispatches',
             headers={'Authorization': f'Bearer {self.token}', 'Accept': 'application/vnd.github+json'},
-            json={'ref': 'main', 'inputs': {'period': period, 'recovery': 'true'}}, timeout=15,
+            json={'ref': 'main', 'inputs': inputs}, timeout=15,
         )
         response.raise_for_status()
 
@@ -177,6 +180,34 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
             continue
         incident.update(status='ready', reason='retry existing verified briefing inside fixed delivery window')
         actions.append({'incident_key': key, 'period': period})
+    # Delivery expiry protects messages, not current-data settlement. Keep an
+    # independent persisted budget; this path can never send a fixed report.
+    data_incidents = previous.get('data_incidents') or {}
+    period = refresh_period(now)
+    data_key = f'{now.date().isoformat()}:{period}'
+    data_item = data_incidents.setdefault(data_key, {'period': period, 'attempts': [], 'status': 'waiting'})
+    needs_refresh = data_refresh_needed(latest, now=now)
+    data_status = 'no_required_data_fault_detected'
+    if not needs_refresh:
+        data_item.update(status='verified_fresh', verified_at=now.isoformat(),
+                         report_updated_at=latest.get('updated_at'))
+    else:
+        attempts = data_item['attempts']
+        last = _parse_updated_at(attempts[-1].get('at')) if attempts else None
+        preparation = any(target_datetime(now, slot) - timedelta(minutes=60) <= now <
+                          target_datetime(now, slot) + timedelta(minutes=10) for slot in TARGETS)
+        if runs is None:
+            data_status = 'blocked_permission'
+        elif active or actions or preparation:
+            data_status = 'waiting_primary_or_active_run'
+        elif len(attempts) >= RETRY_LIMIT:
+            data_status = 'exhausted'
+        elif last and now < last + timedelta(minutes=COOLDOWN_MINUTES):
+            data_status = 'cooldown'
+        else:
+            data_status = 'ready_silent_refresh'
+            actions.append({'incident_key': data_key, 'period': period, 'kind': 'data_refresh'})
+        data_item.update(status=data_status, reason='current data requires silent refresh; no delivery receipt is created')
     state = {
         'schema': 'wude.stock_agent_recovery.v1', 'checked_at': now.isoformat(),
         'executor': 'existing system-guard workflow / stock_shadow maintenance',
@@ -184,10 +215,11 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
                            'cross_channel_deduplication': False,
                            'note': 'Telegram receipts only; ChatGPT reports are independent and are not classified as missing'},
         'incidents': incidents, 'next_actions': actions[:1], 'web_probe': web,
+        'data_incidents': data_incidents,
         'permission_probe': previous.get('permission_probe', {}),
         'code_repair_access': previous.get('code_repair_access', {}),
         'diagnosis': sorted(set(failures)),
-        'data_recovery_status': 'waiting_next_eligible_fixed_report' if failures else 'no_required_data_fault_detected',
+        'data_recovery_status': data_status,
         'capabilities': {'actions_read_confirmed': runs is not None,
                          'protected_briefing_retry': True,
                          'actions_write_confirmed': previous.get('capabilities', {}).get('actions_write_confirmed', False),
@@ -195,7 +227,8 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         'blockers': ([capability_error] if capability_error else []) +
                     ([] if web.get('ok') else ['網頁兩次讀取仍失敗；瀏覽器程式錯誤需已驗收的修復執行器']) +
                     ['一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式'],
-        'limits': {'recovery_attempts_per_date_period': RETRY_LIMIT, 'cooldown_minutes': COOLDOWN_MINUTES, 'max_late_minutes': 120},
+        'limits': {'recovery_attempts_per_date_period': RETRY_LIMIT, 'data_refresh_attempts_per_date_period': RETRY_LIMIT,
+                   'cooldown_minutes': COOLDOWN_MINUTES, 'max_late_minutes': 120},
         'safety': {'changes_rankings': False, 'changes_weights': False, 'changes_shadow_source_data': False,
                    'changes_promotion_thresholds': False, 'places_orders': False, 'executes_model_generated_code': False},
     }
@@ -212,7 +245,8 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
 
 def reserve(state: dict, now: datetime, run_id: str) -> None:
     for action in state['next_actions']:
-        item = state['incidents'][action['incident_key']]
+        ledger = 'data_incidents' if action.get('kind') == 'data_refresh' else 'incidents'
+        item = state[ledger][action['incident_key']]
         item['attempts'].append({'at': now.isoformat(), 'guard_run_id': run_id, 'state': 'reserved'})
         item['status'] = 'reserved'
 
@@ -225,7 +259,10 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
     delivery = load_daily_delivery(reports / 'report_delivery_status.json', now)
     for action in state.get('next_actions', [])[:1]:
         period, key = action['period'], action['incident_key']
-        item = state['incidents'][key]
+        is_data = action.get('kind') == 'data_refresh'
+        if action.get('kind') not in (None, 'data_refresh') or period not in TARGETS:
+            continue
+        item = state['data_incidents' if is_data else 'incidents'][key]
         attempt = item['attempts'][-1]
         if item['status'] != 'reserved' or attempt['state'] != 'reserved':
             continue
@@ -238,15 +275,20 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
             item['status'] = 'blocked_permission'
             continue
         target = target_datetime(now, period)
-        if key != f'{now.astimezone(TAIPEI).date().isoformat()}:{period}' or now > target + timedelta(minutes=120):
+        if key != f'{now.astimezone(TAIPEI).date().isoformat()}:{period}' or (is_data and period != refresh_period(now)) or (not is_data and now > target + timedelta(minutes=120)):
             attempt['state'] = 'skipped_expired'
-        elif delivery_is_current(delivery, period=period, target=target):
+        elif is_data and not data_refresh_needed(load_report(reports / 'latest.json'), now=now):
+            attempt['state'] = 'skipped_already_fresh'
+        elif not is_data and delivery_is_current(delivery, period=period, target=target):
             attempt['state'] = 'skipped_already_delivered'
         elif any(r.get('status') in ACTIVE for r in runs):
             attempt['state'] = 'skipped_active_run'
         else:
             try:
-                executor.dispatch(period)
+                if is_data:
+                    executor.dispatch(period, data_refresh=True)
+                else:
+                    executor.dispatch(period)
                 attempt['state'] = 'dispatch_accepted'
                 state['capabilities']['actions_write_confirmed'] = True
             except (requests.RequestException, PermissionError) as exc:

@@ -66,7 +66,7 @@ def test_system_guard_can_dispatch_one_protected_recovery_run():
     ]
 
 
-def test_stale_fixed_report_still_advances_private_ledgers_without_publication():
+def test_stale_fixed_report_publishes_data_but_keeps_delivery_suppressed():
     text = WORKFLOW.read_text(encoding="utf-8")
 
     classify = text.index("Classify fixed-report delivery window")
@@ -75,10 +75,10 @@ def test_stale_fixed_report_still_advances_private_ledgers_without_publication()
     confirm_private = text.index("name: Confirm private settlement for stale fixed report")
 
     assert classify < generate < save_private < confirm_private
-    assert "continuing as private settlement only" in text
+    assert "continuing as silent current-data settlement" in text
     assert "steps.delivery_window.outputs.timely == 'true'" in text
     assert "steps.delivery_window.outputs.timely != 'true'" in text
-    assert "Stale public delivery suppressed" in text
+    assert "Stale report delivery suppressed" in text
 
 
 def test_delayed_noon_run_becomes_silent_close_settlement():
@@ -154,3 +154,38 @@ def test_verified_receipts_are_published_before_optional_ownership_refresh():
     assert text.index('name: Refresh read-only Fubon ownership supplement') < text.index('name: Publish optional ownership supplement')
     supplement = text.split('name: Publish optional ownership supplement')[1].split('name: Confirm private settlement')[0]
     assert 'git add reports/fubon_ownership.json' in supplement
+
+
+def test_delivery_expiry_cannot_block_successful_data_publication():
+    text = WORKFLOW.read_text()
+    def condition_for(name):
+        block = text.split("      - name: " + name + "\n", 1)[1].split("      - ", 1)[0]
+        return block.split("        if:", 1)[1].split("        env:", 1)[0].split("        run:", 1)[0]
+    for name in ('Publish sanitized friend-site data', 'Publish complete owner-site data',
+                 'Keep reports and recent archive', 'Run independent system guard',
+                 'Refresh read-only Fubon ownership supplement'):
+        condition = condition_for(name)
+        assert "steps.generate.outcome == 'success'" in condition
+        assert 'delivery_window' not in condition and 'defer_delivery' not in condition
+    for name in ('Wait for official fixed-report delivery window', 'Deliver verified fixed report'):
+        assert "steps.delivery_window.outputs.timely == 'true'" in condition_for(name)
+        assert "steps.period.outputs.defer_delivery == 'true'" in condition_for(name)
+
+
+def test_silent_refresh_selection_never_enables_delivery(tmp_path):
+    import subprocess
+    import textwrap
+    block = WORKFLOW.read_text().split('      - name: Select report period and delivery mode', 1)[1].split('      - name:', 1)[0]
+    script = textwrap.dedent(block.split('        run: |\n', 1)[1])
+    replacements = {'github.event_name': 'workflow_dispatch', 'inputs.period': 'noon',
+                    'inputs.data_refresh': 'true', 'inputs.recovery': 'true', 'github.event.schedule': ''}
+    for key, value in replacements.items():
+        script = script.replace('${{ ' + key + ' }}', value)
+    output = tmp_path / 'outputs'
+    result = subprocess.run(['bash', '-e', '-c', script], env={'PATH': '/usr/bin:/bin', 'GITHUB_OUTPUT': str(output)}, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    values = dict(line.split('=', 1) for line in output.read_text().splitlines())
+    assert values['no_telegram'] == 'true'
+    assert values['defer_delivery'] == 'false'
+    assert values['delivery_target'] == ''
+    assert values['save_prediction'] == 'true'

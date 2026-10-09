@@ -120,3 +120,17 @@ def test_yesterday_delivery_cannot_suppress_today_and_midnight_recovery_expires(
     receipt = _receipt("evening", "2026-10-02 19:45:00", "2026-10-02 20:00:00")
     assert recovery_decision({}, now=_dt("2026-10-03T20:25:00"), period="evening", delivery=receipt)[0]
     assert not recovery_decision({}, now=_dt("2026-10-04T00:25:00"), period="evening", delivery=receipt)[0]
+
+
+def test_silent_refresh_gate_rechecks_data_and_current_checkpoint(tmp_path):
+    import subprocess
+    import sys
+    report = tmp_path / 'latest.json'
+    report.write_text(json.dumps({'updated_at': '2026-10-08 19:06:53', 'data_status': {'us_sip_count': 187, 'us_opra_count': 29}}))
+    args = [sys.executable, 'briefing_watchdog.py', '--mode', 'gate', '--data-refresh',
+            '--report', str(report), '--period', 'noon', '--now', '2026-10-09T17:24:00+08:00']
+    result = subprocess.run(args, check=True, capture_output=True, text=True)
+    assert json.loads(result.stdout)['should_run'] == 'true'
+    report.write_text(json.dumps({'updated_at': '2026-10-09 17:20:00', 'data_status': {'us_sip_count': 190, 'us_opra_count': 28}}))
+    result = subprocess.run(args, check=True, capture_output=True, text=True)
+    assert json.loads(result.stdout)['should_run'] == 'false'

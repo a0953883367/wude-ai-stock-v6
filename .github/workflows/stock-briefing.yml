@@ -46,6 +46,12 @@ on:
         default: false
         type: boolean
 
+      data_refresh:
+        description: 靜默刷新目前資料（不補寄過期報、不建立送達紀錄）
+        required: false
+        default: false
+        type: boolean
+
       validation_only:
         description: 僅驗證 Agent 補跑權限與防重，不產報或寄送
         type: boolean
@@ -96,7 +102,9 @@ jobs:
             exit 0
           fi
           args=(--mode gate --schedule "${{ github.event.schedule }}" --github-output "$GITHUB_OUTPUT")
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.recovery }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.data_refresh }}" = "true" ]; then
+            args+=(--data-refresh --period "${{ inputs.period }}")
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.recovery }}" = "true" ]; then
             args+=(--recovery --period "${{ inputs.period }}")
           fi
           python briefing_watchdog.py "${args[@]}"
@@ -148,7 +156,10 @@ jobs:
             period="${{ inputs.period }}"
             save_prediction="true"
             commit_message="更新 AI 股票${period}報"
-            if [ "${{ inputs.recovery }}" = "true" ]; then
+            if [ "${{ inputs.data_refresh }}" = "true" ]; then
+              no_telegram="true"
+              commit_message="靜默補跑目前股票資料"
+            elif [ "${{ inputs.recovery }}" = "true" ]; then
               no_telegram="true"
               defer_delivery="true"
               case "$period" in
@@ -228,10 +239,10 @@ jobs:
             echo "timely=true" >> "$GITHUB_OUTPUT"
           else
             # A delayed fixed report must never be delivered as if it were
-            # current.  Keep running silently so the private prediction and
-            # evidence ledgers still receive the completed-market checkpoint.
+            # current. Publish freshly generated data independently;
+            # delivery stays suppressed and no receipt is fabricated.
             echo "timely=false" >> "$GITHUB_OUTPUT"
-            echo "Fixed delivery is stale; continuing as private settlement only."
+            echo "Fixed delivery is stale; continuing as silent current-data settlement."
           fi
       - name: Generate report
         id: generate
@@ -277,9 +288,7 @@ jobs:
           --max-age-minutes 120
       - name: Publish sanitized friend-site data
         id: friend_publish
-        if: >-
-          ${{ steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true' }}
+        if: ${{ steps.generate.outcome == 'success' }}
         continue-on-error: true
         env:
           FRIEND_SITE_URL: ${{ secrets.FRIEND_SITE_URL }}
@@ -290,18 +299,13 @@ jobs:
         # The report is already complete at this point. A temporary owner-site
         # 5xx must not prevent the verified snapshot from being committed and
         # published through the normal report channel.
-        if: >-
-          ${{ steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true' }}
+        if: ${{ steps.generate.outcome == 'success' }}
         continue-on-error: true
         env:
           OWNER_SITE_BYPASS_TOKEN: ${{ secrets.OWNER_SITE_BYPASS_TOKEN }}
         run: python tools/publish_owner_data.py
       - name: Verify and compact historical archive storage
-        if: >-
-          ${{ always() && steps.generate.outcome == 'success' &&
-          (steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true') }}
+        if: ${{ always() && steps.generate.outcome == 'success' }}
         run: >-
           python tools/compact_history_archive.py
           --archive-dir reports/archive
@@ -311,10 +315,7 @@ jobs:
           --compress
           --remove-source-after-verify
       - name: Run independent system guard
-        if: >-
-          ${{ always() && steps.generate.outcome == 'success' &&
-          (steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true') }}
+        if: ${{ always() && steps.generate.outcome == 'success' }}
         run: >-
           python system_guard.py
           --friend-publish "${{ steps.friend_publish.outcome }}"
@@ -337,10 +338,7 @@ jobs:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep reports and recent archive
-        if: >-
-          ${{ steps.generate.outcome == 'success' &&
-          (steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true') }}
+        if: ${{ steps.generate.outcome == 'success' }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -359,20 +357,14 @@ jobs:
           echo "Report commit could not be published after 3 attempts." >&2
           exit 1
       - name: Refresh read-only Fubon ownership supplement
-        if: >-
-          ${{ steps.generate.outcome == 'success' &&
-          (steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true') }}
+        if: ${{ steps.generate.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 10
         env:
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         run: python fubon_ownership_relay.py
       - name: Publish optional ownership supplement
-        if: >-
-          ${{ steps.generate.outcome == 'success' &&
-          (steps.period.outputs.defer_delivery != 'true' ||
-          steps.delivery_window.outputs.timely == 'true') }}
+        if: ${{ steps.generate.outcome == 'success' }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -396,7 +388,7 @@ jobs:
           steps.period.outputs.defer_delivery == 'true' &&
           steps.delivery_window.outputs.timely != 'true' }}
         run: >-
-          echo "Stale public delivery suppressed; private prediction and evidence cache saved."
+          echo "Stale report delivery suppressed; fresh public data and private evidence saved."
       - name: Fail when verified fixed-report delivery was blocked
         if: >-
           ${{ always() && steps.period.outputs.defer_delivery == 'true' &&
