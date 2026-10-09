@@ -45,8 +45,10 @@ def test_bad_batch_never_partially_written(tmp_path,mutation):
 
 def test_workflow_refreshes_before_plan_and_publishes_chunks():
     workflow=Path('.github/workflows/trade-plan-shadow.yml').read_text()
-    assert workflow.index('--refresh-shadow-inputs-only')<workflow.index('python trade_plan_shadow.py')
-    assert 'git add reports/trade_plan_shadow.json reports/trade_plan_shadow_health.json reports/trade_plan_validation.json reports/decision_hub_[0-9][0-9].json' in workflow
+    assert 'ref: main' in workflow
+    assert 'python tools/publish_shadow_report_batch.py --max-attempts 3' in workflow
+    assert 'git pull --rebase' not in workflow
+
 
 
 def test_current_published_batch_refresh(tmp_path):
