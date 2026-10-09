@@ -3,7 +3,8 @@
   var params=new URLSearchParams(window.location.search);
   var state={payload:null,validation:null,market:'ALL',status:'ALL',horizon:'preferred',query:String(params.get('symbol')||'').trim()};
   var expiryTimer=null;
-  var conclusionLabels={eligible:'可評估進場',wait:'等待',avoid:'先不買',insufficient:'資料不足'};
+  var conclusionLabels={eligible:'可評估進場',wait:'等待',avoid:'先不買',insufficient:'待核對'};
+  var dataStatusLabels={ready:'已核對',market_not_closed:'市場未收盤',source_attestation_pending:'來源完整性待驗證',price_basis_mismatch:'價格基準待核對',stale_snapshot:'資料需更新',evidence_review_pending:'證據時間待核對',data_missing:'關鍵資料缺漏',validation_pending:'待前向驗證'};
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
   function numeric(v){if(v==null||typeof v==='boolean'||String(v).trim()==='')return null;var n=Number(v);return Number.isFinite(n)?n:null;}
   function num(v,d){var n=numeric(v);return n==null?'—':n.toFixed(d==null?2:d);}
@@ -18,12 +19,18 @@
   }
   function conclusionFor(plan,now){
     var raw=plan.conclusion, reasons=raw&&Array.isArray(raw.reasons)?raw.reasons.slice():[];
-    var code=raw&&raw.code, expiry=expiryTime(raw), invalid='';
+    var code=raw&&raw.code, expiry=expiryTime(raw), invalid='', status=raw&&raw.data_status;
+    var statusKnown=status&&Object.prototype.hasOwnProperty.call(dataStatusLabels,status.code);
+    var expired=Number.isFinite(expiry)&&now>=expiry;
     if(!raw||!Object.prototype.hasOwnProperty.call(conclusionLabels,code))invalid='缺少有效結論，請更新資料後重新計算。';
     else if(!Number.isFinite(expiry))invalid='有效期限尚未驗證，請更新資料後重新計算。';
-    else if(now>=expiry)invalid='結論已到期，請更新最新收盤資料並重新計算。';
+    else if(expired)invalid='結論已到期，請更新最新收盤資料並重新計算。';
+    else if(code==='eligible'&&((statusKnown&&status.code!=='ready')||(Array.isArray(raw.gates)&&raw.gates.some(function(gate){return gate&&gate.passed===false;}))))invalid='進場檢查尚未全部通過，完成核對前保留參考。';
     if(invalid){code='insufficient';reasons.unshift(invalid);}
-    return {code:code,label:invalid?conclusionLabels.insufficient:(raw.label||conclusionLabels[code]),reasons:reasons,raw:raw||{}};
+    var label=code==='insufficient'?conclusionLabels.insufficient:(raw.label||conclusionLabels[code]);
+    if(code==='insufficient'&&statusKnown&&status.code!=='ready')label=status.label||dataStatusLabels[status.code];
+    if(code==='insufficient'&&expired)label=dataStatusLabels.stale_snapshot;
+    return {code:code,label:label,reasons:reasons,raw:raw||{},dataStatus:statusKnown?status:null,expired:expired};
   }
   function riskReasons(row,plan,conclusion){
     var reasons=conclusion.reasons.slice();
@@ -44,15 +51,15 @@
   function evidenceDetails(row){
     var categories=Array.isArray(row.input_evidence_categories)?row.input_evidence_categories:[];
     var body=categories.filter(function(category){return category&&typeof category==='object';}).map(function(category){
-      var status=category.applicable===false||category.status==='not_applicable'?'not_applicable':category.status==='reference'?'reference':'missing';
-      var label={reference:'既有模型參考',missing:'未提供',not_applicable:'不適用'}[status];
+      var status=category.applicable===false||category.status==='not_applicable'?'not_applicable':category.status==='reference'?'reference':category.status==='unverified'?'unverified':'missing';
+      var label={reference:'既有模型參考',unverified:'尚未驗證',missing:'未提供',not_applicable:'不適用'}[status];
       var items=Array.isArray(category.items)?category.items:[];
-      var values=status==='reference'?items.filter(function(item){return item&&typeof item==='object';}).map(function(item){
+      var values=status==='reference'||status==='unverified'?items.filter(function(item){return item&&typeof item==='object';}).map(function(item){
         return '<div>'+esc(item.label||item.key||'未命名欄位')+'：'+evidenceValue(item.value)+'</div>';
       }).join(''):'';
       return '<div class="sell" data-evidence-id="'+esc(category.id||'')+'" data-evidence-status="'+status+'">'+
         '<b>'+esc(category.label||'未命名資料類別')+'</b>｜'+label+
-        '<div>'+(values||(status==='reference'?'未提供':label))+'</div>'+
+        '<div>'+(values||(status==='reference'||status==='unverified'?'未提供':label))+'</div>'+
         '<div class="meta">資料日期 '+esc(category.as_of||'未知')+'｜來源 '+esc(category.source||'未知')+'</div>'+
         (category.note?'<div class="reason">'+esc(category.note)+'</div>':'')+
       '</div>';
@@ -75,8 +82,11 @@
   }
   function card(row,now){
     var summary=planFor(row), conclusion=conclusionFor(summary,now), raw=conclusion.raw;
-    var cls={eligible:'candidate',wait:'wait',avoid:'blocked',insufficient:'blocked'}[conclusion.code];
+    var basis=raw.price_basis||{}, mismatch=basis.aligned===false;
+    var cls={eligible:'candidate',wait:'wait',avoid:'blocked',insufficient:'wait'}[conclusion.code];
     var reference=conclusion.code!=='eligible', ref=reference?'（參考）':'', reasons=riskReasons(row,summary,conclusion);
+    var reasonClass=conclusion.code==='avoid'?' bad':reference?' warn':'';
+    var guidance={eligible:'符合影子計畫條件；仍須確認最新量價與風險，不保證獲利。',wait:'尚待進場條件確認；下列價位僅供參考。',avoid:'目前不可依此計畫進場；下列價位僅供參考。',insufficient:'完成資料核對前，不提供可進場判定；下列價位僅供參考。'}[conclusion.code];
     var sell=[];
     if(summary.target1!=null)sell.push('目標1 '+price(summary.target1)+' → 賣 '+num(summary.target1_pct,0)+'%');
     if(summary.target2!=null)sell.push('目標2 '+price(summary.target2)+' → 再賣 '+num(summary.target2_pct,0)+'%');
@@ -88,9 +98,11 @@
     return '<article class="card '+cls+'" data-conclusion="'+conclusion.code+'">'+
       '<div class="head"><div><div class="symbol">'+esc(row.market)+'｜'+esc(row.symbol)+'</div><div class="name">'+esc(row.name)+'</div></div>'+
       '<div class="status"><b>'+esc(conclusion.label)+'</b><small>'+esc(summary.label||'')+'｜僅影子驗證</small></div></div>'+
-      '<div class="reason'+(reference?' bad':'')+'">'+(reference?'目前不可依此計畫進場；下列價位僅供參考。':'符合影子計畫條件；仍須確認最新量價與風險，不保證獲利。')+'</div>'+
+      '<div class="reason'+reasonClass+'">'+guidance+'</div>'+
+      (conclusion.dataStatus?'<div class="reason'+reasonClass+'" data-source-status="'+(conclusion.expired?'stale_snapshot':conclusion.dataStatus.code)+'">資料狀態：'+esc(conclusion.expired?dataStatusLabels.stale_snapshot:(conclusion.dataStatus.label||dataStatusLabels[conclusion.dataStatus.code]))+(conclusion.expired?'<br>結論有效期限已到，需重新核對最新資料。':conclusion.dataStatus.detail?'<br>'+esc(conclusion.dataStatus.detail):'')+'</div>':'')+
       '<div class="planline">'+
-        '<div class="box"><span>來源快照價格</span><b>'+price(row.price)+'</b></div>'+
+        '<div class="box"><span>來源快照價格'+(mismatch?'（待對齊）':'')+'</span><b>'+price(mismatch?basis.reported_quote:row.price)+'</b></div>'+
+        (mismatch?'<div class="box"><span>已完成日K收盤（參考）</span><b>'+price(basis.completed_close)+'</b></div>':'')+
         '<div class="box"><span>買進期限</span><b class="'+(validWindow?'good':'warn')+'">'+(validWindow?num(summary.buy_window_sessions,0)+' 個有效交易日（以到期時間為準）':'目前無有效進場期限')+'</b></div>'+
         '<div class="box"><span>買進區'+ref+'</span><b>'+price(summary.entry_low)+' ～ '+price(summary.entry_high)+'</b></div>'+
         '<div class="box"><span>高於這裡不追'+ref+'</span><b class="warn">'+price(summary.do_not_chase_above)+'</b></div>'+
@@ -98,9 +110,10 @@
         '<div class="box"><span>計畫品質（結構參考）</span><b>'+esc((summary.plan_quality||{}).label||'—')+'</b></div>'+
         '<div class="box"><span>最長持有'+ref+'</span><b>'+num(summary.max_hold_sessions,0)+' 個有效交易日</b></div>'+
       '</div>'+
+      (mismatch?'<div class="reason warn">'+esc(basis.note||'行情快照與已完成日K收盤尚未對齊；兩者分開顯示，價格計畫暫供參考。')+'</div>':'')+
       '<div class="sell">'+(reference?'參考出場價位：':'')+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+
       (summary.stop_too_tight?'<br>🛡️ 停損距離過窄：系統不自動放寬，先等待重算。參考安全距離價 '+price(summary.reference_stop_floor):'')+'</div>'+
-      '<div class="reason'+(reference?' bad':'')+'">依據與風險：'+(reasons.length?reasons.map(esc).join('<br>'):'未提供完整風險說明；進場前仍須重新確認。')+'</div>'+
+      '<div class="reason'+reasonClass+'">依據與風險：'+(reasons.length?reasons.map(esc).join('<br>'):'未提供完整風險說明；進場前仍須重新確認。')+'</div>'+
       '<div class="meta">來源交易日 '+esc(raw.as_of||row.session_date||'—')+'<br>評估時間 '+esc(raw.evaluated_at||'—')+'<br>絕對到期時間 '+esc(raw.expires_at||'未驗證')+'<br>原始買進窗口末日（非結論有效期） '+esc(raw.valid_through_session||'—')+'</div>'+
       '<div class="reason">'+esc((raw.validation||{}).label||'前向驗證待累積')+'｜僅影子驗證，尚未正式採用</div>'+
       '<div class="meta">模型分數 '+num(summary.score,1)+'｜信心分數 '+num(summary.confidence,1)+'｜資料品質 '+pct(summary.data_quality_pct)+'｜正式排名 '+num(row.formal_rank,0)+'<br>分數不是上漲機率；不自動下單。</div>'+
@@ -122,7 +135,7 @@
     var counts={eligible:0,wait:0,avoid:0,insufficient:0};
     ((state.payload||{}).plans||[]).forEach(function(row){counts[conclusionFor(planFor(row),now).code]+=1;});
     document.getElementById('summary').innerHTML=Object.keys(counts).map(function(code){
-      var cls=code==='eligible'?'good':code==='wait'?'warn':'bad';
+      var cls=code==='eligible'?'good':code==='avoid'?'bad':'warn';
       return '<div class="metric" data-conclusion="'+code+'"><span>'+conclusionLabels[code]+'</span><b class="'+cls+'">'+counts[code]+'</b></div>';
     }).join('');
   }

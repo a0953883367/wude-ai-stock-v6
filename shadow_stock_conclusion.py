@@ -39,6 +39,13 @@ def source_snapshot(row: dict[str, Any]) -> dict[str, Any]:
         "market_contract_valid": row.get("market_contract_valid") is True,
         "session_date": row.get("official_session_date"),
         "close": row.get("official_close_price"),
+        "attestation_status": ("pending" if "source_daily_ohlcv_complete" not in row else
+                               "verified" if row.get("source_daily_ohlcv_complete") is True else "invalid"),
+        "news_cache_stale": row.get("news_cache_stale") is True,
+        "daily_proof": {k:v for k,v in (row.get("shadow_daily_ohlcv_proof") or {}).items()
+                        if k in {"version", "shadow_only", "status", "reason", "source", "source_url",
+                                 "source_session_date", "fetched_at", "raw_record_sha256",
+                                 "source_payload_sha256", "formal_fields_unchanged"}},
         "ohlcv_complete": row.get("source_daily_ohlcv_complete") is True
                           and bool(row.get("official_session_date"))
                           and row.get("source_daily_ohlcv_session_date") == row.get("official_session_date"),
@@ -145,10 +152,25 @@ def _timing(calendar: OfficialMarketCalendar, market: str, session: Any,
     return result
 
 
+def _news_observation_valid(value: Any, now: datetime) -> bool:
+    """News scans follow observation time, including non-trading days (18h cache policy)."""
+    text = str(value or "")
+    if len(text) <= 10:
+        return False
+    try:
+        observed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            observed = observed.replace(tzinfo=MARKET_ZONES["TW"])
+        return timedelta(0) <= now - observed < timedelta(hours=18)
+    except (TypeError, ValueError):
+        return False
+
+
 def _evidence_audit(row: dict[str, Any], horizon: str, now: datetime) -> dict[str, Any]:
     seen, groups, sources = set(), set(), set()
     duplicates = 0
     invalid = []
+    news_expiries = []
     for item in row.get("evidence") or []:
         if not isinstance(item, dict) or item.get("horizon") not in {horizon, "all", "market", "risk"}:
             continue
@@ -158,11 +180,19 @@ def _evidence_audit(row: dict[str, Any], horizon: str, now: datetime) -> dict[st
         if (not source or not item.get("provenance")
                 or item.get("market") != row.get("market")
                 or item.get("symbol") != row.get("symbol")
-                or not _evidence_date_valid(item.get("as_of"), row.get("session_date"),
-                                            str(row.get("market") or ""), now)
+                or not (_news_observation_valid(item.get("as_of"), now)
+                        and not (row.get("source_snapshot") or {}).get("news_cache_stale")
+                        if source == "verified_news" else
+                        _evidence_date_valid(item.get("as_of"), row.get("session_date"),
+                                             str(row.get("market") or ""), now))
                 or item.get("status") in {"stale", "expired", "missing", "unverified", "invalid", "data_blocked"}
                 or item.get("direction") == "missing"):
             invalid.append(source or "unknown")
+        if source == "verified_news" and _news_observation_valid(item.get("as_of"), now):
+            scan = datetime.fromisoformat(str(item["as_of"]).replace("Z", "+00:00"))
+            if scan.tzinfo is None:
+                scan = scan.replace(tzinfo=MARKET_ZONES["TW"])
+            news_expiries.append(scan + timedelta(hours=18))
         key = (source, item.get("horizon"), item.get("as_of"))
         if key in seen:
             duplicates += 1
@@ -172,7 +202,8 @@ def _evidence_audit(row: dict[str, Any], horizon: str, now: datetime) -> dict[st
         groups.add(CORRELATED_GROUPS.get(source, source))
     return {"used_source_ids": sorted(sources), "correlated_groups": sorted(groups),
             "duplicate_count": duplicates, "invalid_source_ids": sorted(set(invalid)),
-            "additional_weight": 0, "policy": "existing_models_once_no_extra_votes"}
+            "additional_weight": 0, "policy": "existing_models_once_no_extra_votes",
+            "news_expires_at": min(news_expiries).isoformat() if news_expiries else None}
 
 
 def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
@@ -186,6 +217,9 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     horizon = str(plan.get("horizon") or "")
     timing = _timing(calendar, market, session, int(plan.get("buy_window_sessions") or 0), now)
     audit = _evidence_audit(row, horizon, now)
+    if audit.get("news_expires_at") and timing["expires_at"]:
+        timing["expires_at"] = min(datetime.fromisoformat(timing["expires_at"]),
+                                   datetime.fromisoformat(audit["news_expires_at"])).isoformat()
     etf = "ETF" in str(row.get("asset_type") or "").upper()
     sources = {"TWSE OpenAPI", "TPEx OpenAPI"} if market == "TW" else {"Alpaca SIP daily bars"}
     expected_unit = "TWD/shares" if market == "TW" else "USD/shares"
@@ -195,13 +229,17 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     gate("market", market in {"TW", "US"} and snapshot.get("market_contract_valid") is True,
          "市場資料契約未確認")
     gate("source", snapshot.get("source_available") is True and snapshot.get("source") in sources
-         and snapshot.get("unit") == expected_unit,
+         and snapshot.get("unit") == expected_unit
+         and (not snapshot.get("daily_proof") or
+              observed_by(snapshot["daily_proof"].get("fetched_at"), now)),
          "既有 Yahoo 日線僅供來源診斷，不是本結論允許的美股資料源"
          if market == "US" and snapshot.get("source") == "Yahoo Finance daily bars"
          else "收盤來源／授權資料標示或單位未確認")
     gate("source_date", bool(_date(session)) and snapshot.get("session_date") == session
          and snapshot.get("source_session_date") == session, "來源日期與股票交易日不一致")
     gate("ohlcv", snapshot.get("ohlcv_complete") is True,
+         "來源完整性尚未驗證；既有 OHLC 不等於缺資料，需核對原始成交量與來源"
+         if snapshot.get("attestation_status") == "pending" else
          "未確認真實完整 OHLCV，缺值代入的 K 線不能作進場依據")
     gate("calendar", timing["calendar_verified"], "官方交易日曆缺漏，禁止猜測交易日")
     gate("completed", timing["completed"], "尚無已完成的正式收盤")
@@ -237,7 +275,27 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
         reasons.append("仍有未解除的模型衝突")
     if not reasons:
         reasons.append({"eligible": "既有影子計畫與資料閘門通過，仍非實單建議", "wait": "等待買進區、既有計畫品質或確認條件", "avoid": "既有模型風險條件不合格", "insufficient": "資料不足，先不建立買進訊號"}[code])
+    failed = {item["code"] for item in gates if not item["passed"]}
+    status_code, status_label = "ready", "影子資料核對通過"
+    if failed:
+        if "completed" in failed and timing["calendar_verified"]:
+            status_code, status_label = "market_not_closed", "等待正式收盤"
+        elif "snapshot" in failed or "freshness" in failed:
+            status_code, status_label = "stale_snapshot", "資料需更新"
+        elif snapshot.get("attestation_status") == "pending" or "source" in failed:
+            status_code, status_label = "source_attestation_pending", "來源完整性待驗證"
+        elif "price" in failed and _positive(price) and _positive(close):
+            status_code, status_label = "price_basis_mismatch", "價格基準待核對"
+        elif "evidence" in failed:
+            status_code, status_label = "evidence_review_pending", "證據時間待核對"
+        else:
+            status_code, status_label = "data_missing", "關鍵資料待補齊"
     return {
+        "data_status": {"code": status_code, "label": status_label,
+                        "detail": "；".join(failures)},
+        "price_basis": {"reported_quote": price, "completed_close": close,
+                        "aligned": "price" not in failed,
+                        "note": "報告參考價與正式收盤分開列示；不以替換價格讓既有計畫通過"},
         "version": VERSION, "code": code, "label": LABELS[code], "horizon": horizon,
         "reasons": list(dict.fromkeys(reasons)), "as_of": session,
         "evaluated_at": now.astimezone(timezone.utc).isoformat(),
@@ -279,8 +337,8 @@ def input_evidence_categories(row: dict[str, Any]) -> list[dict[str, Any]]:
             ("official_low_price", "最低"), ("official_close_price", "收盤"),
             ("official_volume", "成交股數"), ("kline_pattern", "K 線型態"),
             ("daily_volume_ratio", "日量比"), ("volume_price_pattern", "量價型態"),
-        ], available=snapshot["ohlcv_complete"], as_of=session, source=snapshot["source"],
-                 note="僅展示真實完整 OHLCV；缺值以收盤代替或成交量補零的 K 線不採用。最新一根快照，非完整歷史圖表。"),
+        ], available=True, as_of=session, source=snapshot["source"],
+                 note="原報告 OHLC 參考值；來源與真實成交量完成核對前不作合格進場依據。並非完整歷史圖表。"),
         category("price_indicators", "日線趨勢指標", [
             ("rsi", "日 RSI"), ("ma5", "MA5"), ("ma10", "MA10"),
             ("ma20", "MA20"), ("ma60", "MA60"), ("atr14", "ATR14"),
@@ -334,4 +392,9 @@ def input_evidence_categories(row: dict[str, Any]) -> list[dict[str, Any]]:
     if market == "US" and snapshot.get("source") == "Yahoo Finance daily bars":
         for item in categories[:3]:
             item["note"] = "既有 Yahoo 來源診斷，不用於本結論進場資格；未新增資料請求。" + item["note"]
+    if not snapshot["ohlcv_complete"]:
+        categories[0]["status"] = "unverified"
+        for item in categories[0]["items"]:
+            if item["key"] in {"official_volume", "kline_pattern", "daily_volume_ratio", "volume_price_pattern"}:
+                item["value"] = None
     return categories

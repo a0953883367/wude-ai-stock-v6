@@ -354,7 +354,7 @@ def _compact_row(row: dict[str, Any], *, calendar: OfficialMarketCalendar,
     preferred_plan = plans[preferred]
     price = _round_price(row.get("price"))
     status = {"eligible": "candidate", "wait": "wait", "avoid": "blocked",
-              "insufficient": "blocked"}[preferred_plan["conclusion"]["code"]]
+              "insufficient": "insufficient"}[preferred_plan["conclusion"]["code"]]
 
     return {
         "symbol": row.get("symbol"),
@@ -445,6 +445,7 @@ def build_trade_plan_report(reports_dir: Path, *, now: datetime | None = None,
         "candidate": sum(row["status"] == "candidate" for row in plans),
         "wait": sum(row["status"] == "wait" for row in plans),
         "blocked": sum(row["status"] == "blocked" for row in plans),
+        "insufficient": sum(row["status"] == "insufficient" for row in plans),
     }
     validation = (hub.get("readiness") or {}).get("validation_60d") or {}
     private_dir = reports_dir.parent / ".prediction_engine"

@@ -131,3 +131,43 @@ assumptions or paired data produce insufficient results; matched returns remain
 descriptive, never proof of accuracy improvement or automatic model promotion.
 Portfolio maximum drawdown is unavailable without an actual marked-to-market
 portfolio path; entry-relative adverse excursion is labeled separately.
+
+## Runtime interpretation correction
+
+A legacy frozen row can contain OHLC while lacking the newly introduced completeness
+attestation. This is `source_attestation_pending`, not proof that the price data is
+absent. Unverified reported OHLC remains visible as reference; synthesized/unaudited
+volume and derived candle labels cannot establish eligibility. The original quoted
+price and completed-session close are displayed separately. A mismatch still blocks
+eligibility until the model/plan basis is coherently recalculated; neither price is
+silently substituted into the frozen formal result.
+
+News evidence is a scan-time observation, not a candle-session observation. Its precise
+timestamp must be no later than evaluation, no older than the existing news module's
+18-hour fresh-cache window, and not explicitly marked as stale. Holiday/weekend scans
+are permitted after the last completed candle. Future, date-only, stale, identity-
+mismatched and missing/unverified risk evidence still fail closed. An accepted neutral
+scan is not positive evidence of no risk and adds no weight.
+
+The public summary distinguishes insufficient/pending verification from genuine avoid
+results. The four decision codes and strict eligibility gates remain unchanged.
+
+### Official TW snapshot reconciliation
+
+`decision_hub.py --refresh-shadow-inputs-only --attest-tw-official` reads only the
+existing two TWSE/TPEx bulk price endpoints, with bounded provider retries. It compares
+source, symbol, session, every frozen OHLC value and any already-present volume.
+Only an exact match attests a shadow-only copy and supplies the actual official volume.
+The original all_analysis, formal rankings, prices and model outputs remain untouched.
+Provider failure, missing symbol, mismatched session/candle, invalid values or units
+remain noneligible. No Yahoo acquisition or full-history claim is introduced.
+
+The public proof is a whitelist of source/session/retrieval metadata and hashes; raw
+provider records stay in memory. News eligibility expires at the earlier of its 18-hour
+freshness boundary and the next official-session close.
+
+Live replay on 2026-10-09 used the published 380-row batch plus the actual official
+TWSE/TPEx Oct8 records: 190/192 TW candles matched; two were unavailable. Summary became
+34 waiting, 37 existing-model avoid, 309 pending verification, zero eligible. Pending
+includes genuine US source/unfinished-session gates and differing quote/close bases,
+not a blanket declaration that every stock is dangerous or every price is missing.
