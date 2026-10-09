@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from model_learning_catalog import build_complete_learning_catalog
+from direction_shadow_validation import build_direction_validation
 
 
 SCHEMA_VERSION = 2
@@ -254,6 +255,10 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
             "cause_counts": error_cases.get("cause_counts") or (previous_errors.get("cause_counts") if not has_event_level_errors else {}) or {},
             "recent_events": events[:20],
         },
+        "direction_calibration_validation": build_direction_validation(
+            _read(reports_dir / "prediction_history.json"),
+            previous.get("direction_calibration_validation") or {}, generated_at,
+        ),
         "signal_health": signal_health,
         "institution_weight_learning": {
             "source": "tw_weight_experiment.json",
