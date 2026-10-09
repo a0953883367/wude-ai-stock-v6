@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-09T19:09:04+08:00",
+  "checked_at": "2026-10-09T19:09:56+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-09 19:00:47",
-  "report_age_minutes": 8.3,
+  "report_updated_at": "2026-10-09 19:06:26",
+  "report_age_minutes": 3.5,
   "counts": {
-    "ok": 28,
-    "info": 8,
+    "ok": 26,
+    "info": 10,
     "warning": 2,
     "critical": 0
   },
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 367.3 MB；可壓縮 3 份；未發現校驗錯誤",
+      "detail": "封存容量 367.0 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 8 分鐘",
+      "detail": "最近更新距今 4 分鐘",
       "action": ""
     },
     {
@@ -114,7 +114,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 192、法人 191、信用 188",
+      "detail": "價格 192、法人 189、信用 188",
       "action": ""
     },
     {
@@ -152,10 +152,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "ok",
-      "label": "正常",
-      "detail": "私密完整快取涵蓋 97 檔；原始價格未進入網站或計算",
-      "action": ""
+      "level": "info",
+      "label": "資訊",
+      "detail": "免費版分批收集中，目前已嘗試 94 檔；尚未切換半套快取",
+      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
       "code": "us_sec_fundamentals",
@@ -213,7 +213,7 @@
       "detail": "台美股共 45 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 45,
-      "ledger_updated_at": "2026-10-09 19:00:47"
+      "ledger_updated_at": "2026-10-09 19:06:26"
     },
     {
       "code": "unified_evidence",
@@ -283,10 +283,10 @@
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "ok",
-      "label": "正常",
-      "detail": "最近一次已送達：2026-10-09T11:08:37+00:00",
-      "action": ""
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
+      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
     },
     {
       "code": "device_authorization",
