@@ -763,6 +763,40 @@ def _settle_pending(model: dict[str, Any], rows: list[dict[str, Any]]) -> bool:
     return True
 
 
+def _quarantine_legacy_pending(model: dict[str, Any], rows: list[dict[str, Any]], updated_at: str) -> bool:
+    """Release an unverifiable legacy receipt only after a later verified close.
+
+    Never infer its target or settle it with a newer session's prices. Preserve
+    the complete original receipt for manual audit, then allow future signals.
+    """
+    pending = model.get("pending") or {}
+    if not pending or pending.get("expected_execution_session_date"):
+        return False
+    try:
+        observed_day = date.fromisoformat(updated_at[:10]).isoformat()
+    except (TypeError, ValueError):
+        return False
+    verified_pairs = {
+        (str(row.get("symbol") or ""), _price_snapshot(row)[0]) for row in rows
+        if _is_tw_stock(row) and row.get("shadow_price_contract_required")
+        and not _row_session_issue(row) and _price_snapshot(row)[1] > 0
+        and _price_snapshot(row)[2] > 0
+    }
+    verified_dates = Counter(date for _, date in verified_pairs)
+    signal = str(pending.get("signal_session_date") or "")
+    later = sorted(date for date, count in verified_dates.items()
+                   if date and signal and signal < date <= observed_day and count >= MIN_POSITIONS)
+    if not later:
+        return False
+    archived = model.setdefault("invalid_pending", [])
+    if not any(item.get("original_pending") == pending for item in archived):
+        archived.append({"original_pending": deepcopy(pending),
+                         "reason": "legacy_next_session_unverifiable",
+                         "later_verified_session": later[-1], "quarantined_at": updated_at})
+    model["pending"] = None
+    return True
+
+
 def _expire_incomplete_pending(model: dict[str, Any], updated_at: str) -> bool:
     """Quarantine a formal-session snapshot below 9/10 so collection can continue."""
     pending = model.get("pending")
@@ -1101,6 +1135,8 @@ def update_state(
         if not preserve_raw_records:
             _repair_incomplete_days(model, price_history)
             _sanitize_existing_days(model, updated_at)
+        if period == "evening":
+            _quarantine_legacy_pending(model, rows, updated_at)
         settled = _settle_pending(model, rows)
         if not settled and period == "evening":
             _expire_incomplete_pending(model, updated_at)

@@ -497,3 +497,63 @@ def test_readonly_reassessment_keeps_all_observations_and_pending_picks():
     assert all(all(model.get(field) == value for field, value in raw[key].items())
                for key, model in state['models'].items())
     assert state['completed_days'] == 1
+
+
+def strict_rows(session="2026-08-24", next_session="2026-08-25"):
+    import hashlib, json
+    rows = universe(session)
+    for r in rows:
+        if r['market'] != 'TW':
+            continue
+        proof = {'status': 'verified', 'date': session, 'open': 100, 'close': 101,
+                 'source': 'TWSE OpenAPI', 'calendar_status': {'available': True, 'is_session': True},
+                 'session_complete': True, 'next_session_date': next_session}
+        proof['sha256'] = hashlib.sha256(json.dumps(proof, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        r['shadow_price_contract_required'] = True
+        r['shadow_price_evidence'] = proof
+    return rows
+
+
+def test_legacy_pending_without_next_session_is_archived_not_backfilled():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='2026-08-21 20:00:00')
+    original = deepcopy(state['models']['base_0']['pending'])
+    original_days = deepcopy(state['models']['base_0']['days'])
+    rows = strict_rows()
+    before_rows = deepcopy(rows)
+    update_state(state, rows, period='evening', updated_at='2026-08-24 20:00:00', preserve_raw_records=True)
+    model = state['models']['base_0']
+    assert model['days'] == original_days
+    assert model['invalid_pending'][0]['original_pending'] == original
+    assert model['invalid_pending'][0]['reason'] == 'legacy_next_session_unverifiable'
+    assert model['pending']['signal_session_date'] == '2026-08-24'
+    assert model['pending']['expected_execution_session_date'] == '2026-08-25'
+    assert rows == before_rows
+    archive = deepcopy(model['invalid_pending'])
+    update_state(state, rows, period='evening', updated_at='2026-08-24 20:01:00', preserve_raw_records=True)
+    assert model['invalid_pending'] == archive
+
+
+def test_legacy_pending_not_released_on_morning_or_unverified_rows():
+    state = empty_state()
+    update_state(state, universe(), period='evening', updated_at='2026-08-21 20:00:00')
+    snapshot = state['models']['base_0']['pending']['snapshot_id']
+    update_state(state, strict_rows(), period='morning', updated_at='2026-08-25 06:00:00', preserve_raw_records=True)
+    assert state['models']['base_0']['pending']['snapshot_id'] == snapshot
+    rows = strict_rows()
+    for r in rows:
+        r['shadow_price_evidence'] = {}
+    update_state(state, rows, period='evening', updated_at='2026-08-25 20:00:00', preserve_raw_records=True)
+    assert state['models']['base_0']['pending']['snapshot_id'] == snapshot
+
+
+def test_verified_next_session_still_settles_without_legacy_quarantine():
+    state = empty_state()
+    update_state(state, strict_rows('2026-08-21', '2026-08-24'), period='evening',
+                 updated_at='2026-08-21 20:00:00', preserve_raw_records=True)
+    assert state['models']['base_0']['pending']['expected_execution_session_date'] == '2026-08-24'
+    update_state(state, strict_rows(), period='evening', updated_at='2026-08-24 20:00:00', preserve_raw_records=True)
+    model = state['models']['base_0']
+    assert len(model['days']) == 1
+    assert model['days'][0]['session_date'] == '2026-08-24'
+    assert not model.get('invalid_pending')

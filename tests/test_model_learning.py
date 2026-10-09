@@ -221,3 +221,24 @@ def test_legacy_performance_does_not_erase_event_level_learning_history(tmp_path
         "candidate_id": "shadow:event_gap_risk:v1",
         "evidence_event_count": 2,
     }]
+
+
+def test_execution_audit_does_not_treat_error_events_as_challenger_results(tmp_path):
+    _write(tmp_path / 'performance.json', {'error_cases': {'unique_event_count': 729,
+        'cause_counts': {'direction_calibration': 546, 'etf_model_separation': 71}}})
+    _write(tmp_path / 'tw_weight_experiment.json', {'entry_gap_shadow': {
+        'policy': {'version': 1}, 'completed_sessions': 0, 'invalid_days': [{}],
+        'last_block_reason': 'signal_official_close_evidence_missing'}})
+    _write(tmp_path / 'missed_strength_validation.json', {'markets': {'TW': {
+        'summary': {'overall': {'valid_sessions': 31}}}}})
+    report = update_model_learning(tmp_path, updated_at='2026-10-09 22:00:00')
+    audit = report['shadow_execution_audit']
+    assert audit['all_candidates_execution_verified'] is False
+    candidates = audit['candidates']
+    assert candidates['direction_calibration']['completed_rows'] == 0
+    assert candidates['event_gap_risk']['status'] == 'blocked'
+    assert candidates['event_gap_risk']['invalid_sessions'] == 1
+    assert candidates['missed_strength_rotation']['baseline_valid_sessions'] == {'TW': 31}
+    assert not candidates['missed_strength_rotation']['paired_rule_registered']
+    assert candidates['etf_model_separation']['status'] == 'proposal_only'
+    assert candidates['intraday_reversal']['status'] == 'diagnostics_only'
