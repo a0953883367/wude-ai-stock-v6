@@ -62,6 +62,17 @@ def _ancestor(repo: Path, older: str, newer: str, runner: Runner) -> bool:
     return result.returncode == 0
 
 
+def _race_rejection(result: subprocess.CompletedProcess[str]) -> bool:
+    """Only Git's machine-readable stale-head rejection is retryable."""
+    for line in (result.stdout or "").splitlines():
+        fields = line.split("\t")
+        if (len(fields) == 3 and fields[0] == "!"
+                and fields[1].endswith(":refs/heads/main")
+                and fields[2] in {"[rejected] (fetch first)", "[rejected] (non-fast-forward)"}):
+            return True
+    return False
+
+
 def generate_and_test(worktree: Path, *, runner: Runner = run_command) -> None:
     """Regenerate every dependent shadow output from the same frozen batch."""
     commands = (
@@ -109,7 +120,7 @@ def run(repo: Path | str = ".", *, max_attempts: int = MAX_ATTEMPTS,
     ``runner`` and ``generate`` are dependency-injection seams for local tests.
     Production always uses the fixed generators/tests and a normal Git push.
     """
-    if isinstance(max_attempts, bool) or not 1 <= max_attempts <= MAX_ATTEMPTS:
+    if not isinstance(max_attempts, int) or isinstance(max_attempts, bool) or not 1 <= max_attempts <= MAX_ATTEMPTS:
         raise ValueError("max_attempts must be between 1 and 3")
     repo = Path(repo).resolve()
     generate = generate or (lambda worktree: generate_and_test(worktree, runner=runner))
@@ -133,7 +144,7 @@ def run(repo: Path | str = ".", *, max_attempts: int = MAX_ATTEMPTS,
                 _checked(runner, ["git", "-c", f"user.name={BOT_NAME}", "-c", f"user.email={BOT_EMAIL}",
                                   "commit", "-m", "chore: 更新影子交易計畫"], cwd=worktree)
                 commit = _checked(runner, ["git", "rev-parse", "HEAD"], cwd=worktree).strip()
-                pushed = runner(["git", "push", "origin", "HEAD:refs/heads/main"], cwd=worktree)
+                pushed = runner(["git", "push", "origin", "HEAD:refs/heads/main", "--porcelain"], cwd=worktree)
                 latest = _fetch_main(repo, runner)
                 if _ancestor(repo, commit, latest, runner):
                     # Also handles a lost push response after server acceptance.
@@ -143,6 +154,8 @@ def run(repo: Path | str = ".", *, max_attempts: int = MAX_ATTEMPTS,
                     raise PublishError("push returned success but its commit is absent from main")
                 if latest == base:
                     raise PublishError(f"push failed (exit {pushed.returncode}) without main advancing; refusing retry")
+                if not _race_rejection(pushed):
+                    raise PublishError("push failed for a non-race reason; refusing retry")
                 if not _ancestor(repo, base, latest, runner):
                     raise PublishError("main history changed unexpectedly; refusing to retry")
                 # A normal concurrent commit won. Discard this private attempt,

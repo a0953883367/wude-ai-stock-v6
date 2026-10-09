@@ -247,3 +247,19 @@ def test_attempt_bound_enforced_before_any_command(tmp_path, attempts):
         pytest.fail("invalid attempt count must not invoke Git")
     with pytest.raises(ValueError):
         publisher.run(tmp_path, max_attempts=attempts, runner=fail)
+
+
+def test_auth_failure_does_not_retry_even_if_another_job_advanced_main(repositories):
+    source, competitor, bare = repositories
+    pushes = []
+    def runner(args, *, cwd):
+        if is_push(args):
+            pushes.append(list(args))
+            advance(competitor, 2)
+            return subprocess.CompletedProcess(args, 128, "", "authentication failed")
+        return publisher.run_command(args, cwd=cwd)
+    with pytest.raises(publisher.PublishError, match="non-race reason"):
+        publisher.run(source, runner=runner, generate=generate)
+    assert len(pushes) == 1
+    assert json.loads(git(bare, "show", "main:reports/trade_plan_shadow.json")) == {"batch": 2, "generated": False}
+    assert_cleaned(source)
