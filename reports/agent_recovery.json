@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-09T23:46:27.165987+08:00",
+  "checked_at": "2026-10-09T23:52:25.855134+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -218,7 +218,7 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
+      "status": "exhausted",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -237,7 +237,7 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [],
-  "data_recovery_status": "ready_silent_refresh",
+  "data_recovery_status": "exhausted",
   "us_direction_verification": {
     "status": "ready_silent_refresh",
     "reason": "calendar_bootstrap_required",
