@@ -229,7 +229,9 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     gate("market", market in {"TW", "US"} and snapshot.get("market_contract_valid") is True,
          "市場資料契約未確認")
     gate("source", snapshot.get("source_available") is True and snapshot.get("source") in sources
-         and snapshot.get("unit") == expected_unit,
+         and snapshot.get("unit") == expected_unit
+         and (not snapshot.get("daily_proof") or
+              observed_by(snapshot["daily_proof"].get("fetched_at"), now)),
          "既有 Yahoo 日線僅供來源診斷，不是本結論允許的美股資料源"
          if market == "US" and snapshot.get("source") == "Yahoo Finance daily bars"
          else "收盤來源／授權資料標示或單位未確認")

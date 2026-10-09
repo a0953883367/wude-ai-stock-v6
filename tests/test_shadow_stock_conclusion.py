@@ -346,3 +346,11 @@ def test_news_freshness_expiry_limits_cached_conclusion(tmp_path):
     assert result['code']=='eligible'
     assert datetime.fromisoformat(result['expires_at'])==datetime(2026,10,6,4,tzinfo=timezone.utc)
     assert conclude(tmp_path,row,now=datetime(2026,10,6,4,tzinfo=timezone.utc))['code']=='insufficient'
+
+
+def test_future_official_proof_is_not_available_at_earlier_cutoff(tmp_path):
+    row=row_for()
+    row['source_snapshot']['daily_proof']={'status':'attested','fetched_at':'2026-10-05T23:00:00Z'}
+    assert conclude(tmp_path,row)['code']=='insufficient'
+    row['source_snapshot']['daily_proof']['fetched_at']='2026-10-05T21:00:00Z'
+    assert conclude(tmp_path,row)['code']=='eligible'
