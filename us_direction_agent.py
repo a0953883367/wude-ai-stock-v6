@@ -2,6 +2,8 @@
 from pathlib import Path
 from datetime import datetime
 import json
+import os
+import requests
 
 from market_calendar import OfficialMarketCalendar
 from performance import _snapshot_integrity, _us_forecast_window
@@ -14,6 +16,19 @@ def _read(path):
     except (OSError, ValueError):
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _calendar_relay_ready() -> bool:
+    base = os.getenv("WUDE_LIVE_API_BASE", "").strip()
+    if not base:
+        return False
+    try:
+        response = requests.get(base.rstrip("/") + "/health", timeout=5)
+        response.raise_for_status()
+        capability = response.json().get("us_calendar_relay") or {}
+        return capability.get("supported") is True and capability.get("available") is True
+    except (requests.RequestException, ValueError, TypeError, AttributeError):
+        return False
 
 
 def inspect_us_direction(reports: Path, now: datetime) -> dict:
@@ -57,12 +72,12 @@ def inspect_us_direction(reports: Path, now: datetime) -> dict:
     if window.get('status') == 'ready':
         return {**result, 'status': 'ready_silent_refresh', 'reason': 'direction_receipt_missing_inside_forecast_window',
                 'needs_silent_refresh': True}
-    if reason == 'official_calendar_unavailable' and progress.get('calendar_credentials_available') is False:
+    if reason == 'official_calendar_unavailable' and progress.get('calendar_credentials_available') is False and not _calendar_relay_ready():
         return {**result, 'status': 'blocked_manual', 'reason': 'github_alpaca_calendar_credentials_missing',
                 'required_secrets': ['ALPACA_API_KEY_ID', 'ALPACA_API_SECRET_KEY']}
     if reason == 'official_calendar_unavailable' and any(item.get('status') == 'failed_stop_no_retry' for item in progress.get('calendar_refresh_attempts', [])):
         return {**result, 'status': 'blocked_manual', 'reason': 'calendar_refresh_failed_stopped'}
-    if reason == 'official_calendar_unavailable' and completed_us_session(rows, now.isoformat()):
+    if reason == 'official_calendar_unavailable' and (completed_us_session(rows, now.isoformat()) or _calendar_relay_ready()):
         # The normal workflow has the calendar credentials. It alone may fetch
         # once and enforce the actual next-open gate; this observer never guesses it.
         return {**result, 'status': 'ready_silent_refresh', 'reason': 'calendar_bootstrap_required',
