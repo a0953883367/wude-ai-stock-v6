@@ -156,6 +156,8 @@ def test_agent_rejects_hashed_but_late_forecast(tmp_path):
 
 
 def test_missing_github_calendar_credentials_stop_future_bootstrap(tmp_path):
+    from pathlib import Path
+    assert '- "us_direction_agent.py"' in Path(".github/workflows/system-guard.yml").read_text()
     setup(tmp_path, calendar=False)
     save(tmp_path / 'us_direction_progress.json', {'calendar_credentials_available': False,
          'updated_at': '2026-10-09 23:08:55', 'calendar_refresh_attempts': []})
