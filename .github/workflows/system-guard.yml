@@ -35,6 +35,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
+        with:
+          # A rerun must observe persisted retry history, not its old event SHA.
+          ref: main
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
