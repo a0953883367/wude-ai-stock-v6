@@ -167,6 +167,13 @@ def parse_alpaca_calendar(payload: Any, year: int) -> tuple[list[str], dict[str,
     return sessions, details
 
 
+def us_calendar_refresh_available() -> bool:
+    direct = bool(os.getenv("ALPACA_API_KEY_ID", "").strip() and os.getenv("ALPACA_API_SECRET_KEY", "").strip())
+    relay = all(os.getenv(name, "").strip() for name in (
+        "WUDE_LIVE_API_BASE", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"))
+    return direct or relay
+
+
 class OfficialMarketCalendar:
     """Thread-safe official calendar cache used only to validate settlement dates."""
 
@@ -321,7 +328,26 @@ class OfficialMarketCalendar:
         key = os.getenv("ALPACA_API_KEY_ID", "").strip()
         secret = os.getenv("ALPACA_API_SECRET_KEY", "").strip()
         if not key or not secret:
-            raise RuntimeError("Alpaca calendar credentials unavailable")
+            from us_market_data import _relay_request
+            row = _relay_request("calendar", {"year": year}, HTTP_TIMEOUT_SECONDS)
+            if (row.get("year") != year or row.get("status") != "verified_alpaca"
+                    or row.get("sources") != ["Alpaca Market Calendar"]):
+                raise RuntimeError("Verified Alpaca calendar relay unavailable")
+            sessions = row.get("sessions") or []
+            details = row.get("session_details") or {}
+            clean, clean_details = parse_alpaca_calendar([
+                {"date": day, "open": (details.get(day) or {}).get("open"),
+                 "close": (details.get(day) or {}).get("close")} for day in sessions
+            ], year)
+            if clean != sessions or any(not re.fullmatch(r"\d{2}:\d{2}(?::\d{2})?", str(d.get(k) or ""))
+                                       for d in clean_details.values() for k in ("open", "close")):
+                raise RuntimeError("Invalid Alpaca calendar relay evidence")
+            return {"year": year, "status": "verified_alpaca", "sources": ["Alpaca Market Calendar"],
+                    "sessions": clean, "session_details": clean_details,
+                    "closed_dates": [], "conflict_dates": [], "transport": "github_oidc_existing_railway",
+                    "fetched_at": datetime.fromtimestamp(self.clock(), timezone.utc).isoformat(timespec="seconds"),
+                    "fetched_at_epoch": self.clock()}
+
         query = urlencode({"start": f"{year}-01-01", "end": f"{year}-12-31"})
         payload = self.fetch_json(
             f"https://paper-api.alpaca.markets/v2/calendar?{query}",
@@ -339,6 +365,19 @@ class OfficialMarketCalendar:
             "fetched_at": datetime.fromtimestamp(self.clock(), timezone.utc).isoformat(timespec="seconds"),
             "fetched_at_epoch": self.clock(),
         }
+
+    def relay_us_year(self, year: int) -> dict[str, Any]:
+        """Return only an already-verified calendar, without credentials or new fetches."""
+        current = datetime.fromtimestamp(self.clock(), MARKET_ZONES["US"]).year
+        if type(year) is not int or not current - 1 <= year <= current + 1:
+            raise ValueError("calendar year outside bounded range")
+        with self._lock:
+            row = ((self._state["markets"]["US"].get("years") or {}).get(str(year)) or {})
+            if row.get("status") != "verified_alpaca" or not row.get("sessions"):
+                raise RuntimeError("verified calendar cache unavailable")
+            allowed = {key: row.get(key) for key in (
+                "year", "status", "sources", "sessions", "session_details", "fetched_at")}
+            return json.loads(json.dumps(allowed))
 
     def lookup(self, market: str, start_exclusive: str, end_inclusive: str) -> dict[str, Any]:
         """Return exact official sessions in (start, end], never guessed weekdays."""

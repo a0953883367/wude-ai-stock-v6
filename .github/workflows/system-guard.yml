@@ -48,6 +48,7 @@ jobs:
       - name: Diagnose and reserve bounded stock recovery
         env:
           GH_TOKEN: ${{ github.token }}
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python agent_stock_recovery.py
@@ -70,6 +71,7 @@ jobs:
       - name: Execute only the reserved protected recovery
         env:
           GH_TOKEN: ${{ github.token }}
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         run: |
           python agent_stock_recovery.py --execute-reserved
           python agent_code_repair.py --execute

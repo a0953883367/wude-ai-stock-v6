@@ -8,7 +8,7 @@ import os
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from market_calendar import OfficialMarketCalendar
+from market_calendar import OfficialMarketCalendar, us_calendar_refresh_available
 from pathlib import Path
 from typing import Any, Callable
 
@@ -1730,7 +1730,7 @@ def update_performance(
     us_dates = sorted({_session_date(row) for row in current_rows
                        if row.get("market") == "US" and _session_date(row)})
     # One bounded calendar refresh using the existing Alpaca credentials; never guess weekdays.
-    if us_dates and os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY"):
+    if us_dates and us_calendar_refresh_available():
         years = sorted({date.fromisoformat(us_dates[-1]).year,
                         (date.fromisoformat(us_dates[-1]) + timedelta(days=15)).year})
         if any(not calendar.session_status("US", f"{year}-01-02").get("available") for year in years):
@@ -1796,6 +1796,7 @@ def update_performance(
         if not any((item.get("source_session_date"), item.get("reason")) == key for item in blocks):
             blocks.append(dict(us_progress))
     us_progress["calendar_refresh_attempts"] = refresh_attempts
+    us_progress["calendar_relay_available"] = bool(us_calendar_refresh_available() and not (os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY")))
     us_progress["calendar_credentials_available"] = bool(os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY"))
     us_progress["blocked_history"] = blocks
     previous_last = str(previous_progress.get("last_captured_session_date") or "")

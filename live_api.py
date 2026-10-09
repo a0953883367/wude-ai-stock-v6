@@ -796,6 +796,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             health["persistent_storage"] = storage
             monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
             weight_shadow = monitor.get("flow_weight_shadow") or {}
+            us_calendar = ((weight_shadow.get("markets") or {}).get("US") or {}).get("calendar") or {}
+            health["us_calendar_relay"] = {"supported": True, "available": us_calendar.get("available") is True,
+                                           "status": us_calendar.get("status"), "authentication": "github_actions_oidc"}
             inverse_live = monitor.get("inverse_etf_live_shadow") or {}
             telegram_delivery = _live_telegram_delivery_health(type(self))
             health["large_buy_monitor"] = {
@@ -963,7 +966,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 verify_github_oidc_token(token)
                 payload = self._read_json()
                 kind = str(payload.get("kind") or "").lower()
-                if kind == "ownership":
+                if kind == "calendar":
+                    data = self.large_buy_service.weight_shadow.calendar.relay_us_year(payload.get("year"))
+                elif kind == "ownership":
                     data = self.service.ownership(payload.get("symbols"))
                 elif kind == "sip":
                     symbols = [
