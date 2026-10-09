@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+from market_calendar import OfficialMarketCalendar
 from pathlib import Path
 from typing import Any, Callable
 
@@ -1230,6 +1234,41 @@ def _canonical_market(period: str) -> str | None:
     return {"morning": "US", "evening": "TW"}.get(period)
 
 
+def _us_forecast_window(calendar, session_date: str, updated_at: str) -> dict[str, Any]:
+    """Only freeze a forecast after official close and before the next official open."""
+    result = {"source_session_date": session_date, "status": "blocked",
+              "reason": "official_calendar_unavailable"}
+    try:
+        stamp = datetime.fromisoformat(updated_at)
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=ZoneInfo("Asia/Taipei"))
+        source = date.fromisoformat(session_date)
+        end = (source + timedelta(days=15)).isoformat()
+        status = calendar.session_status("US", session_date)
+        following = calendar.lookup("US", session_date, end)
+        if not status.get("available") or not following.get("available"):
+            return result
+        if not status.get("is_session"):
+            return {**result, "reason": "not_official_session"}
+        if not calendar.session_complete("US", session_date, at_epoch=stamp.timestamp()):
+            return {**result, "reason": "source_session_not_closed"}
+        targets = following.get("sessions") or []
+        if not targets:
+            return {**result, "reason": "next_session_unavailable"}
+        target = targets[0]
+        opening = (following.get("session_details", {}).get(target) or {}).get("open")
+        if not opening:
+            return {**result, "reason": "next_session_open_unavailable"}
+        opens_at = datetime.fromisoformat(f"{target}T{opening}").replace(
+            tzinfo=ZoneInfo("America/New_York"))
+        result.update({"next_session_date": target, "next_session_open": opens_at.isoformat()})
+        if stamp >= opens_at:
+            return {**result, "reason": "forecast_window_missed_no_backfill"}
+        return {**result, "status": "ready", "reason": None}
+    except (TypeError, ValueError, OverflowError):
+        return {**result, "reason": "invalid_session_clock"}
+
+
 def _performance_price(row: dict[str, Any]) -> float:
     for key in ("official_adjusted_close_price", "official_close_price"):
         try:
@@ -1432,6 +1471,7 @@ def _evaluate_with_new_session(
     session_date: str,
     current_rows: list[dict[str, Any]],
     market_regime_history: dict[str, dict[str, Any]] | None = None,
+    official_calendar: OfficialMarketCalendar | None = None,
 ) -> None:
     prices = {
         str(row.get("symbol")): (
@@ -1458,6 +1498,15 @@ def _evaluate_with_new_session(
         if origin not in positions or positions[origin] >= current_index:
             continue
         elapsed = current_index - positions[origin]
+        if market == "US" and official_calendar is not None:
+            exact = official_calendar.lookup("US", origin, session_date)
+            if not exact.get("available"):
+                continue
+            elapsed = len(exact.get("sessions") or [])
+            # Old missed checkpoints must never become a fake one-day outcome.
+            window = _us_forecast_window(official_calendar, origin, str(snapshot.get("captured_at") or ""))
+            if window.get("status") != "ready":
+                continue
         if elapsed not in HORIZONS:
             continue
         key = str(elapsed)
@@ -1668,8 +1717,35 @@ def update_performance(
     except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
         snapshots = []
 
-    market = _canonical_market(period)
-    if market:
+    try:
+        previous_progress = json.loads((reports_dir / "us_direction_progress.json").read_text(encoding="utf-8"))
+        if not isinstance(previous_progress, dict):
+            previous_progress = {}
+    except (OSError, ValueError):
+        previous_progress = {}
+    refresh_attempts = list(previous_progress.get("calendar_refresh_attempts") or [])
+    canonical = _canonical_market(period)
+    markets = (["TW"] if canonical == "TW" else []) + (["US"] if period in {"morning", "noon", "evening"} else [])
+    calendar = OfficialMarketCalendar(history_path.parent / "official_market_calendar.json", auto_refresh=False, allow_network=False)
+    us_dates = sorted({_session_date(row) for row in current_rows
+                       if row.get("market") == "US" and _session_date(row)})
+    # One bounded calendar refresh using the existing Alpaca credentials; never guess weekdays.
+    if us_dates and os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY"):
+        years = sorted({date.fromisoformat(us_dates[-1]).year,
+                        (date.fromisoformat(us_dates[-1]) + timedelta(days=15)).year})
+        if any(not calendar.session_status("US", f"{year}-01-02").get("available") for year in years):
+            attempt_key = ",".join(map(str, years))
+            if not any(item.get("years") == attempt_key for item in refresh_attempts):
+                try:
+                    calendar.refresh(years)
+                except (OSError, ValueError, RuntimeError):
+                    pass  # Cache remains unavailable; record failure and stop.
+                available = all(calendar.session_status("US", f"{year}-01-02").get("available") for year in years)
+                refresh_attempts.append({"years": attempt_key, "attempted_at": updated_at,
+                                         "status": "verified" if available else "failed_stop_no_retry"})
+    us_progress = {"updated_at": updated_at, "period": period, "status": "blocked",
+                   "reason": "official_session_missing", "historical_predictions_backfilled": False}
+    for market in markets:
         session_dates = sorted({
             _session_date(row)
             for row in current_rows
@@ -1677,6 +1753,17 @@ def update_performance(
         })
         if session_dates:
             session_date = session_dates[-1]
+            if market == "US":
+                us_progress.update(_us_forecast_window(calendar, session_date, updated_at))
+                # Both sides must refer to the same completed official session.
+                source_rows = [row for row in current_rows if row.get("market") == "US"]
+                forecast_rows = [row for row in predictions if row.get("market") == "US"]
+                if (len(session_dates) != 1 or not forecast_rows
+                        or any(_session_date(row) != session_date or row.get("market_contract_valid") is not True
+                               for row in source_rows + forecast_rows)):
+                    us_progress.update(status="blocked", reason="official_session_contract_incomplete")
+                if us_progress["status"] != "ready":
+                    continue
             current_market_regime = (market_regimes or {}).get(market, {}).get(session_date)
             snapshot_id = f"{market}:{session_date}"
             if not any(str(item.get("id")) == snapshot_id for item in snapshots):
@@ -1686,6 +1773,7 @@ def update_performance(
                     session_date,
                     current_rows,
                     (market_regimes or {}).get(market, {}),
+                    official_calendar=calendar if market == "US" else None,
                 )
                 snapshot = _new_snapshot(
                     market,
@@ -1697,6 +1785,33 @@ def update_performance(
                 )
                 if snapshot["predictions"]:
                     snapshots.append(snapshot)
+                    if market == "US":
+                        us_progress.update(status="captured", snapshot_id=snapshot_id)
+            elif market == "US":
+                us_progress.update(status="already_captured", snapshot_id=snapshot_id)
+
+    blocks = list(previous_progress.get("blocked_history") or [])
+    if us_progress.get("status") == "blocked":
+        key = (us_progress.get("source_session_date"), us_progress.get("reason"))
+        if not any((item.get("source_session_date"), item.get("reason")) == key for item in blocks):
+            blocks.append(dict(us_progress))
+    us_progress["calendar_refresh_attempts"] = refresh_attempts
+    us_progress["calendar_credentials_available"] = bool(os.getenv("ALPACA_API_KEY_ID") and os.getenv("ALPACA_API_SECRET_KEY"))
+    us_progress["blocked_history"] = blocks
+    previous_last = str(previous_progress.get("last_captured_session_date") or "")
+    source = str(us_progress.get("source_session_date") or "")
+    existing_us = sorted({str(item.get("session_date") or "") for item in snapshots if item.get("market") == "US"})
+    anchor = previous_last or (existing_us[0] if existing_us else "")
+    gaps = list(previous_progress.get("unrecorded_source_sessions") or [])
+    if anchor and source and anchor < source:
+        span = calendar.lookup("US", anchor, source)
+        if span.get("available"):
+            gaps = sorted(set(gaps) | (set(span.get("sessions") or []) - set(existing_us)))
+    us_progress["unrecorded_source_sessions"] = gaps
+    us_progress["last_captured_session_date"] = max(
+        (str(item.get("session_date") or "") for item in snapshots if item.get("market") == "US"), default="")
+    (reports_dir / "us_direction_progress.json").write_text(
+        json.dumps(us_progress, ensure_ascii=False, indent=2), encoding="utf-8")
 
     cutoff = date.fromisoformat(updated_at[:10]) - timedelta(days=365)
     snapshots = [
