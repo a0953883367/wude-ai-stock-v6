@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "critical",
   "status_label": "🔴 需要處理",
-  "checked_at": "2026-10-09T17:23:56+08:00",
+  "checked_at": "2026-10-09T17:24:03+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-08 19:06:53",
-  "report_age_minutes": 1337.1,
+  "report_age_minutes": 1337.2,
   "counts": {
     "ok": 26,
-    "info": 8,
-    "warning": 3,
+    "info": 9,
+    "warning": 2,
     "critical": 1
   },
   "checks": [
@@ -285,7 +285,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-10-09T09:18:06+00:00",
+      "detail": "最近一次已送達：2026-10-09T09:24:01+00:00",
       "action": ""
     },
     {
@@ -315,17 +315,16 @@
     {
       "code": "stock_agent_recovery",
       "title": "Telegram 三報 Agent 自動處理",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近執行 2026-10-09T10:20:20.318177+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近執行 2026-10-09T17:24:02.019962+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
     "檢查 GitHub Actions、電腦排程及上游行情來源",
     "補送窗口已過，不送過期報表",
-    "補送窗口已過，不送過期報表",
-    "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
+    "補送窗口已過，不送過期報表"
   ],
   "safety": {
     "changes_rankings": false,
