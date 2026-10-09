@@ -221,3 +221,92 @@ def test_agent_reports_telegram_scope_without_claiming_chatgpt_failure(tmp_path)
     assert state['delivery_scope']['chatgpt_delivery_status']=='not_observable'
     assert state['delivery_scope']['cross_channel_deduplication'] is False
     assert 'telegram_receipt_missing' in state['incidents']['2026-10-03:evening']['diagnosis']
+
+
+class SilentExecutor(Executor):
+    def dispatch(self, period, *, data_refresh=False):
+        if self.failure:
+            raise requests.HTTPError('403')
+        self.sent.append((period, data_refresh))
+
+
+def stale_data(root):
+    setup_report(root)
+    save(root / 'latest.json', {'period': 'evening', 'updated_at': '2026-10-02 20:00:00',
+                               'data_status': {'us_sip_count': 187, 'us_opra_count': 29}})
+
+
+def test_expired_report_recovers_data_without_sending_or_faking_receipt(tmp_path):
+    stale_data(tmp_path)
+    now = NOW.replace(hour=17)
+    state = planned(tmp_path, now)
+    assert state['incidents']['2026-10-03:morning']['status'] == 'expired'
+    assert state['incidents']['2026-10-03:noon']['status'] == 'expired'
+    assert state['next_actions'] == [{'incident_key': '2026-10-03:noon', 'period': 'noon', 'kind': 'data_refresh'}]
+    executor = SilentExecutor()
+    result = execute_reserved(tmp_path, now, executor, expected_run_id='test-run')
+    assert executor.sent == [('noon', True)]
+    assert result['data_incidents']['2026-10-03:noon']['status'] == 'awaiting_verification'
+    assert not (tmp_path / 'report_delivery_status.json').exists()
+    execute_reserved(tmp_path, now, executor)
+    assert len(executor.sent) == 1
+    save(tmp_path / 'latest.json', {'period': 'noon', 'updated_at': '2026-10-03 17:16:00',
+                                 'data_status': {'us_sip_count': 190, 'us_opra_count': 28}})
+    verified = inspect(tmp_path, now + timedelta(minutes=2), runs=[], web=WEB)
+    assert verified['data_incidents']['2026-10-03:noon']['status'] == 'verified_fresh'
+    assert verified['incidents']['2026-10-03:noon']['status'] == 'expired'
+    assert verified['next_actions'] == []
+
+
+def test_silent_refresh_failures_are_preserved_and_stop_after_two_attempts(tmp_path):
+    stale_data(tmp_path)
+    now = NOW.replace(hour=17)
+    executor = SilentExecutor(failure=True)
+    for offset in (0, 21):
+        clock = now + timedelta(minutes=offset)
+        planned(tmp_path, clock)
+        result = execute_reserved(tmp_path, clock, executor, expected_run_id='test-run')
+        assert result['data_incidents']['2026-10-03:noon']['status'] == 'dispatch_failed'
+    stopped = inspect(tmp_path, now + timedelta(minutes=42), runs=[], web=WEB)
+    assert stopped['data_recovery_status'] == 'exhausted'
+    assert len(stopped['data_incidents']['2026-10-03:noon']['attempts']) == 2
+    assert stopped['next_actions'] == []
+
+
+@pytest.mark.parametrize('race', ['active', 'fresh', 'owner', 'midnight', 'period'])
+def test_silent_refresh_rechecks_reservation_before_dispatch(tmp_path, race):
+    stale_data(tmp_path)
+    now = NOW.replace(hour=17)
+    planned(tmp_path, now)
+    if race == 'fresh':
+        save(tmp_path / 'latest.json', {'period': 'noon', 'updated_at': now.isoformat(),
+                                     'data_status': {'us_sip_count': 190, 'us_opra_count': 28}})
+    if race == 'midnight':
+        now += timedelta(days=1)
+    if race == 'period':
+        now = now.replace(hour=20)
+    executor = SilentExecutor(active=race == 'active')
+    result = execute_reserved(tmp_path, now, executor, expected_run_id='wrong' if race == 'owner' else 'test-run')
+    assert executor.sent == []
+    assert result['data_incidents']['2026-10-03:noon']['attempts'][-1]['state'].startswith('skipped_')
+
+
+def test_missing_permissions_block_silent_refresh_and_primary_has_priority(tmp_path):
+    stale_data(tmp_path)
+    now = NOW.replace(hour=17)
+    blocked = inspect(tmp_path, now, runs=None, web=WEB, capability_error='actions read blocked: HTTPError')
+    assert blocked['data_recovery_status'] == 'blocked_permission'
+    assert blocked['next_actions'] == []
+    primary = inspect(tmp_path, NOW, runs=[], web=WEB)
+    assert primary['next_actions'][0].get('kind') is None
+    preparing = inspect(tmp_path, NOW.replace(hour=19), runs=[], web=WEB)
+    assert preparing['next_actions'] == []
+
+
+def test_silent_dispatch_uses_existing_workflow_and_explicit_non_delivery_input(monkeypatch):
+    post = Mock(return_value=Mock())
+    monkeypatch.setattr('agent_stock_recovery.requests.post', post)
+    GitHubExecutor('masked-test').dispatch('noon', data_refresh=True)
+    inputs = post.call_args.kwargs['json']['inputs']
+    assert inputs == {'period': 'noon', 'recovery': 'true', 'data_refresh': 'true'}
+    assert post.call_args.args[0].endswith('/stock-briefing.yml/dispatches')
