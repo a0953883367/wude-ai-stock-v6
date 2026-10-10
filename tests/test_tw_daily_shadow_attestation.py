@@ -227,3 +227,72 @@ def test_volume_and_candle_are_exposed_only_through_verified_shadow_copy():
     candle = next(c for c in input_evidence_categories(enriched) if c["id"] == "daily_candle")
     assert {item["key"]: item["value"] for item in candle["items"]}["official_volume"] == 23_145_193
     assert source_snapshot(row)["ohlcv_complete"] is False
+
+
+def emerging_raw(**changes):
+    return {'SecuritiesCompanyCode': '7815', 'CompanyName': '新特', 'Date': '1151008',
+            'LatestPrice': '401.5', 'Highest': '401.5', 'Lowest': '386.5',
+            'Average': '393.08', 'TransactionVolume': '61297', **changes}
+
+
+def test_emerging_classification_is_general_venue_proof_not_a_candle():
+    rows = [frozen(symbol=sid+'.TWO', tw_price_source=None) for sid in ['7815', '7415', '1234']]
+    original = copy.deepcopy(rows)
+    calls = []
+    def fetch(url):
+        calls.append(url)
+        if url == attestation.EMERGING_URL:
+            return [emerging_raw(), emerging_raw(SecuritiesCompanyCode='7415'),
+                    emerging_raw(SecuritiesCompanyCode='1234')]
+        return []
+    output, audit = attestation.enrich_frozen_tw_rows(rows, fetch_json=fetch, now=NOW)
+    assert rows == original
+    assert calls == [attestation.SOURCES['TPEx OpenAPI']['url'], attestation.EMERGING_URL]
+    assert audit['reason_counts'] == {'unsupported_emerging_market': 3}
+    assert audit['attested_count'] == 0
+    for row, before in zip(output, original):
+        assert row['source_daily_ohlcv_complete'] is False
+        assert row['source_daily_ohlcv_session_date'] is None
+        for field in ['price','official_open_price','official_close_price','score','rank']:
+            assert row[field] == before[field]
+        proof = row['shadow_daily_ohlcv_proof']
+        assert proof['status'] == 'blocked'
+        assert proof['venue'] == 'TPEX_EMERGING'
+        assert proof['ohlcv_supported'] is False
+        assert 'ohlcv' not in proof
+        assert proof['source_url'] == attestation.EMERGING_URL
+        assert len(proof['raw_record_sha256']) == 64
+
+
+@pytest.mark.parametrize('payload', [None, {}, [emerging_raw(), emerging_raw()],
+    [emerging_raw(Date='1151007')], [emerging_raw(Date='1151031')],
+    [emerging_raw(CompanyName='')], [emerging_raw(SecuritiesCompanyCode='7415')]])
+def test_missing_stale_ambiguous_or_other_venue_record_does_not_claim_membership(payload):
+    def fetch(url):
+        return payload if url == attestation.EMERGING_URL else []
+    output, audit = attestation.enrich_frozen_tw_rows(
+        [frozen(symbol='7815.TWO')], fetch_json=fetch, now=NOW)
+    assert output[0]['shadow_daily_ohlcv_proof']['reason'] == 'official_record_unavailable'
+    assert output[0]['source_daily_ohlcv_complete'] is False
+
+
+def test_emerging_fetch_failure_preserves_unavailable_and_other_attestations():
+    def fetch(url):
+        if url == attestation.EMERGING_URL:
+            raise RuntimeError('offline')
+        return [twse_raw()] if url == attestation.SOURCES['TWSE OpenAPI']['url'] else []
+    output, audit = attestation.enrich_frozen_tw_rows(
+        [frozen(), frozen(symbol='7815.TWO')], fetch_json=fetch, now=NOW)
+    assert output[0]['source_daily_ohlcv_complete'] is True
+    assert output[1]['shadow_daily_ohlcv_proof']['reason'] == 'official_record_unavailable'
+    assert audit['sources'][-1]['error_type'] == 'RuntimeError'
+
+
+def test_lowercase_market_and_symbol_share_existing_normalization():
+    def fetch(url):
+        return [emerging_raw()] if url == attestation.EMERGING_URL else []
+    output, _ = attestation.enrich_frozen_tw_rows(
+        [frozen(market='tw', symbol='7815.two')], fetch_json=fetch, now=NOW)
+    assert output[0]['shadow_daily_ohlcv_proof']['reason'] == 'unsupported_emerging_market'
+    assert output[0]['symbol'] == '7815.two'
+    assert output[0]['market'] == 'tw'

@@ -47,7 +47,7 @@ def source_snapshot(row: dict[str, Any]) -> dict[str, Any]:
         "daily_proof": {k:v for k,v in (row.get("shadow_daily_ohlcv_proof") or {}).items()
                         if k in {"version", "shadow_only", "status", "reason", "source", "source_url",
                                  "source_session_date", "fetched_at", "raw_record_sha256",
-                                 "source_payload_sha256", "formal_fields_unchanged"}},
+                                 "source_payload_sha256", "formal_fields_unchanged", "venue", "ohlcv_supported"}},
         "ohlcv_complete": row.get("source_daily_ohlcv_complete") is True
                           and bool(row.get("official_session_date"))
                           and row.get("source_daily_ohlcv_session_date") == row.get("official_session_date"),
@@ -240,6 +240,8 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     gate("source_date", bool(_date(session)) and snapshot.get("session_date") == session
          and snapshot.get("source_session_date") == session, "來源日期與股票交易日不一致")
     gate("ohlcv", snapshot.get("ohlcv_complete") is True,
+         "興櫃市場不在上市／上櫃日線來源範圍；最新成交／均價不能補成完整 OHLCV"
+         if (snapshot.get("daily_proof") or {}).get("reason") == "unsupported_emerging_market" else
          "來源完整性尚未驗證；既有 OHLC 不等於缺資料，需核對原始成交量與來源"
          if snapshot.get("attestation_status") == "pending" else
          "未確認真實完整 OHLCV，缺值代入的 K 線不能作進場依據")

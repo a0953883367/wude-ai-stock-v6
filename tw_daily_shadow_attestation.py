@@ -1,6 +1,8 @@
 """Re-attest a frozen Taiwan candle using the existing official bulk providers.
 
-Only the two price datasets already consumed by ``tw_official_data`` are read.
+The two price datasets already consumed by ``tw_official_data`` are read.
+Unmatched TPEx symbols can be classified through the existing emerging-market
+OpenAPI dataset; that identity check never supplies a daily candle.
 No model, historical price producer, quote endpoint, broker, or Yahoo is called.
 Returned rows are private shadow copies: callers must never save them over the
 formal analysis. A newer or different candle cannot repair a frozen candle.
@@ -31,6 +33,8 @@ SOURCES = {
     },
 }
 OHLCV = ("open", "high", "low", "close", "volume")
+EMERGING_SOURCE = "TPEx emerging statistics OpenAPI"
+EMERGING_URL = f"{TPEX_BASE}/tpex_esb_latest_statistics"
 
 
 def _decimal(value: Any) -> Decimal | None:
@@ -206,10 +210,77 @@ def fetch_official_price_records(symbols: set[str], *,
     return records, sources
 
 
+def parse_emerging_membership(payload: Any, *, fetched_at: str) -> dict[str, dict[str, Any]]:
+    """Prove venue identity only. Latest/average prices cannot supply daily OHLCV."""
+    if not isinstance(payload, list):
+        return {}
+    try:
+        observed = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            return {}
+        payload_hash = _digest(payload)
+    except (ValueError, TypeError, AttributeError):
+        return {}
+    records, seen, duplicates = {}, set(), set()
+    for raw in payload:
+        if not isinstance(raw, dict):
+            continue
+        sid = str(raw.get("SecuritiesCompanyCode") or "").strip()
+        if not re.fullmatch(r"[0-9][0-9A-Z]{2,7}", sid):
+            continue
+        symbol = sid + ".TWO"
+        if symbol in seen:
+            duplicates.add(symbol)
+            continue
+        seen.add(symbol)
+        session = _session(raw.get("Date"))
+        if (not session or not isinstance(raw.get("CompanyName"), str)
+                or not raw["CompanyName"].strip()
+                or date.fromisoformat(session) > observed.date()):
+            continue
+        records[symbol] = {
+            "source": EMERGING_SOURCE, "source_url": EMERGING_URL,
+            "source_session_date": session, "fetched_at": observed.isoformat(),
+            "venue": "TPEX_EMERGING", "raw_record": dict(raw),
+            "raw_record_sha256": _digest(raw), "source_payload_sha256": payload_hash,
+        }
+    return {symbol: value for symbol, value in records.items() if symbol not in duplicates}
+
+
+def _classify_unmatched_emerging(rows: list[dict[str, Any]], *, fetch_json, now) -> dict | None:
+    missing = [row for row in rows if str(row.get("market") or "").upper() == "TW"
+               and str(row.get("symbol") or "").upper().endswith(".TWO")
+               and (row.get("shadow_daily_ohlcv_proof") or {}).get("reason") == "official_record_unavailable"]
+    if not missing:
+        return None
+    try:
+        payload = fetch_json(EMERGING_URL)
+        fetched_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
+        records = parse_emerging_membership(payload, fetched_at=fetched_at)
+        matched = 0
+        for row in missing:
+            record = records.get(str(row["symbol"]).upper())
+            # A later listing or stale venue snapshot cannot rewrite a frozen
+            # historical security identity. Do not infer membership from absence.
+            if record and record["source_session_date"] == row.get("official_session_date"):
+                row["shadow_daily_ohlcv_proof"].update(
+                    **record, reason="unsupported_emerging_market",
+                    status="blocked", ohlcv_supported=False)
+                matched += 1
+        return {"source": EMERGING_SOURCE, "source_url": EMERGING_URL,
+                "fetched_at": fetched_at, "status": "available" if records else "unavailable",
+                "valid_record_count": len(records), "classified_count": matched,
+                "scope": "venue_identity_only"}
+    except Exception as exc:
+        return {"source": EMERGING_SOURCE, "source_url": EMERGING_URL,
+                "status": "unavailable", "error_type": type(exc).__name__,
+                "valid_record_count": 0, "scope": "venue_identity_only"}
+
+
 def enrich_frozen_tw_rows(rows: list[dict[str, Any]], *,
                           fetch_json: Callable[[str], Any] | None = None,
                           now: datetime | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Fetch at most two bulk datasets, returning shadow copies plus fetch audit.
+    """Fetch two daily datasets and, only for unmatched TPEx rows, one venue feed.
 
     Uses the existing bounded request/retry policy. Provider failures stay
     isolated and fail closed; no per-symbol backfill or fallback is performed.
@@ -218,6 +289,9 @@ def enrich_frozen_tw_rows(rows: list[dict[str, Any]], *,
                if str(row.get("market") or "").upper() == "TW"}
     records, sources = fetch_official_price_records(symbols, fetch_json=fetch_json, now=now)
     enriched = [attest_frozen_tw_row(row, records.get(str(row.get("symbol") or "").upper())) for row in rows]
+    venue_audit = _classify_unmatched_emerging(enriched, fetch_json=fetch_json or _get_json, now=now)
+    if venue_audit:
+        sources.append(venue_audit)
     reasons = Counter(row["shadow_daily_ohlcv_proof"]["reason"] for row in enriched if str(row.get("market") or "").upper() == "TW")
     return enriched, {"version": VERSION, "shadow_only": True, "sources": sources,
                       "tw_row_count": sum(reasons.values()),
