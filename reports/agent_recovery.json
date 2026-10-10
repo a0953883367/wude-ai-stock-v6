@@ -1,12 +1,12 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-10T09:49:51.521192+08:00",
+  "checked_at": "2026-10-10T16:13:09.959875+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
     "chatgpt_delivery_status": "not_observable",
     "cross_channel_deduplication": false,
-    "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
+    "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
   },
   "incidents": {
     "2026-10-03:morning": {
@@ -186,8 +186,8 @@
     "2026-10-10:noon": {
       "period": "noon",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-10-10:evening": {
       "period": "evening",
@@ -208,7 +208,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-10 09:22:20",
+        "updated_at": "2026-10-10 15:52:34",
         "error": null
       }
     },
@@ -246,6 +246,13 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-10T09:49:45.514316+08:00",
       "report_updated_at": "2026-10-10 09:22:20"
+    },
+    "2026-10-10:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-10-10T16:13:09.959875+08:00",
+      "report_updated_at": "2026-10-10 15:52:34"
     }
   },
   "permission_probe": {

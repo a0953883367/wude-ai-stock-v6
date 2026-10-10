@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-10T15:54:57+08:00",
+  "checked_at": "2026-10-10T16:13:08+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-10 15:52:34",
-  "report_age_minutes": 2.4,
+  "report_age_minutes": 20.6,
   "counts": {
     "ok": 27,
-    "info": 9,
-    "warning": 3,
+    "info": 11,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-09 已正確入帳，報表距今 0.0 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-09 已正確入帳，報表距今 0.3 小時",
       "action": ""
     },
     {
@@ -56,26 +56,26 @@
     {
       "code": "fixed_delivery_morning",
       "title": "今日早報送達",
-      "level": "warning",
-      "label": "注意",
-      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
-      "action": "補送窗口已過，不送過期報表"
+      "level": "info",
+      "label": "資訊",
+      "detail": "股票 Telegram 已停用；ChatGPT 原對話由原任務管理，本站無法驗證其送達",
+      "action": "不因缺少 Telegram 送達紀錄補寄；報表產生與資料新鮮度另行檢查"
     },
     {
       "code": "fixed_delivery_noon",
       "title": "今日午報送達",
-      "level": "warning",
-      "label": "注意",
-      "detail": "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
-      "action": "補送窗口已過，不送過期報表"
+      "level": "info",
+      "label": "資訊",
+      "detail": "股票 Telegram 已停用；ChatGPT 原對話由原任務管理，本站無法驗證其送達",
+      "action": "不因缺少 Telegram 送達紀錄補寄；報表產生與資料新鮮度另行檢查"
     },
     {
       "code": "fixed_delivery_evening",
       "title": "今日晚報送達",
       "level": "info",
       "label": "資訊",
-      "detail": "尚未到 20:00 發送時間",
-      "action": ""
+      "detail": "股票 Telegram 已停用；ChatGPT 原對話由原任務管理，本站無法驗證其送達",
+      "action": "不因缺少 Telegram 送達紀錄補寄；報表產生與資料新鮮度另行檢查"
     },
     {
       "code": "report_consistency",
@@ -317,7 +317,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
@@ -330,8 +330,6 @@
     }
   ],
   "action_required": [
-    "補送窗口已過，不送過期報表",
-    "補送窗口已過，不送過期報表",
     "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
   ],
   "safety": {
