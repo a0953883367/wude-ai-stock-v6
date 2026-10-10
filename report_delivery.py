@@ -81,6 +81,7 @@ def record_delivery(
                 markdown = (reports_dir / "latest.md").read_text(encoding="utf-8").strip()
             except (OSError, ValueError):
                 report, markdown = {}, ""
+            report = report if isinstance(report, dict) else {}
             valid, _ = validate_fixed_report(report, expected_period=period, now=now)
             if valid and markdown and report.get("updated_at") == report_updated_at:
                 generation = {**payload, "generation_validated": True}
@@ -159,6 +160,7 @@ def deliver_verified_report(
         report = json.loads((reports_dir / "latest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         report = {}
+    report = report if isinstance(report, dict) else {}
     record_delivery(
         reports_dir, period=period,
         report_updated_at=str(report.get("updated_at") or ""),

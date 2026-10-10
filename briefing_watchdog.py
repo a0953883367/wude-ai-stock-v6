@@ -107,7 +107,8 @@ def load_daily_delivery(delivery_path: str | Path, now: datetime) -> dict[str, A
     generations = {}
     for period in TARGETS:
         record = load_report(path.parent / "delivery_receipts" / f"{day}-{period}.json")
-        generations[period] = record.get("last_generation", {})
+        generation = record.get("last_generation")
+        generations[period] = generation if isinstance(generation, dict) else {}
         success = record.get("last_success")
         if isinstance(success, dict):
             successes[period] = success
@@ -136,7 +137,10 @@ def delivery_is_current(delivery: dict[str, Any] | None, *, period: str, target:
 def generation_is_current(delivery: dict[str, Any] | None, *, period: str, target: datetime) -> bool:
     """Silent generation deduplication, explicitly never delivery evidence."""
     data = delivery or {}
-    receipt = data.get("generation_receipts", {}).get(period) or {}
+    generations = data.get("generation_receipts")
+    receipt = generations.get(period) if isinstance(generations, dict) else {}
+    if not isinstance(receipt, dict):
+        return False
     checked = _parse_updated_at(receipt.get("checked_at"))
     updated = _parse_updated_at(receipt.get("report_updated_at"))
     return bool(receipt.get("generation_validated") is True

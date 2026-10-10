@@ -116,3 +116,15 @@ def test_agent_rechecks_validated_silent_generation_before_dispatch(tmp_path, mo
     after = inspect(tmp_path, now, runs=[], web={'ok': True})
     assert after['incidents']['2026-10-03:morning']['status'] == 'generated_suppressed'
     assert after['next_actions'] == []
+
+
+@pytest.mark.parametrize('malformed', ['invalid', [1], 1, None])
+def test_malformed_generation_is_not_evidence_and_cannot_crash_gate(tmp_path, malformed):
+    receipts = tmp_path / 'delivery_receipts'
+    receipts.mkdir()
+    (receipts / '2026-10-03-morning.json').write_text(json.dumps({'last_generation': malformed}))
+    evidence = load_daily_delivery(tmp_path / 'report_delivery_status.json', AT)
+    assert not generation_is_current(evidence, period='morning', target=TARGET)
+    assert not generation_is_current({'generation_receipts': malformed}, period='morning', target=TARGET)
+    assert not generation_is_current({'generation_receipts': {'morning': malformed}}, period='morning', target=TARGET)
+    assert scheduled_gate_decision({}, now=AT, schedule='55 21 * * *', delivery=evidence)[0]
