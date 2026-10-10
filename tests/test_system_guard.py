@@ -823,3 +823,20 @@ def test_daily_delivery_checks_keep_all_three_periods_independent(tmp_path):
     assert checks["fixed_delivery_morning"]["level"] == "ok"
     assert checks["fixed_delivery_noon"]["level"] == "info"
     assert "不因缺少 Telegram" in checks["fixed_delivery_noon"]["action"]
+
+
+def test_stock_recovery_status_describes_generation_not_telegram_retry(tmp_path):
+    _healthy_reports(tmp_path)
+    now = datetime(2026, 8, 24, 16, 30, tzinfo=ZoneInfo("Asia/Taipei"))
+    _write(tmp_path / "agent_recovery.json", {
+        "checked_at": "2026-08-24T09:00:00+08:00",  # genuine stale-state warning
+        "web_probe": {"ok": True}, "incidents": {}, "next_actions": [],
+    })
+    guard = build_guard(tmp_path, now=now)
+    check = next(item for item in guard["checks"] if item["code"] == "stock_agent_recovery")
+    assert check["level"] == "warning"  # Don't hide a real stale-state fault.
+    assert check["title"] == "股票三報產報檢查"
+    assert "股票 Telegram 已停用" in check["action"]
+    assert "產報不等於送達" in check["action"]
+    assert "只驗收 Telegram 回執" not in check["action"]
+    assert check["action"] in guard["action_required"]
