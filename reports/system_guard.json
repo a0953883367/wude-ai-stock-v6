@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-10T23:28:52+08:00",
+  "checked_at": "2026-10-10T23:29:03+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-10 18:18:34",
-  "report_age_minutes": 310.3,
+  "report_age_minutes": 310.5,
   "counts": {
     "ok": 26,
-    "info": 12,
-    "warning": 2,
+    "info": 13,
+    "warning": 1,
     "critical": 0
   },
   "checks": [
@@ -331,15 +331,14 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近執行 2026-10-10T18:34:29.673218+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近執行 2026-10-10T23:29:00.556720+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
-    "等待晚報排程；通知不得把午報標示成 V6 晚報",
-    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
+    "等待晚報排程；通知不得把午報標示成 V6 晚報"
   ],
   "safety": {
     "changes_rankings": false,
