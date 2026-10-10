@@ -361,6 +361,15 @@ jobs:
         with:
           path: .prediction_engine
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      # Warm only the two pilot symbols and probe before a report push can
+      # redeploy Railway. The full optional collector remains after receipts.
+      - name: Probe existing Fubon daily history for two pilot symbols
+        if: ${{ steps.generate.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 2
+        env:
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
+        run: python tools/probe_fubon_daily_history.py
       - name: Keep reports and recent archive
         if: ${{ steps.generate.outcome == 'success' }}
         shell: bash
@@ -391,13 +400,6 @@ jobs:
         env:
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         run: python fubon_ownership_relay.py
-      - name: Probe existing Fubon daily history for two pilot symbols
-        if: ${{ steps.generate.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 2
-        env:
-          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
-        run: python tools/probe_fubon_daily_history.py
       - name: Publish optional ownership supplement
         if: ${{ steps.generate.outcome == 'success' }}
         shell: bash
@@ -432,5 +434,3 @@ jobs:
         run: |
           echo "Evening report was generated but delivery freshness verification failed." >&2
           exit 1
-
-

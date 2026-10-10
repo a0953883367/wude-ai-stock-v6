@@ -87,9 +87,38 @@ def sanitize_status(result):
     return clean
 
 
+def run_probe(relay=_relay_request):
+    # Use one bounded existing ownership batch to initialize/reuse the usual
+    # service session. No new authentication path, retries or raw logging.
+    # The full optional ownership collector still runs after durable receipts.
+    symbols = list(PILOT)
+    warmed = relay("ownership", {"symbols": symbols}, timeout=20)
+    denied = False
+    valid = isinstance(warmed, dict) and set(warmed) == set(symbols)
+    if valid:
+        for symbol in symbols:
+            entries = warmed[symbol]
+            if not isinstance(entries, dict) or set(entries) != {"institutional_trades", "tdcc_distribution", "director_holdings"}:
+                valid = False
+                break
+            for entry in entries.values():
+                if not isinstance(entry, dict):
+                    valid = False
+                    break
+                state, code = entry.get("status"), entry.get("error_code")
+                if not isinstance(state, str) or state not in {"available", "no_data", "not_applicable"}:
+                    valid = False
+                    break
+                if state in {"rate_limited", "relay_unavailable"} or (type(code) is int and code in {401, 403, 429}):
+                    denied = True
+    if not valid or denied:
+        return {"version": VERSION, "status": "blocked", "reason": "existing_session_warmup_unavailable"}
+    result = relay("tw_daily_history_status", {"symbols": symbols}, timeout=30)
+    return sanitize_status(result)
+
+
 def main():
-    result = _relay_request("tw_daily_history_status", {"symbols": list(PILOT)}, timeout=30)
-    print("Fubon daily pilot:", json.dumps(sanitize_status(result), sort_keys=True, ensure_ascii=True))
+    print("Fubon daily pilot:", json.dumps(run_probe(), sort_keys=True, ensure_ascii=True))
 
 
 if __name__ == "__main__":
