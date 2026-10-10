@@ -171,3 +171,27 @@ TWSE/TPEx Oct8 records: 190/192 TW candles matched; two were unavailable. Summar
 34 waiting, 37 existing-model avoid, 309 pending verification, zero eligible. Pending
 includes genuine US source/unfinished-session gates and differing quote/close bases,
 not a blanket declaration that every stock is dangerous or every price is missing.
+
+## V4: plan assessment is not an immediate entry trigger
+
+The existing short/medium generators deliberately put pullback zones below their own
+creation price. Comparing that same snapshot price with its newly generated range
+therefore cannot measure later entry opportunities. V4 removes this same-snapshot
+eligibility test entirely: every horizon is explicitly `plan_only`, with
+`entry_evaluation.status = not_evaluated` and `summary.candidate = null`, never a
+claim that the market has zero opportunities. Source/risk failures still apply.
+
+The exact original levels, source batch, symbol, horizon and source price are exposed
+with a deterministic content ID. This freezes the content within this report for
+audit; it is not a claim of prior prospective registration or cross-batch tracking.
+Current formal prices, weights, ranks and generated zones are unchanged. Even a
+same-snapshot price already inside a range cannot become an immediate candidate.
+
+A future entry evaluator requires a separately registered immutable plan and a
+properly sourced later quote: observation strictly after plan creation, no later
+than evaluation, correct market/session/source, and within all expiry/risk limits.
+No such quote pipeline is introduced here. The pre-existing forward research ledger
+is not repurposed as a verified current-entry feed or proof of predictive efficacy.
+
+Report batch time and assessment time are shown separately. Market closure descriptions
+refer to the assessment time, not necessarily the time someone opens a cached page.

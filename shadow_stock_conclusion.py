@@ -1,17 +1,19 @@
 """Fail-closed, read-only conclusions over existing hub and trade-plan outputs.
 
 No model votes, probabilities, weights, calendar fetches, or broker calls here.
-An eligible conclusion means only that a shadow plan passed these data gates.
+This snapshot assesses plan/source conditions, not a later-quote entry trigger.
 """
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 import math
+import hashlib
+import json
 from typing import Any
 
 from market_calendar import MARKET_ZONES, OfficialMarketCalendar
 
-VERSION = "SHADOW-STOCK-CONCLUSION-V1"
+VERSION = "SHADOW-STOCK-CONCLUSION-V2"
 LABELS = {"eligible": "符合影子計畫條件", "wait": "等待", "avoid": "避開", "insufficient": "資料不足"}
 # Existing derived models share underlying inputs. They are context, not extra votes.
 CORRELATED_GROUPS = {
@@ -263,16 +265,12 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     if not failures:
         if row.get("risk_blocks") or plan.get("recommendation") == "avoid":
             code = "avoid"
-        elif (plan.get("recommendation") == "can_scale"
-              and (plan.get("plan_quality") or {}).get("entry_eligible") is True
-              and not plan.get("no_buy_reason") and not row.get("unresolved_conflict_count")
-              and float(plan["entry_low"]) <= float(price) <= float(plan["entry_high"])
-              and float(plan["stop"]) < float(plan["entry_low"]) <= float(plan["entry_high"]) < float(plan["target1"])):
-            code = "eligible"
     if plan.get("no_buy_reason"):
         reasons.append(str(plan["no_buy_reason"]))
     if row.get("unresolved_conflict_count"):
         reasons.append("仍有未解除的模型衝突")
+    if code == "wait":
+        reasons.append("僅評估原始計畫；尚未以建計畫後的合格報價檢查進場，不代表市場沒有機會")
     if not reasons:
         reasons.append({"eligible": "既有影子計畫與資料閘門通過，仍非實單建議", "wait": "等待買進區、既有計畫品質或確認條件", "avoid": "既有模型風險條件不合格", "insufficient": "資料不足，先不建立買進訊號"}[code])
     failed = {item["code"] for item in gates if not item["passed"]}
@@ -290,13 +288,29 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
             status_code, status_label = "evidence_review_pending", "證據時間待核對"
         else:
             status_code, status_label = "data_missing", "關鍵資料待補齊"
+    frozen_plan = {
+        "market": market, "symbol": row.get("symbol"), "horizon": horizon,
+        "source_session_date": session, "source_batch_at": row.get("_source_updated_at"),
+        "source_price": price,
+        "levels": {key: plan.get(key) for key in ("entry_low", "entry_high", "stop", "target1", "target2")},
+    }
+    plan_id = hashlib.sha256(json.dumps(frozen_plan, sort_keys=True, ensure_ascii=False,
+                                      separators=(",", ":"), default=str).encode()).hexdigest()
     return {
+        "mode": "plan_only",
+        "entry_evaluation": {"status": "not_evaluated", "label": "尚未評估後續進場",
+                             "reason": "沒有與原始計畫分離、時間較晚且經來源核對的報價輸入",
+                             "eligible": None, "evaluation_quote": None},
+        "plan_snapshot": {"id": plan_id, **frozen_plan,
+                          "scope": "frozen_within_this_report_not_a_prospective_registration"},
+        "plan_assessment": {"status": code, "data_gates_passed": not failures,
+                            "predictive_efficacy_validated": False},
         "data_status": {"code": status_code, "label": status_label,
                         "detail": "；".join(failures)},
         "price_basis": {"reported_quote": price, "completed_close": close,
                         "aligned": "price" not in failed,
                         "note": "報告參考價與正式收盤分開列示；不以替換價格讓既有計畫通過"},
-        "version": VERSION, "code": code, "label": LABELS[code], "horizon": horizon,
+        "version": VERSION, "code": code, "label": "計畫等待條件" if code == "wait" else LABELS[code], "horizon": horizon,
         "reasons": list(dict.fromkeys(reasons)), "as_of": session,
         "evaluated_at": now.astimezone(timezone.utc).isoformat(),
         "expires_at": timing["expires_at"], "valid_through_session": timing["valid_through_session"],

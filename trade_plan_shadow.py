@@ -18,8 +18,8 @@ from market_calendar import OfficialMarketCalendar
 from shadow_stock_conclusion import build_conclusion, observed_by
 from shadow_evidence_ablation import build_evidence_ablation_report
 
-SCHEMA_VERSION = 3
-MODEL_VERSION = "TRADE-PLAN-SHADOW-V3"
+SCHEMA_VERSION = 4
+MODEL_VERSION = "TRADE-PLAN-SHADOW-V4"
 
 HORIZON_POLICY = {
     "short": {
@@ -415,7 +415,7 @@ def build_trade_plan_report(reports_dir: Path, *, now: datetime | None = None,
         if isinstance(decisions, list):
             for item in decisions:
                 if isinstance(item, dict):
-                    rows.append({**item, "_source_coherent": bool(hub.get("updated_at"))
+                    rows.append({**item, "_source_updated_at": hub.get("updated_at"), "_source_coherent": bool(hub.get("updated_at"))
                                  and chunk.get("updated_at") == hub.get("updated_at")})
         chunk_no += 1
 
@@ -442,7 +442,8 @@ def build_trade_plan_report(reports_dir: Path, *, now: datetime | None = None,
     )
     counts = {
         "total": len(plans),
-        "candidate": sum(row["status"] == "candidate" for row in plans),
+        "candidate": None,
+        "entry_not_evaluated": len(plans),
         "wait": sum(row["status"] == "wait" for row in plans),
         "blocked": sum(row["status"] == "blocked" for row in plans),
         "insufficient": sum(row["status"] == "insufficient" for row in plans),
@@ -473,7 +474,10 @@ def build_trade_plan_report(reports_dir: Path, *, now: datetime | None = None,
     return {
         "schema_version": SCHEMA_VERSION,
         "model_version": MODEL_VERSION,
-        "mode": "shadow_trade_plan_only",
+        "mode": "shadow_plan_only",
+        "entry_evaluation": {"status": "not_evaluated", "label": "尚未評估後續進場",
+                             "same_snapshot_never_used_as_entry_quote": True,
+                             "candidate_count": None},
         "updated_at": hub.get("updated_at"),
         "evaluated_at": now.isoformat(),
         "status": "ready" if plans else "waiting_source",

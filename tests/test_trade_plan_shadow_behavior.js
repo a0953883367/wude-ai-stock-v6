@@ -97,7 +97,7 @@ async function boot(rows, options = {}) {
     addEventListener: (name, fn) => { windowListeners[name] = fn; },
   };
   class ClockDate extends Date { static now() { return now; } }
-  const payload = {plans: rows, summary: {candidate: 999, blocked: 999}, validation: {trading_days_collected: 12, target_trading_days: 60}, evidence_ablation: options.ablation};
+  const payload = {plans: rows, summary: {candidate: 999, blocked: 999}, validation: {trading_days_collected: 12, target_trading_days: 60}, evidence_ablation: options.ablation, ...options.payload};
   const original = JSON.stringify(payload);
   vm.runInNewContext(source, {
     document, window, URLSearchParams, Date: ClockDate,
@@ -129,8 +129,9 @@ async function boot(rows, options = {}) {
   };
 }
 function countFor(app, code) {
-  const match = app.nodes.summary.innerHTML.match(new RegExp('data-conclusion="' + code + '"><span>[^<]+</span><b class="[^"]*">(\\d+)</b>'));
+  const match = app.nodes.summary.innerHTML.match(new RegExp('data-conclusion="' + code + '"><span>[^<]+</span><b class="[^"]*">([^<]+)</b>'));
   assert(match, 'missing summary for ' + code);
+  if (code === 'eligible') { assert.strictEqual(match[1], '尚未評估'); return null; }
   return Number(match[1]);
 }
 function mainLabels(app) {
@@ -139,9 +140,9 @@ function mainLabels(app) {
 
 (async () => {
   const app = await boot([row('SWITCH')]);
-  assert.deepStrictEqual(mainLabels(app), ['符合影子進場條件']);
-  assert.strictEqual(countFor(app, 'eligible'), 1, 'summary must ignore legacy blocked status and stale totals');
-  assert(!app.nodes.cards.innerHTML.includes('買進區（參考）'));
+  assert.deepStrictEqual(mainLabels(app), ['原始計畫待後續核對']);
+  assert.strictEqual(countFor(app, 'eligible'), null, 'summary must ignore legacy blocked status and stale totals');
+  assert(app.nodes.cards.innerHTML.includes('買進區（參考）'));
   assert(app.nodes.cards.innerHTML.includes('來源交易日 2026-10-09'));
   assert(app.nodes.cards.innerHTML.includes('評估時間 2026-10-09T23:59:00+08:00'));
   assert(app.nodes.cards.innerHTML.includes('絕對到期時間 2026-10-12T13:30:00+08:00'));
@@ -151,30 +152,81 @@ function mainLabels(app) {
   assert(app.nodes.cards.innerHTML.includes('分數不是上漲機率'));
   assert(app.nodes.statuses.innerHTML.includes('data-status="insufficient"'));
   assert(!app.nodes.statuses.innerHTML.includes('data-status="candidate"'));
+  assert(!app.nodes.statuses.innerHTML.includes('data-status="eligible"'));
+  assert(app.nodes.count.textContent.includes('影子計畫模式｜尚未評估後續進場'));
+  assert(app.nodes.cards.innerHTML.includes('原始快照條件（依據與風險）'));
+  assert(!app.nodes.cards.innerHTML.includes('符合影子進場條件'), 'legacy eligible labels cannot claim current eligibility');
+
+  const sameBatchPlan = plan('wait', {
+    entry_low: 97, entry_high: 99, do_not_chase_above: 99,
+    conclusion: conclusion('wait', {
+      mode: 'plan_only', label: '計畫等待條件',
+      entry_evaluation: {status: 'not_evaluated', label: '尚未評估後續進場'},
+      plan_assessment: {status: 'wait', label: '原始計畫等待條件'},
+      gates: [{code: 'price_in_entry_band', passed: false, reason: '原始快照高於計畫買進区'}],
+    }),
+  });
+  const planOnlyApp = await boot([row('SAME_BATCH', sameBatchPlan, {price: 100})], {payload: {
+    mode: 'shadow_plan_only', updated_at: '2026-10-09T23:50:00+08:00', evaluated_at: '2026-10-09T23:59:00+08:00',
+    entry_evaluation: {status: 'not_evaluated', label: '尚未評估後續進場', candidate_count: null},
+    summary: {total: 1, candidate: null, entry_not_evaluated: 1, wait: 1, blocked: 0, insufficient: 0},
+  }});
+  assert.deepStrictEqual(mainLabels(planOnlyApp), ['計畫等待條件']);
+  assert.strictEqual(countFor(planOnlyApp, 'eligible'), null);
+  assert.strictEqual(countFor(planOnlyApp, 'wait'), 1);
+  assert(planOnlyApp.nodes.summary.innerHTML.includes('<span>後續可進場評估</span><b class="warn">尚未評估</b>'));
+  assert(!planOnlyApp.nodes.summary.innerHTML.includes('<span>後續可進場評估</span><b class="warn">0</b>'));
+  assert(!planOnlyApp.nodes.cards.innerHTML.includes('class="card candidate"'));
+  assert(planOnlyApp.nodes.cards.innerHTML.includes('原始快照用於建立計畫；尚未評估後續進場'));
+  assert(planOnlyApp.nodes.cards.innerHTML.includes('報表批次時間 2026-10-09T23:50:00+08:00'));
+  assert(planOnlyApp.nodes.cards.innerHTML.includes('評估時間 2026-10-09T23:59:00+08:00'));
+  assert(planOnlyApp.nodes.cards.innerHTML.includes('<span>買進區（參考）</span><b>97 ～ 99</b>'));
+  assert(planOnlyApp.nodes.cards.innerHTML.includes('買進期限（原始計畫）'));
+  assert(!planOnlyApp.nodes.statuses.innerHTML.includes('data-status="eligible"'));
+  const beforeCandidateClick = planOnlyApp.nodes.cards.innerHTML;
+  planOnlyApp.nodes.statuses.listeners.click({target: {closest: () => ({dataset: {status: 'eligible'}})}});
+  assert.strictEqual(planOnlyApp.nodes.cards.innerHTML, beforeCandidateClick, 'synthetic old candidate controls cannot reactivate entry filtering');
+  planOnlyApp.click('horizons', 'horizon', 'medium');
+  assert.deepStrictEqual(mainLabels(planOnlyApp), ['原始計畫風險阻擋']);
+  planOnlyApp.click('horizons', 'horizon', 'short');
+  assert.deepStrictEqual(mainLabels(planOnlyApp), ['計畫等待條件']);
+  planOnlyApp.advanceTo(Date.parse('2026-10-12T13:30:00+08:00'));
+  assert.deepStrictEqual(mainLabels(planOnlyApp), ['資料需更新']);
+  assert.strictEqual(countFor(planOnlyApp, 'eligible'), null, 'expiry is not a zero-opportunity inference');
+  const legacyClaim = await boot([row('LEGACY_CLAIM', plan('eligible', {
+    conclusion: conclusion('eligible', {label: '現在可進場', evaluated_at: null, entry_evaluation: {status: 'evaluated'}, plan_assessment: {status: 'eligible'}}),
+  }))], {payload: {updated_at: '<img src=x>', evaluated_at: '<script>time</script>'}});
+  assert.deepStrictEqual(mainLabels(legacyClaim), ['原始計畫待後續核對']);
+  assert(!legacyClaim.nodes.cards.innerHTML.includes('現在可進場'));
+  assert(!legacyClaim.nodes.cards.innerHTML.includes('<img'));
+  assert(!legacyClaim.nodes.cards.innerHTML.includes('<script>'));
+  assert(legacyClaim.nodes.cards.innerHTML.includes('報表批次時間 &lt;img src=x&gt;'));
+  assert(legacyClaim.nodes.cards.innerHTML.includes('評估時間 &lt;script&gt;time&lt;/script&gt;'));
+  assert.strictEqual(countFor(legacyClaim, 'eligible'), null);
 
   app.click('horizons', 'horizon', 'medium');
-  assert.deepStrictEqual(mainLabels(app), ['暫不進場']);
-  assert.strictEqual(countFor(app, 'eligible'), 0);
+  assert.deepStrictEqual(mainLabels(app), ['原始計畫風險阻擋']);
+  assert.strictEqual(countFor(app, 'eligible'), null);
   assert.strictEqual(countFor(app, 'avoid'), 1);
   assert(app.nodes.cards.innerHTML.includes('買進區（參考）'));
   assert(app.nodes.cards.innerHTML.includes('參考出場價位：目標1 108'));
   assert(app.nodes.cards.innerHTML.includes('中期風險阻擋'));
-  assert(!app.nodes.cards.innerHTML.includes('符合影子進場條件'));
-  app.click('statuses', 'status', 'eligible');
+  assert(!app.nodes.cards.innerHTML.includes('原始計畫待後續核對'));
+  app.click('statuses', 'status', 'wait');
   assert(app.nodes.cards.innerHTML.includes('沒有符合條件'));
   app.click('statuses', 'status', 'avoid');
-  assert.deepStrictEqual(mainLabels(app), ['暫不進場']);
+  assert.deepStrictEqual(mainLabels(app), ['原始計畫風險阻擋']);
   app.click('horizons', 'horizon', 'long');
   assert(app.nodes.cards.innerHTML.includes('沒有符合條件'));
   app.click('statuses', 'status', 'wait');
-  assert.deepStrictEqual(mainLabels(app), ['等待量價確認']);
+  assert.deepStrictEqual(mainLabels(app), ['計畫等待條件']);
   app.click('horizons', 'horizon', 'preferred');
-  assert(app.nodes.cards.innerHTML.includes('沒有符合條件'));
-  app.click('statuses', 'status', 'eligible');
-  assert.deepStrictEqual(mainLabels(app), ['符合影子進場條件']);
+  assert.deepStrictEqual(mainLabels(app), ['原始計畫待後續核對']);
+  app.click('statuses', 'status', 'wait');
+  assert.deepStrictEqual(mainLabels(app), ['原始計畫待後續核對']);
   app.click('horizons', 'horizon', 'short');
   app.click('horizons', 'horizon', 'short');
-  assert.deepStrictEqual(mainLabels(app), ['符合影子進場條件'], 'repeated selection remains stable');
+  assert.deepStrictEqual(mainLabels(app), ['原始計畫待後續核對'], 'repeated selection remains stable');
 
   const invalids = [
     row('MISSING', plan('eligible', {conclusion: undefined})),
@@ -189,13 +241,13 @@ function mainLabels(app) {
   const invalidApp = await boot(invalids, {failValidation: true});
   assert.deepStrictEqual(mainLabels(invalidApp), ['待核對', '資料需更新', '資料需更新', '待核對', '待核對', '待核對', '待核對', '待核對']);
   assert.strictEqual(countFor(invalidApp, 'insufficient'), invalids.length);
-  assert.strictEqual(countFor(invalidApp, 'eligible'), 0);
-  assert(!invalidApp.nodes.cards.innerHTML.includes('符合影子進場條件'));
+  assert.strictEqual(countFor(invalidApp, 'eligible'), null);
+  assert(!invalidApp.nodes.cards.innerHTML.includes('原始計畫待後續核對'));
   assert(invalidApp.nodes.cards.innerHTML.includes('結論已到期'));
   assert(invalidApp.nodes.cards.innerHTML.includes('缺少有效結論'));
   assert(invalidApp.nodes.cards.innerHTML.includes('有效期限尚未驗證'));
   assert(invalidApp.nodes.validationSummary.textContent.includes('尚未正式採用'));
-  invalidApp.click('statuses', 'status', 'eligible');
+  invalidApp.click('statuses', 'status', 'wait');
   assert(invalidApp.nodes.cards.innerHTML.includes('沒有符合條件'));
   invalidApp.click('statuses', 'status', 'insufficient');
   assert.strictEqual(mainLabels(invalidApp).length, invalids.length);
@@ -216,7 +268,7 @@ function mainLabels(app) {
     row('ACTUAL_AVOID', plan('avoid')), row('ACTUAL_WAIT', plan('wait')),
     row('READY', plan('eligible', {conclusion: conclusion('eligible', {data_status: {code: 'ready', label: '來源已核對', detail: '來源驗證已完成。'}, gates: [{code: 'source', passed: true}]})})),
   ]));
-  assert.deepStrictEqual(mainLabels(dataApp), dataStates.map(item => item[1]).concat(['暫不進場', '等待量價確認', '符合影子進場條件']));
+  assert.deepStrictEqual(mainLabels(dataApp), dataStates.map(item => item[1]).concat(['原始計畫風險阻擋', '計畫等待條件', '原始計畫待後續核對']));
   dataStates.forEach(([code, label, detail]) => {
     assert(dataApp.nodes.cards.innerHTML.includes('data-source-status="' + code + '"'));
     assert(dataApp.nodes.cards.innerHTML.includes('資料狀態：' + label));
@@ -224,19 +276,19 @@ function mainLabels(app) {
   });
   assert.strictEqual(countFor(dataApp, 'insufficient'), dataStates.length);
   assert.strictEqual(countFor(dataApp, 'avoid'), 1, 'only an actual avoid conclusion contributes to avoid');
-  assert.strictEqual(countFor(dataApp, 'wait'), 1);
-  assert.strictEqual(countFor(dataApp, 'eligible'), 1);
+  assert.strictEqual(countFor(dataApp, 'wait'), 2);
+  assert.strictEqual(countFor(dataApp, 'eligible'), null);
   assert(dataApp.nodes.summary.innerHTML.includes('data-conclusion="insufficient"><span>待核對</span><b class="warn">7</b>'));
   assert(dataApp.nodes.statuses.innerHTML.includes('data-status="insufficient">待核對</button>'));
   assert.strictEqual((dataApp.nodes.cards.innerHTML.match(/class="card blocked"/g) || []).length, 1, 'unverified data must not get the red avoid card styling');
   assert.strictEqual((dataApp.nodes.cards.innerHTML.match(/class="card wait" data-conclusion="insufficient"/g) || []).length, dataStates.length);
   assert(dataApp.nodes.cards.innerHTML.includes('完成資料核對前，不提供可進場判定；下列價位僅供參考。'));
   dataApp.click('statuses', 'status', 'avoid');
-  assert.deepStrictEqual(mainLabels(dataApp), ['暫不進場']);
+  assert.deepStrictEqual(mainLabels(dataApp), ['原始計畫風險阻擋']);
   dataApp.click('statuses', 'status', 'insufficient');
   assert.deepStrictEqual(mainLabels(dataApp), dataStates.map(item => item[1]));
-  dataApp.click('statuses', 'status', 'eligible');
-  assert.deepStrictEqual(mainLabels(dataApp), ['符合影子進場條件']);
+  dataApp.click('statuses', 'status', 'wait');
+  assert.deepStrictEqual(mainLabels(dataApp), ['計畫等待條件', '原始計畫待後續核對']);
 
   const unverifiedCandle = {id: 'daily_candle', label: '每日K線', applicable: true, status: 'unverified', as_of: '2026-10-09', source: 'reported_candle',
     note: '已有 O/H/L/C 參考資料；完整性尚未驗證，成交量與衍生指標待核對。', items: [
@@ -265,8 +317,8 @@ function mainLabels(app) {
     row('LEGACY_INSUFFICIENT', plan('insufficient')),
   ]);
   assert.deepStrictEqual(mainLabels(inconsistent), ['待核對', '來源完整性待驗證', '待核對']);
-  assert.strictEqual(countFor(inconsistent, 'eligible'), 0, 'copy changes cannot bypass failed gates or pending attestations');
-  assert(!inconsistent.nodes.cards.innerHTML.includes('符合影子進場條件'));
+  assert.strictEqual(countFor(inconsistent, 'eligible'), null, 'copy changes cannot bypass failed gates or pending attestations');
+  assert(!inconsistent.nodes.cards.innerHTML.includes('原始計畫待後續核對'));
   const statusAttack = '<img src=x onerror="alert(1)">';
   const escapedStatus = await boot([row('ESCAPED_STATUS', plan('insufficient', {conclusion: conclusion('insufficient', {
     data_status: {code: 'source_attestation_pending', label: statusAttack, detail: '<script>details</script>'},
@@ -287,10 +339,10 @@ function mainLabels(app) {
 
   const expiry = NOW + 1000;
   const clockApp = await boot([row('TIMER', plan('eligible', {conclusion: conclusion('eligible', {expires_at: new Date(expiry).toISOString()})}))]);
-  clockApp.click('statuses', 'status', 'eligible');
+  clockApp.click('statuses', 'status', 'wait');
   assert.strictEqual(clockApp.timers.size, 1, 'rerender must replace, not accumulate expiry timers');
   clockApp.advanceTo(expiry - 1);
-  assert.deepStrictEqual(mainLabels(clockApp), ['符合影子進場條件']);
+  assert.deepStrictEqual(mainLabels(clockApp), ['原始計畫待後續核對']);
   clockApp.advanceTo(expiry);
   assert(clockApp.nodes.cards.innerHTML.includes('沒有符合條件'), 'expiry must update active filters without clicks');
   assert.strictEqual(countFor(clockApp, 'insufficient'), 1);
@@ -360,17 +412,17 @@ function mainLabels(app) {
   assert(details.includes('資料日期 未知｜來源 未知'));
   assert(details.includes('獨立隔離研究，不影響目前結論。'));
   assert(details.includes('週線可能尚未完成；只供獨立隔離研究。'));
-  assert.deepStrictEqual(mainLabels(evidenceApp), ['暫不進場'], 'evidence must not override the selected conclusion');
+  assert.deepStrictEqual(mainLabels(evidenceApp), ['原始計畫風險阻擋'], 'evidence must not override the selected conclusion');
   assert.strictEqual(countFor(evidenceApp, 'avoid'), 1);
-  assert.strictEqual(countFor(evidenceApp, 'eligible'), 0);
+  assert.strictEqual(countFor(evidenceApp, 'eligible'), null);
   assert(!/可買|買進訊號|上漲機率|看多|加分|進場/.test(details), 'evidence presentation must not create bullish interpretation');
-  evidenceApp.click('statuses', 'status', 'eligible');
+  evidenceApp.click('statuses', 'status', 'wait');
   assert(evidenceApp.nodes.cards.innerHTML.includes('沒有符合條件'));
   evidenceApp.click('statuses', 'status', 'avoid');
   evidenceApp.click('horizons', 'horizon', 'long');
   assert(evidenceApp.nodes.cards.innerHTML.includes('沒有符合條件'));
   evidenceApp.click('statuses', 'status', 'wait');
-  assert.deepStrictEqual(mainLabels(evidenceApp), ['等待量價確認']);
+  assert.deepStrictEqual(mainLabels(evidenceApp), ['計畫等待條件']);
   assert(evidenceApp.nodes.cards.innerHTML.includes('日K：42.56'), 'category references survive horizon changes without driving the conclusion');
 
   const escapedEvidence = await boot([row('ESCAPED_EVIDENCE', plan('avoid'), {input_evidence_categories: [
@@ -417,13 +469,13 @@ function mainLabels(app) {
   assert(eventDetails.includes('不影響分數與結論'));
   assert(!eventDetails.includes('DO_NOT_RENDER'));
   assert(!eventDetails.includes('可評估進場'));
-  assert.deepStrictEqual(mainLabels(eventApp), ['暫不進場']);
-  assert.strictEqual(countFor(eventApp, 'eligible'), 0);
-  eventApp.click('statuses', 'status', 'eligible');
+  assert.deepStrictEqual(mainLabels(eventApp), ['原始計畫風險阻擋']);
+  assert.strictEqual(countFor(eventApp, 'eligible'), null);
+  eventApp.click('statuses', 'status', 'wait');
   assert(eventApp.nodes.cards.innerHTML.includes('沒有符合條件'));
   const noTimeEvents = await boot([row('NO_TIME', plan('eligible'), {shadow_events: {...shadowEvents, counts: {input: 2, eligible_events: 0, duplicates: 0, exclusion_reasons: {missing_or_imprecise_publication_time: 2}}}})]);
   assert(noTimeEvents.nodes.cards.innerHTML.includes('事前時間資料可用 0'));
-  assert.deepStrictEqual(mainLabels(noTimeEvents), ['符合影子進場條件'], 'diagnostics do not change existing conclusions in either direction');
+  assert.deepStrictEqual(mainLabels(noTimeEvents), ['原始計畫待後續核對'], 'diagnostics do not change existing conclusions in either direction');
   const absentConclusionEvents = await boot([row('NO_CONCLUSION', plan('eligible', {conclusion: null}), {shadow_events: shadowEvents})]);
   assert.deepStrictEqual(mainLabels(absentConclusionEvents), ['待核對'], 'available events cannot rescue absent conclusions');
   const escapedEvents = await boot([row('ESCAPED_EVENTS', plan('avoid'), {shadow_events: {
@@ -465,9 +517,9 @@ function mainLabels(app) {
         assert(text.includes('尚無有效且已完成的前向配對'));
         assert(text.includes('尚未設定交易成本假設'));
       } else assert(text.includes('證據配對前向檢查｜僅描述統計'));
-      assert.deepStrictEqual(mainLabels(auditApp), ['暫不進場']);
-      assert.strictEqual(countFor(auditApp, 'eligible'), 0);
-      auditApp.click('statuses', 'status', 'eligible');
+      assert.deepStrictEqual(mainLabels(auditApp), ['原始計畫風險阻擋']);
+      assert.strictEqual(countFor(auditApp, 'eligible'), null);
+      auditApp.click('statuses', 'status', 'wait');
       assert(auditApp.nodes.cards.innerHTML.includes('沒有符合條件'));
     }
   }
@@ -482,7 +534,7 @@ function mainLabels(app) {
   assert(escapedAudit.nodes.validationSummary.innerHTML.includes('&lt;script&gt;bad&lt;/script&gt;'));
   assert(escapedAudit.nodes.validationSummary.textContent.includes('已登記 — 組｜已完成配對 — 組'));
   assert(!escapedAudit.nodes.validationSummary.textContent.includes('88.7654321'), 'never publish an accuracy gain even if an unexpected field contains one');
-  assert.deepStrictEqual(mainLabels(escapedAudit), ['暫不進場']);
+  assert.deepStrictEqual(mainLabels(escapedAudit), ['原始計畫風險阻擋']);
 
   const filters = await boot([row('TW_MATCH'), row('US_OTHER', plan('eligible'), {market: 'US'})], {search: '?symbol=TW_MATCH'});
   assert.strictEqual(filters.nodes.search.value, 'TW_MATCH');
