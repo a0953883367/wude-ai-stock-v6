@@ -36,7 +36,7 @@ from treasury_stress import (
     attach_treasury_market,
     evaluate_treasury_stress,
 )
-from notifier import render_markdown, save_report, send_telegram
+from notifier import render_markdown, save_report
 from report_delivery import record_delivery
 from news_risk import fetch_news_risks, merge_official_announcements
 from performance import load_frozen_forecasts, load_performance_context, update_performance
@@ -2132,23 +2132,16 @@ def main() -> int:
         )
         # Keep the saved human-readable report identical to the Telegram copy.
         latest_md.write_text(markdown, encoding="utf-8")
-    delivered = False if args.no_telegram else send_telegram(markdown)
+    # Stock reports are delivered by the existing ChatGPT tasks only.
+    delivered = False
     record_delivery(
         SETTINGS.reports_dir,
         period=args.period,
         report_updated_at=report["updated_at"],
-        state=(
-            "suppressed"
-            if args.no_telegram
-            else ("delivered" if delivered else "delivery_failed")
-        ),
+        state="suppressed",
         delivered=delivered,
-        expected_delivery=not args.no_telegram,
-        detail=(
-            "排程指定為靜默資料更新"
-            if args.no_telegram
-            else ("Telegram 已送達" if delivered else "Telegram 傳送失敗")
-        ),
+        expected_delivery=False,
+        detail="股票報告 Telegram 已停用；ChatGPT 原對話送達狀態由原任務管理",
     )
     if delivered and pending_notices:
         try:

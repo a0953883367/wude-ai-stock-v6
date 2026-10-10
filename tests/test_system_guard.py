@@ -821,5 +821,5 @@ def test_daily_delivery_checks_keep_all_three_periods_independent(tmp_path):
     guard = build_guard(tmp_path, now=now)
     checks = {item["code"]: item for item in guard["checks"]}
     assert checks["fixed_delivery_morning"]["level"] == "ok"
-    assert checks["fixed_delivery_noon"]["level"] == "warning"
-    assert "窗口已過" in checks["fixed_delivery_noon"]["action"]
+    assert checks["fixed_delivery_noon"]["level"] == "info"
+    assert "不因缺少 Telegram" in checks["fixed_delivery_noon"]["action"]

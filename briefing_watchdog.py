@@ -104,12 +104,14 @@ def load_daily_delivery(delivery_path: str | Path, now: datetime) -> dict[str, A
     delivery = load_report(path)
     day = now.astimezone(TAIPEI).date().isoformat()
     successes = {}
+    generations = {}
     for period in TARGETS:
         record = load_report(path.parent / "delivery_receipts" / f"{day}-{period}.json")
+        generations[period] = record.get("last_generation", {})
         success = record.get("last_success")
         if isinstance(success, dict):
             successes[period] = success
-    return {**delivery, "successful_receipts": successes}
+    return {**delivery, "successful_receipts": successes, "generation_receipts": generations}
 
 
 def delivery_is_current(delivery: dict[str, Any] | None, *, period: str, target: datetime) -> bool:
@@ -131,6 +133,21 @@ def delivery_is_current(delivery: dict[str, Any] | None, *, period: str, target:
     )
 
 
+def generation_is_current(delivery: dict[str, Any] | None, *, period: str, target: datetime) -> bool:
+    """Silent generation deduplication, explicitly never delivery evidence."""
+    data = delivery or {}
+    receipt = data.get("generation_receipts", {}).get(period) or {}
+    checked = _parse_updated_at(receipt.get("checked_at"))
+    updated = _parse_updated_at(receipt.get("report_updated_at"))
+    return bool(receipt.get("generation_validated") is True
+                and receipt.get("period") == period and receipt.get("channel") == "telegram_v6"
+                and receipt.get("state") == "suppressed" and receipt.get("delivered") is False
+                and receipt.get("expected_delivery") is False
+                and checked is not None and updated is not None
+                and target - timedelta(minutes=60) <= updated <= checked
+                and target - timedelta(minutes=60) <= checked <= target + timedelta(minutes=120))
+
+
 def recovery_decision(
     report: dict[str, Any],
     *,
@@ -142,6 +159,8 @@ def recovery_decision(
 ) -> tuple[bool, str]:
     current = now.astimezone(TAIPEI)
     target = target_datetime(current, period)
+    if generation_is_current(delivery, period=period, target=target):
+        return False, "current report generated; Telegram suppressed, ChatGPT delivery not observable"
     if delivery_is_current(delivery, period=period, target=target):
         return False, "current report already delivered"
     if current < target + timedelta(minutes=grace_minutes):
@@ -162,6 +181,8 @@ def scheduled_gate_decision(
     if not period:
         return True, "non-fixed settlement schedule"
     target = target_datetime(now, period)
+    if generation_is_current(delivery, period=period, target=target):
+        return False, "current report generated; Telegram suppressed, ChatGPT delivery not observable"
     if delivery_is_current(delivery, period=period, target=target):
         return False, "another run already delivered the fixed report"
     return True, "fixed report still required"

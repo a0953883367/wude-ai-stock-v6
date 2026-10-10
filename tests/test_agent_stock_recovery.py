@@ -220,7 +220,7 @@ def test_agent_reports_telegram_scope_without_claiming_chatgpt_failure(tmp_path)
     assert state['delivery_scope']['channel']=='telegram_v6'
     assert state['delivery_scope']['chatgpt_delivery_status']=='not_observable'
     assert state['delivery_scope']['cross_channel_deduplication'] is False
-    assert 'telegram_receipt_missing' in state['incidents']['2026-10-03:evening']['diagnosis']
+    assert 'missing_fixed_generation' in state['incidents']['2026-10-03:evening']['diagnosis']
 
 
 class SilentExecutor(Executor):

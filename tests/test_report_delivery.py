@@ -61,7 +61,7 @@ def test_fixed_report_rejects_empty_sip_or_opra():
     assert "OPRA 資料為 0" in reasons
 
 
-def test_verified_delivery_records_success_without_touching_report(tmp_path):
+def test_stock_delivery_is_suppressed_without_touching_report(tmp_path):
     report = _report()
     (tmp_path / "latest.json").write_text(
         json.dumps(report, ensure_ascii=False), encoding="utf-8"
@@ -80,9 +80,10 @@ def test_verified_delivery_records_success_without_touching_report(tmp_path):
     status = json.loads(
         (tmp_path / "report_delivery_status.json").read_text(encoding="utf-8")
     )
-    assert delivered is True
-    assert sent == ["verified evening"]
-    assert status["state"] == "delivered"
+    assert delivered is False
+    assert sent == []
+    assert status["state"] == "suppressed"
+    assert status["expected_delivery"] is False
     assert status["report_updated_at"] == report["updated_at"]
     assert all(value is False for value in status["safety"].values())
 
@@ -106,7 +107,7 @@ def test_stale_report_is_blocked_before_sender(tmp_path):
     )
     assert delivered is False
     assert sent == []
-    assert status["state"] == "blocked_stale_or_incomplete"
+    assert status["state"] == "suppressed"
 
 
 def test_period_receipts_survive_later_reports_and_failed_retry(tmp_path):
@@ -152,10 +153,11 @@ def test_send_boundary_recheck_preserves_success_and_never_resends(tmp_path):
         state='delivered', delivered=True, expected_delivery=True, detail='first success', checked_at=at)
     receipt = tmp_path / 'delivery_receipts/2026-10-03-evening.json'
     original = receipt.read_bytes()
-    assert deliver_verified_report(tmp_path, period='evening', now=at,
+    assert not deliver_verified_report(tmp_path, period='evening', now=at,
         sender=lambda _: pytest.fail('duplicate Telegram send'),
         health_get=lambda *a, **kw: pytest.fail('already delivered'))
-    assert receipt.read_bytes() == original
+    assert json.loads(receipt.read_bytes())["last_success"] == json.loads(original)["last_success"]
+    assert json.loads(receipt.read_bytes())["last_attempt"]["state"] == "suppressed"
 
 
 def test_chatgpt_receipt_never_counts_as_telegram_success(tmp_path):
@@ -166,8 +168,8 @@ def test_chatgpt_receipt_never_counts_as_telegram_success(tmp_path):
         'period':'evening','channel':'chatgpt','state':'delivered','delivered':True,
         'checked_at':'2026-10-03T20:02:00+08:00','report_updated_at':'2026-10-03 20:01:00'}))
     sent=[]
-    assert deliver_verified_report(tmp_path, period='evening',
+    assert not deliver_verified_report(tmp_path, period='evening',
         now=datetime(2026,10,3,20,5,tzinfo=TAIPEI),
         sender=lambda m: sent.append(m) or True,
         health_get=lambda *a,**kw:_healthy_response())
-    assert sent == ['telegram report']
+    assert sent == []
