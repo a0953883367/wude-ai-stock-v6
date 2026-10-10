@@ -20,7 +20,7 @@ import requests
 from us_market_data import _credentials, _headers
 
 ENDPOINT = 'https://data.alpaca.markets/v2/stocks/bars'
-VERSION = 'US-SIP-DAILY-IN-MEMORY-V1'
+VERSION = 'US-SIP-DAILY-IN-MEMORY-V2'
 NY = ZoneInfo('America/New_York')
 MAX_SYMBOLS = 200
 MAX_DAYS = 400
@@ -46,7 +46,7 @@ def _symbols(value: Any) -> list[str]:
     return sorted(value)
 
 
-def _sessions(calendar: Any, now: datetime) -> list[str]:
+def _sessions(calendar: Any, now: datetime, *, verified_weeks: dict | None = None) -> list[str]:
     """Require verified cached sessions; exclude the current New York date.
 
     This intentionally adds one local-day settlement buffer. It does not claim
@@ -55,6 +55,7 @@ def _sessions(calendar: Any, now: datetime) -> list[str]:
     today = now.astimezone(NY).date()
     start = today - timedelta(days=MAX_DAYS)
     sessions = set()
+    first_week_start = start - timedelta(days=start.weekday())
     for year in range(start.year, today.year + 1):
         try:
             row = calendar.relay_us_year(year)
@@ -75,6 +76,12 @@ def _sessions(calendar: Any, now: datetime) -> list[str]:
                 raise HistoryBlocked('official_calendar_invalid')
             if day.year != year or opening >= closing:
                 raise HistoryBlocked('official_calendar_invalid')
+            if verified_weeks is not None and first_week_start <= day <= today + timedelta(days=7):
+                monday = day - timedelta(days=day.weekday())
+                # A cross-year week needs both authoritative year exports;
+                # conservatively leave it uncertified in this bounded stage.
+                if monday.year == (monday + timedelta(days=6)).year:
+                    verified_weeks.setdefault(monday.isoformat(), []).append(value)
             if start <= day < today:
                 sessions.add(value)
     if len(sessions) < 4:
@@ -91,8 +98,7 @@ def _number(value: Any, *, volume: bool = False) -> float:
         raise HistoryBlocked('invalid_ohlcv') from None
     if not math.isfinite(number) or (number < 0 if volume else number <= 0):
         raise HistoryBlocked('invalid_ohlcv')
-    if volume and not number.is_integer():
-        raise HistoryBlocked('invalid_ohlcv')
+    # Split-adjusted share volumes may be fractional. Never round or fill.
     return number
 
 
@@ -118,7 +124,7 @@ def _normalize(raw: Any, expected: set[str]) -> tuple[str, tuple[float, ...]]:
 def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tuple[str, str],
            deadline: float, telemetry: dict[str, Any]) -> dict[str, dict[str, tuple[float, ...]]]:
     params = {'symbols': ','.join(symbols), 'timeframe': '1Day', 'feed': 'sip',
-              'adjustment': 'raw', 'currency': 'USD', 'sort': 'asc', 'limit': 10000,
+              'adjustment': 'split', 'currency': 'USD', 'sort': 'asc', 'limit': 10000,
               'asof': sessions[-1], 'start': sessions[0], 'end': sessions[-1] + 'T23:59:59-04:00'}
     # Use the actual New York offset for the final day, including DST changes.
     params['end'] = datetime.combine(date.fromisoformat(sessions[-1]), time(23, 59, 59), NY).isoformat()
@@ -197,29 +203,6 @@ def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tu
     raise HistoryBlocked('pagination_budget_exhausted')
 
 
-def _indicators(bars: list[tuple[float, ...]]) -> dict[str, float]:
-    """Isolated backward-looking raw-bar indicators, never formal V6 features.
-
-    Arithmetic RSI14 and true-range ATR14 are explicitly versioned here. Raw
-    split discontinuities are blocked by the caller; no adjusted/raw mixing.
-    """
-    if len(bars) < MIN_BARS:
-        raise HistoryBlocked('insufficient_indicator_history')
-    closes = [b[3] for b in bars]
-    changes = [b - a for a, b in zip(closes, closes[1:])][-14:]
-    gains = sum(max(c, 0) for c in changes) / 14
-    losses = sum(max(-c, 0) for c in changes) / 14
-    rsi = 100 - 100 / (1 + gains / losses) if losses else (100 if gains else 50)
-    tr = [max(b[1] - b[2], abs(b[1] - previous[3]), abs(b[2] - previous[3]))
-          for previous, b in zip(bars, bars[1:])][-14:]
-    average_volume = sum(b[4] for b in bars[-21:-1]) / 20
-    if average_volume <= 0:
-        raise HistoryBlocked('insufficient_volume_history')
-    return {**{f'ma{n}': sum(closes[-n:]) / n for n in (5, 10, 20, 60)},
-            'rsi14_sma': rsi, 'atr14_true_range_sma': sum(tr) / 14,
-            'volume_ratio_previous20': bars[-1][4] / average_volume}
-
-
 def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | None = None,
                                 session: Any = None, collect_history: bool = False) -> dict[str, Any]:
     requested = _symbols(symbols)
@@ -229,17 +212,19 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
     result = {'schema_version': 1, 'version': VERSION, 'status': 'blocked',
               'observed_at': observed.astimezone(timezone.utc).isoformat(),
               'source': 'Alpaca SIP historical daily bars', 'feed': 'sip', 'interval': '1Day',
-              'adjustment': 'raw', 'requested_count': len(requested), 'probe_status': 'not_run',
+              'adjustment': 'split', 'requested_count': len(requested), 'probe_status': 'not_run',
               'history_complete_count': 0, 'indicator_complete_count': 0,
+              'weekly_indicator_complete_count': 0, 'daily_momentum_complete_count': 0, 'research_plan_complete_count': 0,
               'decision_eligible': False, 'affects_formal': False, 'prospective_evaluation_started': False,
               'durable_raw_retention': False, 'market_values_exported': False,
-              'bar_finality_verified': False, 'request_count': 0}
+              'bar_finality_verified': False, 'corporate_actions_independently_verified': False, 'request_count': 0}
     client = None
     try:
         credentials = _credentials()
         if not credentials:
             raise HistoryBlocked('existing_credentials_unavailable')
-        sessions = _sessions(calendar, observed)
+        verified_weeks = {}
+        sessions = _sessions(calendar, observed, verified_weeks=verified_weeks)
         result['session_date'] = sessions[-1]
         result['calendar_session_count'] = len(sessions)
         deadline = clock.monotonic() + MAX_SECONDS
@@ -248,6 +233,7 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
         probe = _fetch(['AAPL'], probe_sessions, client, credentials, deadline, result)
         if set(probe['AAPL']) != set(probe_sessions):
             raise HistoryBlocked('probe_incomplete')
+        result['observed_at'] = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
         result['probe_status'] = 'passed'
         result['probe_session_count'] = 4
         if not collect_history:
@@ -255,32 +241,38 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
             result['next_stage'] = 'bounded_history_collection_not_started'
             return result
         histories = _fetch(requested, sessions, client, credentials, deadline, result)
+        from us_private_shadow_projection import project_symbol
+        captured_at = now or datetime.now(timezone.utc)
+        result['observed_at'] = captured_at.astimezone(timezone.utc).isoformat()
         reasons = Counter()
+        coverage_reasons = Counter()
         for symbol in requested:
             if clock.monotonic() > deadline:
                 raise HistoryBlocked('request_time_budget')
-            records = histories[symbol]
-            if set(records) != set(sessions):
-                reasons['incomplete_session_coverage'] += 1
-                continue
-            result['history_complete_count'] += 1
-            bars = [records[day] for day in sessions]
-            # Conservative research gate, not a corporate-action detector.
-            if any(not 0.65 <= b[3] / a[3] <= 1.5 for a, b in zip(bars, bars[1:])):
-                reasons['raw_price_discontinuity_requires_review'] += 1
-                continue
-            try:
-                indicators = _indicators(bars)
-            except HistoryBlocked as exc:
-                reasons[exc.reason] += 1
-                continue
-            if not all(math.isfinite(x) for x in indicators.values()):
-                reasons['invalid_indicator'] += 1
+            projection = project_symbol(symbol, histories[symbol], sessions,
+                                        observed=captured_at, adjustment='split', verified_weeks=verified_weeks)
+            result['history_complete_count'] += int(projection.full_window_complete)
+            if projection.features is None:
+                reasons[projection.reasons[0]] += 1
                 continue
             result['indicator_complete_count'] += 1
+            result['daily_momentum_complete_count'] += int(
+                projection.features.daily_k9 is not None and projection.features.daily_d9 is not None)
+            result['weekly_indicator_complete_count'] += int(
+                projection.features.weekly_k9 is not None and projection.features.weekly_d9 is not None)
+            result['research_plan_complete_count'] += int(projection.plan is not None)
+            for reason in projection.reasons:
+                coverage_reasons[reason] += 1
+            # This object contains private market values and remains local only.
+            # No projection, dataclass serialization or hash is put in a report.
+        if clock.monotonic() > deadline:
+            raise HistoryBlocked('request_time_budget')
+        result['coverage_notes'] = dict(coverage_reasons)
         result['blocked_reasons'] = dict(reasons)
         result['status'] = 'computed_in_memory' if result['indicator_complete_count'] == len(requested) else 'partial_in_memory'
         result['next_stage'] = 'private_retention_rights_and_prospective_observation_required'
+        result['projection_version'] = 'US-PRIVATE-SIP-PROJECTION-V1'
+        result['corporate_action_basis'] = 'provider_split_adjusted_as_observed_now'
     except HistoryBlocked as exc:
         result['reason'] = exc.reason
         if exc.http_status is not None:

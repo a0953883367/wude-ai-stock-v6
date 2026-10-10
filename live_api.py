@@ -546,7 +546,7 @@ class LiveDataService:
             "ok": True,
             "service": "wude-live-api",
             "us_daily_shadow_probe": {
-                "version": "US-SIP-DAILY-IN-MEMORY-V1",
+                "version": "US-SIP-DAILY-IN-MEMORY-V2",
                 "supported": True,
                 "durable_raw_retention": False,
                 "entitlement_verified": False,
