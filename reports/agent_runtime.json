@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-10T20:11:47+00:00",
+  "generated_at": "2026-10-10T23:41:34+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-11T04:11:44.319304+08:00",
+    "checked_at": "2026-10-11T07:41:31.809576+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-11T04:11:42.203998+08:00",
+    "checked_at": "2026-10-11T07:41:29.664749+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -259,9 +259,18 @@
       },
       "2026-10-11:morning": {
         "period": "morning",
-        "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "attempts": [
+          {
+            "at": "2026-10-11T07:41:22.412510+08:00",
+            "guard_run_id": "38095865709",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+        "diagnosis": [
+          "missing_fixed_generation"
+        ]
       },
       "2026-10-11:noon": {
         "period": "noon",
@@ -342,7 +351,7 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
+        "status": "waiting_primary_or_active_run",
         "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
@@ -395,7 +404,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 110565,
+        "bytes": 110540,
         "truncated": true,
         "cross_domain_reads": false
       },
