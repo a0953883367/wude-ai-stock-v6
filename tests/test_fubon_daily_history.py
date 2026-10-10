@@ -197,10 +197,10 @@ def test_failed_or_timed_out_warmup_stops_without_retry(warm):
     calls = []
     def relay(kind, payload, timeout):
         calls.append((kind, payload, timeout))
-        return warm
+        return f.empty_status(list(f.PILOT), NOW, "existing_session_unavailable") if kind == "tw_daily_history_status" else warm
     result = run_probe(relay)
     assert result["reason"] == "existing_session_warmup_unavailable"
-    assert calls == [("ownership", {"symbols": list(f.PILOT)}, 20)]
+    assert calls == [("tw_daily_history_status", {"symbols": list(f.PILOT)}, 30), ("ownership", {"symbols": list(f.PILOT)}, 20)]
 
 
 def test_one_fixed_warmup_then_probe_no_raw_output():
@@ -209,11 +209,13 @@ def test_one_fixed_warmup_then_probe_no_raw_output():
     def relay(kind, data, timeout):
         calls.append(kind)
         assert data == {"symbols": list(f.PILOT)}
+        if len(calls) == 1:
+            return f.empty_status(list(f.PILOT), NOW, "existing_session_unavailable")
         if kind == "ownership":
             return {s: {k: {"status":"available", "rows":[{"private_provider_row":"never log"}]} for k in ("institutional_trades", "tdcc_distribution", "director_holdings")} for s in f.PILOT}
         return status
     result = run_probe(relay)
-    assert calls == ["ownership", "tw_daily_history_status"]
+    assert calls == ["tw_daily_history_status", "ownership", "tw_daily_history_status"]
     assert result["status"] == "validated_in_memory" and "never log" not in json.dumps(result)
 
 
@@ -289,3 +291,65 @@ def test_request_end_must_match_official_session():
     status, _ = f.collect_private(rest(lambda **k: payload("2330.TW" if k["symbol"] == "2330" else "6290.TWO")), list(f.PILOT), Calendar(), now=NOW)
     status["request_to"] = "2026-10-10"
     assert sanitize_status(status)["reason"] == "invalid_or_unavailable_relay_status"
+
+
+def test_ready_session_direct_probe_skips_ownership():
+    calls = []
+    status, _ = f.collect_private(rest(lambda **k: payload("2330.TW" if k["symbol"] == "2330" else "6290.TWO")), list(f.PILOT), Calendar(), now=NOW)
+    def relay(kind, data, timeout):
+        calls.append(kind)
+        return status
+    assert run_probe(relay)["validated_count"] == 2
+    assert calls == ["tw_daily_history_status"]
+
+
+@pytest.mark.parametrize("reason", sorted(f.REASONS - {"existing_session_unavailable"}))
+def test_direct_failure_never_warms_or_retries(reason):
+    calls = []
+    status = f.empty_status(list(f.PILOT), NOW, reason)
+    def relay(kind, data, timeout):
+        calls.append(kind)
+        return status
+    run_probe(relay)
+    assert calls == ["tw_daily_history_status"]
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda r: r.update(request_count=1),
+    lambda r: r.update(request_count_known=False, request_count=None),
+    lambda r: r.update(validated_count=1),
+    lambda r: r.update(session_date="2026-10-08"),
+    lambda r: r.update(raw="untrusted"),
+    lambda r: r.pop("observed_at"),
+    lambda r: r.clear(),
+])
+def test_inconsistent_session_failure_cannot_authorize_warmup(mutate):
+    calls = []
+    status = f.empty_status(list(f.PILOT), NOW, "existing_session_unavailable")
+    mutate(status)
+    def relay(kind, data, timeout):
+        calls.append(kind)
+        return status
+    run_probe(relay)
+    assert calls == ["tw_daily_history_status"]
+
+
+def test_absent_sdk_is_metadata_only_before_calendar_or_upstream():
+    calendar = SimpleNamespace(lookup=lambda *a: pytest.fail("calendar called without session"))
+    result = f.DailyPilot().status(None, list(f.PILOT), calendar)
+    assert result["request_count"] == 0 and result["request_count_known"] is True
+    assert result["symbols"] == {} and result["validated_count"] == 0
+
+
+@pytest.mark.parametrize('reason', ['provider_authentication_denied', 'provider_entitlement_denied', 'request_time_budget', 'incomplete_session_coverage', 'existing_session_unavailable'])
+def test_post_warmup_failure_never_repeats(reason):
+    calls = []
+    def relay(kind, data, timeout):
+        calls.append(kind)
+        if len(calls) == 1:
+            return f.empty_status(list(f.PILOT), NOW, 'existing_session_unavailable')
+        if kind == 'ownership':
+            return {s: {k: {'status':'available'} for k in ('institutional_trades','tdcc_distribution','director_holdings')} for s in f.PILOT}
+        return f.empty_status(list(f.PILOT), NOW, reason)
+    assert run_probe(relay)['reason'] == reason
+    assert calls == ['tw_daily_history_status', 'ownership', 'tw_daily_history_status']

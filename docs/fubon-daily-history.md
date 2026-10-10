@@ -33,3 +33,10 @@ The workflow therefore performs one fixed two-symbol warm-up batch through its e
 Version 2 exposes only bounded canonical dates and counts for coverage mismatches: expected/observed unique-session counts, missing/unexpected date lists (maximum 120 each), and first/last returned dates. Requested date bounds, daily timeframe, explicit raw adjustment request, share units, and joint calendar provenance are also recorded. No OHLCV, raw rows or provider messages are exported, and completeness remains mandatory.
 
 Run 38034816146 completed two SDK requests on 2026-10-10 with valid TWSE/TPEx identity and bar schemas, but both symbols failed exact coverage against 82 official sessions ending 2026-10-08. This establishes endpoint access, not complete usable history. Diagnostics distinguish query-boundary or calendar differences without fabricating bars or bypassing validation.
+
+
+## Direct-first session lifecycle
+
+The bounded tool first calls the existing daily status route. A ready SDK goes directly to the two-symbol history probe, without collecting ownership data. Only the fully validated metadata-only `existing_session_unavailable` result (zero known upstream requests, zero validated symbols, no calendar/query metadata) allows one fixed two-symbol ownership warmup through the unchanged existing session path, then one daily call if that warmup succeeds. Malformed status, timeout, authentication failure, in-progress work, calendar failure or actual history failure never triggers warmup or another attempt. A missing configured/ready session is not inferred from credentials.
+
+The existing ownership relay has a 30-second HTTP caller timeout and can still be working server-side after timeout; this patch adds no retry, cancellation claim or larger deadline. Run 431 correctly stopped at that warmup timeout without a daily SDK call. Direct-first avoids this unnecessary dependency for an already initialized session; it does not claim to fix provider login latency.
