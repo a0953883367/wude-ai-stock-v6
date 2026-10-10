@@ -37,8 +37,15 @@ def sanitize_date_diagnostics(row):
         if value is not None and (not isinstance(value, str) or date.fromisoformat(value).isoformat() != value):
             raise ValueError("invalid date")
         clean[key] = value
-    if bool(clean["observed_date_count"]) != (clean["first_returned_date"] is not None and clean["last_returned_date"] is not None):
+    if clean["observed_date_count"] == 0:
+        if clean["first_returned_date"] is not None or clean["last_returned_date"] is not None:
+            raise ValueError("inconsistent empty bounds")
+    elif clean["first_returned_date"] is None or clean["last_returned_date"] is None:
         raise ValueError("inconsistent bounds")
+    if set(clean["missing_session_dates"]) & set(clean["unexpected_session_dates"]):
+        raise ValueError("overlapping dates")
+    if len(clean["missing_session_dates"]) > clean["expected_session_count"] or len(clean["unexpected_session_dates"]) > clean["observed_date_count"]:
+        raise ValueError("impossible counts")
     if clean["observed_date_count"] and clean["first_returned_date"] > clean["last_returned_date"]:
         raise ValueError("reversed bounds")
     if clean["observed_date_count"] != clean["expected_session_count"] - len(clean["missing_session_dates"]) + len(clean["unexpected_session_dates"]):
@@ -90,7 +97,7 @@ def sanitize_status(result):
     if "request_from" in result:
         try:
             first, last = date.fromisoformat(result["request_from"]), date.fromisoformat(result["request_to"])
-            if not 0 <= (last - first).days < 120:
+            if not 0 <= (last - first).days < 120 or last.isoformat() != clean.get("session_date"):
                 return blocked
             constants = {"request_timeframe": "D", "request_adjusted": "false", "volume_unit": "shares",
                          "calendar_source_status": "verified_twse_tpex"}
@@ -123,7 +130,19 @@ def sanitize_status(result):
         elif n < 60:
             return blocked
         try:
-            entry.update(sanitize_date_diagnostics(row))
+            diagnostics = sanitize_date_diagnostics(row)
+            if diagnostics:
+                if diagnostics["expected_session_count"] != clean.get("calendar_session_count"):
+                    return blocked
+                if "request_from" in clean and any(not clean["request_from"] <= d <= clean["request_to"] for d in diagnostics["missing_session_dates"]):
+                    return blocked
+            if row["status"] == "validated_in_memory":
+                if (not diagnostics or diagnostics["observed_date_count"] != n
+                        or diagnostics["missing_session_dates"] or diagnostics["unexpected_session_dates"]
+                        or diagnostics["first_returned_date"] != clean.get("request_from")
+                        or diagnostics["last_returned_date"] != clean.get("request_to")):
+                    return blocked
+            entry.update(diagnostics)
         except (TypeError, ValueError):
             return blocked
         clean["symbols"][symbol] = entry

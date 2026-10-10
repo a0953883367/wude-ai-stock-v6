@@ -269,3 +269,22 @@ def test_query_calendar_inclusivity_and_utc_cutoff():
     assert requests[-1] == ("TW", "2026-06-11", "2026-10-09")
     f._sessions(calendar, datetime(2026, 10, 10, 8, 30, tzinfo=timezone.utc))
     assert requests[-1] == ("TW", "2026-06-12", "2026-10-10")
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda r: r.update(expected_session_count=1),
+    lambda r: r.update(observed_date_count=0, expected_session_count=0, first_returned_date=SESSIONS[0], last_returned_date=None),
+    lambda r: r.update(missing_session_dates=[SESSIONS[0]], unexpected_session_dates=[SESSIONS[0]]),
+    lambda r: r.update(first_returned_date=SESSIONS[1]),
+    lambda r: r.update(bar_count=len(SESSIONS)-1),
+])
+def test_contradictory_diagnostic_metadata_blocks(mutate):
+    status, _ = f.collect_private(rest(lambda **k: payload("2330.TW" if k["symbol"] == "2330" else "6290.TWO")), list(f.PILOT), Calendar(), now=NOW)
+    mutate(status["symbols"]["2330.TW"])
+    assert sanitize_status(status)["reason"] == "invalid_or_unavailable_relay_status"
+
+
+def test_request_end_must_match_official_session():
+    status, _ = f.collect_private(rest(lambda **k: payload("2330.TW" if k["symbol"] == "2330" else "6290.TWO")), list(f.PILOT), Calendar(), now=NOW)
+    status["request_to"] = "2026-10-10"
+    assert sanitize_status(status)["reason"] == "invalid_or_unavailable_relay_status"
