@@ -170,7 +170,7 @@ def test_reused_snapshots_need_post_session_nonfuture_timestamp(stamp, reused):
     (Response([], status=403), "official_http_denied"),
     (Response([], headers={"Content-Length": str(f.MAX_OFFICIAL_BYTES+1)}), "official_body_budget"),
     (Response(body=b"x"*(f.MAX_OFFICIAL_BYTES+1)), "official_body_budget"),
-    (Response([{}]*5001), "official_row_budget"),
+    (Response([{}]*(f.MAX_OFFICIAL_ROWS + 1)), "official_row_budget"),
     (Response(body=b"private malformed json"), "official_parse_failure"),
     (Response({"data": []}), "official_payload_invalid"),
 ])

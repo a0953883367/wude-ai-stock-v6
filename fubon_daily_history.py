@@ -20,8 +20,16 @@ MAX_DAYS = 120
 MAX_SECONDS = 20
 MAX_ROWS = 120
 MAX_FORMAL_BYTES = 10 * 1024 * 1024
-MAX_OFFICIAL_BYTES = 2 * 1024 * 1024
-MAX_OFFICIAL_ROWS = 5000
+# The TPEx bulk feed includes warrants, ETFs and ETNs as well as stocks:
+# https://data.gov.tw/dataset/11371 . These are explicit safety ceilings,
+# not claimed measurements of a current exchange feed.
+MAX_OFFICIAL_BYTES = 8 * 1024 * 1024
+MAX_OFFICIAL_ROWS = 20000
+MAX_OFFICIAL_ROW_CHARS = 256 * 1024
+OFFICIAL_CHUNK_BYTES = 16 * 1024
+OFFICIAL_SOURCE_IDS = {"TWSE OpenAPI": "TWSE", "TPEx OpenAPI": "TPEX_MAINBOARD"}
+OFFICIAL_LENGTH_STATES = {"not_observed", "absent", "valid", "invalid", "over_budget"}
+OFFICIAL_ENCODING_STATES = {"not_observed", "absent", "identity", "gzip", "deflate", "br", "other"}
 OFFICIAL_REASONS = {
     "official_snapshot_reused", "official_records_available", "official_record_unavailable",
     "official_session_mismatch", "official_http_denied", "official_rate_limited", "official_http_error",
@@ -252,19 +260,170 @@ def _remaining(deadline, cancelled):
     return deadline - clock.monotonic()
 
 
+class _OfficialFeedBlocked(Exception):
+    """Finite local rejection reason; never propagate body content."""
+
+
+def _official_audit():
+    return {"official_request_count": 0, "official_reused_record_count": 0, "official_reason_counts": {},
+            "official_sources": {source_id: {
+                "status": "not_requested", "advertised_bytes": None,
+                "advertised_length_status": "not_observed", "content_encoding": "not_observed",
+                "decoded_bytes_observed": 0, "row_count_observed": 0,
+                "body_complete": False, "rows_complete": False,
+                "advertised_byte_budget_exceeded": False, "decoded_byte_budget_exceeded": False,
+                "row_budget_exceeded": False,
+            } for source_id in OFFICIAL_SOURCE_IDS.values()}}
+
+
+def _official_headers(headers, metadata):
+    # Content-Length describes transport bytes, which may be compressed. Do
+    # not equate it to the bytes returned by requests.iter_content().
+    advertised = headers.get("Content-Length")
+    if advertised is None:
+        metadata["advertised_length_status"] = "absent"
+    elif not isinstance(advertised, str) or not re.fullmatch(r"[0-9]+", advertised):
+        metadata["advertised_length_status"] = "invalid"
+    else:
+        digits = advertised.lstrip("0") or "0"
+        if len(digits) > len(str(MAX_OFFICIAL_BYTES)) or int(digits) > MAX_OFFICIAL_BYTES:
+            metadata.update(advertised_length_status="over_budget", advertised_byte_budget_exceeded=True)
+        else:
+            metadata.update(advertised_length_status="valid", advertised_bytes=int(digits))
+    encoding = headers.get("Content-Encoding")
+    metadata["content_encoding"] = ("absent" if encoding is None else encoding.lower()
+                                    if isinstance(encoding, str) and encoding.lower() in
+                                    {"identity", "gzip", "deflate", "br"} else "other")
+
+
+def _official_pilot_rows(body, spec, targets, metadata, *, deadline, cancelled):
+    """Pre-scan and decode one bounded flat row; never allocate the bulk array.
+
+    Transient memory includes the bounded body, decoded text, a bounded row
+    slice/object, and at most two rows per pilot. The body limit is not a total
+    RAM limit. Two copies suffice to preserve the existing duplicate rejection.
+    """
+    try:
+        text = body.decode("utf-8-sig")
+    except UnicodeError:
+        raise _OfficialFeedBlocked("official_parse_failure") from None
+    index, selected, selected_counts = 0, [], {}
+    whitespace = re.compile(r"[ \t\r\n]*")
+
+    def skip():
+        nonlocal index
+        index = whitespace.match(text, index).end()
+
+    def flat_row_end(start):
+        # Check shape and row/field/string spans BEFORE allocating any JSON
+        # value. Braces inside strings are data, never nesting.
+        quoted, escaped, string_start, fields = False, False, 0, 1
+        cursor = start + 1
+        while cursor < len(text):
+            if cursor - start >= MAX_OFFICIAL_ROW_CHARS:
+                raise _OfficialFeedBlocked("official_payload_invalid")
+            if (cursor - start) % 4096 == 0:
+                _remaining(deadline, cancelled)
+            char = text[cursor]
+            if quoted:
+                if cursor - string_start > 6 * 4096:
+                    raise _OfficialFeedBlocked("official_payload_invalid")
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    quoted = False
+            elif char == '"':
+                quoted, string_start = True, cursor + 1
+            elif char in "[{":
+                raise _OfficialFeedBlocked("official_payload_invalid")
+            elif char == "}":
+                return cursor + 1
+            elif char == ",":
+                fields += 1
+                if fields > 64:
+                    raise _OfficialFeedBlocked("official_payload_invalid")
+            cursor += 1
+        raise _OfficialFeedBlocked("official_parse_failure")
+
+    def flat_pairs(pairs):
+        row = {}
+        for key, value in pairs:
+            if (key in row or len(key) > 128
+                    or isinstance(value, str) and len(value) > 4096
+                    or not isinstance(value, (str, int, float, bool, type(None)))):
+                raise _OfficialFeedBlocked("official_payload_invalid")
+            if type(value) in (int, float):
+                try:
+                    finite = math.isfinite(value)
+                except OverflowError:
+                    finite = False
+                if not finite:
+                    raise _OfficialFeedBlocked("official_payload_invalid")
+            row[key] = value
+        return row
+
+    skip()
+    if index >= len(text) or text[index] != "[":
+        raise _OfficialFeedBlocked("official_payload_invalid" if index < len(text)
+                                   and text[index] in '{"0123456789-ntf' else "official_parse_failure")
+    index += 1
+    skip()
+    if index < len(text) and text[index] == "]":
+        index += 1
+    else:
+        while True:
+            _remaining(deadline, cancelled)
+            skip()
+            if index >= len(text) or text[index] != "{":
+                raise _OfficialFeedBlocked("official_payload_invalid")
+            end = flat_row_end(index)
+            try:
+                row = json.loads(text[index:end], object_pairs_hook=flat_pairs)
+            except (ValueError, RecursionError):
+                raise _OfficialFeedBlocked("official_parse_failure") from None
+            index = end
+            metadata["row_count_observed"] += 1
+            if metadata["row_count_observed"] > MAX_OFFICIAL_ROWS:
+                metadata["row_budget_exceeded"] = True
+                raise _OfficialFeedBlocked("official_row_budget")
+            symbol = str(row.get(spec["symbol"]) or "").strip() + spec["suffix"]
+            if symbol in targets and selected_counts.get(symbol, 0) < 2:
+                selected.append(row)
+                selected_counts[symbol] = selected_counts.get(symbol, 0) + 1
+            del row
+            skip()
+            if index < len(text) and text[index] == "]":
+                index += 1
+                break
+            if index >= len(text) or text[index] != ",":
+                raise _OfficialFeedBlocked("official_parse_failure")
+            index += 1
+    skip()
+    if index != len(text):
+        raise _OfficialFeedBlocked("official_parse_failure")
+    _remaining(deadline, cancelled)
+    metadata["rows_complete"] = True
+    return selected
+
+
 def _official_pilot_records(formal, private, *, deadline, cancelled, get=None):
     """At most two trusted GETs; retain only pilot raw snapshots in memory.
 
-    Streaming limits bound the consumed HTTP body. Socket timeouts do not cancel
-    an in-flight read; the enclosing caller deadline still discards late work.
+    Limits bound decoded bytes appended to the body, with at most one additional
+    chunk observed to detect overflow. They do not bound requests/urllib3's
+    decompressor internals or total RAM. Socket timeouts do not cancel an
+    in-flight read; the enclosing caller deadline still discards late work.
     """
     import requests
     from tw_daily_shadow_attestation import SOURCES, parse_official_price_rows
 
     records = {}
-    audit = {"official_request_count": 0, "official_reused_record_count": 0, "official_reason_counts": {}}
-    def reason(code):
+    audit = _official_audit()
+    def reason(code, source):
         audit["official_reason_counts"][code] = audit["official_reason_counts"].get(code, 0) + 1
+        audit["official_sources"][OFFICIAL_SOURCE_IDS[source]]["status"] = code
     needed = set(private).intersection(PILOT)
     for row in formal.get("data", []):
         if not isinstance(row, dict) or row.get("symbol") not in needed:
@@ -287,7 +446,7 @@ def _official_pilot_records(formal, private, *, deadline, cancelled, get=None):
                 continue
             records[symbol] = record
             audit["official_reused_record_count"] += 1
-            reason("official_snapshot_reused")
+            reason("official_snapshot_reused", source)
     fetch = get or requests.get
     for source, spec in SOURCES.items():
         targets = {s for s in needed - set(records) if s.endswith(spec["suffix"])}
@@ -297,62 +456,56 @@ def _official_pilot_records(formal, private, *, deadline, cancelled, get=None):
         # The URL comes only from the existing official-source constants.
         audit["official_request_count"] += 1
         response = None
-        body, payload = bytearray(), None
+        body, selected = bytearray(), []
+        metadata = audit["official_sources"][OFFICIAL_SOURCE_IDS[source]]
         recorded_before = sum(audit["official_reason_counts"].values())
         try:
             response = fetch(spec["url"], stream=True, allow_redirects=False,
                              timeout=min(5.0, _remaining(deadline, cancelled)),
                              headers={"Accept": "application/json", "User-Agent": "WudeAIStock/1.0 official-market-data"})
+            _remaining(deadline, cancelled)
+            _official_headers(response.headers, metadata)
             if response.status_code != 200:
                 reason("official_http_denied" if response.status_code in (401, 403) else
                        "official_rate_limited" if response.status_code == 429 else
-                       "official_redirect_blocked" if 300 <= response.status_code < 400 else "official_http_error")
+                       "official_redirect_blocked" if 300 <= response.status_code < 400 else "official_http_error", source)
                 continue
-            advertised = response.headers.get("Content-Length")
-            if advertised is not None and (not str(advertised).isdigit() or int(advertised) > MAX_OFFICIAL_BYTES):
-                reason("official_body_budget")
+            if metadata["advertised_length_status"] in {"invalid", "over_budget"}:
+                reason("official_body_budget", source)
                 continue
-            for chunk in response.iter_content(chunk_size=16 * 1024):
+            for chunk in response.iter_content(chunk_size=OFFICIAL_CHUNK_BYTES):
                 _remaining(deadline, cancelled)
+                metadata["decoded_bytes_observed"] += len(chunk)
                 if len(body) + len(chunk) > MAX_OFFICIAL_BYTES:
-                    reason("official_body_budget")
-                    raise ValueError("official_body_budget")
+                    metadata["decoded_byte_budget_exceeded"] = True
+                    raise _OfficialFeedBlocked("official_body_budget")
                 body.extend(chunk)
             _remaining(deadline, cancelled)
+            metadata["body_complete"] = True
             try:
-                payload = json.loads(body)
-            except (ValueError, UnicodeError):
-                reason("official_parse_failure")
-                continue
+                selected = _official_pilot_rows(body, spec, targets, metadata,
+                                                deadline=deadline, cancelled=cancelled)
             finally:
                 body.clear()
-            if not isinstance(payload, list):
-                reason("official_payload_invalid")
-                continue
-            if len(payload) > MAX_OFFICIAL_ROWS:
-                reason("official_row_budget")
-                continue
-            # Keep duplicates so the existing parser rejects ambiguous identity.
-            selected = [r for r in payload if isinstance(r, dict)
-                        and str(r.get(spec["symbol"]) or "").strip() + spec["suffix"] in targets]
-            payload.clear()
             parsed = parse_official_price_rows(source, selected, fetched_at=datetime.now(TAIPEI).isoformat())
             selected.clear()
             _remaining(deadline, cancelled)
             records.update({s: r for s, r in parsed.items() if s in targets})
             reason("official_record_unavailable" if not parsed else
                    "official_session_mismatch" if any(r["source_session_date"] != private[s].get("source_session_date") for s, r in parsed.items())
-                   else "official_records_available")
+                   else "official_records_available", source)
+        except _OfficialFeedBlocked as exc:
+            reason(str(exc), source)
         except HistoryBlocked:
+            metadata["status"] = "request_time_budget"
             raise
         except Exception:
             # Never export provider content or exception messages, and never retry.
             if sum(audit["official_reason_counts"].values()) == recorded_before:
-                reason("official_request_failure")
+                reason("official_request_failure", source)
         finally:
             body.clear()
-            if isinstance(payload, list):
-                payload.clear()
+            selected.clear()
             if response is not None:
                 try:
                     response.close()
@@ -396,7 +549,7 @@ class DailyPilot:
                         formal, manifest = _load_frozen_cohort_input()
                     except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
                         formal, manifest = {}, []
-                    official, audit = ({}, {"official_request_count": 0, "official_reused_record_count": 0, "official_reason_counts": {}})
+                    official, audit = {}, _official_audit()
                     if formal and manifest:
                         official, audit = _official_pilot_records(formal, private, deadline=deadline, cancelled=cancelled)
                     try:

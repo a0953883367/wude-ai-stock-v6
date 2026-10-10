@@ -9,8 +9,90 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fubon_daily_history import OFFICIAL_REASONS, PILOT, REASONS, SOURCE, VERSION
+from fubon_daily_history import (MAX_OFFICIAL_BYTES, MAX_OFFICIAL_ROWS, OFFICIAL_CHUNK_BYTES,
+                                 OFFICIAL_ENCODING_STATES, OFFICIAL_LENGTH_STATES,
+                                 OFFICIAL_REASONS, OFFICIAL_SOURCE_IDS, PILOT, REASONS, SOURCE, VERSION)
 from us_market_data import _relay_request
+
+
+def sanitize_official_sources(result):
+    """Project fixed source IDs and bounded operational metadata, never headers."""
+    sources = result.get("official_sources")
+    if not isinstance(sources, dict) or set(sources) != set(OFFICIAL_SOURCE_IDS.values()):
+        raise ValueError("invalid official sources")
+    clean, reasons, requested, reused = {}, {}, 0, 0
+    for source_id in OFFICIAL_SOURCE_IDS.values():
+        row = sources[source_id]
+        if not isinstance(row, dict) or row.get("status") not in OFFICIAL_REASONS | {"not_requested"}:
+            raise ValueError("invalid official source status")
+        entry = {"status": row["status"]}
+        for key, states in (("advertised_length_status", OFFICIAL_LENGTH_STATES),
+                            ("content_encoding", OFFICIAL_ENCODING_STATES)):
+            if type(row.get(key)) is not str or row[key] not in states:
+                raise ValueError("invalid official source metadata")
+            entry[key] = row[key]
+        for key, maximum in (("decoded_bytes_observed", MAX_OFFICIAL_BYTES + OFFICIAL_CHUNK_BYTES),
+                             ("row_count_observed", MAX_OFFICIAL_ROWS + 1)):
+            if type(row.get(key)) is not int or not 0 <= row[key] <= maximum:
+                raise ValueError("invalid official source count")
+            entry[key] = row[key]
+        advertised = row.get("advertised_bytes")
+        if entry["advertised_length_status"] == "valid":
+            if type(advertised) is not int or not 0 <= advertised <= MAX_OFFICIAL_BYTES:
+                raise ValueError("invalid official advertised bytes")
+        elif advertised is not None:
+            raise ValueError("unverified official advertised bytes")
+        entry["advertised_bytes"] = advertised
+        for key in ("body_complete", "rows_complete", "advertised_byte_budget_exceeded",
+                    "decoded_byte_budget_exceeded", "row_budget_exceeded"):
+            if type(row.get(key)) is not bool:
+                raise ValueError("invalid official source flag")
+            entry[key] = row[key]
+        if (entry["advertised_byte_budget_exceeded"] != (entry["advertised_length_status"] == "over_budget")
+                or entry["decoded_byte_budget_exceeded"] != (entry["decoded_bytes_observed"] > MAX_OFFICIAL_BYTES)
+                or entry["row_budget_exceeded"] != (entry["row_count_observed"] > MAX_OFFICIAL_ROWS)
+                or entry["body_complete"] and entry["decoded_byte_budget_exceeded"]
+                or entry["row_count_observed"] and not entry["body_complete"]
+                or entry["decoded_bytes_observed"] < 3 * entry["row_count_observed"]
+                or entry["rows_complete"] and entry["decoded_bytes_observed"] < 2
+                or entry["rows_complete"] and (not entry["body_complete"] or entry["row_budget_exceeded"])):
+            raise ValueError("inconsistent official source bounds")
+        state = entry["status"]
+        if state in {"not_requested", "official_snapshot_reused"}:
+            if (entry["advertised_length_status"] != "not_observed"
+                    or entry["content_encoding"] != "not_observed"
+                    or entry["decoded_bytes_observed"] or entry["row_count_observed"]
+                    or entry["body_complete"] or entry["rows_complete"]):
+                raise ValueError("unrequested official measurements")
+            reused += state == "official_snapshot_reused"
+        else:
+            requested += 1
+        if state != "not_requested":
+            reasons[state] = reasons.get(state, 0) + 1
+        if (entry["row_budget_exceeded"] and state != "official_row_budget"
+                or (entry["advertised_byte_budget_exceeded"] or entry["decoded_byte_budget_exceeded"])
+                and state not in {"official_body_budget", "official_http_denied", "official_rate_limited",
+                                  "official_redirect_blocked", "official_http_error"}):
+            raise ValueError("inconsistent official budget reason")
+        if state in {"official_records_available", "official_record_unavailable", "official_session_mismatch"} and not entry["rows_complete"]:
+            raise ValueError("incomplete official source rows")
+        if (state in {"official_records_available", "official_session_mismatch"} and not entry["row_count_observed"]
+                or state == "official_row_budget" and (not entry["row_budget_exceeded"] or entry["rows_complete"])
+                or state == "official_body_budget" and (
+                    not (entry["advertised_length_status"] in {"invalid", "over_budget"} or entry["decoded_byte_budget_exceeded"])
+                    or entry["body_complete"] or entry["rows_complete"])
+                or state in {"official_parse_failure", "official_payload_invalid"}
+                and (not entry["body_complete"] or entry["rows_complete"])):
+            raise ValueError("inconsistent official source outcome")
+        if (state in {"official_http_denied", "official_rate_limited", "official_redirect_blocked", "official_http_error"}
+                or entry["advertised_length_status"] in {"invalid", "over_budget"}):
+            if entry["decoded_bytes_observed"] or entry["body_complete"] or entry["rows_complete"]:
+                raise ValueError("unread official body measurements")
+        clean[source_id] = entry
+    if (requested != result.get("official_request_count") or reused != result.get("official_reused_record_count")
+            or reasons != {k: v for k, v in result["official_reason_counts"].items() if v}):
+        raise ValueError("inconsistent official source accounting")
+    return clean
 
 
 def sanitize_cohort_diagnostics(result):
@@ -68,6 +150,7 @@ def sanitize_cohort_diagnostics(result):
     if not isinstance(official_reasons, dict) or any(k not in OFFICIAL_REASONS for k in official_reasons):
         raise ValueError("invalid official reasons")
     clean["official_reason_counts"] = {key: count(value, 2) for key, value in official_reasons.items()}
+    clean["official_sources"] = sanitize_official_sources(result)
     endpoints = result.get("corporate_actions")
     if not isinstance(endpoints, dict) or set(endpoints) != set(METHODS):
         raise ValueError("invalid diagnostic endpoints")
