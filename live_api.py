@@ -546,7 +546,7 @@ class LiveDataService:
             "ok": True,
             "service": "wude-live-api",
             "us_daily_shadow_probe": {
-                "version": "US-SIP-DAILY-IN-MEMORY-V1",
+                "version": "US-SIP-DAILY-IN-MEMORY-V2",
                 "supported": True,
                 "durable_raw_retention": False,
                 "entitlement_verified": False,
@@ -993,6 +993,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     data = collect_daily_shadow_status(
                         payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
                         collect_history=payload.get("collect_history") is True,
+                        instrument_types=payload.get("instrument_types"),
                     )
                 elif kind == "tw_daily_history_status":
                     data = self.service.daily_history_status(
