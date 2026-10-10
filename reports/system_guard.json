@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-10T09:44:52+08:00",
+  "checked_at": "2026-10-10T09:45:10+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-10 09:22:20",
-  "report_age_minutes": 22.5,
+  "report_age_minutes": 22.8,
   "counts": {
-    "ok": 26,
-    "info": 11,
+    "ok": 24,
+    "info": 13,
     "warning": 2,
     "critical": 0
   },
@@ -266,18 +266,18 @@
     {
       "code": "live_backend",
       "title": "Railway 即時後端",
-      "level": "ok",
-      "label": "正常",
-      "detail": "wude-live-api 正常回應；與 App 畫面及手機授權分開判斷",
-      "action": "",
-      "consecutive_failures": 0
+      "level": "warning",
+      "label": "注意",
+      "detail": "Railway 健康網址連續 1 次無法連線：ReadTimeout: HTTPSConnectionPool(host='wude-ai-stock-v6-production.up.railway.app', port=443): Read timed out. (read timeout=10.0)",
+      "action": "檢查 Railway 服務、部署紀錄與公開網域；正式收盤報表仍由 GitHub Actions 分開判斷",
+      "consecutive_failures": 1
     },
     {
       "code": "stream_tw",
       "title": "台股即時串流",
       "level": "info",
       "label": "資訊",
-      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "detail": "因 Railway 無法連線，本次不能判定串流；不誤標成個別行情來源故障",
       "action": ""
     },
     {
@@ -285,7 +285,7 @@
       "title": "美股即時串流",
       "level": "info",
       "label": "資訊",
-      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
+      "detail": "因 Railway 無法連線，本次不能判定串流；不誤標成個別行情來源故障",
       "action": ""
     },
     {
@@ -293,15 +293,15 @@
       "title": "Telegram 即時通知",
       "level": "info",
       "label": "資訊",
-      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
-      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
+      "detail": "因 Railway 無法連線，本次不能判定 Telegram；不影響正式報表保存",
+      "action": ""
     },
     {
       "code": "device_authorization",
       "title": "手機唯讀授權",
-      "level": "ok",
-      "label": "正常",
-      "detail": "手機驗證服務已設定；單支手機權杖失效只影響該裝置",
+      "level": "info",
+      "label": "資訊",
+      "detail": "因 Railway 無法連線，本次不能判定授權服務；不代表正式排名失敗",
       "action": ""
     },
     {
@@ -323,15 +323,15 @@
     {
       "code": "stock_agent_recovery",
       "title": "Telegram 三報 Agent 自動處理",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近執行 2026-10-10T05:47:49.389843+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近執行 2026-10-10T09:44:59.163949+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
     }
   ],
   "action_required": [
     "補送窗口已過，不送過期報表",
-    "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
+    "檢查 Railway 服務、部署紀錄與公開網域；正式收盤報表仍由 GitHub Actions 分開判斷"
   ],
   "safety": {
     "changes_rankings": false,

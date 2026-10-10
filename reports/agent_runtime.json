@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-09T21:47:52+00:00",
+  "generated_at": "2026-10-10T01:45:11+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-10T05:47:50.290462+08:00",
+    "checked_at": "2026-10-10T09:45:00.007722+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram receipts only; ChatGPT reports are independent and are not classified as missing"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-10T05:47:49.389843+08:00",
+    "checked_at": "2026-10-10T09:44:59.163949+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -242,8 +242,8 @@
       "2026-10-10:morning": {
         "period": "morning",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-10-10:noon": {
         "period": "noon",
@@ -286,18 +286,22 @@
       "2026-10-10:morning": {
         "period": "morning",
         "attempts": [],
-        "status": "waiting_primary_or_active_run",
-        "reason": "current data requires silent refresh; no delivery receipt is created"
+        "status": "verified_fresh",
+        "reason": "current data requires silent refresh; no delivery receipt is created",
+        "verified_at": "2026-10-10T09:44:53.682945+08:00",
+        "report_updated_at": "2026-10-10 09:22:20"
       }
     },
     "us_direction_verification": {
-      "status": "ready_silent_refresh",
-      "reason": "direction_receipt_missing_inside_forecast_window",
-      "needs_silent_refresh": true,
-      "verified_recovered": false,
-      "last_source_session_date": "2026-10-02",
+      "status": "verified_current",
+      "reason": "immutable_eligible_snapshot_matches_official_session",
+      "needs_silent_refresh": false,
+      "verified_recovered": true,
+      "last_source_session_date": "2026-10-09",
       "latest_official_session_date": "2026-10-09",
-      "historical_backfill_allowed": false
+      "historical_backfill_allowed": false,
+      "snapshot_id": "US:2026-10-09",
+      "captured_at": "2026-10-10 09:11:58"
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
@@ -336,8 +340,8 @@
           "reference",
           "research"
         ],
-        "files": 10,
-        "bytes": 191462,
+        "files": 11,
+        "bytes": 110561,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -390,7 +394,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 34/60 日、錯誤事件 729 筆、成熟學習 87506 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "summary": "已讀取影子證據：向前驗證 35/60 日、錯誤事件 738 筆、成熟學習 89574 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -400,13 +404,13 @@
           "model_unit_learning.json": true,
           "weekly_shadow_coach.json": true
         },
-        "validation_days": 34,
+        "validation_days": 35,
         "target_days": 60,
         "eligible_samples": 1700,
-        "independent_error_events": 729,
+        "independent_error_events": 738,
         "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 87506,
+        "matured_learning_rows": 89574,
         "active_shadow_trust_streams": 3,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
@@ -658,7 +662,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.37,
+    "average_reduction_pct": 36.39,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
