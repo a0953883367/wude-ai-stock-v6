@@ -79,7 +79,8 @@ async function boot(rows, options = {}) {
   let now = options.now == null ? NOW : options.now;
   let nextTimerId = 1;
   const timers = new Map();
-  const nodes = Object.fromEntries(['count', 'cards', 'summary', 'validationSummary', 'progressChip', 'markets', 'statuses', 'horizons', 'search', 'refresh'].map(id => [id, new Element()]));
+  const nodes = Object.fromEntries(['count', 'cards', 'summary', 'validationSummary', 'prospectiveSummary', 'progressChip', 'markets', 'statuses', 'horizons', 'search', 'refresh'].map(id => [id, new Element()]));
+  if(options.cachedWithoutProspective)delete nodes.prospectiveSummary;
   ['markets', 'statuses', 'horizons'].forEach(id => {
     nodes[id].innerHTML = html.match(new RegExp('<div class="row" id="' + id + '">([\\s\\S]*?)</div>'))[1];
   });
@@ -536,6 +537,95 @@ function mainLabels(app) {
   assert(!escapedAudit.nodes.validationSummary.textContent.includes('88.7654321'), 'never publish an accuracy gain even if an unexpected field contains one');
   assert.deepStrictEqual(mainLabels(escapedAudit), ['原始計畫風險阻擋']);
 
+  assert(app.nodes.prospectiveSummary.textContent.includes('本報表尚未提供登錄紀錄'));
+  assert(!app.nodes.cards.innerHTML.includes('class="prospective-entry'));
+  const prospectiveRegistry = {
+    status: 'ready', label: '台股凍結計畫前瞻觀察',
+    summary: {registered_total: 21, status_counts: {enrolled_pending: 10, observed_wait: 5, triggered_close_only: 3, invalidated: 1, expired: 1, quarantined: 1}, next_observation_session: '2026-10-12'},
+    raw_provider_records: [{value: 'DO_NOT_PUBLISH_RAW_REGISTRY'}], probability_pct: 99,
+  };
+  const prospectiveEntry = {
+    horizon: 'short', status: 'enrolled_pending', registered_at: '2026-10-09T14:00:00Z', valid_through_session: '2026-10-14',
+    last_reason: 'registered_now_awaiting_later_close', latest_evaluated_at: '2026-10-09T15:00:00Z', next_observation_session: '2026-10-12', evaluation_expires_at: '2026-10-15T13:30:00+08:00',
+    plan_id: 'frozen-id', frozen_levels: {entry_low: 91, entry_high: 93, stop: 88, target1: 104, target2: null},
+    evaluations: [{payload: 'DO_NOT_PUBLISH_RAW_ENTRY'}],
+  };
+  const prospectRows = [row('TW_PROSPECT', plan('wait'), {prospective_entries: [
+    {...prospectiveEntry, registered_at: '2026-10-08T14:00:00Z', status: 'triggered_close_only', frozen_levels: {entry_low: 81, entry_high: 83, stop: 78}},
+    {...prospectiveEntry, horizon: 'medium', registered_at: '2026-10-09T15:00:00Z', status: 'observed_wait', last_reason: 'close_outside_frozen_entry_range', frozen_levels: {entry_low: 85, entry_high: 87, stop: 80, target1: 102, target2: 108}},
+    prospectiveEntry,
+  ]}), row('US_NO_PROSPECT', plan('wait'), {market: 'US', prospective_entries: [prospectiveEntry]})];
+  const prospectApp = await boot(prospectRows, {payload: {tw_prospective_registry: prospectiveRegistry}});
+  const prospectiveText = prospectApp.nodes.prospectiveSummary.textContent;
+  assert(prospectiveText.includes('已登錄 21 筆歷史研究計畫'));
+  assert(prospectiveText.includes('待正式收盤 10｜等待後續條件 5｜僅收盤條件研究紀錄 3｜失效 1｜到期 1｜隔離 1'));
+  assert(prospectiveText.includes('下一觀察交易日 2026-10-12'));
+  assert(prospectiveText.includes('不是可買數，沒有預測成效結論'));
+  assert(!prospectiveText.includes('99'));
+  assert(!prospectiveText.includes('DO_NOT_PUBLISH_RAW_REGISTRY'));
+  assert.strictEqual((prospectApp.nodes.cards.innerHTML.match(/class="prospective-entry sell"/g)||[]).length, 1, 'TW registry must not be presented for US rows');
+  const prospectHtml = prospectApp.nodes.cards.innerHTML;
+  assert(prospectHtml.includes('已登錄，等待後續正式收盤'));
+  assert(prospectHtml.includes('所選週期最新登錄的歷史研究紀錄｜此週期共 2 筆'));
+  assert(prospectHtml.includes('登錄時間 2026-10-09T14:00:00Z'));
+  assert(!prospectHtml.includes('登錄時間 2026-10-08T14:00:00Z'));
+  assert(prospectHtml.includes('凍結窗口末日 2026-10-14'));
+  assert(prospectHtml.includes('觀察判定到期時間 2026-10-15T13:30:00+08:00'));
+  assert(prospectHtml.includes('最新研究核對時間 2026-10-09T15:00:00Z'));
+  assert(prospectHtml.includes('凍結原始買區 91 ～ 93｜凍結停損 88'));
+  assert(prospectHtml.includes('凍結目標1 104｜凍結目標2 —'));
+  assert(prospectHtml.includes('<span>買進區（參考）</span><b>98 ～ 101</b>'), 'current plan remains separate from frozen registry levels');
+  assert(!prospectHtml.includes('凍結原始買區 98 ～ 101'));
+  assert(!prospectHtml.includes('DO_NOT_PUBLISH_RAW_ENTRY'));
+  assert.strictEqual(countFor(prospectApp, 'eligible'), null);
+  assert.deepStrictEqual(mainLabels(prospectApp), ['計畫等待條件', '計畫等待條件']);
+  prospectApp.click('horizons', 'horizon', 'medium');
+  assert(prospectApp.nodes.cards.innerHTML.includes('後續收盤尚未進入原買區'));
+  assert(prospectApp.nodes.cards.innerHTML.includes('凍結原始買區 85 ～ 87'));
+  assert(!prospectApp.nodes.cards.innerHTML.includes('凍結原始買區 91 ～ 93'));
+  prospectApp.click('horizons', 'horizon', 'long');
+  assert(prospectApp.nodes.cards.innerHTML.includes('本報表未提供此週期的登錄紀錄'));
+  prospectApp.click('horizons', 'horizon', 'preferred');
+  assert(prospectApp.nodes.cards.innerHTML.includes('凍結原始買區 91 ～ 93'));
+
+  const prospectiveStatusLabels = {
+    enrolled_pending: '已登錄，等待後續正式收盤', observed_wait: '後續收盤尚未進入原買區',
+    triggered_close_only: '後續收盤符合原買區（研究觀察，非買進建議）', invalidated: '原凍結計畫已失效',
+    expired: '原凍結計畫窗口已到期', quarantined: '紀錄已隔離，等待來源或風險核對',
+  };
+  for (const [status, label] of Object.entries(prospectiveStatusLabels)) {
+    const statusApp = await boot([row('REGISTRY_STATUS', plan('avoid'), {prospective_entries: [{...prospectiveEntry, status}]})], {payload: {tw_prospective_registry: prospectiveRegistry}});
+    assert(statusApp.nodes.cards.innerHTML.includes(label), status);
+    assert(statusApp.nodes.cards.innerHTML.includes('僅正式收盤研究觀察，不代表盤中觸價、可成交或買進建議'));
+    if(['triggered_close_only', 'invalidated', 'expired'].includes(status))assert(statusApp.nodes.cards.innerHTML.includes('下一觀察交易日 此紀錄已結束'));
+    assert.deepStrictEqual(mainLabels(statusApp), ['原始計畫風險阻擋'], 'registry status cannot overwrite original plan assessment');
+    assert.strictEqual(countFor(statusApp, 'eligible'), null);
+    assert(!statusApp.nodes.statuses.innerHTML.includes('data-status="eligible"'));
+  }
+  const pendingNews = await boot([row('NEWS_WAIT', plan('wait'), {prospective_entries: [{...prospectiveEntry, status: 'observed_wait', last_reason: 'news_refresh_required'}]})], {payload: {tw_prospective_registry: prospectiveRegistry}});
+  assert(pendingNews.nodes.cards.innerHTML.includes('後續觀察等待消息更新'));
+  assert(!pendingNews.nodes.cards.innerHTML.includes('後續收盤尚未進入原買區'), 'pending news must not invent an outside-band price observation');
+  const unavailableRegistry = await boot([row('UNAVAILABLE', plan('wait'), {prospective_entries: [{...prospectiveEntry, status: 'triggered_close_only'}]})], {payload: {tw_prospective_registry: {status: 'unavailable', label: '<img src=x>', summary: {registered_total: 0}}}});
+  assert(unavailableRegistry.nodes.prospectiveSummary.textContent.includes('研究紀錄不可用'));
+  assert(!unavailableRegistry.nodes.prospectiveSummary.innerHTML.includes('<img'));
+  assert(!unavailableRegistry.nodes.prospectiveSummary.textContent.includes('已登錄 0'));
+  assert(unavailableRegistry.nodes.cards.innerHTML.includes('暫不顯示紀錄判定'));
+  assert(!unavailableRegistry.nodes.cards.innerHTML.includes('後續收盤符合原買區'));
+  const escapedProspect = await boot([row('ESCAPED_PROSPECT', plan('wait'), {prospective_entries: [{
+    ...prospectiveEntry, status: '<img src=x>', registered_at: '<script>registered</script>', valid_through_session: '<time>end</time>',
+    latest_evaluated_at: '<script>evaluated</script>', next_observation_session: '<img src=x>', last_reason: '<script>reason</script>', frozen_levels: null,
+  }]})], {payload: {tw_prospective_registry: {...prospectiveRegistry, summary: {registered_total: null, status_counts: {}, next_observation_session: '<script>next</script>'}}}});
+  assert(!escapedProspect.nodes.cards.innerHTML.includes('<script>'));
+  assert(!escapedProspect.nodes.cards.innerHTML.includes('<img'));
+  assert(escapedProspect.nodes.cards.innerHTML.includes('登錄時間待核對'));
+  assert(escapedProspect.nodes.cards.innerHTML.includes('&lt;script&gt;reason&lt;/script&gt;'));
+  assert(escapedProspect.nodes.cards.innerHTML.includes('凍結原始買區 — ～ —'));
+  assert(escapedProspect.nodes.prospectiveSummary.textContent.includes('已登錄 —'));
+  assert(!escapedProspect.nodes.prospectiveSummary.innerHTML.includes('<script>'));
+  const cachedProspect = await boot([row('CACHED_PROSPECT', plan('wait'), {prospective_entries: [prospectiveEntry]})], {cachedWithoutProspective: true, payload: {tw_prospective_registry: prospectiveRegistry}});
+  assert(cachedProspect.nodes.cards.innerHTML.includes('凍結原始買區 91 ～ 93'), 'cached HTML without global panel must still render cards');
+  assert.strictEqual(countFor(cachedProspect, 'eligible'), null);
+
   const filters = await boot([row('TW_MATCH'), row('US_OTHER', plan('eligible'), {market: 'US'})], {search: '?symbol=TW_MATCH'});
   assert.strictEqual(filters.nodes.search.value, 'TW_MATCH');
   assert.strictEqual(mainLabels(filters).length, 1);
@@ -549,5 +639,5 @@ function mainLabels(app) {
   filters.search('missing');
   assert(filters.nodes.cards.innerHTML.includes('沒有符合條件'));
 
-  console.log('trade plan shadow behavior passed: safe conclusions, selected horizons, filters, expiry, escaping, nulls, input evidence, event diagnostics, paired audit, data status and price basis');
+  console.log('trade plan shadow behavior passed: safe conclusions, selected horizons, filters, expiry, escaping, nulls, input evidence, event diagnostics, paired audit, data status, price basis, prospective registry');
 })().catch(error => { console.error(error); process.exitCode = 1; });

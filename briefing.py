@@ -438,7 +438,7 @@ def _update_trade_plan_shadow_safely(reports_dir, *, updated_at: str) -> bool:
     try:
         from trade_plan_shadow import write_trade_plan_report
 
-        write_trade_plan_report(reports_dir)
+        write_trade_plan_report(reports_dir, update_registry=False)
     except Exception as exc:  # noqa: BLE001 - shadow execution plan is isolated
         logging.exception("影子交易計畫計算失敗；正式V6與既有報表繼續")
         health = {

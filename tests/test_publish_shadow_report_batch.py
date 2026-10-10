@@ -19,7 +19,7 @@ def git(cwd: Path, *args: str) -> str:
 def write_batch(repo: Path, number: int, *, generated=False):
     reports = repo / "reports"
     reports.mkdir(exist_ok=True)
-    for filename in ("all_analysis.json", "decision_hub.json", "decision_hub_01.json", "trade_plan_shadow.json", "trade_plan_shadow_health.json", "trade_plan_validation.json"):
+    for filename in ("all_analysis.json", "decision_hub.json", "decision_hub_01.json", "trade_plan_shadow.json", "trade_plan_shadow_health.json", "trade_plan_validation.json", "tw_prospective_registry.json"):
         (reports / filename).write_text(json.dumps({"batch": number, "generated": generated}))
 
 
@@ -263,3 +263,28 @@ def test_auth_failure_does_not_retry_even_if_another_job_advanced_main(repositor
     assert len(pushes) == 1
     assert json.loads(git(bare, "show", "main:reports/trade_plan_shadow.json")) == {"batch": 2, "generated": False}
     assert_cleaned(source)
+
+
+def test_stale_briefing_rebase_cannot_replay_registry_and_publisher_keeps_latest(repositories):
+    source, competitor, bare = repositories
+    # A normal briefing changes its own reports, but its read-only writer does
+    # not stage or modify the prospective ledger.
+    ledger = 'reports/tw_prospective_registry.json'
+    original = json.loads((source / ledger).read_text())
+    (source / 'reports/all_analysis.json').write_text('{"batch":2,"generated":false}')
+    git(source, 'add', 'reports/all_analysis.json')
+    git(source, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'briefing')
+    newer = {'registered_plan_ids':['first','concurrent'], 'history':['kept']}
+    (competitor / ledger).write_text(json.dumps(newer))
+    git(competitor,'add',ledger);git(competitor,'commit','-m','concurrent registry')
+    git(competitor,'push','origin','main')
+    git(source,'fetch','origin','main');git(source,'-c','user.name=Test','-c','user.email=test@example.invalid','rebase','-X','theirs','origin/main')
+    assert json.loads((source / ledger).read_text()) == newer
+    git(source,'push','origin','HEAD:main')
+    def preserving_generator(worktree):
+        saved = (worktree / ledger).read_bytes()
+        generate(worktree)
+        (worktree / ledger).write_bytes(saved)
+    publisher.run(source,generate=preserving_generator)
+    assert json.loads(git(bare,'show',f'main:{ledger}')) == newer
+    assert original != newer

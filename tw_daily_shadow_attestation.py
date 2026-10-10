@@ -175,18 +175,14 @@ def attest_frozen_tw_row(row: dict[str, Any], record: dict[str, Any] | None) -> 
     return result
 
 
-def enrich_frozen_tw_rows(rows: list[dict[str, Any]], *,
-                          fetch_json: Callable[[str], Any] | None = None,
-                          now: datetime | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Fetch at most two bulk datasets, returning shadow copies plus fetch audit.
-
-    Uses the existing bounded request/retry policy. Provider failures stay
-    isolated and fail closed; no per-symbol backfill or fallback is performed.
-    """
+def fetch_official_price_records(symbols: set[str], *,
+                                 fetch_json: Callable[[str], Any] | None = None,
+                                 now: datetime | None = None) -> tuple[dict, list]:
+    """Read existing official bulk price feeds; raw records remain in memory."""
     if now is not None and now.tzinfo is None:
         raise ValueError("now must include timezone")
     fetcher = fetch_json or _get_json
-    symbols = {str(row.get("symbol") or "").upper() for row in rows if str(row.get("market") or "").upper() == "TW"}
+    symbols = {str(symbol).upper() for symbol in symbols}
     requested = [source for source, spec in SOURCES.items() if any(symbol.endswith(spec["suffix"]) for symbol in symbols)]
     def fetch(source):
         spec = SOURCES[source]
@@ -207,6 +203,20 @@ def enrich_frozen_tw_rows(rows: list[dict[str, Any]], *,
         for parsed, audit in pool.map(fetch, requested):
             records.update(parsed)
             sources.append(audit)
+    return records, sources
+
+
+def enrich_frozen_tw_rows(rows: list[dict[str, Any]], *,
+                          fetch_json: Callable[[str], Any] | None = None,
+                          now: datetime | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Fetch at most two bulk datasets, returning shadow copies plus fetch audit.
+
+    Uses the existing bounded request/retry policy. Provider failures stay
+    isolated and fail closed; no per-symbol backfill or fallback is performed.
+    """
+    symbols = {str(row.get("symbol") or "").upper() for row in rows
+               if str(row.get("market") or "").upper() == "TW"}
+    records, sources = fetch_official_price_records(symbols, fetch_json=fetch_json, now=now)
     enriched = [attest_frozen_tw_row(row, records.get(str(row.get("symbol") or "").upper())) for row in rows]
     reasons = Counter(row["shadow_daily_ohlcv_proof"]["reason"] for row in enriched if str(row.get("market") or "").upper() == "TW")
     return enriched, {"version": VERSION, "shadow_only": True, "sources": sources,

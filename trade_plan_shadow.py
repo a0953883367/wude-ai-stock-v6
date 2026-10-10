@@ -510,7 +510,7 @@ def build_trade_plan_report(reports_dir: Path, *, now: datetime | None = None,
     }
 
 
-def write_trade_plan_report(reports_dir: Path) -> Path:
+def write_trade_plan_report(reports_dir: Path, *, update_registry: bool = True) -> Path:
     research_state = {}
     report = build_trade_plan_report(reports_dir, research_state_sink=research_state)
     state_path = reports_dir.parent / ".prediction_engine" / "shadow_evidence_ablation_state.json"
@@ -523,6 +523,25 @@ def write_trade_plan_report(reports_dir: Path) -> Path:
     except OSError:
         report["evidence_ablation"]["status"] = "insufficient"
         report["evidence_ablation"]["label"] = "私有驗證狀態未保存，不列為有效驗證"
+    try:
+        from tw_prospective_runtime import update_tw_prospective_report, attach_registry_summary, REGISTRY_FILE
+        if update_registry:
+            update_tw_prospective_report(reports_dir, report)
+        elif (reports_dir / REGISTRY_FILE).exists():
+            # Briefing's legacy report rebase must never replay a stale ledger.
+            # The fresh-main publisher advances it after the formal batch commits.
+            previous_registry = json.loads((reports_dir / REGISTRY_FILE).read_text(encoding="utf-8"))
+            from tw_prospective_registry import validate_tw_prospective_registry
+            attach_registry_summary(report, validate_tw_prospective_registry(previous_registry))
+        else:
+            report["tw_prospective_registry"] = {"status": "unavailable",
+                "label": "等待安全保存程序建立前瞻登錄", "automatic_orders": False}
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        report["tw_prospective_registry"] = {
+            "status": "unavailable", "label": "前瞻登錄暫停；既有登錄保留待核對",
+            "reason": type(exc).__name__, "automatic_orders": False,
+            "predictive_efficacy_validated": False,
+        }
     target = reports_dir / "trade_plan_shadow.json"
     temp = reports_dir / "trade_plan_shadow.tmp"
     temp.write_text(json.dumps(report, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
