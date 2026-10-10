@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-10T05:47:51+08:00",
+  "updated_at": "2026-10-10T09:14:24+08:00",
   "system": "股票成長控制塔 V1",
   "status": "attention",
   "light": "yellow",
@@ -11,7 +11,7 @@
     "monitoring_layers": 6,
     "tracked_models": 7,
     "models_waiting_owner": 0,
-    "validation_days": 34,
+    "validation_days": 35,
     "validation_target": 60
   },
   "workflow_stages": [
@@ -31,7 +31,7 @@
       "status": "attention",
       "light": "yellow",
       "status_label": "注意",
-      "detail": "系統值班檢查：異常 0 項、注意 1 項。"
+      "detail": "系統值班檢查：異常 0 項、注意 2 項。"
     },
     {
       "id": "formal_v6",
@@ -58,8 +58,8 @@
       "status": "collecting",
       "light": "blue",
       "status_label": "累積中",
-      "detail": "60日中央驗證目前 34/60；交易計畫已成熟 2263 筆。",
-      "current": 34,
+      "detail": "60日中央驗證目前 35/60；交易計畫已成熟 2263 筆。",
+      "current": 35,
       "target": 60
     },
     {
@@ -138,14 +138,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 34,
+      "current": 35,
       "target": 60,
-      "progress_pct": 56.7,
-      "formal_validation_days": 34,
+      "progress_pct": 58.3,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": false,
-      "reason": "模型資料進度 34/60，尚未達初評門檻",
+      "reason": "模型資料進度 35/60，尚未達初評門檻",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -158,11 +158,11 @@
       "current": 7521,
       "target": 100,
       "progress_pct": 100.0,
-      "formal_validation_days": 34,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 7521/100，但正式共同驗證只有 34/60；目前只可初評，不可畢業；有效交易日最少 22/10",
+      "reason": "模型資料門檻已達 7521/100，但正式共同驗證只有 35/60；目前只可初評，不可畢業；有效交易日最少 22/10",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -172,14 +172,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 23,
+      "current": 24,
       "target": 60,
-      "progress_pct": 38.3,
-      "formal_validation_days": 34,
+      "progress_pct": 40.0,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": false,
-      "reason": "模型資料進度 23/60，尚未達初評門檻",
+      "reason": "模型資料進度 24/60，尚未達初評門檻",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -192,11 +192,11 @@
       "current": 27,
       "target": 20,
       "progress_pct": 100.0,
-      "formal_validation_days": 34,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 27/20，但正式共同驗證只有 34/60；目前只可初評，不可畢業；20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
+      "reason": "模型資料門檻已達 27/20，但正式共同驗證只有 35/60；目前只可初評，不可畢業；20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -209,11 +209,11 @@
       "current": 40,
       "target": 20,
       "progress_pct": 100.0,
-      "formal_validation_days": 34,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 40/20，但正式共同驗證只有 34/60；目前只可初評，不可畢業",
+      "reason": "模型資料門檻已達 40/20，但正式共同驗證只有 35/60；目前只可初評，不可畢業",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -226,9 +226,9 @@
       "current": 27,
       "target": 60,
       "progress_pct": 45.0,
-      "formal_validation_days": 34,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": false,
       "reason": "模型資料進度 27/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
@@ -240,14 +240,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 20,
+      "current": 21,
       "target": 60,
-      "progress_pct": 33.3,
-      "formal_validation_days": 34,
+      "progress_pct": 35.0,
+      "formal_validation_days": 35,
       "formal_validation_target": 60,
-      "formal_progress_pct": 56.7,
+      "formal_progress_pct": 58.3,
       "component_gate_passed": false,
-      "reason": "模型資料進度 20/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
+      "reason": "模型資料進度 21/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     }
@@ -261,7 +261,7 @@
     {
       "priority": "wait",
       "title": "繼續累積60日證據",
-      "detail": "目前 34/60，尚差 26 個有效交易日。"
+      "detail": "目前 35/60，尚差 25 個有效交易日。"
     }
   ],
   "rules": {

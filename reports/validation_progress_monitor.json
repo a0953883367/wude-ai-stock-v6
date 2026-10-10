@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-10 01:38:03",
+  "updated_at": "2026-10-10 09:11:58",
   "status": "ok",
   "mode": "completed_session_observer_only",
   "current": {
-    "trading_days_collected": 34,
+    "trading_days_collected": 35,
     "target_trading_days": 60,
-    "remaining_trading_days": 26,
+    "remaining_trading_days": 25,
     "eligible_samples": 1700
   },
   "markets": {
@@ -20,19 +20,19 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-10-08",
-      "last_completed_days": 29,
-      "last_progress_at": "2026-10-09 19:00:47",
+      "last_session_date": "2026-10-09",
+      "last_completed_days": 30,
+      "last_progress_at": "2026-10-10 09:11:58",
       "stalled_sessions": 0,
-      "detail": "2026-10-08 正常增加至 29 天"
+      "detail": "2026-10-09 正常增加至 30 天"
     }
   },
   "weekly_baseline": {
-    "date": "2026-10-03",
-    "trading_days_collected": 30,
-    "eligible_samples": 1528
+    "date": "2026-10-10",
+    "trading_days_collected": 35,
+    "eligible_samples": 1700
   },
-  "last_weekly_summary_date": "2026-10-03",
+  "last_weekly_summary_date": "2026-10-10",
   "pending_notifications": [
     {
       "id": "weekly:2026-10-03",
@@ -40,6 +40,13 @@
       "level": "info",
       "created_at": "2026-10-03 07:53:53",
       "message": "📅 60日驗證週報：本週增加 4 個真實交易日、195 筆共識樣本；目前 30/60，還差 30 個交易日。"
+    },
+    {
+      "id": "weekly:2026-10-10",
+      "type": "validation_weekly_summary",
+      "level": "info",
+      "created_at": "2026-10-10 09:11:58",
+      "message": "📅 60日驗證週報：本週增加 5 個真實交易日、172 筆共識樣本；目前 35/60，還差 25 個交易日。"
     }
   ],
   "policy": {
@@ -73,18 +80,18 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-10-08",
-      "last_validation_days": 26,
+      "last_session_date": "2026-10-09",
+      "last_validation_days": 27,
       "last_trade_signal_samples": 0,
       "direction_samples": 234,
       "stagnant_sessions": 0,
       "last_signal_growth_at": null,
       "alert_notified": false,
-      "detail": "方向結果 234 筆；合格進場設定 2 筆，其中 1 筆尚未觸及凍結買進區、1 筆等待下一交易日；0筆成交觸發不是資料缺漏",
+      "detail": "方向結果 234 筆；合格進場設定 5 筆，其中 1 筆尚未觸及凍結買進區、4 筆等待下一交易日；0筆成交觸發不是資料缺漏",
       "trade_signal_contract_version": 2,
-      "qualified_setups": 2,
+      "qualified_setups": 5,
       "evaluated_setups": 1,
-      "pending_setups": 1,
+      "pending_setups": 4,
       "untouched_entry_zones": 1,
       "data_contract_errors": 0,
       "diagnosis": "healthy_waiting_for_zone"
