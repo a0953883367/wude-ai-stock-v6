@@ -10,7 +10,7 @@ import time as clock
 from typing import Any
 from zoneinfo import ZoneInfo
 
-VERSION = "TW-FUBON-DAILY-PILOT-V1"
+VERSION = "TW-FUBON-DAILY-PILOT-V2"
 SOURCE = "Fubon Neo historical candles"
 TAIPEI = ZoneInfo("Asia/Taipei")
 PILOT = {"2330.TW": ("TWSE", "TSE", "TWSE"), "6290.TWO": ("TPEx", "OTC", "TPEX_MAINBOARD")}
@@ -28,9 +28,10 @@ REASONS = {
 
 
 class HistoryBlocked(Exception):
-    def __init__(self, reason: str):
+    def __init__(self, reason: str, diagnostics: dict[str, Any] | None = None):
         super().__init__(reason)
         self.reason = reason
+        self.diagnostics = diagnostics or {}
 
 
 def validate_symbols(symbols: Any) -> list[str]:
@@ -78,6 +79,26 @@ def _number(value: Any, *, volume=False):
     return int(value) if volume else float(value)
 
 
+def _date_diagnostics(rows: list[Any], sessions: list[str]) -> dict[str, Any]:
+    """Only canonical date/count metadata, never values or arbitrary strings."""
+    observed = set()
+    for row in rows:
+        value = row.get("date") if isinstance(row, dict) else None
+        if not isinstance(value, str):
+            continue
+        try:
+            if date.fromisoformat(value).isoformat() == value:
+                observed.add(value)
+        except ValueError:
+            continue
+    dates = sorted(observed)
+    return {"observed_date_count": len(dates), "expected_session_count": len(sessions),
+            "missing_session_dates": sorted(set(sessions) - observed),
+            "unexpected_session_dates": sorted(observed - set(sessions)),
+            "first_returned_date": dates[0] if dates else None,
+            "last_returned_date": dates[-1] if dates else None}
+
+
 def normalize(payload: Any, symbol: str, sessions: list[str], now: datetime) -> dict[str, Any]:
     exchange, market, venue = PILOT[symbol]
     if not isinstance(payload, dict):
@@ -95,19 +116,20 @@ def normalize(payload: Any, symbol: str, sessions: list[str], now: datetime) -> 
     if len(rows) > MAX_ROWS:
         raise HistoryBlocked("response_row_budget")
     expected = set(sessions)
+    diagnostics = _date_diagnostics(rows, sessions)
     by_date = {}
     for raw in rows:
         if not isinstance(raw, dict) or not isinstance(raw.get("date"), str) or raw["date"] not in expected:
-            raise HistoryBlocked("invalid_bar_session")
+            raise HistoryBlocked("invalid_bar_session", diagnostics)
         day = raw["date"]
         if day in by_date:
-            raise HistoryBlocked("duplicate_provider_session")
+            raise HistoryBlocked("duplicate_provider_session", diagnostics)
         values = {k: _number(raw.get(k), volume=k == "volume") for k in ("open", "high", "low", "close", "volume")}
         if values["low"] > min(values["open"], values["close"]) or values["high"] < max(values["open"], values["close"]) or values["low"] > values["high"]:
             raise HistoryBlocked("invalid_ohlcv")
         by_date[day] = {"date": day, **values}
     if set(by_date) != expected:
-        raise HistoryBlocked("incomplete_session_coverage")
+        raise HistoryBlocked("incomplete_session_coverage", diagnostics)
     if len(by_date) < 60:
         raise HistoryBlocked("insufficient_history")
     bars = [by_date[day] for day in sessions]
@@ -145,7 +167,10 @@ def collect_private(reststock: Any, symbols: list[str], calendar: Any, *, now=No
     status["requested_at"] = now.isoformat()
     try:
         sessions = _sessions(calendar, now)
-        status.update(session_date=sessions[-1], calendar_session_count=len(sessions))
+        status.update(session_date=sessions[-1], calendar_session_count=len(sessions),
+                      request_from=sessions[0], request_to=sessions[-1], request_timeframe="D",
+                      request_adjusted="false", volume_unit="shares",
+                      calendar_source_status="verified_twse_tpex")
         method = getattr(getattr(reststock, "historical", None), "candles", None)
         if not callable(method):
             raise HistoryBlocked("sdk_method_unavailable")
@@ -165,10 +190,11 @@ def collect_private(reststock: Any, symbols: list[str], calendar: Any, *, now=No
             try:
                 private[symbol] = normalize(payload, symbol, sessions, observed_clock())
                 private[symbol]["requested_at"] = now.isoformat()
-                status["symbols"][symbol] = {"status": "validated_in_memory", "bar_count": len(private[symbol]["bars"]), "venue": PILOT[symbol][2]}
+                status["symbols"][symbol] = {"status": "validated_in_memory", "bar_count": len(private[symbol]["bars"]), "venue": PILOT[symbol][2],
+                                             **_date_diagnostics(private[symbol]["bars"], sessions)}
                 status["validated_count"] += 1
             except HistoryBlocked as exc:
-                status["symbols"][symbol] = {"status": "blocked", "reason": exc.reason, "bar_count": 0, "venue": PILOT[symbol][2]}
+                status["symbols"][symbol] = {"status": "blocked", "reason": exc.reason, "bar_count": 0, "venue": PILOT[symbol][2], **exc.diagnostics}
         if status["validated_count"] != len(symbols):
             status["status"] = "partial_in_memory" if private else "blocked"
     except HistoryBlocked as exc:

@@ -214,3 +214,58 @@ def test_one_fixed_warmup_then_probe_no_raw_output():
     result = run_probe(relay)
     assert calls == ["ownership", "tw_daily_history_status"]
     assert result["status"] == "validated_in_memory" and "never log" not in json.dumps(result)
+
+
+def test_missing_boundary_diagnostics_without_market_values():
+    def candles(**kwargs):
+        p = payload("2330.TW" if kwargs["symbol"] == "2330" else "6290.TWO")
+        p["data"] = p["data"][1:]
+        return p
+    status, private = f.collect_private(rest(candles), list(f.PILOT), Calendar(), now=NOW)
+    assert status["status"] == "blocked" and private == {}
+    clean = sanitize_status(status)
+    assert clean["request_from"] == SESSIONS[0] and clean["request_to"] == SESSIONS[-1]
+    assert clean["request_timeframe"] == "D" and clean["request_adjusted"] == "false"
+    for row in clean["symbols"].values():
+        assert row["reason"] == "incomplete_session_coverage" and row["bar_count"] == 0
+        assert row["observed_date_count"] == len(SESSIONS) - 1
+        assert row["expected_session_count"] == len(SESSIONS)
+        assert row["missing_session_dates"] == SESSIONS[:1]
+        assert row["unexpected_session_dates"] == []
+        assert row["first_returned_date"] == SESSIONS[1] and row["last_returned_date"] == SESSIONS[-1]
+        assert not {"open", "high", "low", "close", "volume", "bars", "rows"}.intersection(row)
+
+
+def test_unexpected_date_is_reported_but_remains_blocked():
+    p = payload()
+    p["data"][0]["date"] = "2026-10-11"
+    with pytest.raises(f.HistoryBlocked) as result:
+        f.normalize(p, "2330.TW", SESSIONS, NOW)
+    assert result.value.reason == "invalid_bar_session"
+    assert result.value.diagnostics["unexpected_session_dates"] == ["2026-10-11"]
+    assert result.value.diagnostics["missing_session_dates"] == SESSIONS[:1]
+
+
+def test_bad_date_metadata_or_values_cannot_escape_sanitizer():
+    status, _ = f.collect_private(rest(lambda **k: payload("2330.TW" if k["symbol"] == "2330" else "6290.TWO")), list(f.PILOT), Calendar(), now=NOW)
+    status["symbols"]["2330.TW"]["missing_session_dates"] = ["secret-provider-message"]
+    assert sanitize_status(status)["reason"] == "invalid_or_unavailable_relay_status"
+    status["symbols"]["2330.TW"]["missing_session_dates"] = [SESSIONS[0]] * 121
+    assert sanitize_status(status)["reason"] == "invalid_or_unavailable_relay_status"
+
+
+def test_date_diagnostic_excludes_invalid_provider_strings():
+    p = payload(); p["data"][0]["date"] = "secret-provider-message"
+    with pytest.raises(f.HistoryBlocked) as result:
+        f.normalize(p, "2330.TW", SESSIONS, NOW)
+    assert "secret" not in json.dumps(result.value.diagnostics)
+
+
+def test_query_calendar_inclusivity_and_utc_cutoff():
+    from datetime import timezone
+    requests = []
+    calendar = SimpleNamespace(lookup=lambda *args: requests.append(args) or {"available":True,"status":"verified","source_statuses":["verified_twse_tpex"],"sessions":SESSIONS})
+    f._sessions(calendar, datetime(2026, 10, 10, 8, 29, tzinfo=timezone.utc))
+    assert requests[-1] == ("TW", "2026-06-11", "2026-10-09")
+    f._sessions(calendar, datetime(2026, 10, 10, 8, 30, tzinfo=timezone.utc))
+    assert requests[-1] == ("TW", "2026-06-12", "2026-10-10")
