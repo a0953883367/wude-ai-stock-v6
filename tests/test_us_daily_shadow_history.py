@@ -1,0 +1,181 @@
+from datetime import date, datetime, timedelta, timezone
+from types import SimpleNamespace
+from zoneinfo import ZoneInfo
+import pytest
+import json
+import us_daily_shadow_history as history
+
+NOW = datetime(2026, 10, 10, 1, tzinfo=timezone.utc)
+SESSIONS = []
+day = date(2026, 6, 1)
+while day <= date(2026, 10, 9):
+    if day.weekday() < 5:
+        SESSIONS.append(day.isoformat())
+    day += timedelta(days=1)
+
+
+class Calendar:
+    def relay_us_year(self, year):
+        if year != 2026:
+            raise RuntimeError('no cache')
+        return {'year': year, 'status': 'verified_alpaca', 'sources': ['Alpaca Market Calendar'],
+                'sessions': SESSIONS, 'session_details': {d: {'open': '09:30', 'close': '16:00'} for d in SESSIONS}}
+
+
+def bar(day, value=100):
+    stamp = datetime.fromisoformat(day).replace(tzinfo=ZoneInfo('America/New_York')).isoformat()
+    return {'t': stamp, 'o': value, 'h': value + 1, 'l': value - 1, 'c': value, 'v': 1000}
+
+
+class Client:
+    def __init__(self, mode=None):
+        self.calls = []
+        self.mode = mode
+    def get(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        params = kwargs['params']
+        days = [d for d in SESSIONS if params['start'] <= d <= params['end'][:10]]
+        rows = {s: [bar(d) for d in days] for s in params['symbols'].split(',')}
+        status = self.mode if isinstance(self.mode, int) else 200
+        payload = {'bars': rows, 'next_page_token': None}
+        if self.mode == 'missing':
+            rows['AAPL'].pop()
+        elif self.mode == 'duplicate':
+            rows['AAPL'].append(rows['AAPL'][0])
+        elif self.mode == 'bad_price':
+            rows['AAPL'][0]['c'] = float('nan')
+        elif self.mode == 'pagination':
+            payload['next_page_token'] = 'repeated'
+        return SimpleNamespace(status_code=status, headers={'X-RateLimit-Limit': '200', 'X-RateLimit-Remaining': '199'},
+                               iter_content=lambda chunk_size: (bytes([b]) for b in json.dumps(payload).encode()), close=lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def credentials(monkeypatch):
+    monkeypatch.setattr(history, '_credentials', lambda: ('existing-test-key', 'existing-test-secret'))
+
+
+def run(client=None, symbols=None):
+    return history.collect_daily_shadow_status(symbols or ['AAPL', 'MSFT'], Calendar(), now=NOW, session=client or Client(), collect_history=True)
+
+
+def test_probe_before_universe_and_no_market_values_or_formal_effect():
+    client = Client()
+    result = run(client)
+    assert result['status'] == 'computed_in_memory'
+    assert result['history_complete_count'] == result['indicator_complete_count'] == 2
+    assert result['session_date'] == '2026-10-08'
+    assert result['probe_session_count'] == 4
+    assert client.calls[0][1]['params']['symbols'] == 'AAPL'
+    assert client.calls[0][1]['params']['start'] == '2026-10-05'
+    assert client.calls[1][1]['params']['symbols'] == 'AAPL,MSFT'
+    assert all(url == history.ENDPOINT for url, _ in client.calls)
+    assert all(not kw['allow_redirects'] for _, kw in client.calls)
+    assert all(kw['params']['feed'] == 'sip' and kw['params']['adjustment'] == 'raw' for _, kw in client.calls)
+    assert result['decision_eligible'] is result['durable_raw_retention'] is result['affects_formal'] is False
+    assert not {'bars', 'ohlcv', 'indicators', 'close', 'ma20', 'credentials'} & result.keys()
+    assert 'existing-test-secret' not in str(result)
+
+
+@pytest.mark.parametrize('status,reason', [(401, 'provider_authentication_denied'), (403, 'provider_entitlement_denied'),
+                                         (429, 'provider_rate_limited'), (302, 'provider_http_failure')])
+def test_denied_provider_never_retry_upgrade_or_fetch_universe(status, reason):
+    client = Client(status)
+    result = run(client)
+    assert result['reason'] == reason and result['provider_http_status'] == status
+    assert result['probe_status'] == 'blocked' and len(client.calls) == 1
+
+
+@pytest.mark.parametrize('mode,reason', [('missing', 'probe_incomplete'), ('duplicate', 'duplicate_provider_session'),
+                                       ('bad_price', 'invalid_ohlcv'), ('pagination', 'duplicate_provider_session')])
+def test_bad_history_fails_closed(mode, reason):
+    assert run(Client(mode))['reason'] == reason
+
+
+@pytest.mark.parametrize('symbols', [[], ['aapl'], ['AAPL', 'AAPL'], ['https://evil.test'], ['AAPL'] * 201, 'AAPL'])
+def test_symbol_bounds(symbols):
+    with pytest.raises(ValueError):
+        history.collect_daily_shadow_status(symbols, Calendar(), now=NOW)
+
+
+def test_missing_existing_credentials_never_requests(monkeypatch):
+    monkeypatch.setattr(history, '_credentials', lambda: None)
+    client = Client()
+    assert run(client)['reason'] == 'existing_credentials_unavailable'
+    assert not client.calls
+
+
+def test_calendar_unverified_no_provider_call():
+    calendar = SimpleNamespace(relay_us_year=lambda year: {'year': year, 'status': 'guessed_weekdays'})
+    client = Client()
+    assert history.collect_daily_shadow_status(['AAPL'], calendar, now=NOW, session=client)['reason'] == 'official_calendar_unverified'
+    assert not client.calls
+
+
+def test_indicator_definitions():
+    indicators = history._indicators([(100, 101, 99, 100, 1000)] * 60)
+    assert indicators == {'ma5': 100, 'ma10': 100, 'ma20': 100, 'ma60': 100,
+                          'rsi14_sma': 50, 'atr14_true_range_sma': 2, 'volume_ratio_previous20': 1}
+
+
+def test_relay_authorizes_before_daily_operation(monkeypatch):
+    import live_api
+    responses = []
+    handler = SimpleNamespace(path='/api/internal/market-data', rate_limiter=SimpleNamespace(allow=lambda: True),
+        headers={'Authorization': 'Bearer fixture'}, _read_json=lambda: {'kind': 'daily_shadow_status', 'symbols': ['AAPL']},
+        _send=lambda code, payload: responses.append((code, payload)),
+        large_buy_service=SimpleNamespace(weight_shadow=SimpleNamespace(calendar=Calendar())))
+    monkeypatch.setattr(history, 'collect_daily_shadow_status', lambda symbols, calendar, **kwargs: {'status': 'computed_in_memory'})
+    monkeypatch.setattr(live_api, 'verify_github_oidc_token', lambda token: {})
+    live_api.LiveRequestHandler.do_POST(handler)
+    assert responses[-1][0] == 200
+    def denied(token):
+        raise PermissionError('denied')
+    monkeypatch.setattr(live_api, 'verify_github_oidc_token', denied)
+    handler._read_json = lambda: pytest.fail('must authorize before parse/provider')
+    live_api.LiveRequestHandler.do_POST(handler)
+    assert responses[-1][0] == 403
+
+
+def test_default_invocation_probes_four_sessions_only():
+    client = Client()
+    result = history.collect_daily_shadow_status(['AAPL'], Calendar(), now=NOW, session=client)
+    assert result['status'] == 'probe_verified'
+    assert len(client.calls) == 1 and result['indicator_complete_count'] == 0
+    assert result['next_stage'] == 'bounded_history_collection_not_started'
+
+
+def test_response_byte_budget(monkeypatch):
+    monkeypatch.setattr(history, 'MAX_RESPONSE_BYTES', 12)
+    assert run()['reason'] == 'response_byte_budget'
+
+
+def test_deadline_after_response_cannot_claim_computed(monkeypatch):
+    calls = iter([0, 0, 76])
+    monkeypatch.setattr(history.clock, 'monotonic', lambda: next(calls))
+    assert run()['reason'] == 'request_time_budget'
+
+
+def test_publication_strict_schema_rejects_arbitrary_scalars():
+    from tools.collect_us_daily_shadow_status import sanitize_status
+    result = run()
+    clean = sanitize_status(result, 2)
+    assert clean['status'] == 'computed_in_memory'
+    assert clean['blocked_reasons'] == {}
+    for key, value in [('source', 'price 123.45'), ('reason', 'secret 123'),
+                       ('indicator_complete_count', True), ('history_complete_count', float('nan')),
+                       ('requested_count', 188), ('request_count', -1)]:
+        bad = sanitize_status({**result, key: value}, 2)
+        assert bad['reason'] == 'invalid_or_unavailable_relay_status'
+        assert '123' not in str(bad)
+
+
+def test_publication_malformed_enum_and_false_invariants_fail_closed():
+    from tools.collect_us_daily_shadow_status import sanitize_status
+    result = run()
+    for patch in ({'status': []}, {'reason': []}, {'probe_status': []}, {'durable_raw_retention': True}, {'request_count': 0}):
+        assert sanitize_status({**result, **patch}, 2)['reason'] == 'invalid_or_unavailable_relay_status'
+    for key in ('observed_at', 'session_date', 'calendar_session_count'):
+        bad = dict(result)
+        del bad[key]
+        assert sanitize_status(bad, 2)['reason'] == 'invalid_or_unavailable_relay_status'

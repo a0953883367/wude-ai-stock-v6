@@ -969,6 +969,12 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 private_daily_shadow_samples = None
                 if kind == "calendar":
                     data = self.large_buy_service.weight_shadow.calendar.relay_us_year(payload.get("year"))
+                elif kind == "daily_shadow_status":
+                    from us_daily_shadow_history import collect_daily_shadow_status
+                    data = collect_daily_shadow_status(
+                        payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
+                        collect_history=payload.get("collect_history") is True,
+                    )
                 elif kind == "ownership":
                     data = self.service.ownership(payload.get("symbols"))
                 elif kind == "sip":
