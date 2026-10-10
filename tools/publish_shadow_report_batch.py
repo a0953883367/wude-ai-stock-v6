@@ -22,6 +22,7 @@ REPORT_FILES = (
     "reports/trade_plan_shadow.json",
     "reports/trade_plan_shadow_health.json",
     "reports/trade_plan_validation.json",
+    "reports/tw_prospective_registry.json",
 )
 CHUNK_PATTERN = re.compile(r"reports/decision_hub_[0-9]{2}\.json")
 FOCUSED_TESTS = (

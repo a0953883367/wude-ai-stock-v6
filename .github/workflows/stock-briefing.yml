@@ -145,7 +145,7 @@ jobs:
           key: prediction-engine-v1-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             prediction-engine-v1-
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt "pytest>=8,<10"
       - name: Select report period and delivery mode
         id: period
         shell: bash
@@ -361,6 +361,10 @@ jobs:
           done
           echo "Report commit could not be published after 3 attempts." >&2
           exit 1
+      - name: Safely advance prospective shadow registry from latest main
+        if: ${{ steps.generate.outcome == 'success' }}
+        timeout-minutes: 8
+        run: python tools/publish_shadow_report_batch.py --max-attempts 3
       - name: Refresh read-only Fubon ownership supplement
         if: ${{ steps.generate.outcome == 'success' }}
         continue-on-error: true
@@ -402,3 +406,4 @@ jobs:
         run: |
           echo "Evening report was generated but delivery freshness verification failed." >&2
           exit 1
+

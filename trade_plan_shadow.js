@@ -5,6 +5,7 @@
   var expiryTimer=null;
   var conclusionLabels={eligible:'後續可進場評估',wait:'計畫等待條件',avoid:'原始計畫風險阻擋',insufficient:'待核對'};
   var entryEvaluationLabel='尚未評估後續進場';
+  var prospectiveLabels={enrolled_pending:'已登錄，等待後續正式收盤',observed_wait:'後續收盤尚未進入原買區',triggered_close_only:'後續收盤符合原買區（研究觀察，非買進建議）',invalidated:'原凍結計畫已失效',expired:'原凍結計畫窗口已到期',quarantined:'紀錄已隔離，等待來源或風險核對'};
   var dataStatusLabels={ready:'已核對',market_not_closed:'市場未收盤',source_attestation_pending:'來源完整性待驗證',price_basis_mismatch:'價格基準待核對',stale_snapshot:'資料需更新',evidence_review_pending:'證據時間待核對',data_missing:'關鍵資料缺漏',validation_pending:'待前向驗證'};
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
   function numeric(v){if(v==null||typeof v==='boolean'||String(v).trim()==='')return null;var n=Number(v);return Number.isFinite(n)?n:null;}
@@ -84,6 +85,37 @@
     return '<details class="shadow-events reason"><summary>事前事件時間檢查（影子診斷）</summary><div class="sell">'+body+
       '<div>僅有日期或缺少精確時間的資料可能被排除；資料可用不代表可進場，不影響分數與結論。</div></div></details>';
   }
+  function prospectivePanel(row){
+    if(row.market!=='TW')return '';
+    var registry=(state.payload||{}).tw_prospective_registry;
+    if(registry&&registry.status!=='ready')return '<div class="prospective-entry sell"><b>台股凍結計畫前瞻觀察</b><div>登錄資料目前無法核對；暫不顯示紀錄判定。</div></div>';
+    var horizon=state.horizon==='preferred'?row.preferred_horizon:state.horizon;
+    var entries=(Array.isArray(row.prospective_entries)?row.prospective_entries:[]).filter(function(entry){return entry&&entry.horizon===horizon;});
+    if(!entries.length)return registry?'<div class="prospective-entry sell"><b>台股凍結計畫前瞻觀察</b><div>本報表未提供此週期的登錄紀錄。</div></div>':'';
+    entries.sort(function(a,b){var at=Date.parse(a.registered_at),bt=Date.parse(b.registered_at);return (Number.isFinite(bt)?bt:-Infinity)-(Number.isFinite(at)?at:-Infinity);});
+    var entry=entries[0], status=Object.prototype.hasOwnProperty.call(prospectiveLabels,entry.status)?entry.status:'unknown';
+    var label=prospectiveLabels[status]||'紀錄狀態待核對';
+    if(status==='observed_wait'&&entry.last_reason==='news_refresh_required')label='後續觀察等待消息更新';
+    if(!Number.isFinite(Date.parse(entry.registered_at)))label='登錄時間待核對';
+    var levels=entry.frozen_levels||{};
+    var nextObservation=['triggered_close_only','invalidated','expired'].indexOf(status)>=0?'此紀錄已結束':entry.next_observation_session||'待確認';
+    var reasonLabels={registered_now_awaiting_later_close:'已登錄，等待登錄後的正式收盤',awaiting_genuinely_later_close:'目前資料尚非登錄後的正式收盤',official_quote_unavailable:'尚未取得可核對的正式收盤',close_inside_frozen_entry_range:'後續正式收盤落在凍結買區，僅記錄研究觀察',close_outside_frozen_entry_range:'後續正式收盤仍在凍結買區之外',close_breached_frozen_stop:'後續正式收盤觸及或跌破凍結停損',buy_window_elapsed:'原始買進窗口已結束',quote_outside_buy_window:'觀察交易日超出原始窗口',evaluation_quote_stale:'後續收盤來源已過期，需核對',current_risk_unavailable:'缺少後續風險核對資料',current_risk_unverified:'後續風險資料尚未驗證',current_risk_block:'後續資料新增風險阻擋',corporate_actions_unverified:'公司行動資料尚未驗證',corporate_action_changes_price_basis:'公司行動已改變價格基準',news_source_unverified:'消息來源尚未驗證',news_refresh_required:'消息資料需更新後才能繼續核對'};
+    var reason=Object.prototype.hasOwnProperty.call(reasonLabels,entry.last_reason)?reasonLabels[entry.last_reason]:entry.last_reason;
+    return '<div class="prospective-entry sell" data-prospective-status="'+status+'"><b>台股凍結計畫前瞻觀察</b><div>'+esc(label)+'</div>'+
+      '<div class="meta">所選週期最新登錄的歷史研究紀錄｜此週期共 '+entries.length+' 筆<br>登錄時間 '+esc(entry.registered_at||'未提供')+'<br>凍結窗口末日 '+esc(entry.valid_through_session||'未提供')+'<br>觀察判定到期時間 '+esc(entry.evaluation_expires_at||'未提供')+'<br>最新研究核對時間 '+esc(entry.latest_evaluated_at||'尚未核對')+'<br>下一觀察交易日 '+esc(nextObservation)+'</div>'+
+      '<div>凍結原始買區 '+price(levels.entry_low)+' ～ '+price(levels.entry_high)+'｜凍結停損 '+price(levels.stop)+'<br>凍結目標1 '+price(levels.target1)+'｜凍結目標2 '+price(levels.target2)+'</div>'+
+      (reason?'<div>紀錄原因：'+esc(reason)+'</div>':'')+
+      '<div class="reason">以上為登錄時凍結的價位與窗口，與本卡本次產生的參考價位分開。僅正式收盤研究觀察，不代表盤中觸價、可成交或買進建議，不改原始計畫判定。</div></div>';
+  }
+  function renderProspectiveSummary(){
+    var box=document.getElementById('prospectiveSummary');
+    if(!box)return; // Older cached HTML has no panel.
+    var registry=(state.payload||{}).tw_prospective_registry;
+    if(!registry){box.textContent='台股凍結計畫前瞻觀察｜本報表尚未提供登錄紀錄；原始計畫維持參考用途。';return;}
+    if(registry.status!=='ready'){box.textContent='台股凍結計畫前瞻觀察｜'+String(registry.label||'登錄資料目前無法核對')+'。研究紀錄不可用，不代表沒有觀察機會。';return;}
+    var summary=registry.summary||{},counts=summary.status_counts||{};
+    box.textContent='台股凍結計畫前瞻觀察｜已登錄 '+num(summary.registered_total,0)+' 筆歷史研究計畫｜待正式收盤 '+num(counts.enrolled_pending,0)+'｜等待後續條件 '+num(counts.observed_wait,0)+'｜僅收盤條件研究紀錄 '+num(counts.triggered_close_only,0)+'｜失效 '+num(counts.invalidated,0)+'｜到期 '+num(counts.expired,0)+'｜隔離 '+num(counts.quarantined,0)+'。下一觀察交易日 '+String(summary.next_observation_session||'未安排')+'。原始價位與窗口固定；這些是研究紀錄數，不是可買數，沒有預測成效結論。';
+  }
   function card(row,now){
     var summary=planFor(row), conclusion=conclusionFor(summary,now), raw=conclusion.raw;
     var basis=raw.price_basis||{}, mismatch=basis.aligned===false;
@@ -120,6 +152,7 @@
       '<div class="meta">來源交易日 '+esc(raw.as_of||row.session_date||'—')+'<br>報表批次時間 '+esc((state.payload||{}).updated_at||'—')+'<br>評估時間 '+esc(raw.evaluated_at||(state.payload||{}).evaluated_at||'—')+'<br>絕對到期時間 '+esc(raw.expires_at||'未驗證')+'<br>原始買進窗口末日（非結論有效期） '+esc(raw.valid_through_session||'—')+'</div>'+
       '<div class="reason">'+esc((raw.validation||{}).label||'前向驗證待累積')+'｜僅影子驗證，尚未正式採用</div>'+
       '<div class="meta">模型分數 '+num(summary.score,1)+'｜信心分數 '+num(summary.confidence,1)+'｜資料品質 '+pct(summary.data_quality_pct)+'｜正式排名 '+num(row.formal_rank,0)+'<br>分數不是上漲機率；不自動下單。</div>'+
+      prospectivePanel(row)+
       evidenceDetails(row)+
       eventDetails(row)+
     '</article>';
@@ -155,6 +188,7 @@
   function render(){
     var now=Date.now(),rows=filtered(now);
     renderSummary(now);
+    renderProspectiveSummary();
     document.getElementById('count').textContent='影子計畫模式｜'+entryEvaluationLabel+'｜共 '+rows.length+' 檔原始計畫｜目前顯示 '+(state.horizon==='preferred'?'系統建議週期':({short:'1～5日',medium:'45日',long:'約6個月'}[state.horizon]||state.horizon));
     document.getElementById('cards').innerHTML=rows.length?rows.map(function(row){return card(row,now);}).join(''):'<div class="empty">沒有符合條件的股票。</div>';
     scheduleExpiry(now);

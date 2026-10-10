@@ -35,6 +35,9 @@ assert(js.includes('input_evidence_categories'));
 assert(html.includes('尚未評估後續進場'));
 assert(!html.includes('data-status="candidate"'));
 assert(!html.includes('data-status="eligible"'));
+assert(html.includes('id="prospectiveSummary"'));
+['台股凍結計畫前瞻觀察', '後續收盤符合原買區（研究觀察，非買進建議）', '凍結原始買區',
+  '不是可買數，沒有預測成效結論'].forEach(text => assert(js.includes(text)));
 ['待核對', '來源完整性待驗證', '價格基準待核對', '資料需更新', '證據時間待核對', '關鍵資料缺漏',
   '尚未驗證', '已完成日K收盤（參考）'].forEach(text => assert(js.includes(text)));
 ['事前時間資料可用', '不影響分數與結論', '證據配對前向檢查', '尚無準確率改善結論',
