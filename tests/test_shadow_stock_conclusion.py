@@ -46,11 +46,13 @@ def conclude(tmp_path, row=None, now=NOW):
 
 
 @pytest.mark.parametrize("market,asset", [("TW", "個股"), ("US", "個股"), ("TW", "ETF"), ("US", "ETF")])
-def test_eligible_is_shadow_only_by_market_asset(tmp_path, market, asset):
+def test_source_qualified_plan_is_not_same_snapshot_entry_by_market_asset(tmp_path, market, asset):
     row = row_for(market, asset)
     original = deepcopy(row)
     result = conclude(tmp_path, row)
-    assert result["code"] == "eligible"
+    assert result["code"] == "wait"
+    assert result["entry_evaluation"]["status"] == "not_evaluated"
+    assert result["entry_evaluation"]["eligible"] is None
     assert result["shadow_only"] is True
     assert result["automatic_orders"] is False
     assert result["probability_pct"] is None
@@ -110,7 +112,7 @@ def test_early_close_and_separate_market_clock(tmp_path):
     result = build_conclusion(row, _plan_for_horizon(row, "short"), calendar=cal, now=NOW)
     assert result["expires_at"] == "2026-10-06T13:00:00-04:00"
     at = datetime(2026, 10, 6, 6, tzinfo=timezone.utc)
-    assert build_conclusion(row, _plan_for_horizon(row, "short"), calendar=cal, now=at)["code"] == "eligible"
+    assert build_conclusion(row, _plan_for_horizon(row, "short"), calendar=cal, now=at)["code"] == "wait"
     assert conclude(tmp_path, row_for("TW"), now=at)["code"] == "insufficient"
 
 
@@ -125,7 +127,7 @@ def test_reasons_deduplicate_and_correlated_evidence_never_adds_votes(tmp_path):
     row = row_for()
     row["evidence"] *= 3
     result = conclude(tmp_path, row)
-    assert result["code"] == "eligible"
+    assert result["code"] == "wait"
     assert result["evidence"]["duplicate_count"] == 2
     assert result["evidence"]["correlated_groups"] == ["existing_price_and_model"]
     assert result["evidence"]["additional_weight"] == 0
@@ -164,7 +166,7 @@ def test_report_integrates_conclusion_and_blocks_mixed_batches(tmp_path):
     chunk = write_hub(tmp_path, row)
     report = build_trade_plan_report(tmp_path, now=NOW)
     plan = report["plans"][0]["plans"]["short"]
-    assert plan["conclusion"]["code"] == "eligible"
+    assert plan["conclusion"]["code"] == "wait"
     assert report["validation"]["formal_adoption_ready"] is False
     assert report["plans"][0]["formal_rank"] == row["formal_rank"]
     assert report["plans"][0]["formal_score"] == row["formal_score"]
@@ -203,7 +205,7 @@ def test_future_or_malformed_evidence_never_becomes_eligible(tmp_path, as_of):
 def test_naive_report_time_is_taipei_and_aware_evidence_is_market_local(tmp_path):
     row = row_for('US')
     row['evidence'][0]['as_of'] = '2026-10-06 05:00:00'  # Oct 5, 17:00 New York.
-    assert conclude(tmp_path, row)['code'] == 'eligible'
+    assert conclude(tmp_path, row)['code'] == 'wait'
 
 
 def test_future_report_timestamp_blocks_even_when_chunks_match(tmp_path):
@@ -299,7 +301,7 @@ def test_news_after_price_session_before_evaluation_is_not_future_data(tmp_path)
         'market':'TW','symbol':row['symbol'],'as_of':'2026-10-05T21:00:00Z',
         'provenance':'news scan','direction':'neutral','status':'available'})
     # Taipei Oct6 scan is after Oct5 price session but before NOW Oct5 22:00Z.
-    assert conclude(tmp_path,row)['code']=='eligible'
+    assert conclude(tmp_path,row)['code']=='wait'
     row['evidence'][-1]['direction']='oppose'
     row['risk_blocks']=['已確認新聞風險']
     assert conclude(tmp_path,row)['code']=='avoid'
@@ -343,7 +345,7 @@ def test_news_freshness_expiry_limits_cached_conclusion(tmp_path):
         'market':'TW','symbol':row['symbol'],'as_of':'2026-10-05T10:00:00Z',
         'provenance':'news scan','direction':'neutral'})
     result=conclude(tmp_path,row)
-    assert result['code']=='eligible'
+    assert result['code']=='wait'
     assert datetime.fromisoformat(result['expires_at'])==datetime(2026,10,6,4,tzinfo=timezone.utc)
     assert conclude(tmp_path,row,now=datetime(2026,10,6,4,tzinfo=timezone.utc))['code']=='insufficient'
 
@@ -353,4 +355,4 @@ def test_future_official_proof_is_not_available_at_earlier_cutoff(tmp_path):
     row['source_snapshot']['daily_proof']={'status':'attested','fetched_at':'2026-10-05T23:00:00Z'}
     assert conclude(tmp_path,row)['code']=='insufficient'
     row['source_snapshot']['daily_proof']['fetched_at']='2026-10-05T21:00:00Z'
-    assert conclude(tmp_path,row)['code']=='eligible'
+    assert conclude(tmp_path,row)['code']=='wait'
