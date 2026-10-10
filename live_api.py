@@ -413,11 +413,13 @@ class LiveDataService:
         self._ownership_lock = threading.RLock()
         self._daily_pilot = DailyPilot()
 
-    def daily_history_status(self, symbols: list[str], calendar: Any) -> dict[str, Any]:
+    def daily_history_status(self, symbols: list[str], calendar: Any, *,
+                             include_cohort_diagnostics: bool = False) -> dict[str, Any]:
         """Pilot only: reuse an existing SDK session without login or persistence."""
         with self._lock:
             sdk = self._fubon_sdk
-        return self._daily_pilot.status(sdk, symbols, calendar)
+        return self._daily_pilot.status(sdk, symbols, calendar,
+                                        include_cohort_diagnostics=include_cohort_diagnostics is True)
 
     def ownership(self, symbols: list[str]) -> dict[str, Any]:
         """Read-only supplement, limited to five canonical Taiwan symbols."""
@@ -555,6 +557,10 @@ class LiveDataService:
                 "version": FUBON_DAILY_VERSION, "supported": True,
                 "durable_raw_retention": False, "entitlement_verified": False,
                 "pilot_symbol_count": 2,
+                "private_cohort_diagnostics": {
+                    "version": "TW-FUBON-PRIVATE-DIAGNOSTICS-V1", "supported": True,
+                    "enabled_by_default": False, "pilot_symbol_count": 2,
+                },
             },
             "auth_version": 3,
             "device_pairing_configured": bool(
@@ -998,6 +1004,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 elif kind == "tw_daily_history_status":
                     data = self.service.daily_history_status(
                         payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
+                        include_cohort_diagnostics=payload.get("include_cohort_diagnostics") is True,
                     )
                 elif kind == "ownership":
                     data = self.service.ownership(payload.get("symbols"))
