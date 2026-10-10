@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-10T05:47:49.389843+08:00",
+  "checked_at": "2026-10-10T09:44:53.682945+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -180,8 +180,8 @@
     "2026-10-10:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-10-10:noon": {
       "period": "noon",
@@ -208,7 +208,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-10 01:38:03",
+        "updated_at": "2026-10-10 09:22:20",
         "error": null
       }
     },
@@ -242,8 +242,10 @@
     "2026-10-10:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_primary_or_active_run",
-      "reason": "current data requires silent refresh; no delivery receipt is created"
+      "status": "verified_fresh",
+      "reason": "current data requires silent refresh; no delivery receipt is created",
+      "verified_at": "2026-10-10T09:44:53.682945+08:00",
+      "report_updated_at": "2026-10-10 09:22:20"
     }
   },
   "permission_probe": {
@@ -261,15 +263,17 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
-    "status": "ready_silent_refresh",
-    "reason": "direction_receipt_missing_inside_forecast_window",
-    "needs_silent_refresh": true,
-    "verified_recovered": false,
-    "last_source_session_date": "2026-10-02",
+    "status": "verified_current",
+    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "needs_silent_refresh": false,
+    "verified_recovered": true,
+    "last_source_session_date": "2026-10-09",
     "latest_official_session_date": "2026-10-09",
-    "historical_backfill_allowed": false
+    "historical_backfill_allowed": false,
+    "snapshot_id": "US:2026-10-09",
+    "captured_at": "2026-10-10 09:11:58"
   },
   "capabilities": {
     "actions_read_confirmed": true,
