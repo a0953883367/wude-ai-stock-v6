@@ -1152,9 +1152,9 @@ def build_guard(
         checked = _parse_taipei(recovery.get("checked_at"))
         fresh = checked is not None and timedelta(0) <= now - checked <= timedelta(hours=2)
         checks.append(_check(
-            "stock_agent_recovery", "Telegram 三報 Agent 自動處理", "warning" if stopped or not web_ok or not fresh else "info",
+            "stock_agent_recovery", "股票三報產報檢查", "warning" if stopped or not web_ok or not fresh else "info",
             f"最近執行 {recovery.get('checked_at', '未知')}；待驗收 {len(pending)}、停止重試 {len(stopped)}；每日期時段最多 2 次",
-            "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好",
+            "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄",
         ))
 
     severity = max((LEVEL_ORDER.get(item["level"], 0) for item in checks), default=0)
