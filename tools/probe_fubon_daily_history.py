@@ -98,7 +98,7 @@ def run_probe(relay=_relay_request):
     if valid:
         for symbol in symbols:
             entries = warmed[symbol]
-            if not isinstance(entries, dict) or not entries:
+            if not isinstance(entries, dict) or set(entries) != {"institutional_trades", "tdcc_distribution", "director_holdings"}:
                 valid = False
                 break
             for entry in entries.values():
@@ -106,7 +106,7 @@ def run_probe(relay=_relay_request):
                     valid = False
                     break
                 state, code = entry.get("status"), entry.get("error_code")
-                if not isinstance(state, str):
+                if not isinstance(state, str) or state not in {"available", "no_data", "not_applicable"}:
                     valid = False
                     break
                 if state in {"rate_limited", "relay_unavailable"} or (type(code) is int and code in {401, 403, 429}):

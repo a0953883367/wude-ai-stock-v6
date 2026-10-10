@@ -189,7 +189,9 @@ def test_source_lifecycle_precedes_all_report_commit_paths():
 
 @pytest.mark.parametrize("warm", [{}, None, {"2330.TW": {}},
     {s: {"institutional_trades": {"status":"rate_limited"}} for s in f.PILOT},
-    {s: {"institutional_trades": {"status":"fetch_error", "error_code":403}} for s in f.PILOT}])
+    {s: {"institutional_trades": {"status":"fetch_error", "error_code":403}} for s in f.PILOT},
+    {s: {k: {} for k in ("institutional_trades", "tdcc_distribution", "director_holdings")} for s in f.PILOT},
+    {s: {k: {"status":"invented"} for k in ("institutional_trades", "tdcc_distribution", "director_holdings")} for s in f.PILOT}])
 def test_failed_or_timed_out_warmup_stops_without_retry(warm):
     calls = []
     def relay(kind, payload, timeout):
@@ -207,7 +209,7 @@ def test_one_fixed_warmup_then_probe_no_raw_output():
         calls.append(kind)
         assert data == {"symbols": list(f.PILOT)}
         if kind == "ownership":
-            return {s: {"institutional_trades": {"status":"available", "rows":[{"private_provider_row":"never log"}]}} for s in f.PILOT}
+            return {s: {k: {"status":"available", "rows":[{"private_provider_row":"never log"}]} for k in ("institutional_trades", "tdcc_distribution", "director_holdings")} for s in f.PILOT}
         return status
     result = run_probe(relay)
     assert calls == ["ownership", "tw_daily_history_status"]
