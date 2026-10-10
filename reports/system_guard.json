@@ -2,10 +2,10 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "ok",
   "status_label": "🟢 系統正常",
-  "checked_at": "2026-10-10T16:13:19+08:00",
+  "checked_at": "2026-10-10T16:19:06+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-10 15:52:34",
-  "report_age_minutes": 20.8,
+  "report_age_minutes": 26.5,
   "counts": {
     "ok": 27,
     "info": 12,
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-09 已正確入帳，報表距今 0.3 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-09 已正確入帳，報表距今 0.4 小時",
       "action": ""
     },
     {
@@ -322,11 +322,11 @@
     },
     {
       "code": "stock_agent_recovery",
-      "title": "Telegram 三報 Agent 自動處理",
+      "title": "股票三報產報檢查",
       "level": "info",
       "label": "資訊",
       "detail": "最近執行 2026-10-10T16:13:17.397340+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
-      "action": "只驗收 Telegram 回執；ChatGPT 三報不可觀測，不代表使用者未收到任何晚報。只有新送達證據才算恢復；缺權限、耗盡重試或網頁程式錯誤保留阻塞紀錄，不假裝修好"
+      "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [],
