@@ -430,7 +430,7 @@ jobs:
         timeout-minutes: 10
         env:
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
-        run: python fubon_ownership_relay.py
+        run: python fubon_ownership_deploy_gate.py
       - name: Publish optional ownership supplement
         if: ${{ steps.generate.outcome == 'success' }}
         shell: bash
@@ -457,4 +457,5 @@ jobs:
           steps.delivery_window.outputs.timely != 'true' }}
         run: >-
           echo "Stale report delivery suppressed; fresh public data and private evidence saved."
+
 
