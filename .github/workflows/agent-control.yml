@@ -39,7 +39,7 @@ jobs:
           # The shared state writer can wait behind guard; read main after that wait.
           ref: main
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: 安裝測試工具
