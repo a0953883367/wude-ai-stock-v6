@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 import fubon_daily_history as f
-from tools.probe_fubon_daily_history import sanitize_status
+from tools.probe_fubon_daily_history import sanitize_status, run_probe
 
 NOW = datetime(2026, 10, 10, 9, tzinfo=f.TAIPEI)
 SESSIONS = [(NOW.date() - timedelta(days=i)).isoformat() for i in range(100, 0, -1)
@@ -145,8 +145,8 @@ def test_existing_auth_and_workflow_bounds():
     method = api[api.index("    def daily_history_status"):api.index("    def ownership")]
     assert "login" not in method.split('"""')[-1] and "configure_fubon_certificate" not in method
     workflow = (root / ".github/workflows/stock-briefing.yml").read_text()
-    assert workflow.index("Keep reports and recent archive") < workflow.index("Probe existing Fubon daily history")
-    assert workflow.index("Refresh read-only Fubon ownership") < workflow.index("Probe existing Fubon daily history")
+    assert workflow.index("Probe existing Fubon daily history") < workflow.index("Keep reports and recent archive")
+    assert workflow.index("Probe existing Fubon daily history") < workflow.index("Refresh read-only Fubon ownership")
 
 
 def test_later_provider_failure_clears_partial_success_metadata():
@@ -169,3 +169,46 @@ def test_observed_time_is_after_response_not_request_start():
     assert status["observed_at"] == observed.isoformat()
     assert private["2330.TW"]["requested_at"] == NOW.isoformat()
     assert private["2330.TW"]["observed_at"] == observed.isoformat()
+
+
+def test_source_lifecycle_precedes_all_report_commit_paths():
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/stock-briefing.yml").read_text()
+    probe = workflow.index("      - name: Probe existing Fubon daily history for two pilot symbols")
+    first_push = workflow.index("git push origin HEAD:main")
+    shadow_push = workflow.index("python tools/publish_shadow_report_batch.py")
+    full_ownership = workflow.index("      - name: Refresh read-only Fubon ownership supplement")
+    assert workflow.index("      - name: Generate report") < probe < first_push < shadow_push < full_ownership
+    assert "git push" not in workflow[:probe] and "publish_shadow_report_batch.py" not in workflow[:probe]
+    assert workflow.count("run: python fubon_ownership_relay.py") == 1
+    assert workflow.count("run: python tools/probe_fubon_daily_history.py") == 1
+    source_step = workflow[probe:workflow.index("      - name: Keep reports and recent archive")]
+    assert "continue-on-error: true" in source_step and "timeout-minutes: 2" in source_step
+    assert "steps.generate.outcome == 'success'" in source_step
+    assert "workflow_dispatch" not in source_step and "id-token" not in source_step
+
+
+@pytest.mark.parametrize("warm", [{}, None, {"2330.TW": {}},
+    {s: {"institutional_trades": {"status":"rate_limited"}} for s in f.PILOT},
+    {s: {"institutional_trades": {"status":"fetch_error", "error_code":403}} for s in f.PILOT}])
+def test_failed_or_timed_out_warmup_stops_without_retry(warm):
+    calls = []
+    def relay(kind, payload, timeout):
+        calls.append((kind, payload, timeout))
+        return warm
+    result = run_probe(relay)
+    assert result["reason"] == "existing_session_warmup_unavailable"
+    assert calls == [("ownership", {"symbols": list(f.PILOT)}, 20)]
+
+
+def test_one_fixed_warmup_then_probe_no_raw_output():
+    calls = []
+    status, _ = f.collect_private(rest(lambda **k: payload("2330.TW" if k["symbol"] == "2330" else "6290.TWO")), list(f.PILOT), Calendar(), now=NOW)
+    def relay(kind, data, timeout):
+        calls.append(kind)
+        assert data == {"symbols": list(f.PILOT)}
+        if kind == "ownership":
+            return {s: {"institutional_trades": {"status":"available", "rows":[{"private_provider_row":"never log"}]}} for s in f.PILOT}
+        return status
+    result = run_probe(relay)
+    assert calls == ["ownership", "tw_daily_history_status"]
+    assert result["status"] == "validated_in_memory" and "never log" not in json.dumps(result)
