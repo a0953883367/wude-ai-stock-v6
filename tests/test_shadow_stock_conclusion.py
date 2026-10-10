@@ -356,3 +356,17 @@ def test_future_official_proof_is_not_available_at_earlier_cutoff(tmp_path):
     assert conclude(tmp_path,row)['code']=='insufficient'
     row['source_snapshot']['daily_proof']['fetched_at']='2026-10-05T21:00:00Z'
     assert conclude(tmp_path,row)['code']=='wait'
+
+
+def test_verified_emerging_scope_explains_ohlcv_block_without_buy_hint(tmp_path):
+    row = row_for()
+    row['source_snapshot'].update(ohlcv_complete=False, attestation_status='invalid',
+        daily_proof={'reason': 'unsupported_emerging_market', 'venue':'TPEX_EMERGING',
+                     'fetched_at':'2026-10-05T06:00:00+00:00'})
+    result = conclude(tmp_path, row)
+    assert result['code'] == 'insufficient'
+    assert result['entry_evaluation']['eligible'] is None
+    ohlcv = next(g for g in result['gates'] if g['code'] == 'ohlcv')
+    assert ohlcv['passed'] is False
+    assert '興櫃市場' in ohlcv['reason']
+    assert '最新成交／均價不能補成完整 OHLCV' in ohlcv['reason']
