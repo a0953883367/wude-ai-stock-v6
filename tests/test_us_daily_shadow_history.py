@@ -145,7 +145,7 @@ def test_response_byte_budget(monkeypatch):
 
 
 def test_deadline_after_response_cannot_claim_computed(monkeypatch):
-    calls = iter([0, 0, 76])
+    calls = iter([0, 0, 0, 76, 76])
     monkeypatch.setattr(history.clock, 'monotonic', lambda: next(calls))
     assert run()['reason'] == 'request_time_budget'
 
@@ -270,3 +270,39 @@ def test_188_symbol_paginated_synthetic_projection_no_network():
     assert result['request_count'] == 3
     assert result['corporate_actions_independently_verified'] is False
     assert result['durable_raw_retention'] is result['market_values_exported'] is False
+
+
+def test_manifest_includes_153_stocks_and_35_etfs_and_is_order_stable():
+    from tools.collect_us_daily_shadow_status import build_manifest, sanitize_status
+    rows = [{'symbol': f'STOCK{i}', 'market': 'US', 'type': '股票'} for i in range(153)]
+    rows += [{'symbol': f'FUND{i}', 'market': 'US', 'type': 'ETF'} for i in range(35)]
+    rows += [{'symbol': '2330', 'market': 'TW', 'type': '股票'}]
+    symbols, categories, digest = build_manifest(rows)
+    assert len(symbols) == 188
+    assert list(categories.values()).count('stock') == 153
+    assert list(categories.values()).count('etf') == 35
+    assert build_manifest(list(reversed(rows)))[2] == digest
+    result = history.collect_daily_shadow_status(symbols, Calendar(), now=NOW,
+                                                 session=Client(), instrument_types=categories)
+    clean = sanitize_status(result, 188, expected_manifest=digest)
+    assert clean['status'] == 'probe_verified'
+    assert type(clean['elapsed_ms']) is int and clean['elapsed_ms'] >= 0
+    assert (clean['stock_count'], clean['etf_count'], clean['unclassified_count']) == (153, 35, 0)
+    assert sanitize_status(result, 188, expected_manifest='0' * 64)['status'] == 'blocked'
+    assert sanitize_status({**result, 'stock_count': 154}, 188)['status'] == 'blocked'
+    assert sanitize_status({**result, 'stock_count': 154, 'etf_count': 34}, 188,
+                           expected_manifest=digest, expected_categories=categories)['status'] == 'blocked'
+    assert sanitize_status({**result, 'universe_manifest_sha256': 'private text'}, 188)['status'] == 'blocked'
+
+
+def test_manifest_rejects_invalid_and_conflicting_categories():
+    from tools.collect_us_daily_shadow_status import build_manifest
+    for rows in ([], [{'symbol': '../AAPL', 'market': 'US'}],
+                 [{'symbol': 'AAPL', 'market': 'US'}, {'symbol': 'AAPL', 'market': 'US', 'type': 'ETF'}],
+                 [{'symbol': f'TEST{i}', 'market': 'US'} for i in range(201)]):
+        with pytest.raises(ValueError):
+            build_manifest(rows)
+    assert build_manifest([], probe_only=True)[:2] == (['AAPL'], {'AAPL': 'stock'})
+    with pytest.raises(ValueError):
+        history.collect_daily_shadow_status(['AAPL'], Calendar(), now=NOW,
+                                             session=Client(), instrument_types={'AAPL': 'fundamentals'})

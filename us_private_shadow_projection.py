@@ -87,6 +87,8 @@ class ResearchPlan:
     plan_sha256: str
     execution_eligible: bool = False
     prospective_registered: bool = False
+    investment_recommendation: bool = False
+    return_forecast: bool = False
 
 
 @dataclass(frozen=True)
@@ -104,6 +106,8 @@ class Projection:
     affects_formal: bool = False
     private_only: bool = True
     durable_retention: bool = False
+    instrument_category: str = 'unknown'
+    company_fundamentals_included: bool = False
 
 
 def _hash(value) -> str:
@@ -188,10 +192,11 @@ def _features(bars: list[Bar], sessions: list[str], observed: datetime, verified
 
 
 def project_symbol(symbol: str, records: Mapping[str, Bar], calendar_sessions: list[str], *,
-                   observed: datetime, adjustment: str, verified_weeks=None) -> Projection:
+                   observed: datetime, adjustment: str, verified_weeks=None, instrument_category: str = 'unknown') -> Projection:
     """Freeze one independent research projection, not a formal-model overlay."""
     if (not isinstance(symbol, str) or not re.fullmatch(r'[A-Z][A-Z0-9.\-]{0,15}', symbol)
-            or observed.tzinfo is None or not calendar_sessions or adjustment != 'split'):
+            or observed.tzinfo is None or not calendar_sessions or adjustment != 'split'
+            or instrument_category not in {'stock', 'etf', 'unknown'}):
         raise ValueError('verified split-adjusted observation context required')
     parsed = [date.fromisoformat(s) for s in calendar_sessions]
     if (parsed != sorted(set(parsed)) or parsed[-1] >= observed.astimezone(NY).date()
@@ -200,7 +205,8 @@ def project_symbol(symbol: str, records: Mapping[str, Bar], calendar_sessions: l
     expected = set(calendar_sessions)
     full = False
     def blocked(reason, tail=0):
-        return Projection(symbol, len(expected), len(records), full, tail, 'blocked', (reason,))
+        return Projection(symbol, len(expected), len(records), full, tail, 'blocked', (reason,),
+                          instrument_category=instrument_category)
     if set(records) - expected:
         return blocked('unexpected_bar_session')
     for bar in records.values():
@@ -236,6 +242,7 @@ def project_symbol(symbol: str, records: Mapping[str, Bar], calendar_sessions: l
     lineage = {'version': VERSION, 'symbol': symbol, 'source': SOURCE, 'endpoint': ENDPOINT,
                'feed': 'sip', 'interval': '1Day', 'adjustment': adjustment, 'currency': 'USD',
                'observed_at': stamp, 'symbol_mapping_asof': calendar_sessions[-1],
+               'instrument_category': instrument_category,
                'sessions': tail, 'ohlcv': bars, 'calendar_membership_sha256': calendar_digest}
     digest = _hash(lineage)
     proof = Provenance(VERSION, SOURCE, ENDPOINT, 'sip', '1Day', adjustment, 'USD',
@@ -263,11 +270,11 @@ def project_symbol(symbol: str, records: Mapping[str, Bar], calendar_sessions: l
         if stop <= 0 or not all(math.isfinite(v) for v in (low, high, stop, target1, target2)):
             reasons.append('research_geometry_unavailable')
         else:
-            identity = {'version': 'US-SIP-ATR-GEOMETRY-V1', 'scope': 'illustrative_long_only_research',
+            identity = {'version': 'US-SIP-ATR-GEOMETRY-V1', 'scope': 'illustrative_instrument_long_only_geometry',
                         'horizon_sessions': 5, 'entry_low': low, 'entry_high': high, 'stop': stop,
                         'target1': target1, 'target2': target2, 'source_input_sha256': digest,
                         'observed_at': stamp, 'source_session_date': calendar_sessions[-1]}
             plan = ResearchPlan(identity['version'], identity['scope'], 5, low, high, stop, target1, target2,
                                 2.0, 3.0, digest, stamp, calendar_sessions[-1], _hash(identity))
     return Projection(symbol, len(expected), len(records), full, len(tail), 'projected', tuple(reasons),
-                      proof, features, plan)
+                      proof, features, plan, instrument_category=instrument_category)

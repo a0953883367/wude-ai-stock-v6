@@ -2,6 +2,8 @@
 from __future__ import annotations
 import argparse
 import json
+import re
+from hashlib import sha256
 from pathlib import Path
 import sys
 
@@ -22,7 +24,7 @@ REASONS = {
 }
 
 
-def sanitize_status(result, requested_count):
+def sanitize_status(result, requested_count, expected_manifest=None, expected_categories=None):
     """Validate exact operational fields; no arbitrary provider strings/values."""
     blocked = {'schema_version': 1, 'status': 'blocked', 'reason': 'invalid_or_unavailable_relay_status',
                'requested_count': requested_count, 'decision_eligible': False, 'affects_formal': False,
@@ -43,15 +45,16 @@ def sanitize_status(result, requested_count):
         return blocked
     clean = {**blocked, **constants, 'status': result['status']}
     clean.pop('reason')
-    bounds = {'requested_count': (requested_count, requested_count), 'history_complete_count': (0, requested_count),
+    bounds = {'requested_count': (requested_count, requested_count),
+              'stock_count': (0, requested_count), 'etf_count': (0, requested_count), 'unclassified_count': (0, requested_count), 'history_complete_count': (0, requested_count),
               'indicator_complete_count': (0, requested_count),
               'weekly_indicator_complete_count': (0, requested_count), 'daily_momentum_complete_count': (0, requested_count), 'research_plan_complete_count': (0, requested_count), 'request_count': (0, 24),
-              'calendar_session_count': (4, 400), 'probe_session_count': (4, 4),
+              'elapsed_ms': (0, 3600000), 'calendar_session_count': (4, 400), 'probe_session_count': (4, 4),
               'provider_http_status': (100, 599), 'x_ratelimit_limit': (0, 999999999),
               'x_ratelimit_remaining': (0, 999999999)}
     for key, (low, high) in bounds.items():
         if key not in result:
-            if key in {'requested_count', 'history_complete_count', 'indicator_complete_count', 'request_count',
+            if key in {'requested_count', 'stock_count', 'etf_count', 'unclassified_count', 'history_complete_count', 'indicator_complete_count', 'request_count',
                        'weekly_indicator_complete_count', 'daily_momentum_complete_count', 'research_plan_complete_count'}:
                 return blocked
             continue
@@ -59,6 +62,16 @@ def sanitize_status(result, requested_count):
         if type(value) is not int or not low <= value <= high:
             return blocked
         clean[key] = value
+    if clean['stock_count'] + clean['etf_count'] + clean['unclassified_count'] != requested_count:
+        return blocked
+    if expected_categories is not None:
+        for category, key in (('stock', 'stock_count'), ('etf', 'etf_count'), ('unknown', 'unclassified_count')):
+            if clean[key] != sum(value == category for value in expected_categories.values()):
+                return blocked
+    digest = result.get('universe_manifest_sha256')
+    if not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest) or (expected_manifest is not None and digest != expected_manifest):
+        return blocked
+    clean['universe_manifest_sha256'] = digest
     if any(clean.get(k, 0) > clean['indicator_complete_count'] for k in ('weekly_indicator_complete_count', 'daily_momentum_complete_count', 'research_plan_complete_count')):
         return blocked
     if not isinstance(result.get('probe_status'), str) or result.get('probe_status') not in {'not_run', 'blocked', 'passed'}:
@@ -119,6 +132,29 @@ def sanitize_status(result, requested_count):
     return clean
 
 
+
+def build_manifest(rows, *, probe_only=False):
+    if probe_only:
+        categories = {'AAPL': 'stock'}
+    else:
+        categories = {}
+        for row in rows:
+            if not isinstance(row, dict) or row.get('market') != 'US':
+                continue
+            symbol = str(row.get('symbol') or '').upper()
+            if not re.fullmatch(r'[A-Z][A-Z0-9.\-]{0,15}', symbol):
+                raise ValueError('invalid US universe symbol')
+            category = 'etf' if 'ETF' in str(row.get('type') or '').upper() else 'stock'
+            if symbol in categories and categories[symbol] != category:
+                raise ValueError('conflicting US universe category')
+            categories[symbol] = category
+    symbols = sorted(categories)
+    if not 1 <= len(symbols) <= 200:
+        raise ValueError('US universe must contain 1 to 200 instruments')
+    digest = sha256(json.dumps([[s, categories[s]] for s in symbols], separators=(',', ':')).encode()).hexdigest()
+    return symbols, categories, digest
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--reports-dir', type=Path, default=Path('reports'))
@@ -126,12 +162,11 @@ def main():
     args = parser.parse_args()
     payload = json.loads((args.reports_dir / 'all_analysis.json').read_text())
     rows = payload.get('data') or []
-    symbols = sorted({str(row.get('symbol') or '').upper() for row in rows
-                      if row.get('market') == 'US' and 'ETF' not in str(row.get('type') or '').upper()})
-    if not args.collect_history:
-        symbols = ['AAPL']
-    result = _relay_request('daily_shadow_status', {'symbols': symbols, 'collect_history': args.collect_history}, 95) if symbols else {}
-    clean = sanitize_status(result, len(symbols))
+    symbols, categories, manifest_hash = build_manifest(rows, probe_only=not args.collect_history)
+    result = _relay_request('daily_shadow_status', {'symbols': symbols, 'collect_history': args.collect_history,
+                                                   'instrument_types': categories}, 95) if symbols else {}
+    clean = sanitize_status(result, len(symbols), expected_manifest=manifest_hash, expected_categories=categories)
+    clean['scope'] = 'all_us_instruments_including_etfs' if args.collect_history else 'aapl_four_session_entitlement_probe'
     target = args.reports_dir / 'us_daily_shadow_status.json'
     temporary = target.with_suffix('.tmp')
     temporary.write_text(json.dumps(clean, ensure_ascii=False, indent=2) + '\n')

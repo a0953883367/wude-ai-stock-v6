@@ -227,3 +227,16 @@ def test_calendar_membership_is_part_of_feature_identity():
     assert a.features.weekly_k9 is not None and b.features.weekly_k9 is None
     assert a.provenance.calendar_membership_sha256 != b.provenance.calendar_membership_sha256
     assert a.provenance.input_sha256 != b.provenance.input_sha256
+
+
+def test_etf_is_technical_only_and_category_binds_private_identity():
+    days = sessions()
+    kwargs = dict(observed=NOW, adjustment='split')
+    stock = project_symbol('TEST', records(days), days, instrument_category='stock', **kwargs)
+    etf = project_symbol('TEST', records(days), days, instrument_category='etf', **kwargs)
+    assert etf.instrument_category == 'etf'
+    assert etf.company_fundamentals_included is False
+    assert etf.features == stock.features
+    assert etf.provenance.input_sha256 != stock.provenance.input_sha256
+    assert etf.plan.investment_recommendation is etf.plan.return_forecast is False
+    assert etf.plan.execution_eligible is False

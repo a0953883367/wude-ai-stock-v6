@@ -4,14 +4,14 @@
 
 V2 extends the existing in-memory daily collector. Default workflow behavior
 still requests only the four-session AAPL probe. The existing explicit
-`us_daily_history=true` dispatch flag can request the current US non-ETF
-universe; this implementation has not executed that real bulk request.
+`us_daily_history=true` dispatch flag can request the current full US stock-and-ETF
+universe (153 stocks plus 35 ETFs in the verified 188-instrument snapshot); this implementation has not executed that real bulk request.
 
 No formal row, score, rank, source gate, order, notification rule, credential,
 OIDC trust, or workflow is changed. The existing formal Yahoo-derived features
 and plans are not relabeled as SIP data. No source values, derived indicator
-values, plans, hashes, or per-symbol projections are returned through the relay.
-Only operational counts, version/basis labels, dates and validated reason counts
+values, plans, market-input hashes, or per-symbol projections are returned through the relay.
+Only operational counts, taxonomy counts, universe-manifest hash, version/basis labels, dates and validated reason counts
 can enter the existing public status report. No durable storage is added.
 
 ## Source and adjustment contract
@@ -93,3 +93,21 @@ References:
 - https://docs.alpaca.markets/us/docs/market-data-faq
 - https://files.alpaca.markets/disclosures/library/TermsAndConditions.pdf
 - https://files.alpaca.markets/disclosures/library/AcctAppMarginAndCustAgmt.pdf
+
+## Frozen universe scope
+
+The explicit bulk selector includes every US row, including ETFs, deduplicated
+by normalized symbol and capped at 200. A conflicting category blocks selection.
+The relay validates the exact symbol/category map and echoes only its SHA256
+and aggregate stock/ETF/unclassified counts. The CLI verifies that hash against
+its pre-call manifest; the scope is never inferred from a stale readiness count.
+The report snapshot blob `38ce7e5d4f9be652a4599637316708f4d2f21b73`
+contains 153 stocks and 35 ETFs; canonical sorted symbol/category-pair hash is
+`bd2e50a55e12fb7e33bfe70f6a83be6dd57eb6731bec3b416b5d127a7e20835b`.
+A later run recomputes its own manifest rather than claiming this snapshot.
+
+ETFs receive only the same source OHLCV/technical research computation. No
+company fundamentals, valuation, profit forecast, investment recommendation
+or return forecast is produced. Instrument category participates in private
+input identity. Unsupported or missing SIP instruments remain explicitly
+unready; neither OTC nor ETF membership implies source coverage.

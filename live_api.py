@@ -993,6 +993,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     data = collect_daily_shadow_status(
                         payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
                         collect_history=payload.get("collect_history") is True,
+                        instrument_types=payload.get("instrument_types"),
                     )
                 elif kind == "tw_daily_history_status":
                     data = self.service.daily_history_status(

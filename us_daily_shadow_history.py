@@ -10,6 +10,7 @@ from collections import Counter
 from datetime import date, datetime, time, timedelta, timezone
 import math
 import json
+from hashlib import sha256
 import re
 import time as clock
 from typing import Any
@@ -204,8 +205,15 @@ def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tu
 
 
 def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | None = None,
-                                session: Any = None, collect_history: bool = False) -> dict[str, Any]:
+                                session: Any = None, collect_history: bool = False, instrument_types: Any = None) -> dict[str, Any]:
+    started = clock.monotonic()
     requested = _symbols(symbols)
+    categories = {symbol: 'unknown' for symbol in requested} if instrument_types is None else instrument_types
+    if (not isinstance(categories, dict) or set(categories) != set(requested)
+            or any(not isinstance(value, str) or value not in {'stock', 'etf', 'unknown'} for value in categories.values())):
+        raise ValueError('invalid frozen universe categories')
+    manifest_hash = sha256(json.dumps([[symbol, categories[symbol]] for symbol in requested],
+                                     separators=(',', ':')).encode()).hexdigest()
     observed = now or datetime.now(timezone.utc)
     if observed.tzinfo is None:
         raise ValueError('timezone-aware observation required')
@@ -213,6 +221,10 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
               'observed_at': observed.astimezone(timezone.utc).isoformat(),
               'source': 'Alpaca SIP historical daily bars', 'feed': 'sip', 'interval': '1Day',
               'adjustment': 'split', 'requested_count': len(requested), 'probe_status': 'not_run',
+              'stock_count': sum(v == 'stock' for v in categories.values()),
+              'etf_count': sum(v == 'etf' for v in categories.values()),
+              'unclassified_count': sum(v == 'unknown' for v in categories.values()),
+              'universe_manifest_sha256': manifest_hash,
               'history_complete_count': 0, 'indicator_complete_count': 0,
               'weekly_indicator_complete_count': 0, 'daily_momentum_complete_count': 0, 'research_plan_complete_count': 0,
               'decision_eligible': False, 'affects_formal': False, 'prospective_evaluation_started': False,
@@ -250,7 +262,7 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
             if clock.monotonic() > deadline:
                 raise HistoryBlocked('request_time_budget')
             projection = project_symbol(symbol, histories[symbol], sessions,
-                                        observed=captured_at, adjustment='split', verified_weeks=verified_weeks)
+                                        observed=captured_at, adjustment='split', verified_weeks=verified_weeks, instrument_category=categories[symbol])
             result['history_complete_count'] += int(projection.full_window_complete)
             if projection.features is None:
                 reasons[projection.reasons[0]] += 1
@@ -280,6 +292,7 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
         if result['probe_status'] == 'not_run':
             result['probe_status'] = 'blocked'
     finally:
+        result['elapsed_ms'] = max(0, round((clock.monotonic() - started) * 1000))
         if session is None and client is not None:
             client.close()
     return result
