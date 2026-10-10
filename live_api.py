@@ -54,6 +54,8 @@ SYMBOL_PATTERN = re.compile(r"^[A-Z0-9.^-]{1,20}(?:\.(?:TW|TWO))?$")
 NEW_YORK = ZoneInfo("America/New_York")
 DEFAULT_SITE_LIVE_TOKEN_SHA256 = "0cf3e46b11bb22461985200095067592e354335fa026c4c33c58c9555544f06f"
 DEFAULT_VERCEL_APP_TOKEN_SHA256 = "80beb3c0100e5a4365a767019ac3e4dcb0f7d162915cf1efdf5570b4b577e638"
+PRIVATE_RESEARCH_BROWSER_ORIGIN = "https://wude-ai-stock-app.vercel.app"
+PRIVATE_RESEARCH_BROWSER_PATH = "/api/private/us-research"
 
 
 def _persistent_data_root() -> Path:
@@ -760,6 +762,20 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         ).split(",") if value.strip()}
         return origin if origin and origin in allowed else None
 
+    def _private_research_browser_origin(self) -> str | None:
+        # A path/method-specific exception, never part of the general allowlist.
+        # Also inspect the raw request target: BaseHTTPRequestHandler normalizes
+        # a leading // before assigning self.path.
+        method = getattr(self, "command", "")
+        request = getattr(self, "requestline", "").split()
+        if (method not in {"POST", "OPTIONS"}
+                or self.path != PRIVATE_RESEARCH_BROWSER_PATH
+                or len(request) != 3 or request[0] != method
+                or request[1] != PRIVATE_RESEARCH_BROWSER_PATH
+                or self.headers.get_all("Origin", []) != [PRIVATE_RESEARCH_BROWSER_ORIGIN]):
+            return None
+        return PRIVATE_RESEARCH_BROWSER_ORIGIN
+
     def _owner_authorized(self) -> bool:
         token = os.getenv("LIVE_ACCESS_TOKEN", "").strip()
         if token:
@@ -815,14 +831,35 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         origin = self._origin()
-        if origin:
-            self.send_header("Access-Control-Allow-Origin", origin)
+        private_origin = self._private_research_browser_origin() if not origin else None
+        if origin or private_origin:
+            self.send_header("Access-Control-Allow-Origin", origin or private_origin)
             self.send_header("Vary", "Origin")
-            self.send_header("Access-Control-Allow-Credentials", "true")
+            if origin:
+                self.send_header("Access-Control-Allow-Credentials", "true")
         self.end_headers()
         self.wfile.write(body)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
+        private_origin = self._private_research_browser_origin()
+        if private_origin:
+            methods = self.headers.get_all("Access-Control-Request-Method", [])
+            header_lines = self.headers.get_all("Access-Control-Request-Headers", [])
+            requested = {value.strip().lower() for value in header_lines[0].split(",")} if len(header_lines) == 1 else set()
+            accepted = (methods == ["POST"] and len(header_lines) == 1 and bool(requested)
+                        and requested <= {"content-type", "x-live-token"})
+            self.send_response(HTTPStatus.NO_CONTENT if accepted else HTTPStatus.FORBIDDEN)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.send_header("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
+            if accepted:
+                self.send_header("Access-Control-Allow-Origin", private_origin)
+                self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Live-Token")
+                self.send_header("Access-Control-Allow-Methods", "POST")
+            # The browser must use credentials: omit and an existing explicit
+            # X-Live-Token. Cookies are not a grant; preflight never authenticates.
+            self.end_headers()
+            return
         self.send_response(HTTPStatus.NO_CONTENT)
         origin = self._origin()
         if origin:
@@ -1009,7 +1046,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             if not self._private_research_authorized():
                 self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "existing private device authorization required"})
                 return
-            if not self._origin():
+            if not (self._origin() or self._private_research_browser_origin()):
                 self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": "private research origin denied"})
                 return
             if not self.rate_limiter.allow():
