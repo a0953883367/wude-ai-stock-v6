@@ -111,3 +111,21 @@ company fundamentals, valuation, profit forecast, investment recommendation
 or return forecast is produced. Instrument category participates in private
 input identity. Unsupported or missing SIP instruments remain explicitly
 unready; neither OTC nor ETF membership implies source coverage.
+
+## Narrow operational diagnostic exception
+
+The public status contract now additionally permits a requested public-universe
+symbol, one fixed non-directional pipeline quality label, and at most 16 ISO
+session dates. Labels are `source_continuity_review` and
+`history_window_insufficient`. Dates identify a flagged transition session or
+the last missing / first contiguous-tail session; they do not assert a corporate
+action, IPO, direction, magnitude or investment outcome. More than 16 flagged
+transitions retain only the earliest 16 diagnostic dates; readiness still blocks.
+
+No quote, return, volume, adjustment factor, threshold magnitude, indicator,
+plan level, arbitrary provider string or account information is exported.
+The publication sanitizer checks exact keys, requested-universe membership,
+unique symbols, reason-count reconciliation, canonical ordered dates within the
+requested historical bound, and rejects the complete status on malformed data.
+This exception does not establish market-data redistribution or derived-signal
+licensing rights. Data-quality gates and the private feature contract are unchanged.
