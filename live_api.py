@@ -31,6 +31,7 @@ from zoneinfo import ZoneInfo
 
 from fubon_runner import _login_fubon, parse_fubon_quote
 from fubon_ownership import collect_ownership
+from fubon_daily_history import DailyPilot, VERSION as FUBON_DAILY_VERSION
 from watchlist import load_watchlist
 from fubon_broker import FubonTradingSession
 from large_buy_monitor import LargeBuyAlertService
@@ -410,6 +411,13 @@ class LiveDataService:
         self._fubon_sdk: Any = None
         self._lock = threading.RLock()
         self._ownership_lock = threading.RLock()
+        self._daily_pilot = DailyPilot()
+
+    def daily_history_status(self, symbols: list[str], calendar: Any) -> dict[str, Any]:
+        """Pilot only: reuse an existing SDK session without login or persistence."""
+        with self._lock:
+            sdk = self._fubon_sdk
+        return self._daily_pilot.status(sdk, symbols, calendar)
 
     def ownership(self, symbols: list[str]) -> dict[str, Any]:
         """Read-only supplement, limited to five canonical Taiwan symbols."""
@@ -542,6 +550,11 @@ class LiveDataService:
                 "supported": True,
                 "durable_raw_retention": False,
                 "entitlement_verified": False,
+            },
+            "tw_daily_history_probe": {
+                "version": FUBON_DAILY_VERSION, "supported": True,
+                "durable_raw_retention": False, "entitlement_verified": False,
+                "pilot_symbol_count": 2,
             },
             "auth_version": 3,
             "device_pairing_configured": bool(
@@ -981,6 +994,10 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
                         collect_history=payload.get("collect_history") is True,
                     )
+                elif kind == "tw_daily_history_status":
+                    data = self.service.daily_history_status(
+                        payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
+                    )
                 elif kind == "ownership":
                     data = self.service.ownership(payload.get("symbols"))
                 elif kind == "sip":
@@ -1151,3 +1168,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
