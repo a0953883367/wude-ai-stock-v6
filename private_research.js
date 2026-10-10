@@ -5,14 +5,29 @@
   var input = document.getElementById('researchSymbol');
   var submit = document.getElementById('researchSubmit');
   var status = document.getElementById('requestStatus');
+  var accessStatus = document.getElementById('accessStatus');
   var result = document.getElementById('researchResult');
-  if (!form || !input || !submit || !status || !result) return;
+  if (!form || !input || !submit || !status || !accessStatus || !result) return;
 
   var pending = null;
   var generation = 0;
   var pageActive = true;
+  var hasLocalToken = false;
+  var lastRequestUnauthorized = false;
   var allowedApiBase = 'https://wude-ai-stock-v6-production.up.railway.app';
   var genericError = '目前無法讀取私人研究，請稍後手動重試。';
+  var unauthorizedError = '伺服器未接受現有授權，可能已失效或無法辨識。請確認是否使用原本已授權的瀏覽器與相同網站網址，再檢查既有存取授權。';
+  var reasonLabels = {
+    unexpected_bar_session: '日線包含不在已核對交易日內的資料。',
+    invalid_ohlcv: '日線價格或成交量資料未通過檢查。',
+    insufficient_contiguous_indicator_history: '連續日線不足，無法計算完整研究指標。',
+    adjusted_price_discontinuity_requires_review: '調整後價格出現不連續，需人工核對。',
+    insufficient_volume_history: '成交量歷史不足，無法計算完整研究指標。',
+    invalid_indicator: '研究指標未通過數值檢查。',
+    requested_window_incomplete: '要求的歷史期間資料尚未完整。',
+    insufficient_completed_weekly_history: '已完成的週線歷史不足。',
+    research_geometry_unavailable: '目前無法產生研究價位幾何。'
+  };
   var featureFields = [
     ['close', '歷史收盤'], ['ma5', 'MA5'], ['ma10', 'MA10'], ['ma20', 'MA20'], ['ma60', 'MA60'],
     ['rsi14_sma', 'RSI14（SMA）'], ['atr14_true_range_sma', 'ATR14（真實區間 SMA）'],
@@ -74,8 +89,8 @@
   }
 
   function lock(value) {
-    input.disabled = value;
-    submit.disabled = value;
+    input.disabled = value || !hasLocalToken;
+    submit.disabled = value || !hasLocalToken;
     form.setAttribute('aria-busy', value ? 'true' : 'false');
   }
 
@@ -88,12 +103,47 @@
     lock(false);
   }
 
-  function existingToken() {
-    try {
-      return window.localStorage.getItem('wude-live-access-token') || window.localStorage.getItem('wude_live_token') || '';
-    } catch (_) {
+  function configuredApiBase() {
+    return typeof window.WUDE_LIVE_API_BASE === 'string' ? window.WUDE_LIVE_API_BASE.replace(/\/+$/, '') : '';
+  }
+
+  function readLocalAccess() {
+    var token = '';
+    var unreadable = false;
+    ['wude-live-access-token', 'wude_live_token'].forEach(function (key) {
+      try {
+        var value = window.localStorage.getItem(key);
+        value = typeof value === 'string' ? value.trim() : '';
+        if (!token && value) token = value;
+      } catch (_) {
+        unreadable = true;
+      }
+    });
+    return {token: token, unreadable: unreadable};
+  }
+
+  function refreshAccess() {
+    if (configuredApiBase() !== allowedApiBase) {
+      hasLocalToken = false;
+      discard();
+      accessStatus.textContent = '私人研究連線設定無法確認；尚未讀取本機授權資料。';
       return '';
     }
+    var access = readLocalAccess();
+    hasLocalToken = Boolean(access.token);
+    if (!hasLocalToken) {
+      discard();
+      lastRequestUnauthorized = false;
+      accessStatus.textContent = access.unreadable ?
+        '無法讀取此瀏覽器在本站的本機授權資料。查詢已停用，這不是股票資料查詢失敗。' :
+        '此瀏覽器在本站沒有可用的本機授權資料。查詢已停用，這不是股票資料查詢失敗。';
+    } else {
+      accessStatus.textContent = lastRequestUnauthorized ?
+        '本機授權資料仍存在；伺服器上次未接受此請求，可能已失效或無法辨識。' :
+        '已找到此瀏覽器的本機授權資料；本機存在不代表伺服器仍接受授權。';
+      lock(Boolean(pending));
+    }
+    return access.token;
   }
 
   function visible() {
@@ -118,7 +168,9 @@
       reasons.appendChild(node('h2', '限制與原因'));
       var list = node('ul');
       data.reasons.slice(0, 20).forEach(function (reason) {
-        if (typeof reason === 'string') list.appendChild(node('li', reason.slice(0, 300)));
+        if (typeof reason === 'string') {
+          list.appendChild(node('li', typeof reasonLabels[reason] === 'string' ? reasonLabels[reason] : '研究限制尚待核對。'));
+        }
       });
       reasons.appendChild(list);
       result.appendChild(reasons);
@@ -131,22 +183,20 @@
     event.preventDefault();
     if (pending || !visible()) return;
     clearResult();
+    var apiBase = configuredApiBase();
+    if (apiBase !== allowedApiBase || typeof AbortController !== 'function') {
+      status.textContent = genericError;
+      return;
+    }
+    var token = refreshAccess();
+    if (!token) return;
     var symbol = input.value.trim().toUpperCase();
     if (!/^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)) {
       status.textContent = '請輸入有效的美股代號。';
       return;
     }
     input.value = symbol;
-    var apiBase = typeof window.WUDE_LIVE_API_BASE === 'string' ? window.WUDE_LIVE_API_BASE.replace(/\/+$/, '') : '';
-    if (apiBase !== allowedApiBase || typeof AbortController !== 'function') {
-      status.textContent = genericError;
-      return;
-    }
-    var token = existingToken();
-    if (!token) {
-      status.textContent = '此裝置沒有既有的私人存取授權。';
-      return;
-    }
+    lastRequestUnauthorized = false;
     var controller = new AbortController();
     var requestGeneration = ++generation;
     pending = controller;
@@ -164,6 +214,13 @@
         signal: controller.signal
       });
       if (requestGeneration !== generation || !visible()) return;
+      if (response.status === 401) {
+        lastRequestUnauthorized = true;
+        clearResult();
+        status.textContent = unauthorizedError;
+        refreshAccess();
+        return;
+      }
       if (!response.ok) throw new Error('request_failed');
       var payload = await response.json();
       if (requestGeneration !== generation || !visible()) return;
@@ -181,7 +238,7 @@
     } finally {
       if (requestGeneration === generation) {
         pending = null;
-        lock(false);
+        refreshAccess();
       }
     }
   });
@@ -192,9 +249,20 @@
   });
   window.addEventListener('pageshow', function () {
     pageActive = true;
+    refreshAccess();
+  });
+  window.addEventListener('focus', function () {
+    if (visible()) refreshAccess();
+  });
+  window.addEventListener('storage', function (event) {
+    if (event.key === null || event.key === 'wude-live-access-token' || event.key === 'wude_live_token') {
+      discard();
+      refreshAccess();
+    }
   });
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) discard();
+    else if (pageActive) refreshAccess();
   });
-  lock(false);
+  refreshAccess();
 })();

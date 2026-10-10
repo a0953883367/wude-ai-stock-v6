@@ -35,7 +35,7 @@ function deferred() {
 }
 
 function boot(options = {}) {
-  const ids = ['researchForm', 'researchSymbol', 'researchSubmit', 'requestStatus', 'researchResult'];
+  const ids = ['researchForm', 'researchSymbol', 'researchSubmit', 'requestStatus', 'accessStatus', 'researchResult'];
   const nodes = Object.fromEntries(ids.map(id => [id, new Element()]));
   nodes.researchResult.hidden = true;
   const documentEvents = {}, windowEvents = {}, calls = [], storageReads = [];
@@ -96,6 +96,9 @@ function boot(options = {}) {
     show() { document.hidden = false; documentEvents.visibilitychange(); },
     pagehide() { windowEvents.pagehide(); },
     pageshow() { windowEvents.pageshow(); },
+    focus() { windowEvents.focus(); },
+    storageChanged(key = 'wude-live-access-token') { windowEvents.storage({key}); },
+    setStorageError(value) { options.storageError = value; },
   };
 }
 
@@ -120,7 +123,8 @@ function assertEmpty(app) {
 }
 
 async function run() {
-  for (const text of ['私人研究，未經驗證；不是買進指示，不可下單', 'decision-hub.html', 'no-referrer', 'noindex, nofollow, noarchive']) {
+  for (const text of ['私人研究，未經驗證；不是買進指示，不可下單', 'decision-hub.html', 'no-referrer', 'noindex, nofollow, noarchive',
+    'live-flow.html', '檢查既有存取授權', '同一個瀏覽器', '相同網站網址', '若需新增裝置授權，請先與助理確認']) {
     assert(html.includes(text), 'missing safety text: ' + text);
   }
   assert.strictEqual((html.match(/<input\b/g) || []).length, 1);
@@ -132,10 +136,12 @@ async function run() {
   assert(!/innerHTML|insertAdjacentHTML|document\.write|setItem|sessionStorage|setInterval|console\./.test(source));
   assert(!/reports\/|stock_data|Yahoo|formal_rank|Notification|download\s*=/.test(source));
 
-  // No loading, token read, or requests before an explicit form submission.
+  // Startup only inspects local presence; no request is made or validity claimed.
   const idle = boot();
   assert.strictEqual(idle.calls.length, 0);
-  assert.deepStrictEqual(idle.storageReads, []);
+  assert.deepStrictEqual(idle.storageReads, ['wude-live-access-token', 'wude_live_token']);
+  assert(idle.nodes.accessStatus.textContent.includes('本機存在不代表伺服器仍接受授權'));
+  assert(!idle.nodes.accessStatus.textContent.includes('existing-device-token'));
   assert.strictEqual(idle.nodes.researchSubmit.disabled, false);
   idle.pageshow(); idle.hide(); idle.show();
   assert.strictEqual(idle.calls.length, 0);
@@ -193,15 +199,58 @@ async function run() {
   const primaryRun = primary.submit();
   assert.strictEqual(primary.calls[0].init.headers['X-Live-Token'], 'primary');
   primary.respond(0, payload()); await primaryRun;
-  assert.deepStrictEqual(primary.storageReads, ['wude-live-access-token']);
+  assert(primary.storageReads.every(key => key === 'wude-live-access-token' || key === 'wude_live_token'));
 
   for (const settings of [{storage: {}}, {storageError: true}, {apiBase: ''}]) {
     const denied = boot(settings);
+    assert.strictEqual(denied.nodes.researchSubmit.disabled, true);
     await denied.submit();
     assert.strictEqual(denied.calls.length, 0);
     assert.strictEqual(denied.writes(), 0);
     assertEmpty(denied);
   }
+  const missing = boot({storage: {}});
+  assert(missing.nodes.accessStatus.textContent.includes('沒有可用的本機授權資料'));
+  assert(missing.nodes.accessStatus.textContent.includes('這不是股票資料查詢失敗'));
+  const unreadable = boot({storageError: true});
+  assert(unreadable.nodes.accessStatus.textContent.includes('無法讀取'));
+  assert.strictEqual(unreadable.calls.length, 0);
+  assert.strictEqual(unreadable.nodes.researchSubmit.disabled, true);
+
+  // Whitespace in the primary key must not hide a usable legacy token.
+  const trimmed = boot({storage: {'wude-live-access-token': '  \t ', wude_live_token: '  legacy-trimmed  '}});
+  const trimmedRun = trimmed.submit();
+  assert.strictEqual(trimmed.calls[0].init.headers['X-Live-Token'], 'legacy-trimmed');
+  trimmed.respond(0, payload()); await trimmedRun;
+  assert.strictEqual(trimmed.storage['wude-live-access-token'], '  \t ');
+  assert.strictEqual(trimmed.storage.wude_live_token, '  legacy-trimmed  ');
+  assert.strictEqual(trimmed.writes(), 0);
+  const whitespaceOnly = boot({storage: {'wude-live-access-token': '  ', wude_live_token: '\t'}});
+  assert.strictEqual(whitespaceOnly.nodes.researchSubmit.disabled, true);
+  assert(whitespaceOnly.nodes.accessStatus.textContent.includes('沒有可用'));
+
+  // Every resume event rechecks local presence, never pairs, validates remotely, or fetches.
+  for (const event of ['focus', 'pageshow', 'show', 'storageChanged']) {
+    const recovered = boot({storage: {}});
+    recovered.storage.wude_live_token = 'restored-existing-token';
+    recovered[event]();
+    assert.strictEqual(recovered.nodes.researchSubmit.disabled, false, event);
+    assert(recovered.nodes.accessStatus.textContent.includes('本機存在不代表伺服器仍接受授權'));
+    assert(!recovered.nodes.accessStatus.textContent.includes('restored-existing-token'));
+    assert.strictEqual(recovered.calls.length, 0);
+    delete recovered.storage.wude_live_token;
+    recovered[event]();
+    assert.strictEqual(recovered.nodes.researchSubmit.disabled, true, event);
+    assert.strictEqual(recovered.calls.length, 0);
+    assert.strictEqual(recovered.writes(), 0);
+  }
+  unreadable.setStorageError(false); unreadable.focus();
+  assert.strictEqual(unreadable.nodes.researchSubmit.disabled, false);
+  assert.strictEqual(unreadable.calls.length, 0);
+  const unrelatedStorage = boot();
+  const readCount = unrelatedStorage.storageReads.length;
+  unrelatedStorage.storageChanged('unrelated-preference');
+  assert.strictEqual(unrelatedStorage.storageReads.length, readCount);
   // Never even read the device token for any unexpected API destination.
   for (const apiBase of [
     'https://private.example.test',
@@ -224,7 +273,7 @@ async function run() {
     const invalidApp = boot();
     await invalidApp.submit(invalid);
     assert.strictEqual(invalidApp.calls.length, 0);
-    assert.deepStrictEqual(invalidApp.storageReads, []);
+    assert.strictEqual(invalidApp.writes(), 0);
   }
 
   // Hide or navigation cancels pending fetches, erases the query, and ignores late responses.
@@ -289,6 +338,37 @@ async function run() {
   await networkRun; assertEmpty(brokenNetwork);
   assert(!brokenNetwork.nodes.requestStatus.textContent.includes('private network detail'));
 
+  // 401 is an authorization problem after an explicit request, not a stock-data failure.
+  const unauthorized = boot();
+  const unauthorizedRun = unauthorized.submit('NVDA');
+  unauthorized.respond(0, {error: 'secret server diagnostic'}, {ok: false, status: 401});
+  await unauthorizedRun;
+  assertEmpty(unauthorized);
+  assert(unauthorized.nodes.requestStatus.textContent.includes('伺服器未接受現有授權'));
+  assert(unauthorized.nodes.requestStatus.textContent.includes('可能已失效或無法辨識'));
+  assert(!unauthorized.nodes.requestStatus.textContent.includes('secret server diagnostic'));
+  assert(unauthorized.nodes.accessStatus.textContent.includes('伺服器上次未接受'));
+  unauthorized.focus();
+  assert(unauthorized.nodes.accessStatus.textContent.includes('伺服器上次未接受'));
+  assert.strictEqual(unauthorized.calls.length, 1);
+  assert.strictEqual(unauthorized.nodes.researchSubmit.disabled, false, 'manual retry is allowed without forcing credential deletion');
+  assert.strictEqual(unauthorized.storage['wude-live-access-token'], 'existing-device-token');
+  assert.strictEqual(unauthorized.writes(), 0);
+  const authorizedRetry = unauthorized.submit('NVDA');
+  unauthorized.respond(1, payload({symbol: 'NVDA'})); await authorizedRetry;
+  assert(!unauthorized.nodes.accessStatus.textContent.includes('伺服器上次未接受'));
+
+  // Loss of local access during a request clears/aborts it and ignores any late response.
+  const removed = boot();
+  const removedRun = removed.submit();
+  delete removed.storage['wude-live-access-token'];
+  removed.storageChanged(null);
+  assert.strictEqual(removed.calls[0].init.signal.aborted, true);
+  assert.strictEqual(removed.nodes.researchSubmit.disabled, true);
+  removed.respond(0, payload()); await removedRun;
+  assertEmpty(removed);
+  assert(removed.nodes.accessStatus.textContent.includes('沒有可用'));
+
   // Blocked payloads do not expose geometry or features, even if incorrectly populated.
   const blocked = boot();
   const blockedRun = blocked.submit();
@@ -296,7 +376,14 @@ async function run() {
   assert(blocked.nodes.researchResult.textContent.includes('研究資料受阻'));
   assert(!blocked.nodes.researchResult.textContent.includes('歷史研究指標'));
   assert(!blocked.nodes.researchResult.textContent.includes('幾何目標 1'));
-  assert(blocked.nodes.researchResult.textContent.includes('unvalidated_research'));
+  assert(blocked.nodes.researchResult.textContent.includes('研究限制尚待核對'));
+  const mapped = boot();
+  const mappedRun = mapped.submit();
+  mapped.respond(0, payload({status: 'blocked', provenance: null, reasons: ['insufficient_contiguous_indicator_history', 'adjusted_price_discontinuity_requires_review']}));
+  await mappedRun;
+  assert(mapped.nodes.researchResult.textContent.includes('連續日線不足，無法計算完整研究指標'));
+  assert(mapped.nodes.researchResult.textContent.includes('調整後價格出現不連續，需人工核對'));
+  assert(!mapped.nodes.researchResult.textContent.includes('insufficient_contiguous_indicator_history'));
 
   // All displayed values use text nodes; only whitelisted data fields are shown.
   const xss = boot();
