@@ -34,6 +34,49 @@ MONTHS = {
 }
 
 
+# Annual holiday tables omit exceptional closures announced later in the year.
+# These reviewed primary notices close BOTH stock venues; absent bars alone
+# never authorize adding a date. This registry does not prove point-in-time
+# availability of the notice to any historical prediction.
+TW_EXCEPTIONAL_CLOSURES = (
+    {
+        "session_date": "2026-07-10",
+        "closed_venues": ["TWSE", "TPEX_MAINBOARD", "TPEX_EMERGING"],
+        "reason": "typhoon_bavi_market_closure",
+        "announced_on": "2026-07-09",
+        "verified_on": "2026-10-10",
+        "sources": [
+            {"authority": "TWSE", "url": "https://www.twse.com.tw/staticFiles/news/news/tsecnews/8a8216d69ef76943019f46cb86ae0110.pdf"},
+            {"authority": "TPEx", "url": "https://www.tpex.org.tw/www/zh-tw/news/detail?id=22926&response=json"},
+        ],
+    },
+)
+
+
+def apply_tw_exceptional_closures(row: dict[str, Any], year: int) -> dict[str, Any]:
+    """Overlay reviewed closures only; retain annual provenance/status/fetch time.
+
+    Applies equally to fresh downloads and old persisted calendar caches in
+    memory. Normal refresh/save persists the migrated row; read-only callers
+    need not write files. No session is ever invented or added.
+    """
+    if not isinstance(row, dict) or not isinstance(row.get("sessions"), list):
+        return row
+    exceptions = [entry for entry in TW_EXCEPTIONAL_CLOSURES
+                  if date.fromisoformat(entry["session_date"]).year == year]
+    if not exceptions:
+        return row
+    closed = {entry["session_date"] for entry in exceptions}
+    row["sessions"] = [session for session in row["sessions"] if session not in closed]
+    if isinstance(row.get("session_details"), dict):
+        row["session_details"] = {day: detail for day, detail in row["session_details"].items() if day not in closed}
+    existing_closed = row.get("closed_dates") if isinstance(row.get("closed_dates"), list) else []
+    row["closed_dates"] = sorted({day for day in existing_closed if isinstance(day, str)} | closed)
+    row["exceptional_closures"] = json.loads(json.dumps(exceptions))
+    row["exception_revision"] = "TW-OFFICIAL-CLOSURES-20261010"
+    return row
+
+
 class _TableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -214,6 +257,10 @@ class OfficialMarketCalendar:
             market_row = markets.setdefault(market, {})
             if not isinstance(market_row.get("years"), dict):
                 market_row["years"] = {}
+            if market == "TW":
+                for year, row in market_row["years"].items():
+                    if isinstance(year, str) and re.fullmatch(r"[0-9]{4}", year):
+                        apply_tw_exceptional_closures(row, int(year))
         return payload
 
     def _save(self) -> None:
@@ -312,7 +359,7 @@ class OfficialMarketCalendar:
         status = "verified_twse_tpex" if len(sources) == 2 and not conflicts else (
             "verified_conservative_union" if len(sources) == 2 else f"verified_{sources[0].lower()}_only"
         )
-        return {
+        return apply_tw_exceptional_closures({
             "year": year,
             "status": status,
             "sources": sources,
@@ -322,7 +369,7 @@ class OfficialMarketCalendar:
             "conflict_dates": conflicts,
             "fetched_at": datetime.fromtimestamp(self.clock(), timezone.utc).isoformat(timespec="seconds"),
             "fetched_at_epoch": self.clock(),
-        }
+        }, year)
 
     def _fetch_us(self, year: int) -> dict[str, Any]:
         key = os.getenv("ALPACA_API_KEY_ID", "").strip()
@@ -405,12 +452,15 @@ class OfficialMarketCalendar:
             sessions = sorted({value for row in rows for value in row.get("sessions", []) if start_exclusive < value <= end_inclusive})
             statuses = sorted({str(row.get("status") or "") for row in rows})
             details = {key: value for row in rows for key, value in (row.get("session_details") or {}).items() if key in sessions}
+            exceptions = [entry for row in rows for entry in (row.get("exceptional_closures") or [])
+                          if start_exclusive < entry.get("session_date", "") <= end_inclusive]
         return {
             "available": True,
             "status": "verified" if all(value.startswith("verified") for value in statuses) else "cached",
             "source_statuses": statuses,
             "sessions": sessions,
             "session_details": details,
+            **({"exceptional_closures": exceptions} if market == "TW" and exceptions else {}),
         }
 
     def status(self, market: str) -> dict[str, Any]:
