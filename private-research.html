@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>私人美股歷史研究</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0c1424; color: #e7edf7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; line-height: 1.65; }
+    main { max-width: 880px; margin: auto; padding: 28px 20px 64px; }
+    a { color: #9fc9ff; }
+    h1 { margin: 18px 0 8px; font-size: clamp(1.6rem, 5vw, 2rem); }
+    h2 { font-size: 1.15rem; margin-top: 0; }
+    p { margin: 8px 0; }
+    .muted, dt { color: #bcc9df; }
+    .warning { padding: 16px; margin: 18px 0; color: #ffe5a3; background: #322811; border: 1px solid #806329; border-radius: 12px; }
+    form, .panel { margin: 18px 0; padding: 20px; border: 1px solid #33435d; border-radius: 12px; background: #141f32; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    input, button { font: inherit; border-radius: 8px; padding: 10px 14px; }
+    input { color: inherit; background: #0c1424; border: 1px solid #8293b0; min-width: 0; flex: 1; text-transform: uppercase; }
+    button { background: #bed8ff; color: #122038; border: 0; font-weight: 700; cursor: pointer; }
+    button:disabled, input:disabled { opacity: .6; cursor: default; }
+    :focus-visible { outline: 3px solid #ffd473; outline-offset: 3px; }
+    #requestStatus { min-height: 1.65em; }
+    dl { margin: 0; display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 1.4fr); gap: 9px 16px; }
+    dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    ul { padding-left: 22px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 420px) { dl { grid-template-columns: 1fr; gap: 2px; } dd { margin-bottom: 10px; } }
+  </style>
+  <script src="live_config.js" defer></script>
+  <script src="private_research.js" defer></script>
+</head>
+<body>
+  <main>
+    <a href="decision-hub.html">返回決策中心</a>
+    <h1>私人美股歷史研究</h1>
+    <p class="muted">僅供已有配對授權的裝置手動查閱歷史日線研究。</p>
+    <p class="warning" role="note">私人研究，未經驗證；不是買進指示，不可下單</p>
+    <p class="muted">歷史數值與價位幾何僅供研究，不代表即時行情、報酬預測或前向驗證成果。調整資訊以觀測當時所知為準。</p>
+    <form id="researchForm" autocomplete="off">
+      <label for="researchSymbol">美股代號</label>
+      <div class="controls">
+        <input id="researchSymbol" type="text" maxlength="15" placeholder="例如 AAPL" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="privacyNote" required disabled>
+        <button id="researchSubmit" type="submit" disabled>查閱私人研究</button>
+      </div>
+      <p id="privacyNote" class="muted">每次只查詢一檔；切換分頁或離開頁面會清除畫面資料，再次查閱需手動送出。</p>
+    </form>
+    <noscript><p>請啟用 JavaScript 後手動查閱。</p></noscript>
+    <p id="requestStatus" role="status" aria-live="polite"></p>
+    <section id="researchResult" aria-label="私人研究結果" hidden></section>
+  </main>
+</body>
+</html>
