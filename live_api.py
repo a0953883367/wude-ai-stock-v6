@@ -537,6 +537,12 @@ class LiveDataService:
         return {
             "ok": True,
             "service": "wude-live-api",
+            "us_daily_shadow_probe": {
+                "version": "US-SIP-DAILY-IN-MEMORY-V1",
+                "supported": True,
+                "durable_raw_retention": False,
+                "entitlement_verified": False,
+            },
             "auth_version": 3,
             "device_pairing_configured": bool(
                 len(os.getenv("LIVE_ACCESS_TOKEN", "").strip().encode("utf-8")) >= 32

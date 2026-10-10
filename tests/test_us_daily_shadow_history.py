@@ -179,3 +179,12 @@ def test_publication_malformed_enum_and_false_invariants_fail_closed():
         bad = dict(result)
         del bad[key]
         assert sanitize_status(bad, 2)['reason'] == 'invalid_or_unavailable_relay_status'
+
+
+def test_health_capability_never_claims_entitlement_or_retention():
+    import live_api
+    status = live_api.LiveDataService.health(SimpleNamespace())
+    assert status['us_daily_shadow_probe'] == {
+        'version': history.VERSION, 'supported': True,
+        'durable_raw_retention': False, 'entitlement_verified': False,
+    }
