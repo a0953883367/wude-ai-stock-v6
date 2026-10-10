@@ -712,7 +712,11 @@ class DevicePairingService:
         return hmac.compare_digest(parts[3], expected)
 
 
+from us_private_research_service import PrivateResearchService, ResearchUnavailable
+
+
 class LiveRequestHandler(BaseHTTPRequestHandler):
+    private_research_service = PrivateResearchService()
     service = LiveDataService()
     trading_engine = _trading_engine(service)
     _push_state_path, _push_key_path = _web_push_paths()
@@ -745,6 +749,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
     )
 
     def log_message(self, fmt: str, *args: Any) -> None:
+        if str(getattr(self, "path", "")).startswith("/api/private/us-research"):
+            return
         LOG.info("%s - %s", self.address_string(), fmt % args)
 
     def _origin(self) -> str | None:
@@ -778,6 +784,20 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         expected_hashes.discard("")
         digest = hashlib.sha256(supplied.encode("utf-8")).hexdigest()
         return any(hmac.compare_digest(digest, expected) for expected in expected_hashes)
+
+    def _private_research_authorized(self) -> bool:
+        # Explicit owner-approved extension for already-paired read-only devices.
+        # Never use _authorized(): site tokens/public-read are not private grants.
+        supplied = self.headers.get("X-Live-Token", "").strip()
+        authorization = self.headers.get("Authorization", "").strip()
+        owner_supplied = authorization[7:].strip() if authorization.lower().startswith("bearer ") else supplied
+        expected = os.getenv("LIVE_ACCESS_TOKEN", "").strip()
+        try:
+            owner_valid = bool(expected and owner_supplied and hmac.compare_digest(owner_supplied, expected))
+            # Do not inherit trusted-proxy-header fallback without a proven boundary.
+            return owner_valid or self.device_pairing.token_valid(supplied)
+        except (TypeError, ValueError):
+            return False
 
     def _authorized(self) -> bool:
         supplied = self.headers.get("X-Live-Token", "").strip()
@@ -817,6 +837,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/health":
             health = self.service.health()
+            health["private_us_research_view"] = "US-PRIVATE-RESEARCH-VIEW-V1"
             storage = _runtime_storage_health()
             health["persistent_storage"] = storage
             monitor = self.large_buy_service.snapshot(after=self.large_buy_service.store.latest_sequence)
@@ -981,6 +1002,36 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path == "/api/private/us-research":
+            if parsed.query or parsed.fragment:
+                self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "private research query parameters are not supported"})
+                return
+            if not self._private_research_authorized():
+                self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "existing private device authorization required"})
+                return
+            if not self._origin():
+                self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": "private research origin denied"})
+                return
+            if not self.rate_limiter.allow():
+                self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "request limit reached"})
+                return
+            try:
+                payload = self._read_json()
+                if set(payload) != {"symbol"}:
+                    raise ValueError("invalid research request")
+                data = self.private_research_service.research(
+                    payload["symbol"], self.large_buy_service.weight_shadow.calendar)
+            except ResearchUnavailable as exc:
+                code = HTTPStatus.TOO_MANY_REQUESTS if exc.reason in {"research_busy", "research_cooldown"} else HTTPStatus.SERVICE_UNAVAILABLE
+                self._send(code, {"ok": False, "error": exc.reason})
+            except (TypeError, ValueError):
+                self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid private research request"})
+            except Exception:
+                # No exception/body logging: private market values stay transient.
+                self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "private research unavailable"})
+            else:
+                self._send(HTTPStatus.OK, {"ok": True, "data": data})
+            return
         if parsed.path == "/api/internal/market-data":
             if not self.rate_limiter.allow():
                 self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "request limit reached"})
