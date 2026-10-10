@@ -257,6 +257,7 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
         captured_at = now or datetime.now(timezone.utc)
         result['observed_at'] = captured_at.astimezone(timezone.utc).isoformat()
         reasons = Counter()
+        quality_diagnostics = []
         coverage_reasons = Counter()
         for symbol in requested:
             if clock.monotonic() > deadline:
@@ -265,7 +266,13 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
                                         observed=captured_at, adjustment='split', verified_weeks=verified_weeks, instrument_category=categories[symbol])
             result['history_complete_count'] += int(projection.full_window_complete)
             if projection.features is None:
-                reasons[projection.reasons[0]] += 1
+                reason = projection.reasons[0]
+                reasons[reason] += 1
+                label = {'adjusted_price_discontinuity_requires_review': 'source_continuity_review',
+                         'insufficient_contiguous_indicator_history': 'history_window_insufficient'}.get(reason)
+                if label:
+                    quality_diagnostics.append({'symbol': symbol, 'reason': label,
+                                                'sessions': list(projection.quality_sessions)})
                 continue
             result['indicator_complete_count'] += 1
             result['daily_momentum_complete_count'] += int(
@@ -281,6 +288,7 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
             raise HistoryBlocked('request_time_budget')
         result['coverage_notes'] = dict(coverage_reasons)
         result['blocked_reasons'] = dict(reasons)
+        result['quality_diagnostics'] = quality_diagnostics
         result['status'] = 'computed_in_memory' if result['indicator_complete_count'] == len(requested) else 'partial_in_memory'
         result['next_stage'] = 'private_retention_rights_and_prospective_observation_required'
         result['projection_version'] = 'US-PRIVATE-SIP-PROJECTION-V1'

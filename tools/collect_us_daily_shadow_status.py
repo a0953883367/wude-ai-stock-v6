@@ -125,6 +125,39 @@ def sanitize_status(result, requested_count, expected_manifest=None, expected_ca
     if clean['status'] != 'blocked' and (not all(key in clean for key in ('observed_at', 'session_date', 'calendar_session_count'))
                                              or clean['request_count'] < 1):
         return blocked
+    if 'quality_diagnostics' in result:
+        diagnostics = result['quality_diagnostics']
+        allowed_labels = {'source_continuity_review', 'history_window_insufficient'}
+        if (not isinstance(diagnostics, list) or (diagnostics and expected_categories is None)
+                or len(diagnostics) > requested_count - clean['indicator_complete_count']):
+            return blocked
+        seen = set()
+        validated = []
+        for item in diagnostics:
+            if not isinstance(item, dict) or set(item) != {'symbol', 'reason', 'sessions'}:
+                return blocked
+            symbol, reason, sessions = item['symbol'], item['reason'], item['sessions']
+            if (not isinstance(symbol, str) or symbol not in expected_categories or symbol in seen
+                    or not isinstance(reason, str) or reason not in allowed_labels
+                    or not isinstance(sessions, list) or not 1 <= len(sessions) <= 16):
+                return blocked
+            try:
+                dates = [date.fromisoformat(day) for day in sessions if isinstance(day, str)]
+                latest = date.fromisoformat(clean['session_date'])
+                if (len(dates) != len(sessions) or dates != sorted(set(dates))
+                        or any(day.isoformat() != raw or not 0 <= (latest - day).days <= 400
+                               for day, raw in zip(dates, sessions))):
+                    return blocked
+            except (ValueError, TypeError, KeyError):
+                return blocked
+            seen.add(symbol)
+            validated.append({'symbol': symbol, 'reason': reason, 'sessions': sessions[:]})
+        label_sources = {'source_continuity_review': 'adjusted_price_discontinuity_requires_review',
+                         'history_window_insufficient': 'insufficient_contiguous_indicator_history'}
+        if any(sum(item['reason'] == label for item in validated) != clean.get('blocked_reasons', {}).get(source, 0)
+               for label, source in label_sources.items()):
+            return blocked
+        clean['quality_diagnostics'] = validated
     if clean['status'] == 'probe_verified':
         clean['next_stage'] = 'bounded_history_collection_not_started'
     elif clean['status'] in {'computed_in_memory', 'partial_in_memory'}:

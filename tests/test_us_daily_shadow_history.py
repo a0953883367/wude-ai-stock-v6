@@ -306,3 +306,65 @@ def test_manifest_rejects_invalid_and_conflicting_categories():
     with pytest.raises(ValueError):
         history.collect_daily_shadow_status(['AAPL'], Calendar(), now=NOW,
                                              session=Client(), instrument_types={'AAPL': 'fundamentals'})
+
+
+def test_quality_diagnostics_are_allowlisted_operational_metadata(monkeypatch):
+    from tools.collect_us_daily_shadow_status import sanitize_status
+    original = history._fetch
+    def anomalous(symbols, sessions, *args):
+        result = original(symbols, sessions, *args)
+        if len(sessions) > 4:
+            result['AAPL'][sessions[-2]] = (200, 201, 199, 200, 1000)
+            result['MSFT'] = {sessions[-1]: result['MSFT'][sessions[-1]]}
+        return result
+    monkeypatch.setattr(history, '_fetch', anomalous)
+    result = run()
+    categories = {'AAPL': 'unknown', 'MSFT': 'unknown'}
+    clean = sanitize_status(result, 2, expected_categories=categories)
+    assert clean['status'] == 'partial_in_memory'
+    assert clean['quality_diagnostics'] == [
+        {'symbol': 'AAPL', 'reason': 'source_continuity_review', 'sessions': SESSIONS[-3:-1]},
+        {'symbol': 'MSFT', 'reason': 'history_window_insufficient', 'sessions': SESSIONS[-3:-1]}]
+    import copy
+    def rejected(items):
+        bad = copy.deepcopy(result)
+        bad['quality_diagnostics'] = items
+        assert sanitize_status(bad, 2, expected_categories=categories)['status'] == 'blocked'
+    good = clean['quality_diagnostics']
+    for patch in ({'price': 100}, {'reason': 'up'}, {'reason': '50percent'},
+                  {'symbol': 'UNREQUESTED'}, {'sessions': ['2026-10-11']},
+                  {'sessions': ['2026-10-09T00:00:00']}, {'sessions': [123]},
+                  {'sessions': ['2020-01-01']}, {'sessions': []},
+                  {'sessions': ['2026-10-09', '2026-10-09']}):
+        rejected([{**good[0], **patch}, good[1]])
+    rejected([good[0], good[0]])
+    rejected([good[0]])
+    rejected('provider error raw payload')
+    assert sanitize_status(result, 2)['status'] == 'blocked'
+
+
+@pytest.mark.parametrize('mode', ['empty', 'missing_latest', 'short59', 'one_bar', 'many_transitions'])
+def test_quality_diagnostic_boundaries(mode):
+    from us_private_shadow_projection import project_symbol
+    days = SESSIONS[:-1]
+    bars = {day: (100., 101., 99., 100., 1000.) for day in days}
+    if mode == 'empty':
+        bars = {}
+    elif mode == 'missing_latest':
+        bars.pop(days[-1])
+    elif mode == 'short59':
+        bars = {day: bars[day] for day in days[-59:]}
+    elif mode == 'one_bar':
+        bars = {days[-1]: bars[days[-1]]}
+    else:
+        bars = {day: (v, v + 1, v - 1, v, 1000.)
+                for i, day in enumerate(days) for v in [100. if i % 2 else 200.]}
+    result = project_symbol('AAPL', bars, days, observed=NOW, adjustment='split')
+    assert result.status == 'blocked'
+    assert 1 <= len(result.quality_sessions) <= 16
+    assert list(result.quality_sessions) == sorted(set(result.quality_sessions))
+    assert set(result.quality_sessions) <= set(days)
+    if mode == 'many_transitions':
+        assert result.quality_sessions == tuple(days[1:17])
+    if mode in {'empty', 'missing_latest'}:
+        assert result.quality_sessions == (days[-1],)

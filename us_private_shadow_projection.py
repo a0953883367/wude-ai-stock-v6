@@ -108,6 +108,7 @@ class Projection:
     durable_retention: bool = False
     instrument_category: str = 'unknown'
     company_fundamentals_included: bool = False
+    quality_sessions: tuple[str, ...] = ()
 
 
 def _hash(value) -> str:
@@ -204,9 +205,9 @@ def project_symbol(symbol: str, records: Mapping[str, Bar], calendar_sessions: l
         raise ValueError('invalid completed-session calendar window')
     expected = set(calendar_sessions)
     full = False
-    def blocked(reason, tail=0):
+    def blocked(reason, tail=0, quality_sessions=()):
         return Projection(symbol, len(expected), len(records), full, tail, 'blocked', (reason,),
-                          instrument_category=instrument_category)
+                          instrument_category=instrument_category, quality_sessions=tuple(quality_sessions))
     if set(records) - expected:
         return blocked('unexpected_bar_session')
     for bar in records.values():
@@ -225,12 +226,16 @@ def project_symbol(symbol: str, records: Mapping[str, Bar], calendar_sessions: l
         tail.append(day)
     tail.reverse()
     if len(tail) < MIN_BARS:
-        return blocked('insufficient_contiguous_indicator_history', len(tail))
+        missing = [day for day in calendar_sessions if day not in records]
+        relevant = ([missing[-1]] if missing else []) + (tail[:1] if tail else [])
+        return blocked('insufficient_contiguous_indicator_history', len(tail), relevant)
     bars = [tuple(float(v) for v in records[day]) for day in tail]
     # Even provider-adjusted data can contain unresolved anomalies or genuine
     # large events. Do not guess another adjustment factor.
-    if any(not 0.65 <= b[3] / a[3] <= 1.5 for a, b in zip(bars, bars[1:])):
-        return blocked('adjusted_price_discontinuity_requires_review', len(tail))
+    discontinuities = [tail[i] for i in range(1, len(bars))
+                       if not 0.65 <= bars[i][3] / bars[i - 1][3] <= 1.5]
+    if discontinuities:
+        return blocked('adjusted_price_discontinuity_requires_review', len(tail), discontinuities[:16])
     stamp = observed.astimezone(timezone.utc).isoformat()
     relevant_weeks = {(date.fromisoformat(day) - timedelta(days=date.fromisoformat(day).weekday())).isoformat()
                       for day in tail}
