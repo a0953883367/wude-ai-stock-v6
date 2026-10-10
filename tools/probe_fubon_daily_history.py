@@ -3,13 +3,129 @@
 No files, artifacts, raw values, arbitrary symbols, new credentials, or schedules.
 """
 from datetime import date, datetime
+import argparse
 import json
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fubon_daily_history import PILOT, REASONS, SOURCE, VERSION
+from fubon_daily_history import OFFICIAL_REASONS, PILOT, REASONS, SOURCE, VERSION
 from us_market_data import _relay_request
+
+
+def sanitize_cohort_diagnostics(result):
+    """Fixed counts/reasons/schema/date projection; never copy provider values."""
+    from tw_private_cohort_diagnostics import VERSION as DIAGNOSTIC_VERSION, COVERAGE, METHODS, META_FIELDS, ROW_FIELDS, SAFE_REASONS
+    if not isinstance(result, dict):
+        raise ValueError("invalid cohort diagnostics")
+    constants = {"version": DIAGNOSTIC_VERSION, "stage": "private_pilot_metadata_diagnostics", "coverage_status": COVERAGE}
+    false_keys = ("corporate_action_coverage_verified", "scoring_executed", "ranking_executed", "eligibility_evaluated",
+                  "full_cohort_readiness_evaluated", "market_values_exported", "raw_bars_exported", "raw_actions_exported",
+                  "hashes_exported", "durable_raw_retention", "sdk_response_bound_enforced_before_allocation",
+                  "sdk_socket_cancellation_supported")
+    if any(result.get(k) != v for k, v in constants.items()) or any(result.get(k) is not False for k in false_keys):
+        raise ValueError("unsafe cohort diagnostics")
+    if result.get("status") not in {"held", "blocked", "metadata_diagnostics_complete_held"} or type(result.get("formal_v6_unchanged")) is not bool:
+        raise ValueError("invalid diagnostic state")
+    clean = {**constants, **{k: False for k in false_keys}, "status": result["status"], "formal_v6_unchanged": result["formal_v6_unchanged"]}
+    def count(value, maximum):
+        if type(value) is not int or not 0 <= value <= maximum:
+            raise ValueError("invalid diagnostic count")
+        return value
+    def day(value):
+        if value is None:
+            return None
+        if type(value) is not str or date.fromisoformat(value).isoformat() != value:
+            raise ValueError("invalid diagnostic date")
+        return value
+    for key, maximum in {
+        "full_manifest_count": 256, "pilot_limit_count": 2, "acquired_history_count": 2,
+        "unacquired_history_count": 256, "daily_features_rebuilt_count": 2, "source_feature_rebuilt_count": 2,
+        "official_crosscheck_verified_count": 2, "official_match_count": 2, "official_mismatch_count": 2,
+        "official_unavailable_count": 2, "calendar_session_count": 120, "corporate_action_request_count": 2,
+        "official_network_calls": 2, "official_request_count": 2, "official_reused_record_count": 2,
+    }.items():
+        clean[key] = count(result.get(key), maximum)
+    if (clean["pilot_limit_count"] != 2
+            or clean["full_manifest_count"] != clean["acquired_history_count"] + clean["unacquired_history_count"]
+            or clean["daily_features_rebuilt_count"] > clean["acquired_history_count"]
+            or clean["source_feature_rebuilt_count"] != clean["daily_features_rebuilt_count"]
+            or clean["official_match_count"] != clean["official_crosscheck_verified_count"]
+            or sum(clean[k] for k in ("official_match_count", "official_mismatch_count", "official_unavailable_count")) > clean["daily_features_rebuilt_count"]
+            or clean["official_network_calls"] != clean["official_request_count"]
+            or clean["official_reused_record_count"] + clean["official_request_count"] > 2):
+        raise ValueError("inconsistent diagnostic counts")
+    clean["history_from"], clean["history_through"] = day(result.get("history_from")), day(result.get("history_through"))
+    if (clean["history_from"] is None) != (clean["history_through"] is None):
+        raise ValueError("incomplete history dates")
+    if clean["history_from"] and not 0 <= (date.fromisoformat(clean["history_through"]) - date.fromisoformat(clean["history_from"])).days < 120:
+        raise ValueError("invalid history interval")
+    reasons = result.get("reason_counts")
+    if not isinstance(reasons, dict) or any(k not in SAFE_REASONS for k in reasons):
+        raise ValueError("invalid diagnostic reasons")
+    clean["reason_counts"] = {key: count(value, 512) for key, value in reasons.items()}
+    official_reasons = result.get("official_reason_counts")
+    if not isinstance(official_reasons, dict) or any(k not in OFFICIAL_REASONS for k in official_reasons):
+        raise ValueError("invalid official reasons")
+    clean["official_reason_counts"] = {key: count(value, 2) for key, value in official_reasons.items()}
+    endpoints = result.get("corporate_actions")
+    if not isinstance(endpoints, dict) or set(endpoints) != set(METHODS):
+        raise ValueError("invalid diagnostic endpoints")
+    clean["corporate_actions"] = {}
+    for method in METHODS:
+        row = endpoints[method]
+        statuses = {"not_attempted", "request_started", "response_inspected", "empty_response_inspected"} | SAFE_REASONS
+        if not isinstance(row, dict) or row.get("status") not in statuses or row.get("coverage_status") != COVERAGE:
+            raise ValueError("invalid diagnostic endpoint state")
+        entry = {"status": row["status"], "coverage_status": COVERAGE}
+        for key, values in {
+            "range_echo_status": {"absent", "partial_match", "match", "conflict", "invalid"},
+            "pagination_status": {"absent", "present_unknown", "continuation_indicated", "no_continuation_indicated", "conflicting_indicators", "invalid"},
+            "total_count_status": {"absent", "matches_response_count", "exceeds_response_count", "below_response_count", "conflicting", "invalid"},
+        }.items():
+            if type(row.get(key)) is not str or row[key] not in values:
+                raise ValueError("invalid schema state")
+            entry[key] = row[key]
+        if type(row.get("truncation_signal")) is not bool:
+            raise ValueError("invalid truncation flag")
+        entry["truncation_signal"] = row["truncation_signal"]
+        stamps = {}
+        for key in ("requested_at", "observed_at"):
+            value = row.get(key)
+            if value is None:
+                entry[key] = None
+                continue
+            if type(value) is not str:
+                raise ValueError("invalid endpoint timestamp")
+            stamp = datetime.fromisoformat(value)
+            if stamp.tzinfo is None:
+                raise ValueError("missing endpoint timezone")
+            stamps[key] = stamp
+            entry[key] = stamp.isoformat()
+        if "observed_at" in stamps and ("requested_at" not in stamps or stamps["observed_at"] < stamps["requested_at"]):
+            raise ValueError("invalid endpoint time order")
+        elapsed = row.get("elapsed_ms")
+        entry["elapsed_ms"] = None if elapsed is None else count(elapsed, 86400000)
+        for key in ("response_count", "pilot_row_count", "unrelated_row_count", "malformed_row_count", "out_of_window_row_count",
+                    "duplicate_row_count", "conflicting_event_count", "cash_event_count", "structural_event_count",
+                    "unknown_event_count", "first_bar_event_count"):
+            entry[key] = count(row.get(key), 5000)
+        if any(entry[key] > entry["response_count"] for key in entry if key.endswith("_count")):
+            raise ValueError("inconsistent endpoint count")
+        entry["observed_date_from"], entry["observed_date_to"] = day(row.get("observed_date_from")), day(row.get("observed_date_to"))
+        if ((entry["observed_date_from"] is None) != (entry["observed_date_to"] is None)
+                or (entry["observed_date_from"] and entry["observed_date_from"] > entry["observed_date_to"])):
+            raise ValueError("invalid observed bounds")
+        metadata = row.get("metadata_fields_present")
+        fields = row.get("row_field_presence_counts")
+        if (not isinstance(metadata, list) or any(type(k) is not str or k not in META_FIELDS for k in metadata)
+                or len(metadata) != len(set(metadata)) or not isinstance(fields, dict)
+                or any(k not in ROW_FIELDS[method] for k in fields)):
+            raise ValueError("invalid schema fields")
+        entry["metadata_fields_present"] = list(metadata)
+        entry["row_field_presence_counts"] = {key: count(value, entry["response_count"]) for key, value in fields.items()}
+        clean["corporate_actions"][method] = entry
+    return clean
 
 
 def sanitize_date_diagnostics(row):
@@ -153,15 +269,23 @@ def sanitize_status(result):
             return blocked
         if clean["status"] == "validated_in_memory" and clean["validated_count"] != 2:
             return blocked
+    if "cohort_diagnostics" in result:
+        try:
+            clean["cohort_diagnostics"] = sanitize_cohort_diagnostics(result["cohort_diagnostics"])
+        except (TypeError, ValueError, KeyError):
+            return blocked
     return clean
 
 
-def run_probe(relay=_relay_request):
-    # Direct first: a ready SDK needs no ownership collection. Only the exact
-    # metadata-only no-session response permits one existing warmup. All actual
-    # provider failures, timeouts and malformed responses stop without retries.
+def run_probe(relay=_relay_request, *, include_cohort_diagnostics=False):
+    # Stage B is existing-session only, including the workflow entry point.
+    # The legacy default probe alone retains its exact no-session warmup path.
+    # Provider failures, timeouts and malformed responses never authorize retry.
     symbols = list(PILOT)
-    result = relay("tw_daily_history_status", {"symbols": symbols}, timeout=30)
+    request = {"symbols": symbols}
+    if include_cohort_diagnostics is True:
+        request["include_cohort_diagnostics"] = True
+    result = relay("tw_daily_history_status", request, timeout=30)
     clean = sanitize_status(result)
     no_session = (
         clean.get("status") == "blocked"
@@ -174,7 +298,7 @@ def run_probe(relay=_relay_request):
         and set(result) == set(clean)
         and not any(k in clean for k in ("session_date", "calendar_session_count", "request_from", "request_to"))
     )
-    if not no_session:
+    if not no_session or include_cohort_diagnostics is True:
         return clean
     warmed = relay("ownership", {"symbols": symbols}, timeout=20)
     denied = False
@@ -197,13 +321,17 @@ def run_probe(relay=_relay_request):
                     denied = True
     if not valid or denied:
         return {"version": VERSION, "status": "blocked", "reason": "existing_session_warmup_unavailable"}
-    result = relay("tw_daily_history_status", {"symbols": symbols}, timeout=30)
+    result = relay("tw_daily_history_status", request, timeout=30)
     return sanitize_status(result)
 
 
 def main():
-    print("Fubon daily pilot:", json.dumps(run_probe(), sort_keys=True, ensure_ascii=True))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--include-cohort-diagnostics", action="store_true")
+    args = parser.parse_args()
+    print("Fubon daily pilot:", json.dumps(run_probe(include_cohort_diagnostics=args.include_cohort_diagnostics), sort_keys=True, ensure_ascii=True))
 
 
 if __name__ == "__main__":
     main()
+

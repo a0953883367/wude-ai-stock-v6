@@ -64,6 +64,12 @@ on:
         default: false
         type: boolean
 
+      tw_cohort_diagnostics:
+        description: Inspect fixed TW pilot metadata only within source-validation mode; no ranking or raw exports
+        required: false
+        default: false
+        type: boolean
+
       validation_only:
         description: 僅驗證 Agent 補跑權限與防重，不產報或寄送
         type: boolean
@@ -117,7 +123,14 @@ jobs:
         timeout-minutes: 2
         env:
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
-        run: python tools/probe_fubon_daily_history.py
+          TW_COHORT_DIAGNOSTICS: ${{ inputs.tw_cohort_diagnostics == true }}
+        shell: bash
+        run: |
+          args=()
+          if [ "$TW_COHORT_DIAGNOSTICS" = "true" ]; then
+            args+=(--include-cohort-diagnostics)
+          fi
+          python tools/probe_fubon_daily_history.py "${args[@]}"
       - name: Validate existing bounded US daily source
         timeout-minutes: 3
         env:
@@ -444,3 +457,4 @@ jobs:
           steps.delivery_window.outputs.timely != 'true' }}
         run: >-
           echo "Stale report delivery suppressed; fresh public data and private evidence saved."
+
