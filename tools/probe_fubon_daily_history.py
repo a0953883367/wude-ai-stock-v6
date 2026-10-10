@@ -157,10 +157,25 @@ def sanitize_status(result):
 
 
 def run_probe(relay=_relay_request):
-    # Use one bounded existing ownership batch to initialize/reuse the usual
-    # service session. No new authentication path, retries or raw logging.
-    # The full optional ownership collector still runs after durable receipts.
+    # Direct first: a ready SDK needs no ownership collection. Only the exact
+    # metadata-only no-session response permits one existing warmup. All actual
+    # provider failures, timeouts and malformed responses stop without retries.
     symbols = list(PILOT)
+    result = relay("tw_daily_history_status", {"symbols": symbols}, timeout=30)
+    clean = sanitize_status(result)
+    no_session = (
+        clean.get("status") == "blocked"
+        and clean.get("reason") == "existing_session_unavailable"
+        and clean.get("request_count_known") is True
+        and clean.get("request_count") == 0
+        and clean.get("validated_count") == 0
+        and clean.get("symbols") == {}
+        and isinstance(result, dict)
+        and set(result) == set(clean)
+        and not any(k in clean for k in ("session_date", "calendar_session_count", "request_from", "request_to"))
+    )
+    if not no_session:
+        return clean
     warmed = relay("ownership", {"symbols": symbols}, timeout=20)
     denied = False
     valid = isinstance(warmed, dict) and set(warmed) == set(symbols)
