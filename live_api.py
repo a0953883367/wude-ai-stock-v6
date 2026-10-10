@@ -537,6 +537,12 @@ class LiveDataService:
         return {
             "ok": True,
             "service": "wude-live-api",
+            "us_daily_shadow_probe": {
+                "version": "US-SIP-DAILY-IN-MEMORY-V1",
+                "supported": True,
+                "durable_raw_retention": False,
+                "entitlement_verified": False,
+            },
             "auth_version": 3,
             "device_pairing_configured": bool(
                 len(os.getenv("LIVE_ACCESS_TOKEN", "").strip().encode("utf-8")) >= 32
@@ -969,6 +975,12 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 private_daily_shadow_samples = None
                 if kind == "calendar":
                     data = self.large_buy_service.weight_shadow.calendar.relay_us_year(payload.get("year"))
+                elif kind == "daily_shadow_status":
+                    from us_daily_shadow_history import collect_daily_shadow_status
+                    data = collect_daily_shadow_status(
+                        payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
+                        collect_history=payload.get("collect_history") is True,
+                    )
                 elif kind == "ownership":
                     data = self.service.ownership(payload.get("symbols"))
                 elif kind == "sip":

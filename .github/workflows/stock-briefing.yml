@@ -52,6 +52,12 @@ on:
         default: false
         type: boolean
 
+      us_daily_history:
+        description: Run bounded in-memory US daily history after a verified probe (no formal or raw exports)
+        required: false
+        default: false
+        type: boolean
+
       validation_only:
         description: 僅驗證 Agent 補跑權限與防重，不產報或寄送
         type: boolean
@@ -291,6 +297,19 @@ jobs:
           python report_delivery.py
           --period "${{ steps.period.outputs.value }}"
           --max-age-minutes 120
+      - name: Check private US same-source daily history in memory
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
+          COLLECT_US_DAILY_HISTORY: ${{ github.event_name == 'workflow_dispatch' && inputs.us_daily_history == true }}
+        shell: bash
+        run: |
+          args=()
+          if [ "$COLLECT_US_DAILY_HISTORY" = "true" ]; then
+            args+=(--collect-history)
+          fi
+          python tools/collect_us_daily_shadow_status.py "${args[@]}"
       - name: Publish sanitized friend-site data
         id: friend_publish
         if: ${{ steps.generate.outcome == 'success' }}
