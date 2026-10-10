@@ -40,7 +40,7 @@ def test_fixed_reports_are_prepared_early_and_delivered_only_after_verification(
     assert 'echo "timely=false" >> "$GITHUB_OUTPUT"' in text
     assert "python report_schedule.py" in text
     assert "--period \"${{ steps.period.outputs.value }}\"" in text
-    assert "steps.verified_delivery.outcome != 'success'" in text
+    assert "steps.verified_delivery" not in text
     assert "timeout-minutes: 60" in text
     assert "Prevent duplicate or expired fixed report" in text
     assert "--mode gate" in text
@@ -76,7 +76,6 @@ def test_stale_fixed_report_publishes_data_but_keeps_delivery_suppressed():
 
     assert classify < generate < save_private < confirm_private
     assert "continuing as silent current-data settlement" in text
-    assert "steps.delivery_window.outputs.timely == 'true'" in text
     assert "steps.delivery_window.outputs.timely != 'true'" in text
     assert "Stale report delivery suppressed" in text
 
@@ -167,9 +166,8 @@ def test_delivery_expiry_cannot_block_successful_data_publication():
         condition = condition_for(name)
         assert "steps.generate.outcome == 'success'" in condition
         assert 'delivery_window' not in condition and 'defer_delivery' not in condition
-    for name in ('Wait for official fixed-report delivery window', 'Deliver verified fixed report'):
-        assert "steps.delivery_window.outputs.timely == 'true'" in condition_for(name)
-        assert "steps.period.outputs.defer_delivery == 'true'" in condition_for(name)
+    assert "Deliver verified fixed report" not in text
+    assert "Wait for official fixed-report delivery window" not in text
 
 
 def test_silent_refresh_selection_never_enables_delivery(tmp_path):

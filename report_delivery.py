@@ -16,7 +16,6 @@ from zoneinfo import ZoneInfo
 import requests
 
 from config import SETTINGS
-from notifier import send_telegram
 
 
 TAIPEI = ZoneInfo("Asia/Taipei")
@@ -75,7 +74,19 @@ def record_delivery(
         if not isinstance(previous, dict):
             previous = {}
         success = payload if delivered and state == "delivered" else previous.get("last_success", {})
-        _atomic_json(receipt_path, {"last_attempt": payload, "last_success": success})
+        generation = previous.get("last_generation", {})
+        if state == "suppressed" and not delivered and not expected_delivery:
+            try:
+                report = json.loads((reports_dir / "latest.json").read_text(encoding="utf-8"))
+                markdown = (reports_dir / "latest.md").read_text(encoding="utf-8").strip()
+            except (OSError, ValueError):
+                report, markdown = {}, ""
+            report = report if isinstance(report, dict) else {}
+            valid, _ = validate_fixed_report(report, expected_period=period, now=now)
+            if valid and markdown and report.get("updated_at") == report_updated_at:
+                generation = {**payload, "generation_validated": True}
+        _atomic_json(receipt_path, {"last_attempt": payload, "last_success": success,
+                                    "last_generation": generation})
     return payload
 
 
@@ -138,53 +149,26 @@ def deliver_verified_report(
     period: str,
     now: datetime | None = None,
     max_age_minutes: int = 120,
-    sender: Callable[[str], bool] = send_telegram,
+    sender: Callable[[str], bool] | None = None,
     health_get: Callable[..., Any] = requests.get,
 ) -> bool:
+    # This stock-only boundary is permanently silent, even with credentials or
+    # an injected sender. Keep validation available independently, but never
+    # contact Telegram or imply that a ChatGPT task delivered a report.
     current = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
-    # Recheck at the send boundary: a receipt may appear after the workflow gate.
-    from briefing_watchdog import load_daily_delivery, delivery_is_current, target_datetime
-    if delivery_is_current(load_daily_delivery(reports_dir / "report_delivery_status.json", current),
-                           period=period, target=target_datetime(current, period)):
-        return True  # Preserve the original success; do not call Telegram twice.
-    report_path = reports_dir / "latest.json"
-    markdown_path = reports_dir / "latest.md"
     try:
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-        markdown = markdown_path.read_text(encoding="utf-8").strip()
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        report, markdown = {}, ""
-    valid, reasons = validate_fixed_report(
-        report, expected_period=period, now=current,
-        max_age_minutes=max_age_minutes,
-    )
-    if not markdown:
-        reasons.append("報表文字為空")
-        valid = False
-    relay = _relay_health(health_get)
-    if relay.get("reachable") and not all(
-        relay.get(key) for key in ("ok", "us_sip_configured", "us_opra_configured")
-    ):
-        reasons.append("Railway SIP／OPRA 健康檢查未通過")
-        valid = False
-    updated_at = str(report.get("updated_at") or "")
-    if not valid:
-        record_delivery(
-            reports_dir, period=period, report_updated_at=updated_at,
-            state="blocked_stale_or_incomplete", delivered=False,
-            expected_delivery=True, detail="；".join(reasons),
-            checked_at=current, relay_health=relay,
-        )
-        return False
-    delivered = bool(sender(markdown))
+        report = json.loads((reports_dir / "latest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        report = {}
+    report = report if isinstance(report, dict) else {}
     record_delivery(
-        reports_dir, period=period, report_updated_at=updated_at,
-        state="delivered" if delivered else "delivery_failed",
-        delivered=delivered, expected_delivery=True,
-        detail="固定報表與行情資料已驗證後送出" if delivered else "Telegram 傳送失敗",
-        checked_at=current, relay_health=relay,
+        reports_dir, period=period,
+        report_updated_at=str(report.get("updated_at") or ""),
+        state="suppressed", delivered=False, expected_delivery=False,
+        detail="股票報告 Telegram 已停用；ChatGPT 原對話送達狀態由原任務管理",
+        checked_at=current,
     )
-    return delivered
+    return False
 
 
 def main() -> int:
@@ -192,11 +176,12 @@ def main() -> int:
     parser.add_argument("--period", choices=["morning", "noon", "evening"], required=True)
     parser.add_argument("--max-age-minutes", type=int, default=120)
     args = parser.parse_args()
-    return 0 if deliver_verified_report(
+    deliver_verified_report(
         SETTINGS.reports_dir,
         period=args.period,
         max_age_minutes=args.max_age_minutes,
-    ) else 1
+    )
+    return 0  # Successful suppression is not successful delivery.
 
 
 if __name__ == "__main__":

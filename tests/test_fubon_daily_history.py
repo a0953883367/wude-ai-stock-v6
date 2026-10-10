@@ -180,7 +180,8 @@ def test_source_lifecycle_precedes_all_report_commit_paths():
     assert workflow.index("      - name: Generate report") < probe < first_push < shadow_push < full_ownership
     assert "git push" not in workflow[:probe] and "publish_shadow_report_batch.py" not in workflow[:probe]
     assert workflow.count("run: python fubon_ownership_relay.py") == 1
-    assert workflow.count("run: python tools/probe_fubon_daily_history.py") == 1
+    # Source-only and ordinary briefing jobs are mutually exclusive.
+    assert workflow.split("  briefing:\n", 1)[1].count("run: python tools/probe_fubon_daily_history.py") == 1
     source_step = workflow[probe:workflow.index("      - name: Keep reports and recent archive")]
     assert "continue-on-error: true" in source_step and "timeout-minutes: 2" in source_step
     assert "steps.generate.outcome == 'success'" in source_step

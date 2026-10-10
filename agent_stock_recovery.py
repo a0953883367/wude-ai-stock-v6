@@ -16,7 +16,7 @@ import requests
 
 from agent_control import authorize_task
 from us_direction_agent import inspect_us_direction
-from briefing_watchdog import TAIPEI, TARGETS, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at, data_refresh_needed, refresh_period
+from briefing_watchdog import TAIPEI, TARGETS, generation_is_current, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at, data_refresh_needed, refresh_period
 
 REPOSITORY = "a0953883367/wude-ai-stock-v6"
 RETRY_LIMIT = 2
@@ -154,6 +154,9 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         target = target_datetime(now, period)
         key = f'{now.date().isoformat()}:{period}'
         incident = incidents.setdefault(key, {'period': period, 'attempts': [], 'status': 'waiting'})
+        if generation_is_current(delivery, period=period, target=target):
+            incident.update(status='generated_suppressed', reason='stock report generated; Telegram disabled; ChatGPT delivery not observable')
+            continue
         if delivery_is_current(delivery, period=period, target=target):
             incident.update(status='verified_recovered' if incident['attempts'] else 'verified_delivered',
                             verified_at=now.isoformat(), reason='fresh verified Telegram delivery receipt')
@@ -164,7 +167,7 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         if now > target + timedelta(minutes=120):
             incident.update(status='expired', reason='no valid receipt; expired reports must not be sent')
             continue
-        incident['diagnosis'] = sorted(set(['missing_verified_delivery', 'telegram_receipt_missing'] + failures))
+        incident['diagnosis'] = sorted(set(['missing_fixed_generation'] + failures))
         if runs is None:
             incident.update(status='blocked_permission', reason=capability_error or 'cannot confirm active workflows')
             continue
@@ -179,7 +182,7 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         if last and now < last + timedelta(minutes=COOLDOWN_MINUTES):
             incident.update(status='cooldown', reason='wait for fresh evidence; accepted dispatch is not successful recovery')
             continue
-        incident.update(status='ready', reason='retry existing verified briefing inside fixed delivery window')
+        incident.update(status='ready', reason='retry missing fixed report generation inside protected window; Telegram disabled')
         actions.append({'incident_key': key, 'period': period})
     # Delivery expiry protects messages, not current-data settlement. Keep an
     # independent persisted budget; this path can never send a fixed report.
@@ -219,7 +222,7 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
         'executor': 'existing system-guard workflow / stock_shadow maintenance',
         'delivery_scope': {'channel': 'telegram_v6', 'chatgpt_delivery_status': 'not_observable',
                            'cross_channel_deduplication': False,
-                           'note': 'Telegram receipts only; ChatGPT reports are independent and are not classified as missing'},
+                           'note': 'Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable'},
         'incidents': incidents, 'next_actions': actions[:1], 'web_probe': web,
         'data_incidents': data_incidents,
         'permission_probe': previous.get('permission_probe', {}),
@@ -287,6 +290,8 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
         elif is_data and not (data_refresh_needed(load_report(reports / 'latest.json'), now=now)
                              or inspect_us_direction(reports, now)['needs_silent_refresh']):
             attempt['state'] = 'skipped_already_fresh'
+        elif not is_data and generation_is_current(delivery, period=period, target=target):
+            attempt['state'] = 'skipped_generated_suppressed'
         elif not is_data and delivery_is_current(delivery, period=period, target=target):
             attempt['state'] = 'skipped_already_delivered'
         elif any(r.get('status') in ACTIVE for r in runs):

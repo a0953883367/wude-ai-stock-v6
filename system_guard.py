@@ -712,17 +712,11 @@ def build_guard(
                 f"fixed_delivery_{period}", f"今日{name}送達", "ok",
                 f"已確認 Telegram 送達：{receipt.get('checked_at', '')}",
             ))
-        elif now < target:
+        else:
             checks.append(_check(
                 f"fixed_delivery_{period}", f"今日{name}送達", "info",
-                f"尚未到 {target.strftime('%H:%M')} 發送時間",
-            ))
-        else:
-            expired = now > target + timedelta(minutes=120)
-            checks.append(_check(
-                f"fixed_delivery_{period}", f"今日{name}送達", "warning",
-                "沒有可驗證的今日送達紀錄；歷史紀錄不回填為成功",
-                "補送窗口已過，不送過期報表" if expired else "由既有 watchdog 在 120 分鐘內重試；產報不等於送達",
+                "股票 Telegram 已停用；ChatGPT 原對話由原任務管理，本站無法驗證其送達",
+                "不因缺少 Telegram 送達紀錄補寄；報表產生與資料新鮮度另行檢查",
             ))
 
     timestamps = {
