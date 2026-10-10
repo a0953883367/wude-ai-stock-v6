@@ -199,6 +199,8 @@ def main():
     result = _relay_request('daily_shadow_status', {'symbols': symbols, 'collect_history': args.collect_history,
                                                    'instrument_types': categories}, 95) if symbols else {}
     clean = sanitize_status(result, len(symbols), expected_manifest=manifest_hash, expected_categories=categories)
+    from us_source_quality_review import annotate_reviewed_holds
+    clean = annotate_reviewed_holds(clean)
     clean['scope'] = 'all_us_instruments_including_etfs' if args.collect_history else 'aapl_four_session_entitlement_probe'
     target = args.reports_dir / 'us_daily_shadow_status.json'
     temporary = target.with_suffix('.tmp')
