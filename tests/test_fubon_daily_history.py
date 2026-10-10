@@ -159,3 +159,13 @@ def test_later_provider_failure_clears_partial_success_metadata():
     status, private = f.collect_private(rest(candles), list(f.PILOT), Calendar(), now=NOW)
     assert status["reason"] == "provider_entitlement_denied"
     assert status["symbols"] == {} and status["validated_count"] == 0 and private == {}
+
+
+def test_observed_time_is_after_response_not_request_start():
+    observed = NOW + timedelta(seconds=3)
+    status, private = f.collect_private(rest(lambda **k: payload()), ["2330.TW"], Calendar(),
+                                        now=NOW, observed_clock=lambda: observed)
+    assert status["requested_at"] == NOW.isoformat()
+    assert status["observed_at"] == observed.isoformat()
+    assert private["2330.TW"]["requested_at"] == NOW.isoformat()
+    assert private["2330.TW"]["observed_at"] == observed.isoformat()

@@ -135,12 +135,14 @@ def empty_status(symbols: list[str], now: datetime, reason: str | None = None) -
 
 
 def collect_private(reststock: Any, symbols: list[str], calendar: Any, *, now=None, deadline=None,
-                    cancelled=None) -> tuple[dict[str, Any], dict[str, Any]]:
+                    cancelled=None, observed_clock=None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return safe status and private normalized rows separately; never persist either."""
     symbols = validate_symbols(symbols)
     now = now or datetime.now(TAIPEI)
     deadline = deadline if deadline is not None else clock.monotonic() + MAX_SECONDS
     status, private = empty_status(symbols, now), {}
+    observed_clock = observed_clock or (lambda: datetime.now(TAIPEI))
+    status["requested_at"] = now.isoformat()
     try:
         sessions = _sessions(calendar, now)
         status.update(session_date=sessions[-1], calendar_session_count=len(sessions))
@@ -161,7 +163,8 @@ def collect_private(reststock: Any, symbols: list[str], calendar: Any, *, now=No
             if clock.monotonic() >= deadline or (cancelled and cancelled.is_set()):
                 raise HistoryBlocked("request_time_budget")
             try:
-                private[symbol] = normalize(payload, symbol, sessions, now)
+                private[symbol] = normalize(payload, symbol, sessions, observed_clock())
+                private[symbol]["requested_at"] = now.isoformat()
                 status["symbols"][symbol] = {"status": "validated_in_memory", "bar_count": len(private[symbol]["bars"]), "venue": PILOT[symbol][2]}
                 status["validated_count"] += 1
             except HistoryBlocked as exc:
@@ -173,6 +176,7 @@ def collect_private(reststock: Any, symbols: list[str], calendar: Any, *, now=No
         private.clear()
         status["validated_count"] = 0
         status["symbols"] = {}
+    status["observed_at"] = observed_clock().isoformat()
     return status, private
 
 
