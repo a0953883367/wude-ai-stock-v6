@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-10T18:34:31+08:00",
+  "updated_at": "2026-10-10T23:28:52+08:00",
   "system": "股票成長控制塔 V1",
   "status": "attention",
   "light": "yellow",
@@ -19,19 +19,19 @@
       "id": "data_ingestion",
       "order": 1,
       "label": "資料進站",
-      "status": "ok",
-      "light": "green",
-      "status_label": "正常",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "台股、美股、ETF 與官方資料先進入獨立資料層。"
     },
     {
       "id": "quality_gate",
       "order": 2,
       "label": "品質檢查",
-      "status": "ok",
-      "light": "green",
-      "status_label": "正常",
-      "detail": "系統值班檢查：異常 0 項、注意 0 項。"
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
+      "detail": "系統值班檢查：異常 0 項、注意 2 項。"
     },
     {
       "id": "formal_v6",
@@ -85,9 +85,9 @@
     {
       "id": "data",
       "label": "資料監控",
-      "status": "ok",
-      "light": "green",
-      "status_label": "正常",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "完整度、來源、更新時間與缺值隔離。"
     },
     {
@@ -109,9 +109,9 @@
     {
       "id": "system",
       "label": "系統監控",
-      "status": "ok",
-      "light": "green",
-      "status_label": "正常",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "GitHub Actions、主 App、Railway 與通知分開判斷。"
     },
     {
@@ -254,6 +254,11 @@
   ],
   "action_queue": [
     {
+      "priority": "review",
+      "title": "查看系統值班注意項",
+      "detail": "正式 V6 維持不變，先確認黃色項目。"
+    },
+    {
       "priority": "wait",
       "title": "繼續累積60日證據",
       "detail": "目前 35/60，尚差 25 個有效交易日。"
@@ -288,5 +293,20 @@
     "stores_private_billing_details": false,
     "note": "控制塔只整理既有證據與提醒人工決定，不控制券商、不付款。"
   },
-  "pending_notifications": []
+  "pending_notifications": [
+    {
+      "id": "layer:data:attention:2026-10-10T23:28:52+08:00",
+      "type": "control_layer_change",
+      "level": "warning",
+      "created_at": "2026-10-10T23:28:52+08:00",
+      "message": "🟡 股票成長控制塔：資料監控變為注意。完整度、來源、更新時間與缺值隔離。"
+    },
+    {
+      "id": "layer:system:attention:2026-10-10T23:28:52+08:00",
+      "type": "control_layer_change",
+      "level": "warning",
+      "created_at": "2026-10-10T23:28:52+08:00",
+      "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
+    }
+  ]
 }
