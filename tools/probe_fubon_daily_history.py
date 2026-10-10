@@ -12,6 +12,47 @@ from fubon_daily_history import PILOT, REASONS, SOURCE, VERSION
 from us_market_data import _relay_request
 
 
+def sanitize_date_diagnostics(row):
+    keys = {"observed_date_count", "expected_session_count", "missing_session_dates",
+            "unexpected_session_dates", "first_returned_date", "last_returned_date"}
+    if not keys.intersection(row):
+        return {}
+    if not keys.issubset(row):
+        raise ValueError("incomplete diagnostic metadata")
+    clean = {}
+    for key in ("observed_date_count", "expected_session_count"):
+        n = row[key]
+        if type(n) is not int or not 0 <= n <= 120:
+            raise ValueError("invalid count")
+        clean[key] = n
+    for key in ("missing_session_dates", "unexpected_session_dates"):
+        values = row[key]
+        if (not isinstance(values, list) or len(values) > 120
+                or any(not isinstance(v, str) or date.fromisoformat(v).isoformat() != v for v in values)
+                or values != sorted(set(values))):
+            raise ValueError("invalid dates")
+        clean[key] = list(values)
+    for key in ("first_returned_date", "last_returned_date"):
+        value = row[key]
+        if value is not None and (not isinstance(value, str) or date.fromisoformat(value).isoformat() != value):
+            raise ValueError("invalid date")
+        clean[key] = value
+    if clean["observed_date_count"] == 0:
+        if clean["first_returned_date"] is not None or clean["last_returned_date"] is not None:
+            raise ValueError("inconsistent empty bounds")
+    elif clean["first_returned_date"] is None or clean["last_returned_date"] is None:
+        raise ValueError("inconsistent bounds")
+    if set(clean["missing_session_dates"]) & set(clean["unexpected_session_dates"]):
+        raise ValueError("overlapping dates")
+    if len(clean["missing_session_dates"]) > clean["expected_session_count"] or len(clean["unexpected_session_dates"]) > clean["observed_date_count"]:
+        raise ValueError("impossible counts")
+    if clean["observed_date_count"] and clean["first_returned_date"] > clean["last_returned_date"]:
+        raise ValueError("reversed bounds")
+    if clean["observed_date_count"] != clean["expected_session_count"] - len(clean["missing_session_dates"]) + len(clean["unexpected_session_dates"]):
+        raise ValueError("inconsistent counts")
+    return clean
+
+
 def sanitize_status(result):
     blocked = {"version": VERSION, "status": "blocked", "reason": "invalid_or_unavailable_relay_status"}
     if not isinstance(result, dict) or result.get("version") != VERSION or result.get("source") != SOURCE:
@@ -53,6 +94,18 @@ def sanitize_status(result):
             clean["calendar_session_count"] = n
     except (TypeError, ValueError, KeyError):
         return blocked
+    if "request_from" in result:
+        try:
+            first, last = date.fromisoformat(result["request_from"]), date.fromisoformat(result["request_to"])
+            if not 0 <= (last - first).days < 120 or last.isoformat() != clean.get("session_date"):
+                return blocked
+            constants = {"request_timeframe": "D", "request_adjusted": "false", "volume_unit": "shares",
+                         "calendar_source_status": "verified_twse_tpex"}
+            if any(result.get(k) != v for k, v in constants.items()):
+                return blocked
+            clean.update(request_from=first.isoformat(), request_to=last.isoformat(), **constants)
+        except (TypeError, ValueError, KeyError):
+            return blocked
     if "reason" in result:
         if not isinstance(result["reason"], str) or result["reason"] not in REASONS:
             return blocked
@@ -75,6 +128,22 @@ def sanitize_status(result):
                 return blocked
             entry["reason"] = row["reason"]
         elif n < 60:
+            return blocked
+        try:
+            diagnostics = sanitize_date_diagnostics(row)
+            if diagnostics:
+                if diagnostics["expected_session_count"] != clean.get("calendar_session_count"):
+                    return blocked
+                if "request_from" in clean and any(not clean["request_from"] <= d <= clean["request_to"] for d in diagnostics["missing_session_dates"]):
+                    return blocked
+            if row["status"] == "validated_in_memory":
+                if (not diagnostics or diagnostics["observed_date_count"] != n
+                        or diagnostics["missing_session_dates"] or diagnostics["unexpected_session_dates"]
+                        or diagnostics["first_returned_date"] != clean.get("request_from")
+                        or diagnostics["last_returned_date"] != clean.get("request_to")):
+                    return blocked
+            entry.update(diagnostics)
+        except (TypeError, ValueError):
             return blocked
         clean["symbols"][symbol] = entry
     if clean["status"] != "blocked":

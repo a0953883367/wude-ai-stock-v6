@@ -1,6 +1,6 @@
 # Existing-session Fubon daily source pilot
 
-Version: `TW-FUBON-DAILY-PILOT-V1`.
+Version: `TW-FUBON-DAILY-PILOT-V2`.
 
 The internal OIDC relay accepts only `tw_daily_history_status` with one or both fixed pilot symbols, `2330.TW` and `6290.TWO`. It uses the existing `LiveDataService._fubon_sdk`; it never initializes a login, requests credentials, mutates authentication, calls order endpoints, selects arbitrary URLs, or expands the OIDC principal. A missing session blocks the probe.
 
@@ -26,3 +26,10 @@ The existing stock-briefing workflow runs the two-symbol probe after report gene
 The existing Railway watch pattern includes most report files. Run 38033630132 completed its US probe before pushes, then pushed reports at 07:16:02 and 07:16:30 UTC on 2026-10-10. Railway deployment statuses overlapped later ownership (502 at 07:17:19) and Fubon daily calls (502 at 07:17:35). This is evidence for a likely deployment collision, not proof of an SDK defect or denied entitlement.
 
 The workflow therefore performs one fixed two-symbol warm-up batch through its existing ownership relay, followed by the metadata-only daily pilot, before its first report push. If the warm-up is unavailable, malformed, rate limited or denied, the pilot remains blocked without retrying. All report-commit paths remain after this bounded probe. The full optional ownership collector remains AFTER durable report/receipt publication, preserving its existing ten-minute-stage safety invariant. Delivery gates, OIDC, schedules and Railway watch patterns are unchanged. Source failure remains unavailable and cannot become a false positive. A later unrelated deployment can still interrupt the service, so a real successful probe is required.
+
+
+## Coverage diagnostics
+
+Version 2 exposes only bounded canonical dates and counts for coverage mismatches: expected/observed unique-session counts, missing/unexpected date lists (maximum 120 each), and first/last returned dates. Requested date bounds, daily timeframe, explicit raw adjustment request, share units, and joint calendar provenance are also recorded. No OHLCV, raw rows or provider messages are exported, and completeness remains mandatory.
+
+Run 38034816146 completed two SDK requests on 2026-10-10 with valid TWSE/TPEx identity and bar schemas, but both symbols failed exact coverage against 82 official sessions ending 2026-10-08. This establishes endpoint access, not complete usable history. Diagnostics distinguish query-boundary or calendar differences without fabricating bars or bypassing validation.
