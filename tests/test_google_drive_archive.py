@@ -223,3 +223,134 @@ def test_result_is_warning_for_preserved_conflict_revision(tmp_path: Path):
     assert payload["status"] == "warning"
     assert payload["counts"]["conflict_revisions"] == 1
     assert payload["counts"]["errors"] == 0
+
+
+
+def _uploaded_metadata(payload):
+    import hashlib
+    return {
+        "id": "uploaded-file", "size": str(len(payload)),
+        "md5Checksum": hashlib.md5(payload, usedforsecurity=False).hexdigest(),
+        "appProperties": {"sha256": hashlib.sha256(payload).hexdigest()},
+    }
+
+
+def _http_error(status):
+    import requests
+    response = requests.Response()
+    response.status_code = status
+    return requests.HTTPError("test failure", response=response)
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+def test_transient_upload_retries_after_lookup(status, monkeypatch):
+    client = DriveArchiveClient("id", "secret", "refresh")
+    events = []
+    payload = b"archive"
+    def upload(*args, **kwargs):
+        events.append("upload")
+        if events.count("upload") == 1:
+            raise _http_error(status)
+        return _uploaded_metadata(payload)
+    monkeypatch.setattr(client, "_upload_verified_once", upload)
+    monkeypatch.setattr(client, "find_file", lambda *a: events.append("lookup"))
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda delay: events.append(delay))
+    result = client.upload_verified("name", payload, "parent", source="source")
+    assert result["id"] == "uploaded-file"
+    assert events == ["upload", 1, "lookup", "upload"]
+
+
+def test_ambiguous_upload_checks_existing_instead_of_duplicate(monkeypatch):
+    client = DriveArchiveClient("id", "secret", "refresh")
+    calls = []
+    payload = b"archive"
+    def upload(*args, **kwargs):
+        calls.append("upload")
+        raise _http_error(502)
+    monkeypatch.setattr(client, "_upload_verified_once", upload)
+    monkeypatch.setattr(client, "find_file", lambda *a: _uploaded_metadata(payload))
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda _: None)
+    assert client.upload_verified("name", payload, "parent", source="source")["id"] == "uploaded-file"
+    assert calls == ["upload"]
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404])
+def test_permanent_upload_errors_are_not_retried(status, monkeypatch):
+    import requests
+    client = DriveArchiveClient("id", "secret", "refresh")
+    def upload(*args, **kwargs):
+        raise _http_error(status)
+    monkeypatch.setattr(client, "_upload_verified_once", upload)
+    monkeypatch.setattr(client, "find_file", lambda *a: pytest.fail("lookup for permanent error"))
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda _: pytest.fail("permanent retry"))
+    with pytest.raises(requests.HTTPError):
+        client.upload_verified("name", b"archive", "parent", source="source")
+
+
+def test_upload_retry_exhaustion_is_bounded_and_reconciles_final_attempt(monkeypatch):
+    import requests
+    client = DriveArchiveClient("id", "secret", "refresh")
+    events = []
+    def upload(*args, **kwargs):
+        events.append("upload")
+        raise _http_error(502)
+    monkeypatch.setattr(client, "_upload_verified_once", upload)
+    monkeypatch.setattr(client, "find_file", lambda *a: events.append("lookup"))
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda delay: events.append(delay))
+    with pytest.raises(requests.HTTPError):
+        client.upload_verified("name", b"archive", "parent", source="source")
+    assert events == ["upload", 1, "lookup", "upload", 2, "lookup", "upload", 4, "lookup"]
+
+
+@pytest.mark.parametrize("conflict", [True, False])
+def test_reconciliation_conflict_or_failure_stops_upload(monkeypatch, conflict):
+    import requests
+    client = DriveArchiveClient("id", "secret", "refresh")
+    calls = []
+    def upload(*args, **kwargs):
+        calls.append("upload")
+        raise _http_error(502)
+    def lookup(*args):
+        if conflict:
+            return _uploaded_metadata(b"different")
+        raise _http_error(503)
+    monkeypatch.setattr(client, "_upload_verified_once", upload)
+    monkeypatch.setattr(client, "find_file", lookup)
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda _: None)
+    with pytest.raises(ArchiveConflictError if conflict else requests.HTTPError):
+        client.upload_verified("name", b"archive", "parent", source="source")
+    assert calls == ["upload"]
+
+
+@pytest.mark.parametrize("error_type", ["Timeout", "ConnectionError"])
+def test_transport_failures_reconcile_without_duplicate(error_type, monkeypatch):
+    import requests
+    client = DriveArchiveClient("id", "secret", "refresh")
+    payload = b"archive"
+    calls = []
+    def upload(*args, **kwargs):
+        calls.append("upload")
+        raise getattr(requests, error_type)("test failure")
+    monkeypatch.setattr(client, "_upload_verified_once", upload)
+    monkeypatch.setattr(client, "find_file", lambda *a: _uploaded_metadata(payload))
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda _: None)
+    assert client.upload_verified("name", payload, "parent", source="source")["id"] == "uploaded-file"
+    assert calls == ["upload"]
+
+
+def test_successful_upload_preserves_response_checksum_validation(monkeypatch):
+    from google_drive_archive import ArchiveError
+    class Response:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"id": "wrong", "size": "1", "md5Checksum": "wrong"}
+    class Session:
+        def post(self, *args, **kwargs):
+            return Response()
+    client = DriveArchiveClient("id", "secret", "refresh", session=Session())
+    client.access_token = "test-token"
+    monkeypatch.setattr(client, "find_file", lambda *a: pytest.fail("checksum failure retried"))
+    monkeypatch.setattr("google_drive_archive.time.sleep", lambda _: pytest.fail("checksum failure retried"))
+    with pytest.raises(ArchiveError, match="size verification failed"):
+        client.upload_verified("name", b"archive", "parent", source="source")
