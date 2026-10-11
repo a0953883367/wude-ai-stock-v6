@@ -4,6 +4,10 @@
 # WATCHLIST below). Its generated source_groups/counts include every extend.
 # Regenerate/check with: python watchlist_manifest.py --write / --check.
 # Coverage is not buy/ranking eligibility; preserve reference_only metadata.
+# Canonical plan eligibility/status: reports/public_plan_status.json.
+# Its null actions/geometry are authoritative for this public status contract;
+# legacy trade_plan_shadow geometry is diagnostic, not an eligible buy zone.
+# Official Taiwan quotes remain separate in reports/tw_official_cache.json.
 
 from __future__ import annotations
 
