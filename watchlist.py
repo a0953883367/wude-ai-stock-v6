@@ -1,5 +1,10 @@
 """Canonical watchlist shared with the ChatGPT stock assistant."""
 
+# Full machine-readable pool: watchlist_manifest.json (not just the literal
+# WATCHLIST below). Its generated source_groups/counts include every extend.
+# Regenerate/check with: python watchlist_manifest.py --write / --check.
+# Coverage is not buy/ranking eligibility; preserve reference_only metadata.
+
 from __future__ import annotations
 
 from typing import Any
