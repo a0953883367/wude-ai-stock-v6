@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "ok",
   "status_label": "🟢 系統正常",
-  "checked_at": "2026-10-11T14:03:39+08:00",
+  "checked_at": "2026-10-11T14:06:20+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-11 07:42:34",
-  "report_age_minutes": 381.1,
+  "report_updated_at": "2026-10-11 14:04:38",
+  "report_age_minutes": 1.7,
   "counts": {
-    "ok": 26,
-    "info": 13,
+    "ok": 27,
+    "info": 12,
     "warning": 0,
     "critical": 0
   },
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 389.1 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 385.3 MB；可壓縮 3 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-09 已正確入帳，報表距今 6.4 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-09 已正確入帳，報表距今 0.0 小時",
       "action": ""
     },
     {
@@ -160,10 +160,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "info",
-      "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 141 檔；尚未切換半套快取",
-      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
+      "level": "ok",
+      "label": "正常",
+      "detail": "私密完整快取涵蓋 188 檔；原始價格未進入網站或計算",
+      "action": ""
     },
     {
       "code": "us_sec_fundamentals",
@@ -221,7 +221,7 @@
       "detail": "台美股共 46 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 46,
-      "ledger_updated_at": "2026-10-11 07:42:34"
+      "ledger_updated_at": "2026-10-11 14:04:38"
     },
     {
       "code": "unified_evidence",
@@ -317,7 +317,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     },
     {
@@ -325,7 +325,7 @@
       "title": "股票三報產報檢查",
       "level": "info",
       "label": "資訊",
-      "detail": "最近執行 2026-10-11T14:03:36.110582+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "detail": "最近執行 2026-10-11T14:03:29.443880+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
