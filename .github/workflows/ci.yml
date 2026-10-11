@@ -10,6 +10,7 @@ on:
       - "*.html"
       - "tests/**"
       - "requirements.txt"
+      - "watchlist_manifest.json"
       - ".github/workflows/**"
   push:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - "*.html"
       - "tests/**"
       - "requirements.txt"
+      - "watchlist_manifest.json"
       - ".github/workflows/**"
 
 permissions:
@@ -35,6 +37,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt pytest
+      - name: Check complete canonical watchlist manifest
+        run: python watchlist_manifest.py --check
       - name: 執行完整測試
         run: python -m pytest -q
       - name: 檢查主要程式可編譯
@@ -90,3 +94,4 @@ jobs:
 
       - name: Check private research UI privacy boundaries
         run: node tests/test_private_research_ui.js
+

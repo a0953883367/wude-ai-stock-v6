@@ -9,6 +9,8 @@ on:
       - "search_data.json"
       - "watchlist.py"
       - "tests/test_corporate_actions_shadow.py"
+      - "tools/check_corporate_actions_coverage.py"
+      - "tests/test_corporate_actions_coverage.py"
       - ".github/workflows/corporate-actions-shadow.yml"
   schedule:
     # Daily 05:15 Asia/Taipei, before the 06:00 report.
@@ -46,11 +48,12 @@ jobs:
           from pathlib import Path
 
           from corporate_actions_shadow import _combined_active_payload, _tracked_securities
+          from tools.check_corporate_actions_coverage import load_json_unique, validate_corporate_census
           from watchlist import load_watchlist
 
-          report = json.loads(Path("reports/corporate_actions_shadow.json").read_text(encoding="utf-8"))
+          report = load_json_unique(Path("reports/corporate_actions_shadow.json"))
           summary = report["summary"]
-          search = json.loads(Path("search_data.json").read_text(encoding="utf-8"))
+          search = load_json_unique(Path("search_data.json"))
           expected = _tracked_securities(_combined_active_payload(search, load_watchlist()))
           expected_stocks = sum(row["asset_type"] == "STOCK" for row in expected.values())
           expected_etfs = len(expected) - expected_stocks
@@ -78,8 +81,9 @@ jobs:
           wanted = (len(expected), expected_stocks, expected_etfs)
           if actual != wanted:
               raise SystemExit(f"coverage mismatch: actual={actual} expected={wanted}")
-          if wanted != (374, 306, 68):
-              raise SystemExit(f"configured 374-symbol contract changed unexpectedly: {wanted}")
+          registry = load_json_unique(Path("reports/corporate_actions_registry.json"))
+          source_census = validate_corporate_census(search, load_watchlist(), report, registry)
+          print(f"independent raw-source census: {source_census}")
           if blocking_failed:
               raise SystemExit(
                   "official source verification failed: " + ", ".join(blocking_failed)
