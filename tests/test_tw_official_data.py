@@ -205,11 +205,11 @@ def test_official_daily_bar_overwrites_same_session():
 def test_fetch_splits_listed_and_otc_and_writes_cache(monkeypatch, tmp_path: Path):
     called = {}
 
-    def fake_twse(ids):
+    def fake_twse(ids, **_kwargs):
         called["twse"] = ids
         return ({"2330": {"date": "2026-08-21"}}, {}, {}, {}, {})
 
-    def fake_tpex(ids):
+    def fake_tpex(ids, **_kwargs):
         called["tpex"] = ids
         return ({"6488": {"date": "2026-08-21"}}, {}, {}, {}, {})
 
@@ -234,7 +234,7 @@ def test_partial_refresh_preserves_dated_fundamental_fields(monkeypatch, tmp_pat
             "revenue_yoy_pct": 6,
         }}},
     }), encoding="utf-8")
-    monkeypatch.setattr(official, "_parse_tpex", lambda _ids: (
+    monkeypatch.setattr(official, "_parse_tpex", lambda _ids, **_kwargs: (
         {"6488": {"date": "2026-08-22"}}, {}, {},
         {"6488": {"revenue_yoy_pct": 8, "revenue_date": "2026-08-22"}}, {},
     ))
@@ -258,7 +258,7 @@ def test_stale_cache_never_reuses_daily_price_or_flow(monkeypatch, tmp_path: Pat
             "announcements": {"2330": [{"title": "old"}]},
         },
     }), encoding="utf-8")
-    monkeypatch.setattr(official, "_parse_twse", lambda _ids: (_ for _ in ()).throw(RuntimeError("offline")))
+    monkeypatch.setattr(official, "_parse_twse", lambda _ids, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")))
     result = official.fetch_taiwan_official_data(
         [{"symbol": "2330.TW", "market": "TW"}], cache
     )
