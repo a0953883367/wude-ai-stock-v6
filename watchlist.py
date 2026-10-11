@@ -7,7 +7,35 @@
 # Canonical plan eligibility/status: reports/public_plan_status.json.
 # Its null actions/geometry are authoritative for this public status contract;
 # legacy trade_plan_shadow geometry is diagnostic, not an eligible buy zone.
-# Official Taiwan quotes remain separate in reports/tw_official_cache.json.
+# Report input lookup (report-only; never expands this canonical pool):
+# Official Taiwan cache: reports/tw_official_cache.json. For canonical symbols,
+# retain the existing /data/prices/{code} reader and its date/provenance checks.
+# For report supplements 2412 and 00998A, read these exact JSON pointers first:
+#   /report_only_quotes/records/2412
+#   /report_only_quotes/records/00998A
+# They are top-level sidecar records, NOT members of /data/prices. Absence from
+# /data/prices alone does not mean the whole cache has no quote for that symbol.
+# Require sidecar schema_version=1, scope=report_only, formal_model_input=false,
+# ranking_eligible=false and refresh_status=completed; then record status=available,
+# exact code/market/instrument identity, price_basis=official_close, validated
+# raw_fields and a positive finite quote.close. Apply the report's existing
+# completed-session calendar and observation-freshness checks; see
+# docs/report_only_quotes.md for the full fail-closed validation contract.
+# Record fields: session_date (source trading date), price_basis, quote.close,
+# quote.open/high/low/volume, price_unit, volume_unit, source_url and attribution.
+# Never substitute cache updated_at or sidecar observed_at for session_date,
+# call official_close live/intraday, or infer full OHLCV from status=available.
+# 2412: TWSE ordinary_stock, TWD/share, volume in shares.
+# 00998A: TPEx ETF, TWD/beneficial_unit, volume in beneficial_units (not shares).
+# Preserve exact string codes, leading zeros, units and source/license attribution.
+# Missing optional fields stay missing; show valid close/date even if a field is
+# absent. Unusable/missing sidecar records remain unavailable with their reason;
+# never rescue them with a stale formal value or synthesize a bar/model signal.
+# These quotes do not grant ranking/model/action eligibility or enter V6 inputs.
+# Reuse each symbol/horizon's same assessed result in detail and summary; never
+# independently recolor the summary. public_plan_status blocked/ineligible means
+# no eligible action, NOT a bearish direction or an invented red signal.
+# Source guidance does not establish external report-consumer adoption.
 
 from __future__ import annotations
 
