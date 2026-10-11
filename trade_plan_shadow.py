@@ -556,6 +556,9 @@ def write_trade_plan_report(reports_dir: Path, *, update_registry: bool = True) 
     }
     health_path = reports_dir / "trade_plan_shadow_health.json"
     health_path.write_text(json.dumps(health, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # Same frozen report batch; status only, no provider calls or ledger changes.
+    from public_plan_status_writer import write_public_plan_status
+    write_public_plan_status(reports_dir, report)
     return target
 
 

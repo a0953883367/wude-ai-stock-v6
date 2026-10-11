@@ -19,7 +19,7 @@ def git(cwd: Path, *args: str) -> str:
 def write_batch(repo: Path, number: int, *, generated=False):
     reports = repo / "reports"
     reports.mkdir(exist_ok=True)
-    for filename in ("all_analysis.json", "decision_hub.json", "decision_hub_01.json", "trade_plan_shadow.json", "trade_plan_shadow_health.json", "trade_plan_validation.json", "tw_prospective_registry.json"):
+    for filename in ("all_analysis.json", "decision_hub.json", "decision_hub_01.json", "trade_plan_shadow.json", "trade_plan_shadow_health.json", "public_plan_status.json", "trade_plan_validation.json", "tw_prospective_registry.json"):
         (reports / filename).write_text(json.dumps({"batch": number, "generated": generated}))
 
 
@@ -288,3 +288,20 @@ def test_stale_briefing_rebase_cannot_replay_registry_and_publisher_keeps_latest
     publisher.run(source,generate=preserving_generator)
     assert json.loads(git(bare,'show',f'main:{ledger}')) == newer
     assert original != newer
+
+
+def test_missing_status_blocks_entire_batch_and_preserves_remote(repositories):
+    source, competitor, bare = repositories
+    before = git(bare, "rev-parse", "main")
+    calls = []
+    def runner(args, *, cwd):
+        calls.append(list(args))
+        return publisher.run_command(args, cwd=cwd)
+    def missing_status(worktree):
+        generate(worktree)
+        (worktree / "reports/public_plan_status.json").unlink()
+    with pytest.raises(publisher.PublishError, match="all required shadow reports"):
+        publisher.run(source, runner=runner, generate=missing_status)
+    assert git(bare, "rev-parse", "main") == before
+    assert not any(is_push(args) for args in calls)
+    assert_cleaned(source)

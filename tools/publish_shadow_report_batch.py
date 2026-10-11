@@ -21,6 +21,7 @@ BOT_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com"
 REPORT_FILES = (
     "reports/trade_plan_shadow.json",
     "reports/trade_plan_shadow_health.json",
+    "reports/public_plan_status.json",
     "reports/trade_plan_validation.json",
     "reports/tw_prospective_registry.json",
 )
@@ -28,6 +29,7 @@ CHUNK_PATTERN = re.compile(r"reports/decision_hub_[0-9]{2}\.json")
 FOCUSED_TESTS = (
     "tests/test_trade_plan_shadow.py", "tests/test_trade_plan_validation.py",
     "tests/test_shadow_hub_refresh.py", "tests/test_tw_daily_shadow_attestation.py",
+    "tests/test_public_research_briefing_contract.py", "tests/test_public_plan_status_writer.py",
 )
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
