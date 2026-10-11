@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -168,6 +169,46 @@ class DriveArchiveClient:
         return self.ensure_folder(month, str(year_folder["id"]))
 
     def upload_verified(
+        self,
+        name: str,
+        payload: bytes,
+        parent_id: str,
+        *,
+        source: str,
+    ) -> dict[str, Any]:
+        """Retry transient failures only after reconciling the possible upload.
+
+        A failed response does not prove that Drive did not create the file.
+        Never blindly retry a POST, overwrite an existing object, or continue
+        when the reconciliation lookup itself fails.
+        """
+        for attempt in range(3):
+            try:
+                return self._upload_verified_once(
+                    name, payload, parent_id, source=source
+                )
+            except requests.HTTPError as exc:
+                if exc.response is None or exc.response.status_code not in (
+                    429, 500, 502, 503, 504
+                ):
+                    raise
+                error = exc
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                error = exc
+
+            time.sleep(2 ** attempt)
+            existing = self.find_file(name, parent_id)
+            if existing:
+                if not self._matches_payload(existing, payload):
+                    raise ArchiveConflictError(
+                        f"Drive upload reconciliation found different content for {name}"
+                    ) from error
+                return existing
+            if attempt == 2:
+                raise error
+        raise AssertionError("unreachable")
+
+    def _upload_verified_once(
         self,
         name: str,
         payload: bytes,
@@ -408,3 +449,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
