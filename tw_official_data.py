@@ -15,12 +15,14 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 
 import pandas as pd
 import requests
 
 from config import SETTINGS, TAIPEI
+from tw_report_only_quotes import ReportOnlyQuoteCollector
 
 
 LOG = logging.getLogger(__name__)
@@ -183,6 +185,7 @@ def _field(row: dict[str, Any], *candidates: str) -> Any:
 
 def _parse_twse(
     stock_ids: set[str],
+    *, report_only: ReportOnlyQuoteCollector | None = None,
 ) -> tuple[dict[str, dict[str, Any]], ...]:
     prices: dict[str, dict[str, Any]] = {}
     institutions: dict[str, dict[str, Any]] = {}
@@ -200,6 +203,9 @@ def _parse_twse(
             "announcement": pool.submit(_safe_rows, f"{TWSE_BASE}/opendata/t187ap04_L"),
         }
         datasets = {name: job.result() for name, job in jobs.items()}
+
+    if report_only is not None:
+        report_only.observe("TWSE", datasets["price"])
 
     for row in datasets["price"]:
         sid = str(row.get("Code") or "").strip()
@@ -334,6 +340,7 @@ def _parse_twse(
 
 def _parse_tpex(
     stock_ids: set[str],
+    *, report_only: ReportOnlyQuoteCollector | None = None,
 ) -> tuple[dict[str, dict[str, Any]], ...]:
     prices: dict[str, dict[str, Any]] = {}
     institutions: dict[str, dict[str, Any]] = {}
@@ -352,6 +359,9 @@ def _parse_tpex(
             "announcement": pool.submit(_safe_rows, f"{TPEX_BASE}/mopsfin_t187ap04_O"),
         }
         datasets = {name: job.result() for name, job in jobs.items()}
+
+    if report_only is not None:
+        report_only.observe("TPEx", datasets["price"])
 
     for row in datasets["price"]:
         sid = str(row.get("SecuritiesCompanyCode") or "").strip()
@@ -639,6 +649,25 @@ def overlay_official_daily(
     return output.sort_index()
 
 
+def _invalidate_report_only_cache(cache_path: Path, payload: dict[str, Any]) -> None:
+    """Atomically replace only the auxiliary snapshot in an existing cache.
+
+    A failed auxiliary write must never truncate the formal cached data.
+    """
+    temporary_path = None
+    try:
+        with NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=cache_path.parent,
+            prefix=f".{cache_path.name}.report-only-", suffix=".tmp", delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            json.dump(payload, temporary, ensure_ascii=False, indent=2)
+        temporary_path.replace(cache_path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
 def fetch_taiwan_official_data(
     universe: list[dict[str, Any]],
     cache_path: Path | None = None,
@@ -669,14 +698,16 @@ def fetch_taiwan_official_data(
             "minimum_coverage_pct": MIN_INSTITUTION_COVERAGE_PCT,
         },
     }
+    report_only = ReportOnlyQuoteCollector()
+    cached_payload = None
     try:
         cached_payload = json.loads(cache_path.read_text(encoding="utf-8"))
         cached_data = cached_payload.get("data") or {}
     except (OSError, ValueError, TypeError):
         cached_data = {}
     try:
-        twse = _parse_twse(twse_ids) if twse_ids else ({}, {}, {}, {}, {})
-        tpex = _parse_tpex(tpex_ids) if tpex_ids else ({}, {}, {}, {}, {})
+        twse = _parse_twse(twse_ids, report_only=report_only) if twse_ids else ({}, {}, {}, {}, {})
+        tpex = _parse_tpex(tpex_ids, report_only=report_only) if tpex_ids else ({}, {}, {}, {}, {})
         result = {
             name: {**twse[index], **tpex[index]}
             for index, name in enumerate(
@@ -704,12 +735,25 @@ def fetch_taiwan_official_data(
         payload = {
             "updated_at": datetime.now(TAIPEI).isoformat(timespec="seconds"),
             "data": result,
+            "report_only_quotes": report_only.snapshot(
+                datetime.now(TAIPEI).isoformat(timespec="seconds")
+            ),
         }
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return result
     except Exception as exc:
         LOG.warning("Taiwan official data unavailable; using last cache: %s", exc)
+        # Preserve the formal cache and its original updated_at on failure, but
+        # invalidate any previous report-only snapshot. It is never a fallback.
+        if isinstance(cached_payload, dict) and "report_only_quotes" in cached_payload:
+            cached_payload["report_only_quotes"] = report_only.snapshot(
+                datetime.now(TAIPEI).isoformat(timespec="seconds"), refresh_failed=True
+            )
+            try:
+                _invalidate_report_only_cache(cache_path, cached_payload)
+            except OSError as cache_exc:
+                LOG.warning("Cannot invalidate report-only quotes; cache remains dated: %s", cache_exc)
         try:
             cached = cached_data
             # A cache is useful for slowly changing valuation/revenue context,
