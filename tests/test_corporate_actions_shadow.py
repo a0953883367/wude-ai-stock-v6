@@ -519,7 +519,10 @@ def test_workflow_is_shadow_only_and_runs_before_morning_report() -> None:
     assert 'cron: "0 18 * * 6"' in workflow
     assert "pull_request:" in workflow
     assert '- "watchlist.py"' in workflow
-    assert "configured 374-symbol contract changed unexpectedly" in workflow
+    assert "validate_corporate_census(search, load_watchlist(), report, registry)" in workflow
+    assert "load_json_unique" in workflow
+    assert "if actual != wanted:" in workflow
+    assert "if wanted != (374" not in workflow
     assert "Require official coverage or a declared degraded SEC source" in workflow
     assert 'degraded = set(summary.get("degraded_sources") or [])' in workflow
     assert "if blocking_failed:" in workflow
