@@ -98,7 +98,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python -m pip install pytest requests
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python -m pip install "requests>=2.32,<3"
@@ -184,7 +184,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
