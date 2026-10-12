@@ -1490,6 +1490,7 @@ def main() -> int:
         )
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         previous_analysis = {}
+    session_features_before_carry = features
     features, carried_symbols = _carry_forward_symbol_session_regressions(
         features,
         previous_analysis,
@@ -1504,6 +1505,15 @@ def main() -> int:
         )
     source_session_issues = _report_session_issues(features, previous_analysis)
     if source_session_issues:
+        from report_session_diagnostics import save_session_diagnostic_safely
+
+        save_session_diagnostic_safely(
+            SETTINGS.reports_dir.parent / ".run_diagnostics",
+            universe=universe, history=history,
+            official_prices=tw_official.get("prices", {}),
+            before_carry=session_features_before_carry, after_carry=features,
+            previous_payload=previous_analysis, period=args.period, checked_at=now,
+        )
         raise RuntimeError(
             "行情交易日完整性檢查失敗；禁止更新任何正式狀態："
             + "；".join(source_session_issues)

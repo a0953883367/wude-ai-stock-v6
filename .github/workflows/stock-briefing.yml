@@ -326,6 +326,15 @@ jobs:
             args+=(--no-telegram)
           fi
           python briefing.py "${args[@]}"
+      - name: Preserve date-only report guard diagnostic
+        if: ${{ failure() && steps.generate.outcome == 'failure' && hashFiles('.run_diagnostics/report_session_failure.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-session-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .run_diagnostics/report_session_failure.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Record stock notification suppression
         run: echo "Stock Telegram delivery disabled; original ChatGPT tasks manage their own delivery."
       - name: Check private US same-source daily history in memory
