@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-12T09:29:33+00:00",
+  "generated_at": "2026-10-12T11:54:23+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-12T17:29:31.102420+08:00",
+    "checked_at": "2026-10-12T19:54:20.863969+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-12T17:29:28.235485+08:00",
+    "checked_at": "2026-10-12T19:54:19.239828+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -318,8 +318,8 @@
       "2026-10-12:evening": {
         "period": "evening",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "generated_suppressed",
+        "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
       }
     },
     "data_incidents": {
@@ -436,8 +436,10 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
-        "reason": "current data requires silent refresh; no delivery receipt is created"
+        "status": "verified_fresh",
+        "reason": "current data requires silent refresh; no delivery receipt is created",
+        "verified_at": "2026-10-12T19:54:11.618028+08:00",
+        "report_updated_at": "2026-10-12 19:33:25"
       }
     },
     "us_direction_verification": {
@@ -488,8 +490,8 @@
           "reference",
           "research"
         ],
-        "files": 11,
-        "bytes": 110460,
+        "files": 10,
+        "bytes": 197826,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -542,7 +544,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 35/60 日、錯誤事件 738 筆、成熟學習 89574 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "summary": "已讀取影子證據：向前驗證 36/60 日、錯誤事件 744 筆、成熟學習 91686 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -552,14 +554,14 @@
           "model_unit_learning.json": true,
           "weekly_shadow_coach.json": true
         },
-        "validation_days": 35,
+        "validation_days": 36,
         "target_days": 60,
-        "eligible_samples": 1700,
-        "independent_error_events": 738,
+        "eligible_samples": 1731,
+        "independent_error_events": 744,
         "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 89574,
-        "active_shadow_trust_streams": 3,
+        "matured_learning_rows": 91686,
+        "active_shadow_trust_streams": 4,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
         "automatic_shadow_rollback_after_failures": 2,
@@ -810,7 +812,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.39,
+    "average_reduction_pct": 36.37,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
