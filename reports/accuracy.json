@@ -1,7 +1,7 @@
 {
   "audit_schema_version": 4,
   "methodology_version": 6,
-  "updated_at": "2026-10-12T11:19:56",
+  "updated_at": "2026-10-12T11:27:58",
   "immutable_rule": "同一市場與交易日只建立一次預測；結果只追加，不覆寫預測內容。",
   "integrity": {
     "verified": 62,
@@ -1828,9 +1828,9 @@
               },
               "2": {
                 "samples": 997,
-                "eligible_samples": 2895,
-                "abstain_samples": 1898,
-                "coverage_pct": 34.4,
+                "eligible_samples": 2894,
+                "abstain_samples": 1897,
+                "coverage_pct": 34.5,
                 "win_rate_pct": 43.7,
                 "avg_return_pct": -0.22,
                 "worst_return_pct": -15.26,
@@ -1864,8 +1864,8 @@
               },
               "5": {
                 "samples": 882,
-                "eligible_samples": 2506,
-                "abstain_samples": 1624,
+                "eligible_samples": 2505,
+                "abstain_samples": 1623,
                 "coverage_pct": 35.2,
                 "win_rate_pct": 48.6,
                 "avg_return_pct": 0.13,
@@ -1882,8 +1882,8 @@
               },
               "10": {
                 "samples": 658,
-                "eligible_samples": 1824,
-                "abstain_samples": 1166,
+                "eligible_samples": 1823,
+                "abstain_samples": 1165,
                 "coverage_pct": 36.1,
                 "win_rate_pct": 52.6,
                 "avg_return_pct": 1.06,
@@ -2791,12 +2791,12 @@
                 "avg_excess_return_pct": -1.11
               },
               "20": {
-                "samples": 116,
-                "eligible_samples": 455,
+                "samples": 115,
+                "eligible_samples": 454,
                 "abstain_samples": 339,
-                "coverage_pct": 25.5,
-                "win_rate_pct": 47.4,
-                "avg_return_pct": 0.11,
+                "coverage_pct": 25.3,
+                "win_rate_pct": 47.0,
+                "avg_return_pct": -0.01,
                 "worst_return_pct": -65.87,
                 "lowest_actual_return_pct": -65.87,
                 "highest_actual_return_pct": 48.36,
@@ -2804,9 +2804,9 @@
                 "sessions": 5,
                 "max_drawdown_pct": null,
                 "drawdown_basis": "多日報酬重疊，不計回撤",
-                "profit_factor": 1.02,
-                "benchmark_avg_return_pct": 2.05,
-                "avg_excess_return_pct": -1.94
+                "profit_factor": 1.0,
+                "benchmark_avg_return_pct": 2.11,
+                "avg_excess_return_pct": -2.12
               }
             },
             "buy_trigger": {
@@ -5787,7 +5787,7 @@
         },
         "2": {
           "samples": 1321,
-          "eligible_samples": 3825,
+          "eligible_samples": 3824,
           "sessions": 29,
           "coverage_pct": 34.5,
           "win_rate_pct": 44.7,
@@ -5813,7 +5813,7 @@
         },
         "5": {
           "samples": 1203,
-          "eligible_samples": 3429,
+          "eligible_samples": 3428,
           "sessions": 26,
           "coverage_pct": 35.1,
           "win_rate_pct": 43.2,
@@ -9546,7 +9546,7 @@
     ]
   },
   "data_quality": {
-    "valid_frozen_rows": 5172,
+    "valid_frozen_rows": 5171,
     "invalid_frozen_rows": 2071,
     "invalid_reason_counts": {
       "model_evidence": 2071,
@@ -16259,52 +16259,6 @@
       "captured_at": "2026-10-08 19:00:24",
       "source_session_date": "2026-10-08",
       "evaluated_session_date": "2026-10-12",
-      "symbol": "6829.TWO",
-      "name": "千附精密",
-      "cohort": "TW_STOCK",
-      "rank": 146,
-      "model_version": "V7-shadow",
-      "market_model": "TW-NEXT-V7",
-      "source_market_regime": "bull",
-      "source_market_regime_label": "多頭",
-      "source_close_price": 210.0,
-      "actual_open_price": 207.5,
-      "actual_high_price": 209.0,
-      "actual_low_price": 205.5,
-      "actual_close_price": 207.5,
-      "benchmark_return_pct": -0.0233,
-      "tracks": {
-        "overnight": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -1.1905,
-          "hit": null
-        },
-        "session": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": 0.0,
-          "hit": null
-        },
-        "full_day": {
-          "direction": "ABSTAIN",
-          "confidence": 0.0,
-          "actual_return_pct": -1.1905,
-          "hit": null
-        }
-      },
-      "stop_touched": false,
-      "target1_touched": false,
-      "target2_touched": false
-    },
-    {
-      "snapshot_id": "TW:2026-10-08",
-      "audit_schema_version": 4,
-      "validation_series": "current_v6",
-      "integrity": "verified",
-      "captured_at": "2026-10-08 19:00:24",
-      "source_session_date": "2026-10-08",
-      "evaluated_session_date": "2026-10-12",
       "symbol": "4540.TW",
       "name": "全球傳動",
       "cohort": "TW_STOCK",
@@ -18775,6 +18729,52 @@
           "confidence": 69.2,
           "actual_return_pct": -0.5952,
           "hit": false
+        }
+      },
+      "stop_touched": false,
+      "target1_touched": false,
+      "target2_touched": false
+    },
+    {
+      "snapshot_id": "TW:2026-10-07",
+      "audit_schema_version": 4,
+      "validation_series": "current_v6",
+      "integrity": "verified",
+      "captured_at": "2026-10-07 18:39:54",
+      "source_session_date": "2026-10-07",
+      "evaluated_session_date": "2026-10-08",
+      "symbol": "6442.TW",
+      "name": "光聖",
+      "cohort": "TW_STOCK",
+      "rank": 9,
+      "model_version": "V7-shadow",
+      "market_model": "TW-NEXT-V7",
+      "source_market_regime": "bull",
+      "source_market_regime_label": "多頭",
+      "source_close_price": 1815.0,
+      "actual_open_price": 1780.0,
+      "actual_high_price": 1790.0,
+      "actual_low_price": 1715.0,
+      "actual_close_price": 1785.0,
+      "benchmark_return_pct": -0.9897,
+      "tracks": {
+        "overnight": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.9284,
+          "hit": null
+        },
+        "session": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": 0.2809,
+          "hit": null
+        },
+        "full_day": {
+          "direction": "ABSTAIN",
+          "confidence": 0.0,
+          "actual_return_pct": -1.6529,
+          "hit": null
         }
       },
       "stop_touched": false,
