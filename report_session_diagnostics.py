@@ -79,6 +79,25 @@ def build_session_diagnostic(*, universe, history, official_prices,
         stages = {"downloaded_daily": _summary([
             _history_date(history.get(symbol), cohort[:2]) for symbol in symbols
         ])}
+        # Comparing raw index dates with actual priced sessions identifies
+        # Yahoo's non-price batch tails without exporting any row or value.
+        raw_tail_dates = []
+        unpriced_tail_count = 0
+        for symbol in symbols:
+            frame = history.get(symbol)
+            raw_date = None
+            if frame is not None and not frame.empty:
+                stamp = pd.Timestamp(frame.index[-1])
+                if not pd.isna(stamp):
+                    if stamp.tzinfo is not None:
+                        stamp = stamp.tz_convert(ZoneInfo(
+                            "Asia/Taipei" if cohort.startswith("TW_") else "America/New_York"
+                        ))
+                    raw_date = _date(stamp.date().isoformat())
+                unpriced_tail_count += int("close" not in frame or pd.isna(frame["close"].iloc[-1]))
+            raw_tail_dates.append(raw_date)
+        stages["downloaded_raw_tail_index"] = _summary(raw_tail_dates)
+        stages["downloaded_unpriced_tail_count"] = unpriced_tail_count
         for name, rows in (("features_before_carry", before),
                            ("features_after_carry", after), ("previous_formal", previous)):
             stages[name] = _summary([_date(rows.get(symbol, {}).get("official_session_date"))
