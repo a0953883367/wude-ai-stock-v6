@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-14T03:14:19.866741+08:00",
+  "checked_at": "2026-10-14T06:57:25.194318+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -279,9 +279,19 @@
     },
     "2026-10-14:morning": {
       "period": "morning",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-14T06:57:25.194318+08:00",
+          "guard_run_id": "38481144978",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "missing_fixed_generation",
+        "report_freshness"
+      ]
     },
     "2026-10-14:noon": {
       "period": "noon",
@@ -296,7 +306,12 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-14:morning",
+      "period": "morning"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -475,8 +490,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "blocked_evidence",
-      "reason": "mixed_or_missing_us_sessions"
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -493,8 +508,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "blocked_evidence",
+  "diagnosis": [
+    "report_freshness"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "blocked_evidence",
     "reason": "mixed_or_missing_us_sessions",
