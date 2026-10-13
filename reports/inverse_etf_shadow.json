@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-14 01:42:43",
+  "updated_at": "2026-10-14 06:58:33",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -699,6 +699,7 @@
           "signal_close": 37.09339904785156,
           "entry_open": 40.14500045776367,
           "observed_sessions": [
+            "2026-10-13",
             "2026-10-13"
           ],
           "outcomes": {
@@ -706,6 +707,12 @@
               "status": "valid",
               "session_date": "2026-10-13",
               "actual_etf_return_pct": -4.347,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
+              "status": "valid",
+              "session_date": "2026-10-13",
+              "actual_etf_return_pct": -6.788,
               "price_source": "inverse_etf_own_ohlc"
             }
           },
@@ -729,6 +736,7 @@
           "signal_close": 51.47999954223633,
           "entry_open": 53.189998626708984,
           "observed_sessions": [
+            "2026-10-13",
             "2026-10-13"
           ],
           "outcomes": {
@@ -736,6 +744,12 @@
               "status": "valid",
               "session_date": "2026-10-13",
               "actual_etf_return_pct": -2.35,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
+              "status": "valid",
+              "session_date": "2026-10-13",
+              "actual_etf_return_pct": -3.027,
               "price_source": "inverse_etf_own_ohlc"
             }
           },
@@ -745,41 +759,41 @@
       ],
       "current_candidates": [
         {
+          "group": "us_nasdaq",
+          "inverse_symbol": "SQQQ",
+          "inverse_name": "ProShares UltraPro Short QQQ",
+          "daily_target": -3,
+          "bear_score": 58.3,
+          "status": "waiting",
+          "constituent_count": 6,
+          "evidence": {
+            "coverage": 6,
+            "negative_breadth_pct": 100.0,
+            "median_change_pct": -0.28,
+            "breakdown_pct": 0.0
+          },
+          "product_session_change_pct": -1.55,
+          "product_opening_gap_pct": 2.65,
+          "product_volume_ratio_20d": 0.81,
+          "no_chase": false
+        },
+        {
           "group": "us_broad",
           "inverse_symbol": "SPXS",
           "inverse_name": "Direxion Daily S&P 500 Bear 3X",
           "daily_target": -3,
-          "bear_score": 68.6,
-          "status": "watch",
+          "bear_score": 57.0,
+          "status": "waiting",
           "constituent_count": 64,
           "evidence": {
             "coverage": 64,
-            "negative_breadth_pct": 85.9,
-            "median_change_pct": -1.19,
+            "negative_breadth_pct": 71.9,
+            "median_change_pct": -0.87,
             "breakdown_pct": 28.1
           },
-          "product_session_change_pct": -0.09,
+          "product_session_change_pct": -0.3,
           "product_opening_gap_pct": 0.34,
-          "product_volume_ratio_20d": 0.57,
-          "no_chase": false
-        },
-        {
-          "group": "us_semiconductor",
-          "inverse_symbol": "SOXS",
-          "inverse_name": "Direxion Daily Semiconductor Bear 3X",
-          "daily_target": -3,
-          "bear_score": 55.0,
-          "status": "waiting",
-          "constituent_count": 41,
-          "evidence": {
-            "coverage": 41,
-            "negative_breadth_pct": 75.6,
-            "median_change_pct": -1.02,
-            "breakdown_pct": 4.9
-          },
-          "product_session_change_pct": -4.35,
-          "product_opening_gap_pct": 7.95,
-          "product_volume_ratio_20d": 0.96,
+          "product_volume_ratio_20d": 0.97,
           "no_chase": false
         },
         {
@@ -787,37 +801,37 @@
           "inverse_symbol": "TECS",
           "inverse_name": "Direxion Daily Technology Bear 3X",
           "daily_target": -3,
-          "bear_score": 54.9,
+          "bear_score": 52.9,
           "status": "waiting",
           "constituent_count": 65,
           "evidence": {
             "coverage": 65,
-            "negative_breadth_pct": 73.8,
+            "negative_breadth_pct": 72.3,
             "median_change_pct": -0.71,
-            "breakdown_pct": 23.1
+            "breakdown_pct": 18.5
           },
-          "product_session_change_pct": -2.35,
+          "product_session_change_pct": -3.03,
           "product_opening_gap_pct": 3.52,
-          "product_volume_ratio_20d": 0.53,
+          "product_volume_ratio_20d": 0.75,
           "no_chase": false
         },
         {
-          "group": "us_nasdaq",
-          "inverse_symbol": "SQQQ",
-          "inverse_name": "ProShares UltraPro Short QQQ",
+          "group": "us_semiconductor",
+          "inverse_symbol": "SOXS",
+          "inverse_name": "Direxion Daily Semiconductor Bear 3X",
           "daily_target": -3,
-          "bear_score": 49.7,
+          "bear_score": 43.0,
           "status": "waiting",
-          "constituent_count": 6,
+          "constituent_count": 41,
           "evidence": {
-            "coverage": 6,
-            "negative_breadth_pct": 83.3,
-            "median_change_pct": -0.33,
-            "breakdown_pct": 0.0
+            "coverage": 41,
+            "negative_breadth_pct": 58.5,
+            "median_change_pct": -0.75,
+            "breakdown_pct": 7.3
           },
-          "product_session_change_pct": -1.12,
-          "product_opening_gap_pct": 2.65,
-          "product_volume_ratio_20d": 0.61,
+          "product_session_change_pct": -6.79,
+          "product_opening_gap_pct": 7.95,
+          "product_volume_ratio_20d": 1.2,
           "no_chase": false
         },
         {
@@ -831,12 +845,12 @@
           "evidence": {
             "coverage": 8,
             "negative_breadth_pct": 25.0,
-            "median_change_pct": 0.24,
+            "median_change_pct": 0.73,
             "breakdown_pct": 0.0
           },
-          "product_session_change_pct": -0.48,
+          "product_session_change_pct": -1.11,
           "product_opening_gap_pct": 0.04,
-          "product_volume_ratio_20d": 0.1,
+          "product_volume_ratio_20d": 0.63,
           "no_chase": false
         },
         {
@@ -851,9 +865,9 @@
             "coverage": 1,
             "reason": "樣本不足"
           },
-          "product_session_change_pct": 6.05,
+          "product_session_change_pct": 7.11,
           "product_opening_gap_pct": 2.04,
-          "product_volume_ratio_20d": 0.71,
+          "product_volume_ratio_20d": 0.97,
           "no_chase": true
         },
         {
@@ -868,9 +882,9 @@
             "coverage": 2,
             "reason": "樣本不足"
           },
-          "product_session_change_pct": -1.23,
+          "product_session_change_pct": -2.1,
           "product_opening_gap_pct": -1.34,
-          "product_volume_ratio_20d": 0.6,
+          "product_volume_ratio_20d": 0.83,
           "no_chase": false
         },
         {
@@ -885,9 +899,9 @@
             "coverage": 1,
             "reason": "樣本不足"
           },
-          "product_session_change_pct": 2.05,
+          "product_session_change_pct": 2.63,
           "product_opening_gap_pct": -1.8,
-          "product_volume_ratio_20d": 0.34,
+          "product_volume_ratio_20d": 0.5,
           "no_chase": false
         }
       ],
@@ -898,9 +912,9 @@
           "average_return_pct": -1.32
         },
         "2": {
-          "samples": 8,
-          "win_rate_pct": 25.0,
-          "average_return_pct": -0.795
+          "samples": 10,
+          "win_rate_pct": 20.0,
+          "average_return_pct": -1.618
         },
         "3": {
           "samples": 8,
