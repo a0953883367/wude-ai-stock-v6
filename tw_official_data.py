@@ -634,9 +634,23 @@ def overlay_official_daily(
     output.columns = [str(column).lower() for column in output.columns]
     if isinstance(output.index, pd.DatetimeIndex) and output.index.tz is not None:
         trade_date = trade_date.tz_localize(output.index.tz)
-    latest_date = pd.Timestamp(output.index[-1]).date()
+    # Yahoo batch alignment can leave later rows with no close but zero-valued
+    # corporate-action columns. They survive dropna(how="all") and are not
+    # daily price bars. Match build_features' non-null-close session basis;
+    # an empty tail must not veto a newer, actually observed official candle.
+    if "close" not in output:
+        return output
+    priced_positions = output["close"].notna().to_numpy().nonzero()[0]
+    if not len(priced_positions):
+        # One exchange snapshot cannot manufacture a historical price series.
+        return output
+    last_priced_position = int(priced_positions[-1])
+    latest_date = pd.Timestamp(output.index[last_priced_position]).date()
     if trade_date.date() < latest_date:
         return output
+    # Only discard the non-price tail of this local copy after the snapshot
+    # passes the non-regression comparison. Never alter the downloaded input.
+    output = output.iloc[:last_priced_position + 1].copy()
     target = output.index[-1] if trade_date.date() == latest_date else trade_date
     if target not in output.index:
         output.loc[target] = {column: float("nan") for column in output.columns}

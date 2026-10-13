@@ -133,3 +133,29 @@ def test_workflow_preserves_only_exact_date_diagnostic_on_failure():
     guard = source.split("if source_session_issues:", 1)[1].split('market = _stage(', 1)[0]
     assert guard.index("save_session_diagnostic_safely(") < guard.index("raise RuntimeError(")
     assert "行情交易日完整性檢查失敗；禁止更新任何正式狀態" in guard
+
+
+def test_raw_tail_dates_identify_unpriced_alignment_without_exporting_values():
+    args = inputs()
+    for symbol, frame in args["history"].items():
+        frame["dividends"] = 0.0
+        frame.loc[pd.Timestamp("2026-10-13"), ["close", "dividends"]] = [None, 0.0]
+    report = build_session_diagnostic(**args)
+    cohort = report["cohorts"]["TW_STOCK"]
+    assert cohort["downloaded_raw_tail_index"]["session_counts"] == {"2026-10-13": 10}
+    assert cohort["downloaded_unpriced_tail_count"] == 10
+    assert cohort["downloaded_daily"]["session_counts"] == {"2026-10-08": 8, "2026-10-12": 2}
+    text = json.dumps(report)
+    for forbidden in ("987654321", "SECRET_SENTINEL", "https://", "0.TW", "dividends"):
+        assert forbidden not in text
+
+
+def test_raw_tail_handles_absent_close_empty_and_timezone():
+    args = inputs()
+    args["history"]["0.TW"] = pd.DataFrame({"dividends": [0]}, index=pd.to_datetime(["2026-10-13"]))
+    args["history"]["1.TW"] = pd.DataFrame()
+    args["history"]["2.TW"] = pd.DataFrame({"close": [None]}, index=pd.to_datetime(["2026-10-12T17:00:00Z"]))
+    cohort = build_session_diagnostic(**args)["cohorts"]["TW_STOCK"]
+    assert cohort["downloaded_raw_tail_index"]["session_counts"]["2026-10-13"] == 2
+    assert cohort["downloaded_raw_tail_index"]["missing_or_invalid_count"] == 1
+    assert cohort["downloaded_unpriced_tail_count"] == 2

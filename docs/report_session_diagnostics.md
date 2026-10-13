@@ -26,3 +26,22 @@ change improves evidence for a subsequent original scheduled attempt. It does
 not repair an upstream missing trading day and is not evidence of recovery.
 Do not mark recovery complete based on passing code CI or a morning report
 that correctly carries a previously validated Taiwan close.
+
+## Non-price alignment tails
+
+The diagnostic also compares the raw downloaded tail-index dates with the last
+non-null close dates and counts unpriced tails. These remain aggregate dates
+and counts, without symbols, prices, corporate-action values or raw rows.
+
+The Taiwan official overlay compares against the last non-null close, matching
+feature construction, rather than a later action-only/empty-price index row.
+It trims only that trailing non-price region of its local copy after the
+snapshot passes the existing non-regression comparison. A genuinely newer
+priced bar is never replaced by an older official snapshot. Missing priced
+history cannot be manufactured from a single official snapshot.
+
+This fixes an independently reproduced selection edge case. Run 479 did not
+capture raw tail-index dates, so that run alone does not prove it encountered
+this edge case. An official 2026-10-12 bar still cannot pass the report guard
+against an accepted 2026-10-13 state. Upstream completeness and recovery must
+be verified independently on an original scheduled run; no rerun is implied.
