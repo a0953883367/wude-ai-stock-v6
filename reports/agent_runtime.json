@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-14T05:03:57+00:00",
+  "generated_at": "2026-10-14T07:50:08+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-14T10:01:16.107904+08:00",
+    "checked_at": "2026-10-14T15:50:06.803704+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-14T10:01:15.036527+08:00",
+    "checked_at": "2026-10-14T15:50:03.911791+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -358,8 +358,8 @@
       "2026-10-14:noon": {
         "period": "noon",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-10-14:evening": {
         "period": "evening",
@@ -538,6 +538,18 @@
         "reason": "current data requires silent refresh; no delivery receipt is created",
         "verified_at": "2026-10-14T10:01:08.155499+08:00",
         "report_updated_at": "2026-10-14 09:13:12"
+      },
+      "2026-10-14:noon": {
+        "period": "noon",
+        "attempts": [
+          {
+            "at": "2026-10-14T15:49:56.680091+08:00",
+            "guard_run_id": "38530878347",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
