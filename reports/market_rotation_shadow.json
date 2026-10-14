@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-14 17:00:09",
+  "updated_at": "2026-10-14 17:07:59",
   "mode": "forward_shadow_only",
   "policy": {
     "baseline": "A組＝正式V6短線排序；只讀取、不修改",
@@ -64893,9 +64893,9 @@
           "market": "TW",
           "session_date": "2026-10-14",
           "universe_scope": "current_analyzed_stock_universe",
-          "stock_count": 159,
+          "stock_count": 158,
           "market_median_change_pct": 1.42,
-          "market_breadth_up_pct": 72.96,
+          "market_breadth_up_pct": 72.78,
           "market_state": "broad_bull",
           "market_state_label": "普漲多頭",
           "hot_sector_count": 7,
@@ -65532,32 +65532,6 @@
               "stage_reason": "尚未形成可確認的點火、擴散或退潮"
             },
             {
-              "industry": "IC設計服務",
-              "member_count": 2,
-              "eligible": true,
-              "median_change_pct": -0.37,
-              "up_ratio_pct": 50.0,
-              "median_volume_ratio": 0.935,
-              "volume_confirmation_pct": 0.0,
-              "relative_strength_score": 35.68,
-              "breadth_score": 50.0,
-              "volume_score": 26.25,
-              "market_specific_evidence_score": 50.0,
-              "leadership_score": 35.0,
-              "leader_count": 0,
-              "co_movement_count": 1,
-              "three_stock_co_movement": false,
-              "base_rotation_score": 39.42,
-              "daily_flow_score": 50.4,
-              "daily_flow_status": "linked",
-              "daily_flow_member_count": 2,
-              "daily_flow_expected_members": 2,
-              "daily_flow_link_basis": "member_symbols",
-              "rotation_score": 41.07,
-              "stage": "neutral",
-              "stage_reason": "尚未形成可確認的點火、擴散或退潮"
-            },
-            {
               "industry": "機器人",
               "member_count": 6,
               "eligible": true,
@@ -66014,6 +65988,32 @@
               "leadership_score": 100.0,
               "leader_count": 1,
               "co_movement_count": 1,
+              "three_stock_co_movement": false,
+              "base_rotation_score": null,
+              "daily_flow_score": null,
+              "daily_flow_status": "not_available",
+              "daily_flow_member_count": 1,
+              "daily_flow_expected_members": 1,
+              "daily_flow_link_basis": "member_symbols",
+              "rotation_score": null,
+              "stage": "insufficient_members",
+              "stage_reason": "同產業不足2檔，不使用輪動加權"
+            },
+            {
+              "industry": "IC設計服務",
+              "member_count": 1,
+              "eligible": false,
+              "median_change_pct": -2.59,
+              "up_ratio_pct": 0.0,
+              "median_volume_ratio": 0.88,
+              "volume_confirmation_pct": 0.0,
+              "relative_strength_score": 17.92,
+              "breadth_score": 0.0,
+              "volume_score": 25.19,
+              "market_specific_evidence_score": 0.0,
+              "leadership_score": 35.0,
+              "leader_count": 0,
+              "co_movement_count": 0,
               "three_stock_co_movement": false,
               "base_rotation_score": null,
               "daily_flow_score": null,
@@ -67118,13 +67118,13 @@
               "stage_reason": "同產業不足2檔，不使用輪動加權"
             }
           ],
-          "integrity_sha256": "2f977a94e6421814132c2104dd29e34adb9c27d2c3799929007307896411b21a"
+          "integrity_sha256": "d8b56f3e74d2d16dbf5d7d5c73058957c79eedcecbbb1f6f2f40d1335a245a85"
         }
       ],
       "pending": {
         "signal_session_date": "2026-10-14",
-        "created_at": "2026-10-14 17:00:09",
-        "snapshot_integrity_sha256": "2f977a94e6421814132c2104dd29e34adb9c27d2c3799929007307896411b21a",
+        "created_at": "2026-10-14 17:07:59",
+        "snapshot_integrity_sha256": "d8b56f3e74d2d16dbf5d7d5c73058957c79eedcecbbb1f6f2f40d1335a245a85",
         "settlement_status": "waiting_next_completed_session",
         "models": {
           "baseline": {
@@ -67440,50 +67440,6 @@
               },
               {
                 "rank": 8,
-                "symbol": "3443.TW",
-                "name": "創意",
-                "industry": "IC設計服務",
-                "rank_tier": 1,
-                "base_score": 66.1,
-                "shadow_score": 66.1,
-                "rotation_score": 41.07,
-                "rotation_stage": "neutral",
-                "tw_five_condition": {
-                  "market": "TW",
-                  "passed_count": 2,
-                  "available_count": 5,
-                  "strict_5of5": false,
-                  "practical_4of5": false,
-                  "status": "not_qualified",
-                  "distribution_blocked": false,
-                  "conditions": {
-                    "industry_strengthening": {
-                      "passed": false,
-                      "available": true
-                    },
-                    "three_stock_co_movement": {
-                      "passed": false,
-                      "available": true
-                    },
-                    "volume_breakout": {
-                      "passed": false,
-                      "available": true
-                    },
-                    "institution_consecutive_buy": {
-                      "passed": true,
-                      "available": true
-                    },
-                    "not_overextended": {
-                      "passed": true,
-                      "available": true
-                    }
-                  }
-                },
-                "signal_close_price": 8245.0,
-                "allocation_twd": 100000
-              },
-              {
-                "rank": 9,
                 "symbol": "6271.TW",
                 "name": "同欣電",
                 "industry": "半導體封測",
@@ -67527,7 +67483,7 @@
                 "allocation_twd": 100000
               },
               {
-                "rank": 10,
+                "rank": 9,
                 "symbol": "1802.TW",
                 "name": "台玻",
                 "industry": "玻璃基板",
@@ -67568,6 +67524,50 @@
                   }
                 },
                 "signal_close_price": 67.0,
+                "allocation_twd": 100000
+              },
+              {
+                "rank": 10,
+                "symbol": "6869.TW",
+                "name": "雲豹能源",
+                "industry": "綠能售電",
+                "rank_tier": 1,
+                "base_score": 64.7,
+                "shadow_score": 64.7,
+                "rotation_score": 55.62,
+                "rotation_stage": "neutral",
+                "tw_five_condition": {
+                  "market": "TW",
+                  "passed_count": 2,
+                  "available_count": 5,
+                  "strict_5of5": false,
+                  "practical_4of5": false,
+                  "status": "not_qualified",
+                  "distribution_blocked": false,
+                  "conditions": {
+                    "industry_strengthening": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "three_stock_co_movement": {
+                      "passed": false,
+                      "available": true
+                    },
+                    "volume_breakout": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "institution_consecutive_buy": {
+                      "passed": true,
+                      "available": true
+                    },
+                    "not_overextended": {
+                      "passed": false,
+                      "available": true
+                    }
+                  }
+                },
+                "signal_close_price": 70.2,
                 "allocation_twd": 100000
               }
             ]
@@ -101386,56 +101386,6 @@
                   "opening_gap_invalidated": false
                 },
                 {
-                  "rank": 2,
-                  "symbol": "3443.TW",
-                  "name": "創意",
-                  "industry": "IC設計服務",
-                  "rank_tier": 1,
-                  "base_score": 59.6,
-                  "shadow_score": 59.6,
-                  "rotation_score": 35.64,
-                  "rotation_stage": "ebb",
-                  "tw_five_condition": {
-                    "market": "TW",
-                    "passed_count": 2,
-                    "available_count": 5,
-                    "strict_5of5": false,
-                    "practical_4of5": false,
-                    "status": "not_qualified",
-                    "distribution_blocked": false,
-                    "conditions": {
-                      "industry_strengthening": {
-                        "passed": false,
-                        "available": true
-                      },
-                      "three_stock_co_movement": {
-                        "passed": false,
-                        "available": true
-                      },
-                      "volume_breakout": {
-                        "passed": false,
-                        "available": true
-                      },
-                      "institution_consecutive_buy": {
-                        "passed": true,
-                        "available": true
-                      },
-                      "not_overextended": {
-                        "passed": true,
-                        "available": true
-                      }
-                    }
-                  },
-                  "signal_close_price": 8095.0,
-                  "allocation_twd": 100000,
-                  "open_price": 8160.0,
-                  "close_price": 8245.0,
-                  "gross_return_pct": 1.0417,
-                  "net_return_pct": 0.3567,
-                  "opening_gap_pct": 0.803,
-                  "opening_gap_invalidated": false
-                },
-                {
                   "rank": 3,
                   "symbol": "6271.TW",
                   "name": "同欣電",
@@ -101836,16 +101786,18 @@
                   "opening_gap_invalidated": false
                 }
               ],
-              "executed_positions": 10,
+              "executed_positions": 9,
               "planned_positions": 10,
               "minimum_required_positions": 9,
-              "missing_symbols": [],
-              "nine_of_ten_settlement": false,
-              "invested_twd": 1000000,
-              "idle_twd": 0,
-              "gross_profit_twd": 22302.89,
-              "net_profit_twd": 15452.89,
-              "net_return_pct": 1.5453
+              "missing_symbols": [
+                "3443.TW"
+              ],
+              "nine_of_ten_settlement": true,
+              "invested_twd": 900000,
+              "idle_twd": 100000,
+              "gross_profit_twd": 21261.23,
+              "net_profit_twd": 15096.23,
+              "net_return_pct": 1.5096
             },
             "rotation": {
               "label": "B｜市場規則＋輪動15%",
@@ -101898,56 +101850,6 @@
                   "gross_return_pct": 11.8547,
                   "net_return_pct": 11.1697,
                   "opening_gap_pct": -1.6917,
-                  "opening_gap_invalidated": false
-                },
-                {
-                  "rank": 2,
-                  "symbol": "3443.TW",
-                  "name": "創意",
-                  "industry": "IC設計服務",
-                  "rank_tier": 1,
-                  "base_score": 59.6,
-                  "shadow_score": 56.01,
-                  "rotation_score": 35.64,
-                  "rotation_stage": "ebb",
-                  "tw_five_condition": {
-                    "market": "TW",
-                    "passed_count": 2,
-                    "available_count": 5,
-                    "strict_5of5": false,
-                    "practical_4of5": false,
-                    "status": "not_qualified",
-                    "distribution_blocked": false,
-                    "conditions": {
-                      "industry_strengthening": {
-                        "passed": false,
-                        "available": true
-                      },
-                      "three_stock_co_movement": {
-                        "passed": false,
-                        "available": true
-                      },
-                      "volume_breakout": {
-                        "passed": false,
-                        "available": true
-                      },
-                      "institution_consecutive_buy": {
-                        "passed": true,
-                        "available": true
-                      },
-                      "not_overextended": {
-                        "passed": true,
-                        "available": true
-                      }
-                    }
-                  },
-                  "signal_close_price": 8095.0,
-                  "allocation_twd": 100000,
-                  "open_price": 8160.0,
-                  "close_price": 8245.0,
-                  "gross_return_pct": 1.0417,
-                  "net_return_pct": 0.3567,
-                  "opening_gap_pct": 0.803,
                   "opening_gap_invalidated": false
                 },
                 {
@@ -102351,16 +102253,18 @@
                   "opening_gap_invalidated": false
                 }
               ],
-              "executed_positions": 10,
+              "executed_positions": 9,
               "planned_positions": 10,
               "minimum_required_positions": 9,
-              "missing_symbols": [],
-              "nine_of_ten_settlement": false,
-              "invested_twd": 1000000,
-              "idle_twd": 0,
-              "gross_profit_twd": 23228.38,
-              "net_profit_twd": 16378.38,
-              "net_return_pct": 1.6378
+              "missing_symbols": [
+                "3443.TW"
+              ],
+              "nine_of_ten_settlement": true,
+              "invested_twd": 900000,
+              "idle_twd": 100000,
+              "gross_profit_twd": 22186.71,
+              "net_profit_twd": 16021.71,
+              "net_return_pct": 1.6022
             },
             "strict_5of5": {
               "label": "台股嚴格5／5研究條件符合（不等於可買）",
@@ -102391,34 +102295,34 @@
               "net_return_pct": 0.0
             }
           },
-          "incremental_net_profit_twd": 925.49
+          "incremental_net_profit_twd": 925.48
         }
       ],
       "summary": {
         "valid_trading_days": 30,
         "invalid_trading_days": 1,
-        "baseline_net_profit_twd": -426459.18,
-        "rotation_net_profit_twd": -380326.91,
-        "rotation_incremental_net_profit_twd": 46132.27,
-        "baseline_net_return_pct": -42.6459,
-        "rotation_net_return_pct": -38.0327,
+        "baseline_net_profit_twd": -426815.84,
+        "rotation_net_profit_twd": -380683.58,
+        "rotation_incremental_net_profit_twd": 46132.26,
+        "baseline_net_return_pct": -42.6816,
+        "rotation_net_return_pct": -38.0684,
         "strict_5of5_net_profit_twd": -12091.47,
         "practical_4of5_net_profit_twd": -67725.46,
         "review_status": "preliminary_review",
         "formal_ranking_locked": true,
         "model_metrics": {
           "baseline": {
-            "samples": 300,
-            "win_rate_pct": 25.6667,
-            "misjudgment_rate_pct": 74.3333,
-            "avg_net_return_pct": -1.4215,
+            "samples": 299,
+            "win_rate_pct": 25.4181,
+            "misjudgment_rate_pct": 74.5819,
+            "avg_net_return_pct": -1.4275,
             "opening_gap_invalidated": 22
           },
           "rotation": {
-            "samples": 300,
-            "win_rate_pct": 28.3333,
-            "misjudgment_rate_pct": 71.6667,
-            "avg_net_return_pct": -1.2678,
+            "samples": 299,
+            "win_rate_pct": 28.0936,
+            "misjudgment_rate_pct": 71.9064,
+            "avg_net_return_pct": -1.2732,
             "opening_gap_invalidated": 22
           },
           "strict_5of5": {
