@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-10-13T02:34:56.422595+00:00",
+  "generated_at": "2026-10-14T00:17:23.633191+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 380,
@@ -10,7 +10,7 @@
     "officially_matched_stocks": 312,
     "officially_matched_etfs": 67,
     "unmatched": 1,
-    "event_count": 3,
+    "event_count": 1,
     "warning_count": 1,
     "critical_count": 0,
     "source_failure_count": 1,
@@ -27,39 +27,13 @@
       "type": "MERGER_OR_SHARE_EXCHANGE",
       "label": "合併／換股",
       "level": "warning",
-      "symbol": "1303.TW",
+      "symbol": "2467.TW",
       "asset_type": "STOCK",
       "source": "twse_announcements",
-      "source_date": "1151012",
-      "headline": "公告本公司2026年9月合併營業額",
+      "source_date": "1151013",
+      "headline": "公告本公司115年Q3累計合併稅後自結損益",
       "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
-      "event_id": "dd00432331f6771b0b06",
-      "requires_manual_approval": true
-    },
-    {
-      "type": "NAME_CHANGE",
-      "label": "公司更名",
-      "level": "info",
-      "symbol": "0053.TW",
-      "entity_id": "TW-ISSUE-TWSE-0053",
-      "old_name": "元大電子",
-      "new_name": "元大科技市值",
-      "source": "twse_securities",
-      "action": "僅建立顯示名稱更新候選；歷史價格、預測與學習紀錄保持原代號接續",
-      "event_id": "d82c7e297319f2fef7eb",
-      "requires_manual_approval": true
-    },
-    {
-      "type": "TRADING_RESUMED",
-      "label": "恢復交易",
-      "level": "info",
-      "symbol": "IONQ",
-      "asset_type": "STOCK",
-      "source": "nasdaq_halts",
-      "source_date": "10/12/2026",
-      "headline": "IONQ",
-      "action": "只解除影子暫停標記；下一個有效交易日重新抓取，不回填不存在的成交價",
-      "event_id": "05520678bbcb070caaad",
+      "event_id": "c7b30f729c54a3cd9a63",
       "requires_manual_approval": true
     }
   ],
@@ -83,11 +57,11 @@
     "sec_registry": {
       "ok": false,
       "record_count": 0,
-      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 35.6 days exceeds 7"
+      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 36.5 days exceeds 7"
     },
     "twse_securities": {
       "ok": true,
-      "record_count": 1381,
+      "record_count": 1382,
       "error": "",
       "url": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
       "mode": "live",
@@ -100,7 +74,7 @@
     },
     "tpex_emerging_securities": {
       "ok": true,
-      "record_count": 362,
+      "record_count": 365,
       "error": "",
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics",
       "mode": "live",
@@ -118,7 +92,7 @@
     },
     "us_symbol_directory": {
       "ok": true,
-      "record_count": 13259,
+      "record_count": 13248,
       "error": "",
       "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
       "mode": "live",
@@ -126,20 +100,20 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 102,
-      "event_count": 7,
+      "record_count": 67,
+      "event_count": 2,
       "error": ""
     },
     "tpex_announcements": {
       "ok": true,
-      "record_count": 2,
-      "event_count": 0,
+      "record_count": 50,
+      "event_count": 2,
       "error": ""
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 115,
-      "event_count": 115,
+      "record_count": 75,
+      "event_count": 75,
       "error": ""
     }
   },
