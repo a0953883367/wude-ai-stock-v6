@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-14T17:28:53.927032+08:00",
+  "checked_at": "2026-10-14T21:53:10.261912+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -301,12 +301,27 @@
     },
     "2026-10-14:evening": {
       "period": "evening",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-14T21:53:10.261912+08:00",
+          "guard_run_id": "38575537730",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "missing_fixed_generation",
+        "report_freshness"
+      ]
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-14:evening",
+      "period": "evening"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -508,6 +523,12 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-14T17:28:47.934802+08:00",
       "report_updated_at": "2026-10-14 17:16:19"
+    },
+    "2026-10-14:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -524,8 +545,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "report_freshness"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",

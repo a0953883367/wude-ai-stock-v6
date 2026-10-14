@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-14T17:28:55+08:00",
+  "checked_at": "2026-10-14T21:53:08+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-14 17:16:19",
-  "report_age_minutes": 12.6,
+  "report_age_minutes": 276.8,
   "counts": {
-    "ok": 27,
-    "info": 11,
-    "warning": 1,
+    "ok": 28,
+    "info": 9,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -40,9 +40,17 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近更新距今 4.6 小時",
+      "action": "若已跨過下一個排程時間，檢查排程是否延遲"
+    },
+    {
+      "code": "report_period_alignment",
+      "title": "晚報時段同步",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 13 分鐘",
+      "detail": "20:00 後的最新固定報表已是 evening",
       "action": ""
     },
     {
@@ -285,16 +293,16 @@
       "title": "美股即時串流",
       "level": "ok",
       "label": "正常",
-      "detail": "盤前已連線，訂閱 188 檔",
+      "detail": "正式盤已連線，訂閱 188 檔",
       "action": ""
     },
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
-      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近一次已送達：2026-10-14T13:53:02+00:00",
+      "action": ""
     },
     {
       "code": "device_authorization",
@@ -323,14 +331,16 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "info",
-      "label": "資訊",
+      "level": "warning",
+      "label": "注意",
       "detail": "最近執行 2026-10-14T17:28:53.927032+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
-    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定"
+    "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "若已跨過下一個排程時間，檢查排程是否延遲",
+    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
   ],
   "safety": {
     "changes_rankings": false,
