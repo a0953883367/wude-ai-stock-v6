@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-13T22:57:35+00:00",
+  "generated_at": "2026-10-14T01:11:59+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-14T06:57:34.677225+08:00",
+    "checked_at": "2026-10-14T09:11:57.680597+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-14T06:57:31.970290+08:00",
+    "checked_at": "2026-10-14T09:11:55.059015+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -348,8 +348,8 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
-        "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+        "status": "generated_suppressed",
+        "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
         "diagnosis": [
           "missing_fixed_generation",
           "report_freshness"
@@ -527,20 +527,27 @@
             "at": "2026-10-14T01:41:16.194956+08:00",
             "guard_run_id": "38440607530",
             "state": "dispatch_accepted"
+          },
+          {
+            "at": "2026-10-14T09:11:49.490855+08:00",
+            "guard_run_id": "38494350367",
+            "state": "dispatch_accepted"
           }
         ],
-        "status": "waiting_primary_or_active_run",
+        "status": "awaiting_verification",
         "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
-      "status": "blocked_evidence",
-      "reason": "mixed_or_missing_us_sessions",
+      "status": "verified_current",
+      "reason": "immutable_eligible_snapshot_matches_official_session",
       "needs_silent_refresh": false,
-      "verified_recovered": false,
-      "last_source_session_date": "",
-      "latest_official_session_date": "",
-      "historical_backfill_allowed": false
+      "verified_recovered": true,
+      "last_source_session_date": "2026-10-13",
+      "latest_official_session_date": "2026-10-13",
+      "historical_backfill_allowed": false,
+      "snapshot_id": "US:2026-10-13",
+      "captured_at": "2026-10-14 06:58:33"
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
@@ -580,7 +587,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 114474,
+        "bytes": 114047,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -645,7 +652,7 @@
         },
         "validation_days": 37,
         "target_days": 60,
-        "eligible_samples": 1801,
+        "eligible_samples": 1804,
         "independent_error_events": 784,
         "guard_status": "warning",
         "learning_units": 11,
