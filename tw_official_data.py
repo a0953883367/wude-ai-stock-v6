@@ -685,6 +685,7 @@ def _invalidate_report_only_cache(cache_path: Path, payload: dict[str, Any]) -> 
 def fetch_taiwan_official_data(
     universe: list[dict[str, Any]],
     cache_path: Path | None = None,
+    *, use_open_data_fallback: bool = False,
 ) -> dict[str, Any]:
     """Fetch official completed-session data for all maintained Taiwan symbols."""
     cache_path = cache_path or (SETTINGS.reports_dir / "tw_official_cache.json")
@@ -728,6 +729,11 @@ def fetch_taiwan_official_data(
                 ("prices", "institutions", "credit", "fundamentals", "announcements")
             )
         }
+        if use_open_data_fallback and twse_ids:
+            from tw_open_data_fallback import supplement_twse_prices
+            result["prices"], result["price_fallback_status"] = supplement_twse_prices(
+                result["prices"], twse_ids, SETTINGS.reports_dir / "official_market_calendar.json"
+            )
         result["institution_status"] = _institution_source_status(
             twse_ids, tpex_ids, twse[1], tpex[1]
         )

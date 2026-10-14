@@ -108,7 +108,7 @@ def tw_official_daily_metadata(frame: pd.DataFrame, snapshot: dict[str, Any]) ->
         source_session, source_values = None, None
     matches = bool(
         snapshot.get("tw_official_price_available") is True
-        and snapshot.get("tw_price_source") in {"TWSE OpenAPI", "TPEx OpenAPI"}
+        and snapshot.get("tw_price_source") in {"TWSE OpenAPI", "TPEx OpenAPI", "TWSE Open Data"}
         and snapshot.get("tw_price_unit") == "TWD/shares"
         and session and session == source_session
         and values is not None and values == source_values

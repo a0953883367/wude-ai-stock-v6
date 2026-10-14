@@ -1372,7 +1372,9 @@ def main() -> int:
             "fundamentals": {}, "announcements": {},
         }
         if freeze_tw_prices
-        else _stage("台股官方資料", lambda: fetch_taiwan_official_data(universe))
+        else _stage("台股官方資料", lambda: fetch_taiwan_official_data(
+            universe, use_open_data_fallback=True
+        ))
     )
     institutions = merge_official_with_fallback(
         institutions, tw_official.get("institutions", {}), kind="institution"
@@ -1458,6 +1460,7 @@ def main() -> int:
                         ),
                         "tw_official_session_date": official_price.get("date"),
                         "tw_price_source": official_price.get("tw_price_source"),
+                        "tw_price_source_url": official_price.get("tw_price_source_url"),
                         "tw_price_unit": official_price.get("tw_price_unit"),
                         **tw_official_daily_metadata(daily, official_price),
                     })
