@@ -159,3 +159,16 @@ def test_raw_tail_handles_absent_close_empty_and_timezone():
     assert cohort["downloaded_raw_tail_index"]["session_counts"]["2026-10-13"] == 2
     assert cohort["downloaded_raw_tail_index"]["missing_or_invalid_count"] == 1
     assert cohort["downloaded_unpriced_tail_count"] == 2
+
+
+def test_source_breakdown_is_allowlisted_and_contains_only_dates_counts():
+    args = inputs()
+    args['official_prices']['0'].update(tw_price_source='TWSE Open Data', date='2026-10-13')
+    args['official_prices']['1'].update(tw_price_source='TWSE OpenAPI')
+    args['official_prices']['2'].update(tw_price_source='https://secret/token')
+    report = build_session_diagnostic(**args)
+    breakdown = report['official_daily_by_source']
+    assert set(breakdown) == {'TWSE OpenAPI','TPEx OpenAPI','TWSE Open Data'}
+    assert breakdown['TWSE Open Data']['session_counts'] == {'2026-10-13':1}
+    assert breakdown['TWSE OpenAPI']['dated_count'] == 1
+    assert 'https://' not in json.dumps(report)

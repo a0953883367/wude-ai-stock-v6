@@ -127,6 +127,11 @@ def build_session_diagnostic(*, universe, history, official_prices,
         "raw_prices_included": False,
         "cohorts": cohorts,
         "official_daily": {name: _summary(values) for name, values in official.items()},
+        "official_daily_by_source": {
+            source: _summary([_date(row.get("date")) for row in official_prices.values()
+                              if isinstance(row, dict) and row.get("tw_price_source") == source])
+            for source in ("TWSE OpenAPI", "TPEx OpenAPI", "TWSE Open Data")
+        },
     }
 
 
