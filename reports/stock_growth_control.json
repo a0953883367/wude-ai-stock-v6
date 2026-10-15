@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-15T17:07:23+08:00",
+  "updated_at": "2026-10-15T17:10:25+08:00",
   "system": "股票成長控制塔 V1",
-  "status": "blocked",
-  "light": "red",
-  "status_label": "阻擋",
+  "status": "attention",
+  "light": "yellow",
+  "status_label": "注意",
   "detail": "七階段流程與六層監控已統一。",
   "summary": {
     "workflow_stages": 7,
@@ -19,19 +19,19 @@
       "id": "data_ingestion",
       "order": 1,
       "label": "資料進站",
-      "status": "blocked",
-      "light": "red",
-      "status_label": "阻擋",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "台股、美股、ETF 與官方資料先進入獨立資料層。"
     },
     {
       "id": "quality_gate",
       "order": 2,
       "label": "品質檢查",
-      "status": "blocked",
-      "light": "red",
-      "status_label": "阻擋",
-      "detail": "系統值班檢查：異常 2 項、注意 2 項。"
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
+      "detail": "系統值班檢查：異常 0 項、注意 1 項。"
     },
     {
       "id": "formal_v6",
@@ -85,9 +85,9 @@
     {
       "id": "data",
       "label": "資料監控",
-      "status": "blocked",
-      "light": "red",
-      "status_label": "阻擋",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "完整度、來源、更新時間與缺值隔離。"
     },
     {
@@ -109,9 +109,9 @@
     {
       "id": "system",
       "label": "系統監控",
-      "status": "blocked",
-      "light": "red",
-      "status_label": "阻擋",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "GitHub Actions、主 App、Railway 與通知分開判斷。"
     },
     {
@@ -162,7 +162,7 @@
       "formal_validation_target": 60,
       "formal_progress_pct": 65.0,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 39/60；目前只可初評，不可畢業；有效交易日最少 25/10",
+      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 39/60；目前只可初評，不可畢業；有效交易日最少 24/10",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -254,9 +254,9 @@
   ],
   "action_queue": [
     {
-      "priority": "urgent",
-      "title": "先修復資料或系統異常",
-      "detail": "紅燈解除前停止採用新的影子結論。"
+      "priority": "review",
+      "title": "查看系統值班注意項",
+      "detail": "正式 V6 維持不變，先確認黃色項目。"
     },
     {
       "priority": "wait",
@@ -418,6 +418,20 @@
       "type": "control_layer_change",
       "level": "warning",
       "created_at": "2026-10-15T15:36:00+08:00",
+      "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
+    },
+    {
+      "id": "layer:data:attention:2026-10-15T17:10:25+08:00",
+      "type": "control_layer_change",
+      "level": "warning",
+      "created_at": "2026-10-15T17:10:25+08:00",
+      "message": "🟡 股票成長控制塔：資料監控變為注意。完整度、來源、更新時間與缺值隔離。"
+    },
+    {
+      "id": "layer:system:attention:2026-10-15T17:10:25+08:00",
+      "type": "control_layer_change",
+      "level": "warning",
+      "created_at": "2026-10-15T17:10:25+08:00",
       "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
     }
   ]
