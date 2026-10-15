@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-16T02:29:25+08:00",
+  "checked_at": "2026-10-16T06:31:29+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-16 02:27:05",
-  "report_age_minutes": 2.3,
+  "report_age_minutes": 244.4,
   "counts": {
-    "ok": 28,
+    "ok": 27,
     "info": 10,
-    "warning": 1,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 2 分鐘",
+      "detail": "最近更新距今 244 分鐘",
       "action": ""
     },
     {
@@ -98,7 +98,7 @@
       "title": "美股方向原始帳本",
       "level": "warning",
       "label": "注意",
-      "detail": "行情 2026-10-15；已驗證帳本 2026-10-14；source_session_not_closed",
+      "detail": "行情 2026-10-15；已驗證帳本 2026-10-14；direction_receipt_missing_inside_forecast_window",
       "action": "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測"
     },
     {
@@ -283,9 +283,9 @@
     {
       "code": "stream_us",
       "title": "美股即時串流",
-      "level": "ok",
-      "label": "正常",
-      "detail": "正式盤已連線，訂閱 188 檔",
+      "level": "info",
+      "label": "資訊",
+      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
       "action": ""
     },
     {
@@ -293,7 +293,7 @@
       "title": "Telegram 即時通知",
       "level": "ok",
       "label": "正常",
-      "detail": "最近一次已送達：2026-10-15T18:28:56+00:00",
+      "detail": "最近一次已送達：2026-10-15T19:59:51+00:00",
       "action": ""
     },
     {
@@ -317,20 +317,21 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近執行 2026-10-16T02:25:49.556007+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近執行 2026-10-16T02:25:55.944550+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
-    "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測"
+    "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測",
+    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
   ],
   "safety": {
     "changes_rankings": false,
