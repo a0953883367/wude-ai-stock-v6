@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-15T15:36:07.381304+08:00",
+  "checked_at": "2026-10-15T17:07:11.979243+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -343,9 +343,15 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-15:noon",
+      "period": "noon",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
-    "ok": true,
+    "ok": false,
     "endpoints": {
       "html": {
         "ok": true,
@@ -353,10 +359,9 @@
         "error": null
       },
       "json": {
-        "ok": true,
-        "read_attempts": 1,
-        "updated_at": "2026-10-15 08:31:34",
-        "error": null
+        "ok": false,
+        "read_attempts": 2,
+        "error": "JSONDecodeError"
       }
     },
     "scope": "HTTP / JSON / required DOM nodes; not browser JavaScript execution"
@@ -578,9 +583,14 @@
           "at": "2026-10-15T15:36:01.763294+08:00",
           "guard_run_id": "38699800103",
           "state": "dispatch_accepted"
+        },
+        {
+          "at": "2026-10-15T17:07:11.979243+08:00",
+          "guard_run_id": "38710536332",
+          "state": "reserved"
         }
       ],
-      "status": "awaiting_verification",
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -599,6 +609,9 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [
+    "missing_report",
+    "missing_sip_or_opra",
+    "report_consistency",
     "report_freshness"
   ],
   "data_recovery_status": "ready_silent_refresh",
@@ -621,6 +634,7 @@
     "paid_model_executor": false
   },
   "blockers": [
+    "網頁兩次讀取仍失敗；瀏覽器程式錯誤需已驗收的修復執行器",
     "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
   ],
   "limits": {
