@@ -4,6 +4,7 @@ All identity/relay/provider interactions are mocked. No sleeps or network calls.
 This reproduces a possible failure path, not an assertion about production logs.
 """
 import ast
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -42,7 +43,7 @@ def actual_report_stage_call(collector, *, fetcher=None, diagnostics=None):
         and isinstance(node.body.func, ast.Name)
         and node.body.func.id == 'fetch_us_sip_snapshots']
     assert len(lambdas) == 1
-    namespace = dict(fetch_us_sip_snapshots=fetcher or us_market_data.fetch_us_sip_snapshots,
+    namespace = dict(os=os, fetch_us_sip_snapshots=fetcher or us_market_data.fetch_us_sip_snapshots,
         us_symbols=set(SYMBOLS), TREASURY_SIP_SYMBOLS=TREASURY_SIP_SYMBOLS,
         SETTINGS=SimpleNamespace(request_timeout=25), us_daily_shadow_samples=collector, us_free_diagnostics=diagnostics)
     return eval(compile(ast.Expression(lambdas[0]), '<actual-report-lambda>', 'eval'), namespace)()
@@ -59,7 +60,13 @@ def fake_delayed_service(monkeypatch, seconds=35):
         # Raise immediately if its caller would time out first; never sleep.
         if kwargs['timeout'] < seconds:
             raise requests.ReadTimeout('simulated response exceeds caller budget')
-        return JsonResponse({'data': {s: row(s) for s in kwargs['json']['symbols']}})
+        rows = {s: row(s) for s in kwargs['json']['symbols']}
+        if kwargs['json'].get('purpose') == 'completed_daily_report':
+            for value in rows.values():
+                value.update(us_delayed_source='Yahoo Finance completed daily report cache',
+                    us_delayed_interval='1Day', us_delayed_cached=True, us_delayed_coverage='provider_defined',
+                    us_delayed_asof='2026-10-15T20:00:00Z')
+        return JsonResponse({'data': rows})
     monkeypatch.setattr(us_market_data.requests, 'get', identity)
     monkeypatch.setattr(us_market_data.requests, 'post', post)
     return calls, identity_calls
@@ -81,7 +88,7 @@ def test_exact_report_payload_30s_times_out_to_77_cached_rows_while_90s_probe_su
         Path(__file__).parent / 'fixtures/pre_budget_us_market_data.py')
     baseline = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(baseline)
-    report_rows = actual_report_stage_call(collector, fetcher=baseline.fetch_us_sip_snapshots)
+    report_rows = actual_report_stage_call(collector, fetcher=lambda *a, **kw: baseline.fetch_us_sip_snapshots(*a, **{k:v for k,v in kw.items() if k != "free_purpose"}))
     assert report_rows == cached and len(report_rows) == 77
     assert len(set(report_rows) & set(REQUIRED)) == 76
     assert collector == {}
@@ -105,6 +112,7 @@ def test_report_path_returns_full191_when_service_is_within30s(report_environmen
     calls, _ = fake_delayed_service(monkeypatch, seconds=29)
     assert len(actual_report_stage_call({})) == 191
     assert calls[0]['timeout'] == 90
+    assert calls[0]['json']['purpose'] == 'completed_daily_report'
 
 
 def test_server_free_mode_priority_ignores_shadow_request_and_accepts191_after_oidc(monkeypatch):

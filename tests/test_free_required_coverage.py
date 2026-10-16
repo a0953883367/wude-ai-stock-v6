@@ -14,8 +14,8 @@ def row(symbol):
     return {'market': 'US', 'symbol': symbol, 'price': 11,
         'us_delayed_data_available': True, 'us_live_data_available': False,
         'us_delayed_price': 11, 'us_delayed_minimum_seconds': 960,
-        'us_delayed_source': 'Alpaca SIP historical (>=16min delayed)',
-        'us_delayed_coverage': 'consolidated', 'us_delayed_interval': '1Min',
+        'us_delayed_source': 'Yahoo Finance completed daily report cache', 'us_delayed_cached': True,
+        'us_delayed_coverage': 'provider_defined', 'us_delayed_interval': '1Day',
         'us_delayed_asof': '2026-10-16T15:13:00Z',
         'us_delayed_fetched_at': '2026-10-16T15:30:00Z'}
 

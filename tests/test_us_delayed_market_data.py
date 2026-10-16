@@ -409,8 +409,8 @@ def test_free_report_validator_requires_complete_non_live_non_raw_coverage():
     row = {'market': 'US', 'symbol': 'AAPL', 'price': 12345.6789,
            'us_delayed_data_available': True, 'us_live_data_available': False,
            'us_delayed_price': 11, 'us_delayed_minimum_seconds': 960,
-           'us_delayed_source': 'Alpaca SIP historical (>=16min delayed)',
-           'us_delayed_coverage': 'consolidated', 'us_delayed_interval': '1Min',
+           'us_delayed_source': 'Yahoo Finance completed daily report cache', 'us_delayed_cached': True,
+           'us_delayed_coverage': 'provider_defined', 'us_delayed_interval': '1Day',
            'us_delayed_asof': '2026-10-16T15:13:00Z',
            'us_delayed_fetched_at': '2026-10-16T15:30:00Z'}
     result = summarize({'data': [row]}, ['AAPL'])
@@ -428,7 +428,7 @@ def test_free_report_validator_requires_complete_non_live_non_raw_coverage():
         missing = {key: value for key, value in row.items() if key != field}
         assert not summarize({'data': [missing]}, ['AAPL'])['passed']
     for field, value in [('us_delayed_source', 'Real-time SIP'),
-                         ('us_delayed_coverage', 'provider_defined'),
+                         ('us_delayed_coverage', 'consolidated'),
                          ('us_delayed_asof', '2026-10-16T15:31:00Z'),
                          ('us_delayed_asof', '2026-10-16T15:15:00Z'),
                          ('us_delayed_asof', '2026-10-16T15:13:00'),
@@ -500,7 +500,7 @@ def test_briefing_delayed_label_distinguishes_yahoo_from_sip():
               and 'Yahoo已完成日線快取' in ast.unparse(node)]
     assert len(labels) == 1
     statement = compile(ast.Module(body=labels, type_ignores=[]), '<label>', 'exec')
-    yahoo = {'us_delayed_cached': True}
+    yahoo = {'us_delayed_cached': True, 'us_delayed_source': 'Yahoo Finance completed daily report cache'}
     exec(statement, {}, {'row': yahoo})
     assert yahoo['next_session_data_mode'] == 'Yahoo已完成日線快取（非即時，僅供參考）'
     assert 'SIP' not in yahoo['next_session_data_mode']

@@ -564,6 +564,7 @@ class LiveDataService:
             "us_delayed_history": {
                 "version": "US-FREE-DELAYED-V4", "supported": True,
                 "free_diagnostics_version": 1,
+                "report_daily_version": 1,
                 "enabled": os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed",
                 "minimum_delay_seconds": 960,
                 "basic_entitlement_verified": False,
@@ -1149,12 +1150,18 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         if re.fullmatch(r"[A-Z0-9.\-]{1,16}", str(symbol).upper())
                     ]
                     if payload.get("data_mode") == "free_delayed":
-                        from us_delayed_market_data import fetch_free_us_quotes
                         if payload.get("include_free_diagnostics") is True:
                             private_free_diagnostics = {}
-                            data = fetch_free_us_quotes(symbols, telemetry=private_free_diagnostics)
+                        if payload.get("purpose") == "completed_daily_report":
+                            from us_free_report_data import fetch_free_report_daily
+                            data = fetch_free_report_daily(
+                                symbols, self.large_buy_service.weight_shadow.calendar,
+                                telemetry=private_free_diagnostics)
                         else:
-                            data = fetch_free_us_quotes(symbols)
+                            from us_delayed_market_data import fetch_free_us_quotes
+                            data = fetch_free_us_quotes(symbols, **(
+                                {"telemetry": private_free_diagnostics}
+                                if private_free_diagnostics is not None else {}))
                     elif payload.get("include_daily_shadow") is True:
                         private_daily_shadow_samples = {}
                         data = fetch_us_sip_snapshots(

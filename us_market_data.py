@@ -219,6 +219,7 @@ def fetch_us_sip_snapshots(
     calendar: Any = None,
     observed_at: datetime | None = None,
     free_diagnostics: dict[str, Any] | None = None,
+    free_purpose: str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Return existing live fields; optional daily samples use a private collector.
 
@@ -230,6 +231,8 @@ def fetch_us_sip_snapshots(
         payload = {"symbols": sorted({str(s).upper() for s in symbols if s})}
         if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
             payload["data_mode"] = "free_delayed"
+            if free_purpose == "completed_daily_report":
+                payload["purpose"] = free_purpose
             if free_diagnostics is not None:
                 payload["include_free_diagnostics"] = True
         diagnostic_kwargs = {"free_diagnostics": free_diagnostics} if (payload.get("data_mode") == "free_delayed" and free_diagnostics is not None) else {}
@@ -238,12 +241,49 @@ def fetch_us_sip_snapshots(
         else:
             payload["include_daily_shadow"] = True
             relayed = _relay_request("sip", payload, timeout, daily_shadow_samples=daily_shadow_samples, **diagnostic_kwargs)
+        if payload.get("data_mode") == "free_delayed" and free_purpose == "completed_daily_report" and relayed:
+            from us_free_reference_validation import valid_report_reference
+            original_count = len(relayed)
+            observed = observed_at or datetime.now(timezone.utc)
+            def valid_report_row(row):
+                if not valid_report_reference(row):
+                    return False
+                try:
+                    stamps = [row['us_delayed_fetched_at']]
+                    if 'us_delayed_cache_read_at' in row:
+                        stamps.append(row['us_delayed_cache_read_at'])
+                    return all(datetime.fromisoformat(str(stamp).replace('Z', '+00:00')) <= observed for stamp in stamps)
+                except (TypeError, ValueError, OverflowError):
+                    return False
+            relayed = {symbol: row for symbol, row in relayed.items()
+                       if symbol in payload["symbols"] and valid_report_row(row)}
+            if free_diagnostics is not None and len(relayed) != original_count:
+                free_diagnostics['client_rejected_count'] = original_count - len(relayed)
+                free_diagnostics.setdefault('relay', {}).update(
+                    status='blocked', phase='relay_response', reason='invalid_payload', returned_count=len(relayed))
         if relayed:
+            if payload.get("data_mode") == "free_delayed" and free_purpose == "completed_daily_report":
+                from us_cached_daily_fallback import fetch_cached_us_daily_references, fetch_cached_us_daily
+                missing = sorted(set(payload["symbols"]) - set(relayed))
+                cached = fetch_cached_us_daily_references(missing, observed_at=observed_at) if missing else {}
+                missing = sorted(set(missing) - set(cached))
+                if missing:
+                    cached.update(fetch_cached_us_daily(missing, observed_at=observed_at))
+                relayed.update({symbol: row for symbol, row in cached.items() if symbol not in relayed})
+                if free_diagnostics is not None:
+                    free_diagnostics['client_cache_count'] = len(cached)
+                    free_diagnostics['client_returned_count'] = len(relayed)
             LOG.info("US SIP layer received %s symbols from the authenticated Railway relay", len(relayed))
             return relayed
         if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
             from us_cached_daily_fallback import fetch_cached_us_daily
-            cached = fetch_cached_us_daily(payload["symbols"], observed_at=observed_at)
+            cached = {}
+            if free_purpose == "completed_daily_report":
+                from us_cached_daily_fallback import fetch_cached_us_daily_references
+                cached = fetch_cached_us_daily_references(payload["symbols"], observed_at=observed_at)
+            missing = sorted(set(payload["symbols"]) - set(cached))
+            if missing:
+                cached.update(fetch_cached_us_daily(missing, observed_at=observed_at))
             if free_diagnostics is not None:
                 free_diagnostics['client_cache_count'] = len(cached)
                 free_diagnostics['client_returned_count'] = len(cached)
@@ -251,6 +291,10 @@ def fetch_us_sip_snapshots(
         LOG.info("Alpaca credentials and authenticated relay absent; US SIP layer will use existing fallbacks")
         return {}
     if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
+        if free_purpose == "completed_daily_report":
+            from us_free_report_data import fetch_free_report_daily
+            return fetch_free_report_daily(symbols, calendar, session=session,
+                                           observed_at=observed_at, telemetry=free_diagnostics)
         from us_delayed_market_data import fetch_free_us_quotes
         return fetch_free_us_quotes(symbols, timeout=timeout, session=session, observed_at=observed_at, **({"telemetry": free_diagnostics} if free_diagnostics is not None else {}))
     feed = os.getenv("ALPACA_STOCK_FEED", "sip").strip().lower() or "sip"
