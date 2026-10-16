@@ -562,10 +562,12 @@ class LiveDataService:
             "ok": True,
             "service": "wude-live-api",
             "us_delayed_history": {
-                "version": "US-FREE-DELAYED-V1", "supported": True,
+                "version": "US-FREE-DELAYED-V2", "supported": True,
                 "enabled": os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed",
                 "minimum_delay_seconds": 960,
                 "basic_entitlement_verified": False,
+                "cached_yahoo_daily_fallback": True,
+                "separate_daily_probe": True,
             },
             "us_daily_shadow_probe": {
                 "version": "US-SIP-DAILY-IN-MEMORY-V2",
@@ -1107,6 +1109,28 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         collect_history=payload.get("collect_history") is True,
                         instrument_types=payload.get("instrument_types"),
                     )
+                elif kind == "free_daily_status":
+                    from us_free_daily_fallback import fetch_free_completed_daily
+                    from us_cached_daily_fallback import fetch_cached_us_daily
+                    symbols = payload.get("symbols")
+                    daily = fetch_free_completed_daily(
+                        symbols, self.large_buy_service.weight_shadow.calendar,
+                    )
+                    fallback = fetch_cached_us_daily(daily["missing_symbols"])
+                    missing = sorted(set(daily["missing_symbols"]) - set(fallback))
+                    data = {
+                        "requested_count": daily["requested_count"],
+                        "sip_daily_count": daily["available_count"],
+                        "cached_yahoo_count": len(fallback),
+                        "missing_symbols": missing,
+                        "source_status": daily["status"],
+                        "source_reason": daily.get("reason"),
+                        "request_count": daily["request_count"],
+                        "session_date": daily.get("session_date"),
+                        "status": "complete" if not missing else "partial",
+                        "basic_entitlement_verified": False,
+                        "market_values_exported": False,
+                    }
                 elif kind == "tw_daily_history_status":
                     data = self.service.daily_history_status(
                         payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
@@ -1120,8 +1144,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         if re.fullmatch(r"[A-Z0-9.\-]{1,16}", str(symbol).upper())
                     ]
                     if payload.get("data_mode") == "free_delayed":
-                        from us_delayed_market_data import fetch_delayed_us_bars
-                        data = fetch_delayed_us_bars(symbols)
+                        from us_delayed_market_data import fetch_free_us_quotes
+                        data = fetch_free_us_quotes(symbols)
                     elif payload.get("include_daily_shadow") is True:
                         private_daily_shadow_samples = {}
                         data = fetch_us_sip_snapshots(
