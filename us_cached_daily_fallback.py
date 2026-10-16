@@ -187,3 +187,186 @@ def fetch_cached_us_daily(symbols, observed_at=None, report_path=None):
             'us_delayed_cache_source_kind': kind,
         }
     return result
+
+
+SIP_DAILY_SOURCE = 'Alpaca SIP completed daily bars'
+SIP_CACHE_SOURCE = 'Alpaca SIP completed daily report cache'
+
+
+def _aware_stamp(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        stamp = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        return stamp if stamp.tzinfo is not None and stamp.utcoffset() is not None else None
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def _sip_close_reference(row, published, observed, publication_text):
+    """Validate an attested close reference without constructing any bars."""
+    if row.get('market') != 'US' or row.get('us_live_data_available') is not False:
+        return None
+    if row.get('us_delayed_data_available') is not True or row.get('us_delayed_interval') != '1Day':
+        return None
+    if row.get('us_delayed_calendar_verified') is not True or row.get('us_delayed_session_completed') is not True:
+        return None
+    if row.get('us_delayed_calendar_source') != 'Alpaca Market Calendar':
+        return None
+    if row.get('us_delayed_coverage') != 'consolidated':
+        return None
+    minimum = row.get('us_delayed_minimum_seconds')
+    if type(minimum) not in (int, float) or minimum != DELAY_SECONDS:
+        return None
+    source = row.get('us_delayed_source')
+    if source == SIP_DAILY_SOURCE:
+        if row.get('us_delayed_cached') is True:
+            return None
+        original_publication = published
+        original_publication_text = publication_text
+    elif source == SIP_CACHE_SOURCE:
+        if row.get('us_delayed_cached') is not True or row.get('us_delayed_origin_source') != SIP_DAILY_SOURCE:
+            return None
+        original_publication_text = row.get('us_delayed_origin_published_at')
+        original_publication = _aware_stamp(original_publication_text)
+        if original_publication is None:
+            return None
+    else:
+        return None
+    day = row.get('us_delayed_session_date')
+    if not isinstance(day, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', day):
+        return None
+    try:
+        session = date.fromisoformat(day)
+        age = (observed.astimezone(NY).date() - session).days
+        if not 1 <= age <= 7:
+            return None
+        end = datetime.combine(session + timedelta(days=1), time(), NY)
+        eligible_at = end.astimezone(timezone.utc) + timedelta(seconds=DELAY_SECONDS - 1)
+        if observed < eligible_at:
+            return None
+        price = row.get('us_delayed_price')
+        if isinstance(price, bool) or not isinstance(price, (float, int)) or not math.isfinite(price) or price <= 0:
+            return None
+        asof = _aware_stamp(row.get('us_delayed_asof'))
+        close = _aware_stamp(row.get('us_delayed_session_close'))
+        fetched = _aware_stamp(row.get('us_delayed_fetched_at'))
+        if asof is None or close is None or fetched is None or asof != close:
+            return None
+        local_close = close.astimezone(NY)
+        if local_close.date() != session or not time(9, 30) < local_close.time() <= time(16):
+            return None
+        if fetched < eligible_at:
+            return None
+        if not close + timedelta(seconds=DELAY_SECONDS) <= fetched <= original_publication <= published <= observed:
+            return None
+        # Preserve the original timestamps exactly, never replacing them with
+        # cache retrieval or later republication time.
+        return {
+            'us_delayed_data_available': True,
+            'us_delayed_source': SIP_CACHE_SOURCE,
+            'us_delayed_origin_source': SIP_DAILY_SOURCE,
+            'us_delayed_price': price,
+            'us_delayed_asof': row['us_delayed_asof'],
+            'us_delayed_fetched_at': row['us_delayed_fetched_at'],
+            'us_delayed_session_date': day,
+            'us_delayed_session_close': row['us_delayed_session_close'],
+            'us_delayed_calendar_verified': True,
+            'us_delayed_calendar_source': 'Alpaca Market Calendar',
+            'us_delayed_session_completed': True,
+            'us_delayed_interval': '1Day',
+            'us_delayed_coverage': 'consolidated',
+            'us_delayed_minimum_seconds': DELAY_SECONDS,
+            'us_live_data_available': False,
+            'us_delayed_cached': True,
+            'us_delayed_origin_published_at': original_publication_text,
+            'us_delayed_cache_read_at': observed.astimezone(timezone.utc).isoformat(),
+        }
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def fetch_cached_us_daily_references(symbols, observed_at=None, report_path=None):
+    """Read bounded completed SIP close references for report display only.
+
+    Does not return bars, mutate formal prices, or promote Yahoo provenance.
+    Calendar attestation must originate in the completed-session adapter; old
+    reports lacking that attestation remain unavailable. No network is used.
+    """
+    observed = observed_at if observed_at is not None else datetime.now(timezone.utc)
+    if not isinstance(observed, datetime) or observed.tzinfo is None or observed.utcoffset() is None:
+        return {}
+    if not isinstance(symbols, (list, tuple, set, frozenset)):
+        return {}
+    requested = {symbol for symbol in symbols if _symbol(symbol)}
+    if not requested:
+        return {}
+    try:
+        if report_path is None:
+            from config import SETTINGS
+            report_path = Path(SETTINGS.reports_dir) / 'all_analysis.json'
+        report_path = Path(report_path)
+    except (ValueError, TypeError, ImportError, AttributeError):
+        return {}
+    root = report_path.parent
+    paths = [(report_path, 'latest_analysis', 'data'),
+             (root / 'evening.json', 'current_evening', 'watchlist'),
+             (root / 'morning.json', 'current_morning', 'watchlist')]
+    today = observed.astimezone(ZoneInfo('Asia/Taipei')).date()
+    for age in range(8):
+        day = (today - timedelta(days=age)).isoformat()
+        for period in ('evening', 'noon', 'morning'):
+            paths.append((root / 'archive' / f'{day}-{period}.json', 'archived_' + period, 'watchlist'))
+    remaining = MAX_TOTAL_BYTES
+    candidates, conflicts, seen = {}, set(), set()
+    for path, kind, key in paths[:MAX_FILES]:
+        if remaining <= 0:
+            break
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            if path.is_symlink() or path.parent.is_symlink():
+                continue
+            limit = min(MAX_BYTES + 1, remaining)
+            with path.open('rb') as handle:
+                raw = handle.read(limit)
+            remaining -= len(raw)
+            if len(raw) >= limit:
+                continue
+            payload = json.loads(raw)
+        except (OSError, ValueError, TypeError, RecursionError):
+            continue
+        if not isinstance(payload, dict) or not isinstance(payload.get(key), list):
+            continue
+        published = _aware_stamp(payload.get('us_daily_reference_published_at'))
+        if published is not None and published > observed:
+            published = None
+        if published is None:
+            continue
+        rows = [r for r in payload[key] if isinstance(r, dict) and _symbol(r.get('symbol'))]
+        counts = Counter(r['symbol'] for r in rows)
+        for row in rows:
+            symbol = row['symbol']
+            if symbol not in requested or counts[symbol] != 1:
+                continue
+            reference = _sip_close_reference(row, published, observed, payload['us_daily_reference_published_at'])
+            if reference is None:
+                continue
+            identity = (symbol, reference['us_delayed_session_date'])
+            reference['us_delayed_cache_source_kind'] = kind
+            previous = candidates.get(identity)
+            if previous is not None and (
+                previous['us_delayed_price'] != reference['us_delayed_price'] or
+                _aware_stamp(previous['us_delayed_session_close']) != _aware_stamp(reference['us_delayed_session_close'])
+            ):
+                conflicts.add(identity)
+            else:
+                candidates.setdefault(identity, reference)
+    result = {}
+    for (symbol, day), reference in candidates.items():
+        if (symbol, day) in conflicts:
+            continue
+        if symbol not in result or day > result[symbol]['us_delayed_session_date']:
+            result[symbol] = reference
+    return result

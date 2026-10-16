@@ -99,6 +99,16 @@ def _stage(label: str, action):
     return result
 
 
+def _stamp_us_daily_reference_publication(payload):
+    """Writing-time receipt for reference reuse; leave model updated_at unchanged."""
+    if os.getenv("ALPACA_DATA_MODE", "").strip().lower() != "free_delayed":
+        return
+    rows = payload.get("data", payload.get("watchlist", []))
+    if any(isinstance(row, dict) and row.get("us_delayed_interval") == "1Day"
+           and row.get("us_delayed_data_available") is True for row in rows):
+        payload["us_daily_reference_published_at"] = datetime.now(timezone.utc).isoformat()
+
+
 def _preserve_alpaca_daily_samples_safely(reports_dir, samples, *, now=None) -> bool:
     """Keep already-returned SIP candles private, separate from model inputs."""
     if not samples:
@@ -749,7 +759,11 @@ def _attach_next_session_predictions(
         ):
             row["next_session_data_mode"] = (
                 "Yahoo已完成日線快取（非即時，僅供參考）"
-                if row.get("us_delayed_cached") is True
+                if row.get("us_delayed_source") == "Yahoo Finance completed daily report cache"
+                else f"SIP已完成日線快取（{row.get('us_delayed_session_date', '日期未確認')}；非即時，僅供參考）"
+                if row.get("us_delayed_source") == "Alpaca SIP completed daily report cache"
+                else f"SIP已完成日線（{row.get('us_delayed_session_date', '日期未確認')}；非即時，僅供參考）"
+                if row.get("us_delayed_source") == "Alpaca SIP completed daily bars"
                 else "SIP延遲歷史行情（至少16分鐘；非即時，僅供參考）"
             )
         elif row.get("market") == "US" and not row.get("us_live_data_available"):
@@ -1327,6 +1341,8 @@ def main() -> int:
                 us_symbols | set(TREASURY_SIP_SYMBOLS.values()),
                 timeout=SETTINGS.request_timeout,
                 daily_shadow_samples=us_daily_shadow_samples,
+                **({"free_purpose": "completed_daily_report"}
+                   if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed" else {}),
                 **({"free_diagnostics": us_free_diagnostics} if us_free_diagnostics is not None else {}),
             ),
         )
@@ -1795,7 +1811,11 @@ def main() -> int:
             ),
             "us_cached_yahoo_count": sum(
                 1 for symbol in us_symbols
-                if us_live.get(symbol, {}).get("us_delayed_cached") is True
+                if us_live.get(symbol, {}).get("us_delayed_source") == "Yahoo Finance completed daily report cache"
+            ),
+            "us_cached_sip_count": sum(
+                1 for symbol in us_symbols
+                if us_live.get(symbol, {}).get("us_delayed_source") == "Alpaca SIP completed daily report cache"
             ),
             "us_data_mode": os.getenv("ALPACA_DATA_MODE", "paid_live").strip().lower(),
             "us_treasury_sip_count": sum(
@@ -1872,6 +1892,7 @@ def main() -> int:
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
     markdown = render_markdown(report)
+    _stamp_us_daily_reference_publication(report)
     latest_json, latest_md = save_report(
         report,
         markdown,
@@ -2122,6 +2143,7 @@ def main() -> int:
     }
     ranking_path = SETTINGS.reports_dir / "rankings.json"
     ranking_tmp = SETTINGS.reports_dir / "rankings.tmp"
+    _stamp_us_daily_reference_publication(ranking_payload)
     ranking_tmp.write_text(
         json.dumps(ranking_payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
@@ -2143,6 +2165,7 @@ def main() -> int:
     }
     all_analysis_path = SETTINGS.reports_dir / "all_analysis.json"
     all_analysis_tmp = SETTINGS.reports_dir / "all_analysis.tmp"
+    _stamp_us_daily_reference_publication(all_analysis_payload)
     all_analysis_tmp.write_text(
         json.dumps(all_analysis_payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
