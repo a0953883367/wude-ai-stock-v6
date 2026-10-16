@@ -122,8 +122,26 @@ def _normalize(raw: Any, expected: set[str]) -> tuple[str, tuple[float, ...]]:
     return day, (o, h, l, c, v)
 
 
+def _network_category(exc: requests.RequestException) -> str:
+    """Fixed categories only; never serialize exception names, text or requests."""
+    for kind, label in (
+        (requests.exceptions.ConnectTimeout, 'connect_timeout'),
+        (requests.exceptions.ReadTimeout, 'read_timeout'),
+        (requests.exceptions.SSLError, 'tls_error'),
+        (requests.exceptions.ProxyError, 'proxy_error'),
+        (requests.exceptions.ChunkedEncodingError, 'chunked_encoding_error'),
+        (requests.exceptions.ContentDecodingError, 'content_decoding_error'),
+        (requests.exceptions.Timeout, 'timeout'),
+        (requests.exceptions.ConnectionError, 'connection_error'),
+    ):
+        if isinstance(exc, kind):
+            return label
+    return 'request_error'
+
+
 def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tuple[str, str],
-           deadline: float, telemetry: dict[str, Any]) -> dict[str, dict[str, tuple[float, ...]]]:
+           deadline: float, telemetry: dict[str, Any], *, connect_timeout: float = 3,
+           read_timeout: float = 7) -> dict[str, dict[str, tuple[float, ...]]]:
     params = {'symbols': ','.join(symbols), 'timeframe': '1Day', 'feed': 'sip',
               'adjustment': 'split', 'currency': 'USD', 'sort': 'asc', 'limit': 10000,
               'asof': sessions[-1], 'start': sessions[0], 'end': sessions[-1] + 'T23:59:59-04:00'}
@@ -138,8 +156,10 @@ def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tu
         telemetry['request_count'] += 1
         try:
             response = client.get(ENDPOINT, params=dict(params), headers={**_headers(credentials), "Accept-Encoding": "identity"},
-                                  timeout=(min(3, remaining / 2), min(7, remaining / 2)), allow_redirects=False, stream=True)
-        except requests.RequestException:
+                                  timeout=(min(connect_timeout, remaining / 2), min(read_timeout, remaining / 2)), allow_redirects=False, stream=True)
+        except requests.RequestException as exc:
+            telemetry.update(network_error_category=_network_category(exc),
+                             network_error_phase='connect_or_headers')
             raise HistoryBlocked('provider_network_failure') from None
         if clock.monotonic() > deadline:
             response.close()
@@ -157,7 +177,7 @@ def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tu
                 telemetry[name.lower().replace('-', '_')] = int(value)
         # One-byte streaming ensures even a drip-fed response reaches the
         # deadline check between arrived bytes, rather than waiting to fill a
-        # large chunk. A stalled read is bounded by the <=7s socket timeout.
+        # large chunk. A stalled read is bounded by the configured socket timeout.
         body = bytearray()
         try:
             if response.headers.get('Content-Encoding', 'identity').lower() not in ('', 'identity'):
@@ -171,7 +191,9 @@ def _fetch(symbols: list[str], sessions: list[str], client: Any, credentials: tu
             payload = json.loads(body)
             if clock.monotonic() > deadline:
                 raise HistoryBlocked('request_time_budget')
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            telemetry.update(network_error_category=_network_category(exc),
+                             network_error_phase='body')
             raise HistoryBlocked('provider_network_failure') from None
         except (ValueError, TypeError):
             raise HistoryBlocked('invalid_provider_json') from None
@@ -304,3 +326,4 @@ def collect_daily_shadow_status(symbols: Any, calendar: Any, *, now: datetime | 
         if session is None and client is not None:
             client.close()
     return result
+

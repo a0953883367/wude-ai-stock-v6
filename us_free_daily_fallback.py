@@ -64,7 +64,8 @@ def fetch_free_completed_daily(
             import requests
             session = requests.Session()
         history = _fetch(requested, selected, session, credentials,
-                         clock.monotonic() + MAX_SECONDS, result)
+                         clock.monotonic() + MAX_SECONDS, result,
+                         connect_timeout=5, read_timeout=20)
         rows = {}
         for symbol in requested:
             bars = history.get(symbol, {})

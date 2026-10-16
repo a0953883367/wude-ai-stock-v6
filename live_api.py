@@ -562,7 +562,7 @@ class LiveDataService:
             "ok": True,
             "service": "wude-live-api",
             "us_delayed_history": {
-                "version": "US-FREE-DELAYED-V2", "supported": True,
+                "version": "US-FREE-DELAYED-V3", "supported": True,
                 "enabled": os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed",
                 "minimum_delay_seconds": 960,
                 "basic_entitlement_verified": False,
@@ -1131,6 +1131,9 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         "basic_entitlement_verified": False,
                         "market_values_exported": False,
                     }
+                    for field in ('network_error_category', 'network_error_phase'):
+                        if field in daily:
+                            data[field] = daily[field]
                 elif kind == "tw_daily_history_status":
                     data = self.service.daily_history_status(
                         payload.get("symbols"), self.large_buy_service.weight_shadow.calendar,
