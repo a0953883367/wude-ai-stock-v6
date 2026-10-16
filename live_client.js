@@ -56,7 +56,26 @@
     var quote = payload && payload.quote || {};
     var options = payload && payload.options || {};
     if (String(merged.market || '').toUpperCase() === 'US') {
-      merged.usLiveAvailable = !!(payload && payload.ok);
+      var delayed = !!(quote.us_delayed_data_available || (payload && payload.quote_status === 'delayed'));
+      if (delayed) {
+        merged.usDelayedAvailable = !!quote.us_delayed_data_available;
+        merged.usDelayedSource = quote.us_delayed_source || (payload && payload.source);
+        merged.usDelayedPrice = quote.us_delayed_price;
+        merged.usDelayedAsOf = quote.us_delayed_asof || (payload && payload.fetched_at);
+        merged.usDelayedFetchedAt = quote.us_delayed_fetched_at;
+        merged.usDelayedMinimumSeconds = quote.us_delayed_minimum_seconds;
+        merged.usDelayedInterval = quote.us_delayed_interval;
+        merged.usLiveAvailable = false;
+        merged.usOptionAvailable = false;
+        // Never let a prior paid snapshot survive a switch to delayed mode.
+        ['usLiveSource','usLiveFetchedAt','usLivePrice','usLiveBid','usLiveAsk',
+         'usLiveSpread','usQuoteImbalance','usVwap','usVwapDistance',
+         'usOptionSafetyScore','usOptionIv','usOptionSource','usOptionFeed',
+         'usOptionFetchedAt','usOptionSkew'].forEach(function(key){delete merged[key];});
+        return merged;
+      }
+      merged.usDelayedAvailable = false;
+      merged.usLiveAvailable = !!(payload && payload.ok) && quote.us_live_data_available !== false;
       merged.usLiveSource = payload && payload.source || quote.us_live_source || merged.usLiveSource;
       merged.usLiveFetchedAt = payload && payload.fetched_at || quote.us_live_fetched_at || merged.usLiveFetchedAt;
       merged.usLivePrice = quote.us_live_price !== undefined ? quote.us_live_price : merged.usLivePrice;
@@ -105,3 +124,4 @@
     errorMessage: errorMessage
   };
 }));
+

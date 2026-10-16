@@ -176,7 +176,7 @@ button.active{background:var(--blue);border-color:#4f7cff}.report button.active{
 </div>
 
 <script src="live_config.js?v=633"></script>
-<script src="live_client.js?v=633"></script>
+<script src="live_client.js?v=free-delayed-1"></script>
 <script src="live_analysis.js?v=633"></script>
 <script src="ranking.js?v=635"></script>
 <script src="capital_test.js"></script>
@@ -253,6 +253,7 @@ function normalizeReport(row){
     shortTermRankTier:row.short_term_rank_tier,shortTermRankingScore:row.short_term_ranking_score,shortTermRank:row.short_term_rank,shortTermDisplayRank:row.short_term_display_rank,shortTermBaseScore:row.short_term_base_score,shortTermBaseRankingScore:row.short_term_base_ranking_score,shortTermAccumulationWeight:row.short_term_accumulation_weight,shortTermAccumulationAdjustment:row.short_term_accumulation_adjustment,shortTermAccumulationAffectsRanking:row.short_term_accumulation_affects_ranking,
     midLongRankTier:row.mid_long_rank_tier,midLongRankingScore:row.mid_long_ranking_score,midLongRank:row.mid_long_rank,midLongDisplayRank:row.mid_long_display_rank,rankingGroupCount:row.ranking_group_count,
     extendedAvailable:row.extended_hours_available,extendedSession:row.extended_session,extendedPrice:row.extended_price,extendedChange:row.extended_change_pct,extendedVolume:row.extended_volume,extendedAffectsScore:row.extended_affects_ai_score,
+    usDelayedAvailable:row.us_delayed_data_available,usDelayedSource:row.us_delayed_source,usDelayedPrice:row.us_delayed_price,usDelayedAsOf:row.us_delayed_asof,usDelayedFetchedAt:row.us_delayed_fetched_at,usDelayedMinimumSeconds:row.us_delayed_minimum_seconds,usDelayedInterval:row.us_delayed_interval,
     usLiveAvailable:row.us_live_data_available,usLiveSource:row.us_live_source,usLiveFeed:row.us_live_feed,usLiveFetchedAt:row.us_live_fetched_at,usLivePrice:row.us_live_price,usLiveBid:row.us_live_bid,usLiveAsk:row.us_live_ask,usLiveSpread:row.us_live_spread_pct,usQuoteImbalance:row.us_live_quote_imbalance_pct,usVwap:row.us_live_vwap,usVwapDistance:row.us_live_vwap_distance_pct,usRelativeStrength:row.us_market_relative_strength_pct,usMarketRiskScore:row.us_market_risk_score,usMarketVix:row.us_market_vix,
     usOptionAvailable:row.us_option_data_available,usOptionSource:row.us_option_source,usOptionFeed:row.us_option_feed,usOptionIv:row.us_option_iv_pct,usOptionSkew:row.us_option_put_call_iv_skew_pct,usOptionSafetyScore:row.us_option_safety_score,usOptionFetchedAt:row.us_option_fetched_at,usShortVolumeRatio:row.us_short_volume_ratio_pct,
     tradeGuardBlocked:row.trade_guard_blocked,tradeGuardSevere:row.trade_guard_severe,tradeGuardReason:row.trade_guard_reason,institutionFlowRatio1d:row.institution_flow_ratio_1d_pct,
@@ -315,6 +316,11 @@ function capitalTestHtml(stock){
     return '<div class="capital-test eligible"><div class="capital-test-title">✅ 2萬元實盤測試：符合資格</div><div class="capital-test-meta">試算 '+esc(number(result.shares,0))+' 股｜約 '+esc(number(result.estimatedCost,0))+' 元｜跌至風控價最大損失約 '+esc(number(result.estimatedLoss,0))+' 元<br>最多同時3檔、保留至少5,000元現金；帳戶累計虧損達2,000元即停止測試。<br><b>只提供試算，不會自動下單。</b></div></div>';
   }
   return '<div class="capital-test blocked"><div class="capital-test-title">⛔ 2萬元實盤測試：目前不合格</div><div class="capital-test-meta">通過 '+esc(result.checksPassed)+'/'+esc(result.totalChecks)+' 項</div><div class="capital-test-reasons">'+result.reasons.slice(0,6).map(function(reason){return '• '+esc(reason);}).join('<br>')+'</div><div class="capital-test-meta">背景資料更新後會自動重算；不合格時不要投入測試金。</div></div>';
+}
+function delayedUsNote(stock){
+  if(stock.market!=='US'||!stock.usDelayedAvailable)return '';
+  var minutes=Math.max(16,Math.ceil(Number(stock.usDelayedMinimumSeconds||960)/60));
+  return '延遲歷史行情（至少延遲'+minutes+'分鐘；非即時）｜參考價 '+number(stock.usDelayedPrice,2)+'｜週期 '+(stock.usDelayedInterval==='1Day'?'日線收盤備援':'1分鐘')+'｜資料時間 '+(stock.usDelayedAsOf||'未提供')+'｜擷取時間 '+(stock.usDelayedFetchedAt||'未提供')+'｜來源 '+(stock.usDelayedSource||'Alpaca SIP historical')+'｜休市或成交稀疏時可能更舊；不取代正式價格、權重或即時判斷';
 }
 function stockCard(stock,index){
   var nextSession='';
@@ -422,7 +428,7 @@ function stockCard(stock,index){
       '<div class="item"><div class="label">相對量能</div><div class="value">'+esc(volume)+'</div></div>',
       '<div class="item"><div class="label">技術分數</div><div class="value">'+esc(number(stock.technical,1))+'</div></div>',
       '<div class="item"><div class="label">基本面分數</div><div class="value">'+esc(number(stock.fundamental,1))+'</div></div>',
-    '</div>',ownershipPanel(stock),buyQualification,quality,extended,nextSession,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
+    '</div>',ownershipPanel(stock),buyQualification,quality,(delayedUsNote(stock)?'<div class="databox">⏱️ '+esc(delayedUsNote(stock))+'</div>':''),extended,nextSession,outlook,analysisPanel(stock),data,positioning,scenario,newsRadar,shortPlan,longPlan,
     '<div class="buybox">'+(stock.entryProfile?'規則：<b>'+esc(stock.entryProfile)+'</b>｜資料 '+esc(stock.entryCoverage)+'/'+esc(stock.entryDataTotal)+'｜進場分上限 '+esc(number(stock.entryScoreCap,0))+'<br>':'')+(stock.pricePlanQuality?'價格計畫：<b>'+esc(stock.pricePlanQuality)+'</b>｜'+esc(stock.pricePlanNote||'')+'<br>':'')+'🟡 第一買進區：<b>'+priceValue(stock.buy)+'</b><br>🟢 較佳回測區：<b>'+priceValue(stock.better)+'</b><br>'+(stock.entryNote?'判斷：<b>'+esc(stock.entryNote)+'</b><br>':''),
     '第一支撐：<b>'+esc(number(stock.support1,2))+'</b>　第二支撐：<b>'+esc(number(stock.support2,2))+'</b><br>',
     '第一壓力：<b>'+esc(number(stock.resistance1,2))+'</b>　第二壓力：<b>'+esc(number(stock.resistance2,2))+'</b><br>',
@@ -1113,6 +1119,7 @@ async function showReport(period){
     var report=STATE.reports[period]||await fetchJSON('reports/'+period+'.json');STATE.reports[period]=report;
     var statusText='更新：'+report.updated_at+'｜固定清單 '+report.watchlist_analyzed_count+'/'+report.watchlist_count+' 檔｜背景掃描 '+report.universe_count+' 檔';
     var ds=report.data_status||{};
+    if(ds.us_data_mode==='free_delayed'||Number(ds.us_delayed_count)>0)statusText+='｜美股免費延遲歷史模式（至少16分鐘，非即時）｜取得 '+Number(ds.us_delayed_count||0)+' 檔';
     if(ds.finmind_configured===false)statusText+='｜⚠️ FinMind Token 未設定';
     else if(ds.finmind_configured&&(Number(ds.institutional_count)===0||Number(ds.credit_count)===0||Number(ds.fundamental_count)===0))statusText+='｜⚠️ 籌碼／基本面資料未完整取得';
     if(ds.finmind_configured&&Number(ds.broker_count)===0)statusText+='｜ℹ️ 分點無權限或未取得';
@@ -1223,7 +1230,7 @@ function renderLiveModal(stock,quote,connectionText){
   document.getElementById('liveOutput').innerHTML=liveResultHtml(result);
   var twSource=quote?(quote.orderBookComplete?(quote.orderBookType==='oddlot'?'富邦盤中零股五檔＋台股公開資料':'富邦普通交易五檔＋台股公開資料'):'富邦即時價格（五檔未回傳）＋台股公開資料'):'台股公開資料；等待富邦快照';
   var source=stock.market==='US'?(stock.usLiveAvailable?(stock.usLiveSource||'美股 SIP／OPRA 自動資料'):'美股 Yahoo／SEC／FINRA 備援資料'):twSource;
-  document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，補齊前只會顯示觀察或偏空，不會顯示可買。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source;
+  document.getElementById('liveAutoNote').textContent=(missing.length?'已自動帶入 '+result.coverage+'/7 項；尚缺 '+missing.join('、')+'，補齊前只會顯示觀察或偏空，不會顯示可買。':'7/7 項已全部自動帶入，不需要手動填寫。')+'｜來源：'+source+(delayedUsNote(stock)?'｜另有 '+delayedUsNote(stock):'');
   var values=WudeLiveAnalysis.inputRows(stock,inputs);
   document.getElementById('liveAutoGrid').innerHTML=values.map(function(item){return '<div class="auto-item"><span>'+esc(item.label)+'</span><b>'+esc(number(item.value,item.key==='price'?2:1))+'</b></div>';}).join('');
   if(connectionText)document.getElementById('liveConnection').textContent=connectionText;
@@ -1250,7 +1257,7 @@ async function fetchCurrentLive(manual){
     var quote=stock.market==='TW'?WudeLiveClient.taiwanQuote(payload,quoteFor(stock.symbol)):null;
     if(quote)STATE.fubonQuotes[String(stock.symbol).toUpperCase()]=quote;
     var fetched=payload.fetched_at?new Date(payload.fetched_at).toLocaleString('zh-TW',{hour12:false}):new Date().toLocaleString('zh-TW',{hour12:false});
-    renderLiveModal(stock,quote||quoteFor(stock.symbol),'✅ 即時行情已更新｜'+fetched+(payload.cached?'｜快取':'｜最新'));
+    renderLiveModal(stock,quote||quoteFor(stock.symbol),(payload.quote_status==='delayed'?'⏱️ 延遲歷史行情已更新（至少16分鐘；非即時）｜資料時間 ':'✅ 即時行情已更新｜')+fetched+(payload.cached?'｜快取':'｜最新'));
   }catch(error){
     if(error.name!=='AbortError')document.getElementById('liveConnection').textContent=WudeLiveClient.errorMessage(error);
   }finally{
@@ -1310,3 +1317,4 @@ loadAll();
 <script src="app_shell.js?v=2"></script>
 </body>
 </html>
+
