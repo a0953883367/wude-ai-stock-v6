@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-16 15:23:53",
+  "updated_at": "2026-10-16 20:02:22",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -183,10 +183,19 @@
             "breakdown_pct": 22.0
           },
           "signal_close": 9.680000305175781,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 9.640000343322754,
+          "observed_sessions": [
+            "2026-10-16"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-10-16",
+              "actual_etf_return_pct": 0.104,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         },
         {
@@ -204,58 +213,67 @@
             "breakdown_pct": 0.0
           },
           "signal_close": 2.4200000762939453,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 2.390000104904175,
+          "observed_sessions": [
+            "2026-10-16"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-10-16",
+              "actual_etf_return_pct": 0.418,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         }
       ],
       "current_candidates": [
         {
-          "group": "tw_broad",
-          "inverse_symbol": "00632R.TW",
-          "inverse_name": "元大台灣50反1",
-          "daily_target": -1,
-          "bear_score": 100.0,
-          "status": "confirmed",
-          "constituent_count": 186,
-          "evidence": {
-            "coverage": 186,
-            "negative_breadth_pct": 96.8,
-            "median_change_pct": -4.58,
-            "breakdown_pct": 22.0
-          },
-          "product_session_change_pct": 0.83,
-          "product_opening_gap_pct": 2.02,
-          "product_volume_ratio_20d": 2.25,
-          "no_chase": false
-        },
-        {
           "group": "tw_nasdaq",
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 82.8,
-          "status": "confirmed",
+          "bear_score": 61.7,
+          "status": "watch",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
-            "negative_breadth_pct": 100.0,
-            "median_change_pct": -2.32,
+            "negative_breadth_pct": 83.3,
+            "median_change_pct": -1.32,
             "breakdown_pct": 0.0
           },
-          "product_session_change_pct": 0.83,
-          "product_opening_gap_pct": 2.13,
-          "product_volume_ratio_20d": 1.44,
+          "product_session_change_pct": 0.42,
+          "product_opening_gap_pct": 2.14,
+          "product_volume_ratio_20d": 0.93,
+          "no_chase": false
+        },
+        {
+          "group": "tw_broad",
+          "inverse_symbol": "00632R.TW",
+          "inverse_name": "元大台灣50反1",
+          "daily_target": -1,
+          "bear_score": 23.5,
+          "status": "waiting",
+          "constituent_count": 186,
+          "evidence": {
+            "coverage": 186,
+            "negative_breadth_pct": 39.8,
+            "median_change_pct": 0.39,
+            "breakdown_pct": 6.5
+          },
+          "product_session_change_pct": 0.1,
+          "product_opening_gap_pct": 2.99,
+          "product_volume_ratio_20d": 1.12,
           "no_chase": false
         }
       ],
       "summary": {
         "1": {
-          "samples": 3,
-          "win_rate_pct": 33.3,
-          "average_return_pct": 0.032
+          "samples": 5,
+          "win_rate_pct": 60.0,
+          "average_return_pct": 0.124
         },
         "2": {
           "samples": 3,
