@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from prediction_history_storage import read_prediction_history
 import logging
 import math
 import time
@@ -572,7 +573,7 @@ def fetch_with_cache(symbols: list[str], period: str, cache_dir: Path, full_refr
 def _forward_archive(reports_dir: Path) -> dict[str, Any]:
     path = reports_dir / "prediction_history.json"
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = read_prediction_history(path)
         snapshots = payload.get("snapshots", [])
     except (OSError, json.JSONDecodeError):
         snapshots = []

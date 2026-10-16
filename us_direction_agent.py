@@ -2,6 +2,7 @@
 from pathlib import Path
 from datetime import datetime
 import json
+from prediction_history_storage import read_prediction_history
 import os
 import requests
 
@@ -11,6 +12,8 @@ from completed_us_session import completed_us_session
 
 
 def _read(path):
+    if path.name == "prediction_history.json":
+        return read_prediction_history(path)
     try:
         value = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):

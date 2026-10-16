@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from prediction_history_storage import read_prediction_history, write_prediction_history
 import hashlib
 import os
 from datetime import date, datetime, timedelta
@@ -1708,7 +1709,7 @@ def update_performance(
     history_path = reports_dir / "prediction_history.json"
     legacy_reset = False
     try:
-        history = json.loads(history_path.read_text(encoding="utf-8"))
+        history = read_prediction_history(history_path)
         if int(history.get("version") or 0) != METHODOLOGY_VERSION:
             snapshots: list[dict[str, Any]] = []
             legacy_reset = bool(history.get("snapshots"))
@@ -1841,10 +1842,7 @@ def update_performance(
     analysis_snapshots = with_historical_regime(valid_snapshots)
     audit_snapshots = with_historical_regime(snapshots)
     summary = _summary(analysis_snapshots, legacy_reset=legacy_reset)
-    history_path.write_text(
-        json.dumps({"version": METHODOLOGY_VERSION, "snapshots": snapshots}, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    write_prediction_history(history_path, {"version": METHODOLOGY_VERSION, "snapshots": snapshots})
     (reports_dir / "performance.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -1876,9 +1874,7 @@ def load_frozen_forecasts(
     even when a weekend/provider refresh temporarily has less data.
     """
     try:
-        history = json.loads(
-            (reports_dir / "prediction_history.json").read_text(encoding="utf-8")
-        )
+        history = read_prediction_history(reports_dir / "prediction_history.json")
     except (FileNotFoundError, json.JSONDecodeError, TypeError, OSError):
         return {}
     if int(history.get("version") or 0) != METHODOLOGY_VERSION:
