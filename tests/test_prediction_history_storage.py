@@ -143,6 +143,15 @@ def test_malformed_version_cannot_reset(tmp_path):
 
 def test_real_writer_gzip_update_and_same_session_parity(tmp_path, monkeypatch):
     import runpy
+    import performance
+    from datetime import datetime
+
+    class FixedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 16, 16, 0, 0, tzinfo=tz)
+
+    monkeypatch.setattr(performance, "datetime", FixedClock)
     from performance import update_performance, load_frozen_forecasts, _snapshot_integrity
     make_row = runpy.run_path('tests/test_performance.py')['_row']
     plain = tmp_path / 'plain'
