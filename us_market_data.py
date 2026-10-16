@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time as clock
 from datetime import date, datetime, timedelta, timezone
 from statistics import mean
 from typing import Any, Iterable
@@ -30,43 +31,93 @@ def _relay_request(
     free_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Use Railway's existing Alpaca credentials from an authenticated Action."""
+    free_mode = kind == "sip" and payload.get("data_mode") == "free_delayed"
+    diagnostics = free_diagnostics if free_mode else None
+    relay_timeout = 90 if free_mode else max(timeout, 30)
+    started = clock.monotonic()
+    receipt = {'status': 'running', 'phase': 'oidc_configuration',
+               'request_timeout_seconds': relay_timeout,
+               'identity_request_count': 0, 'post_request_count': 0,
+               'requested_count': len(payload.get('symbols') or [])}
+    if diagnostics is not None:
+        diagnostics['relay'] = receipt
+
+    def finish(status, reason=None):
+        receipt.update(status=status, elapsed_ms=round((clock.monotonic() - started) * 1000))
+        if reason is not None:
+            receipt['reason'] = reason
+
     base = os.getenv("WUDE_LIVE_API_BASE", "").strip()
     request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "").strip()
     request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "").strip()
     if not base or not request_url or not request_token:
+        finish('blocked', 'configuration_unavailable')
         return {}
     try:
+        receipt.update(phase='oidc_acquisition', http_status=None, identity_request_count=1)
         identity = requests.get(
             request_url,
             params={"audience": OIDC_AUDIENCE},
             headers={"Authorization": f"Bearer {request_token}"},
             timeout=min(timeout, 20),
         )
+        receipt.update(phase='oidc_http', http_status=getattr(identity, 'status_code', None))
         identity.raise_for_status()
-        oidc_token = str(identity.json().get("value") or "")
-        if not oidc_token:
+        receipt['phase'] = 'oidc_response'
+        identity_data = identity.json()
+        if free_mode and not isinstance(identity_data, dict):
+            finish('blocked', 'invalid_payload')
             return {}
+        oidc_token = str(identity_data.get("value") or "")
+        if not oidc_token:
+            finish('blocked', 'empty_oidc_token')
+            return {}
+        receipt.update(phase='relay_post', http_status=None, post_request_count=1)
         response = requests.post(
             urljoin(base.rstrip("/") + "/", "api/internal/market-data"),
             json={"kind": kind, **payload},
             headers={"Authorization": f"Bearer {oidc_token}"},
-            timeout=max(timeout, 30),
+            timeout=relay_timeout,
         )
+        receipt.update(phase='relay_http', http_status=getattr(response, 'status_code', None))
         response.raise_for_status()
+        receipt['phase'] = 'relay_response'
         result = response.json()
-        if kind == "sip" and free_diagnostics is not None and isinstance(result, dict):
+        if free_mode and (not isinstance(result, dict) or not isinstance(result.get('data'), dict)):
+            finish('blocked', 'invalid_payload')
+            return {}
+        if diagnostics is not None:
             private = result.get("private_free_diagnostics")
             if isinstance(private, dict):
-                free_diagnostics.update(private)
+                from free_report_diagnostics import sanitize_diagnostics
+                diagnostics.update(sanitize_diagnostics(private))
+                diagnostics['relay'] = receipt
         if kind == "sip" and daily_shadow_samples is not None and isinstance(result, dict):
             private = result.get("private_daily_shadow_samples")
             if isinstance(private, dict):
                 requested = set(payload.get("symbols") or [])
                 daily_shadow_samples.update({key: value for key, value in private.items()
                                              if key in requested and isinstance(value, dict)})
-        return result.get("data") if isinstance(result, dict) and isinstance(result.get("data"), dict) else {}
-    except (requests.RequestException, ValueError) as exc:
-        LOG.warning("Railway %s relay failed: %s", kind, exc)
+        data = result.get('data') if isinstance(result, dict) and isinstance(result.get('data'), dict) else {}
+        receipt.update(phase='complete', returned_count=len(data))
+        finish('complete' if data else 'unavailable', None if data else 'empty_data')
+        return data
+    except (requests.RequestException, ValueError, TypeError) as exc:
+        if not free_mode:
+            if isinstance(exc, TypeError):
+                raise
+            LOG.warning("Railway %s relay failed: %s", kind, exc)
+            return {}
+        if isinstance(exc, requests.HTTPError):
+            reason = 'provider_http_failure'
+        elif isinstance(exc, requests.RequestException):
+            from us_daily_shadow_history import _network_category
+            reason = 'provider_network_failure'
+            receipt['network_category'] = _network_category(exc)
+        else:
+            reason = 'invalid_json' if receipt['phase'] in {'oidc_response', 'relay_response'} else 'invalid_value'
+        finish('blocked', reason)
+        LOG.warning("Railway free relay failed: phase=%s reason=%s", receipt['phase'], reason)
         return {}
 
 
@@ -167,6 +218,7 @@ def fetch_us_sip_snapshots(
     daily_shadow_samples: dict[str, Any] | None = None,
     calendar: Any = None,
     observed_at: datetime | None = None,
+    free_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Return existing live fields; optional daily samples use a private collector.
 
@@ -178,22 +230,29 @@ def fetch_us_sip_snapshots(
         payload = {"symbols": sorted({str(s).upper() for s in symbols if s})}
         if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
             payload["data_mode"] = "free_delayed"
+            if free_diagnostics is not None:
+                payload["include_free_diagnostics"] = True
+        diagnostic_kwargs = {"free_diagnostics": free_diagnostics} if (payload.get("data_mode") == "free_delayed" and free_diagnostics is not None) else {}
         if daily_shadow_samples is None:
-            relayed = _relay_request("sip", payload, timeout)
+            relayed = _relay_request("sip", payload, timeout, **diagnostic_kwargs)
         else:
             payload["include_daily_shadow"] = True
-            relayed = _relay_request("sip", payload, timeout, daily_shadow_samples=daily_shadow_samples)
+            relayed = _relay_request("sip", payload, timeout, daily_shadow_samples=daily_shadow_samples, **diagnostic_kwargs)
         if relayed:
             LOG.info("US SIP layer received %s symbols from the authenticated Railway relay", len(relayed))
             return relayed
         if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
             from us_cached_daily_fallback import fetch_cached_us_daily
-            return fetch_cached_us_daily(payload["symbols"], observed_at=observed_at)
+            cached = fetch_cached_us_daily(payload["symbols"], observed_at=observed_at)
+            if free_diagnostics is not None:
+                free_diagnostics['client_cache_count'] = len(cached)
+                free_diagnostics['client_returned_count'] = len(cached)
+            return cached
         LOG.info("Alpaca credentials and authenticated relay absent; US SIP layer will use existing fallbacks")
         return {}
     if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
         from us_delayed_market_data import fetch_free_us_quotes
-        return fetch_free_us_quotes(symbols, timeout=timeout, session=session, observed_at=observed_at)
+        return fetch_free_us_quotes(symbols, timeout=timeout, session=session, observed_at=observed_at, **({"telemetry": free_diagnostics} if free_diagnostics is not None else {}))
     feed = os.getenv("ALPACA_STOCK_FEED", "sip").strip().lower() or "sip"
     client = session or requests.Session()
     output: dict[str, dict[str, Any]] = {}

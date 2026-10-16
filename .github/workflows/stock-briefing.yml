@@ -138,8 +138,14 @@ jobs:
           ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
           ALPACA_DATA_MODE: free_delayed
+          WUDE_FREE_REPORT_DIAGNOSTICS_PATH: ${{ runner.temp }}/free-report-diagnostics.json
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         run: python briefing.py --period evening --no-telegram > "$RUNNER_TEMP/free-report.log" 2>&1
+      - name: Print sanitized free-mode market receipt
+        if: ${{ always() }}
+        env:
+          WUDE_FREE_REPORT_DIAGNOSTICS_PATH: ${{ runner.temp }}/free-report-diagnostics.json
+        run: python free_report_diagnostics.py "$WUDE_FREE_REPORT_DIAGNOSTICS_PATH"
       - name: Verify complete US report coverage and honest source labels
         run: python tools/validate_free_report.py
   source_validation:

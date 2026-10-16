@@ -1316,14 +1316,26 @@ def main() -> int:
         if item.get("market") == "US"
     }
     us_daily_shadow_samples = {}
-    us_live = _stage(
-        "美股行情（依付費即時／免費延遲模式）",
-        lambda: fetch_us_sip_snapshots(
-            us_symbols | set(TREASURY_SIP_SYMBOLS.values()),
-            timeout=SETTINGS.request_timeout,
-            daily_shadow_samples=us_daily_shadow_samples,
-        ),
-    )
+    free_diagnostic_path = (os.getenv("WUDE_FREE_REPORT_DIAGNOSTICS_PATH", "").strip()
+        if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed" else "")
+    us_free_diagnostics = {} if free_diagnostic_path else None
+    free_market_stage_completed = False
+    try:
+        us_live = _stage(
+            "美股行情（依付費即時／免費延遲模式）",
+            lambda: fetch_us_sip_snapshots(
+                us_symbols | set(TREASURY_SIP_SYMBOLS.values()),
+                timeout=SETTINGS.request_timeout,
+                daily_shadow_samples=us_daily_shadow_samples,
+                **({"free_diagnostics": us_free_diagnostics} if us_free_diagnostics is not None else {}),
+            ),
+        )
+        free_market_stage_completed = True
+    finally:
+        if us_free_diagnostics is not None:
+            from free_report_diagnostics import write_receipt
+            write_receipt(free_diagnostic_path, us_free_diagnostics,
+                          market_stage_completed=free_market_stage_completed)
     _preserve_alpaca_daily_samples_safely(SETTINGS.reports_dir, us_daily_shadow_samples)
     us_extended_hours = _stage(
         "美股盤前盤後", lambda: download_us_extended_hours(list(us_symbols))
