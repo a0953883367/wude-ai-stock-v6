@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-16T17:12:20.302988+08:00",
+  "checked_at": "2026-10-16T20:38:26.184797+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -375,8 +375,8 @@
     "2026-10-16:evening": {
       "period": "evening",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
     }
   },
   "next_actions": [],
@@ -391,7 +391,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-16 15:23:53",
+        "updated_at": "2026-10-16 20:02:22",
         "error": null
       }
     },
@@ -662,6 +662,13 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-16T17:12:14.059636+08:00",
       "report_updated_at": "2026-10-16 15:23:53"
+    },
+    "2026-10-16:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-10-16T20:38:26.184797+08:00",
+      "report_updated_at": "2026-10-16 20:02:22"
     }
   },
   "permission_probe": {
