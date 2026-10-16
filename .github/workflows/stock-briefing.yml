@@ -65,7 +65,7 @@ on:
         type: boolean
 
       us_free_data:
-        description: Read-only 188-symbol delayed SIP probe; source_validation_only required; no billing or publishing
+        description: Source probe with source_validation_only; completed-daily reference cache only with data_refresh; no billing
         required: false
         default: false
         type: boolean
@@ -116,6 +116,66 @@ jobs:
       - run: python -m pip install pytest requests
       - name: Simulate duplicate, midnight and permission failures without sending
         run: python -m pytest -q tests/test_briefing_watchdog.py tests/test_agent_stock_recovery.py
+  free_reference_cache:
+    name: Completed US daily reference cache
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.data_refresh == true && inputs.us_free_data == true && inputs.validation_only != true && inputs.source_validation_only != true && inputs.us_free_report_validation != true && inputs.us_daily_history != true && inputs.tw_cohort_diagnostics != true && inputs.recovery != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install reference-only dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Fetch and validate completed daily references only
+        env:
+          ALPACA_DATA_MODE: free_delayed
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
+        run: python tools/persist_free_daily_references.py
+      - name: Verify persisted cache survives relay failure without network
+        env:
+          ALPACA_DATA_MODE: free_delayed
+        run: python tools/persist_free_daily_references.py --verify-cache-only
+      - name: Commit only validated reference cache if main is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_path=reports/us_completed_daily_reference_cache.json
+          # No rebase or automatic cache conflict resolution. A concurrent main
+          # update invalidates this one attempt; a later authorized run starts fresh.
+          git fetch --no-tags origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo "Main changed during reference collection; refusing stale write."
+            exit 1
+          fi
+          python - <<'PY_CHECK'
+          import subprocess
+          allowed = b'reports/us_completed_daily_reference_cache.json'
+          changed = subprocess.check_output(['git', 'diff', '--name-only', '-z', 'HEAD']).split(b'\0')
+          untracked = subprocess.check_output(['git', 'ls-files', '--others', '--exclude-standard', '-z']).split(b'\0')
+          if any(path and path != allowed for path in changed + untracked):
+              raise SystemExit('Unexpected changed path; refusing reference cache commit.')
+          PY_CHECK
+          if git diff --quiet HEAD -- "$cache_path" && [ -z "$(git ls-files --others --exclude-standard -- "$cache_path")" ]; then
+            echo "Validated reference cache unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$cache_path"
+          test "$(git diff --cached --name-only)" = "$cache_path"
+          git commit -m "Refresh validated completed US daily reference cache"
+          # A race after the fresh-main check fails with non-fast-forward; no retry.
+          git push origin HEAD:refs/heads/main
   free_report_validation:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.us_free_report_validation == true && inputs.validation_only != true }}
     runs-on: ubuntu-latest
@@ -198,7 +258,7 @@ jobs:
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         run: python tools/probe_free_us_data.py --diagnostics
   gate:
-    if: ${{ inputs.source_validation_only != true && inputs.us_free_report_validation != true }}
+    if: ${{ inputs.source_validation_only != true && inputs.us_free_report_validation != true && !(inputs.data_refresh == true && inputs.us_free_data == true) }}
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
@@ -228,7 +288,7 @@ jobs:
 
   briefing:
     needs: gate
-    if: ${{ inputs.source_validation_only != true && needs.gate.outputs.should_run == 'true' }}
+    if: ${{ inputs.source_validation_only != true && !(inputs.data_refresh == true && inputs.us_free_data == true) && needs.gate.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     # The full 337-symbol universe can exceed 25 minutes when upstream market
     # or news providers respond slowly. Keep one atomic run instead of writing

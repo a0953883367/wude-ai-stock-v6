@@ -309,7 +309,8 @@ def fetch_cached_us_daily_references(symbols, observed_at=None, report_path=None
     except (ValueError, TypeError, ImportError, AttributeError):
         return {}
     root = report_path.parent
-    paths = [(report_path, 'latest_analysis', 'data'),
+    paths = [(root / 'us_completed_daily_reference_cache.json', 'durable_completed_daily', 'data'),
+             (report_path, 'latest_analysis', 'data'),
              (root / 'evening.json', 'current_evening', 'watchlist'),
              (root / 'morning.json', 'current_morning', 'watchlist')]
     today = observed.astimezone(ZoneInfo('Asia/Taipei')).date()
