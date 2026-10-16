@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 import json
+from prediction_history_storage import read_prediction_history
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,8 @@ CANDIDATE_RULES = {
 
 
 def _read(path: Path) -> dict[str, Any]:
+    if path.name == "prediction_history.json":
+        return read_prediction_history(path)
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
