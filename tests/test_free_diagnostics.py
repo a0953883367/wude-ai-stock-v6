@@ -257,7 +257,8 @@ def test_probe_opt_in_uses_existing_calls_only_and_prints_no_prices(tmp_path, mo
     from tools import probe_free_us_data as probe
     folder = tmp_path / 'tests/fixtures'
     folder.mkdir(parents=True)
-    symbols = [f'TEST{i}' for i in range(188)]
+    from test_free_required_coverage import SYMBOLS, row as fixture_row
+    symbols = SYMBOLS
     (folder / 'us_free_probe_universe.json').write_text(json.dumps({
         'symbols': symbols, 'source': 'fixture', 'source_blob_sha': 'fixture'}))
     monkeypatch.setattr(probe, 'ROOT', tmp_path)
@@ -269,10 +270,8 @@ def test_probe_opt_in_uses_existing_calls_only_and_prints_no_prices(tmp_path, mo
             assert payload['include_free_diagnostics'] is True
             kwargs['free_diagnostics'].update(stage='missing_daily', minute_available_count=187,
                 reason='provider_network_failure', phase='connect_or_headers')
-            return {s: {'us_delayed_data_available': True, 'us_live_data_available': False,
-                'us_delayed_minimum_seconds': 960, 'us_delayed_coverage': 'consolidated',
-                'us_delayed_interval': '1Min', 'us_delayed_price': 98765.4321} for s in symbols}
-        return {'requested_count': 188, 'status': 'complete', 'market_values_exported': False}
+            return {s: {**fixture_row(s), 'us_delayed_price': 98765.4321} for s in symbols}
+        return {'requested_count': 188, 'status': 'complete', 'missing_symbols': [], 'market_values_exported': False, 'sip_daily_count': 188, 'cached_yahoo_count': 0}
     monkeypatch.setattr(probe, '_relay_request', relay)
     assert probe.main(diagnostics=True) == 0
     captured = capsys.readouterr().out

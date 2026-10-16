@@ -396,7 +396,16 @@ def test_free_daily_status_exports_counts_only_after_oidc(monkeypatch):
 
 
 def test_free_report_validator_requires_complete_non_live_non_raw_coverage():
-    from tools.validate_free_report import summarize
+    from tools.validate_free_report import summarize as summarize_all
+    from test_free_required_coverage import SYMBOLS, REQUIRED, row as fixture_row
+    target = REQUIRED[0]
+    def summarize(report, expected):
+        # Test each modified row within the actual unchanged 188-symbol universe.
+        candidates = [{**r, 'symbol': target} for r in report['data']]
+        untouched = [fixture_row(s) for s in SYMBOLS if s != target]
+        if len(expected) > 1:
+            untouched = [r for r in untouched if r['symbol'] != 'HNHPF']
+        return summarize_all({'data': untouched + candidates}, SYMBOLS)
     row = {'market': 'US', 'symbol': 'AAPL', 'price': 12345.6789,
            'us_delayed_data_available': True, 'us_live_data_available': False,
            'us_delayed_price': 11, 'us_delayed_minimum_seconds': 960,
@@ -465,19 +474,18 @@ def test_free_mode_without_credentials_or_relay_can_use_attested_cache(monkeypat
 def test_probe_requires_complete_combined_and_separate_daily_coverage(tmp_path, monkeypatch, capsys, count, daily_status, expected_code):
     from tools import probe_free_us_data as probe
     monkeypatch.setenv('ALPACA_DATA_MODE', 'free_delayed')
-    symbols = [f'TEST{i}' for i in range(188)]
+    from test_free_required_coverage import SYMBOLS, row as fixture_row
+    symbols = SYMBOLS
     folder = tmp_path / 'tests/fixtures'
     folder.mkdir(parents=True)
     (folder / 'us_free_probe_universe.json').write_text(json.dumps({
         'symbols': symbols, 'source': 'test', 'source_blob_sha': 'test'}))
     monkeypatch.setattr(probe, 'ROOT', tmp_path)
     monkeypatch.setattr(probe, 'fetch_us_sip_snapshots', lambda *a, **kw: {
-        symbol: {'us_delayed_data_available': True, 'us_live_data_available': False,
-                 'us_delayed_minimum_seconds': 960, 'us_delayed_coverage': 'consolidated',
-                 'us_delayed_interval': '1Min', 'us_delayed_price': 12345.6789}
+        symbol: {**fixture_row(symbol), 'us_delayed_price': 12345.6789}
         for symbol in symbols[:count]})
     monkeypatch.setattr(probe, '_relay_request', lambda *a, **kw: {
-        'requested_count': 188, 'status': daily_status, 'market_values_exported': False})
+        'requested_count': 188, 'status': daily_status, 'missing_symbols': [], 'market_values_exported': False, 'sip_daily_count': 188, 'cached_yahoo_count': 0})
     assert probe.main() == expected_code
     output = capsys.readouterr().out
     assert '12345.6789' not in output

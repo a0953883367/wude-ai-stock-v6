@@ -2,10 +2,24 @@
 from __future__ import annotations
 import json
 import math
+from hashlib import sha256
 from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+EXCLUDED_SYMBOLS = ['HNHPF']
+FROZEN_UNIVERSE_SHA256 = '2e3f88449fd6f90487f42a9cf9a05662cac2c32f31ee7e81f06d837f06d3f8e3'
+
+
+def required_symbols(expected):
+    """Require the unchanged frozen 188 identities; exclude only HNHPF coverage."""
+    if (not isinstance(expected, list) or len(expected) != 188
+            or any(not isinstance(symbol, str) for symbol in expected)
+            or len(set(expected)) != 188 or 'HNHPF' not in expected):
+        return None
+    digest = sha256(json.dumps(sorted(expected), separators=(',', ':')).encode()).hexdigest()
+    return set(expected) - set(EXCLUDED_SYMBOLS) if digest == FROZEN_UNIVERSE_SHA256 else None
 
 
 def valid_delayed_reference(row):
@@ -35,11 +49,27 @@ def valid_delayed_reference(row):
 
 
 def summarize(report, expected):
-    rows = [row for row in report.get('data', []) if row.get('market') == 'US']
+    required = required_symbols(expected)
+    if required is None:
+        return {'passed': False, 'reason': 'invalid_frozen_universe', 'excluded_symbols': EXCLUDED_SYMBOLS,
+                'exclusion_reason': 'user_requested', 'required_count': 187}
+    data = report.get('data') if isinstance(report, dict) else None
+    if not isinstance(data, list) or any(not isinstance(row, dict) for row in data):
+        return {'passed': False, 'reason': 'invalid_report_payload'}
+    rows = [row for row in data if row.get('market') == 'US']
+    if any(not isinstance(row.get('symbol'), str) for row in rows):
+        return {'passed': False, 'reason': 'invalid_report_symbol'}
+    required_rows = [row for row in rows if row['symbol'] in required]
     symbols = [row.get('symbol') for row in rows]
     valid_price = lambda row: isinstance(row.get('price'), (int, float)) and not isinstance(row.get('price'), bool) and math.isfinite(row['price']) and row['price'] > 0
     result = {
         'mode': 'free_delayed', 'report_updated_at': report.get('updated_at'),
+        'excluded_symbols': EXCLUDED_SYMBOLS, 'exclusion_reason': 'user_requested',
+        'required_count': len(required),
+        'required_missing_symbols': sorted(required - {row['symbol'] for row in required_rows
+            if valid_price(row) and valid_delayed_reference(row)}),
+        'required_valid_formal_price_count': sum(valid_price(row) for row in required_rows),
+        'required_validated_delayed_reference_count': sum(valid_delayed_reference(row) for row in required_rows),
         'requested_count': len(expected), 'reported_count': len(rows),
         'missing_symbols': sorted(set(expected) - set(symbols)),
         'unexpected_symbols': sorted(set(symbols) - set(expected)),
@@ -58,9 +88,9 @@ def summarize(report, expected):
     result['passed'] = bool(
         len(rows) == len(expected) and not result['missing_symbols']
         and not result['unexpected_symbols'] and not result['duplicate_count']
-        and result['valid_formal_price_count'] == len(expected)
-        and result['delayed_reference_count'] == len(expected)
-        and result['validated_delayed_reference_count'] == len(expected)
+        and result['required_valid_formal_price_count'] == len(required)
+        and result['required_validated_delayed_reference_count'] == len(required)
+        and not result['required_missing_symbols']
         and not result['unexpected_live_count'] and not result['unexpected_opra_count']
         and not result['raw_bar_leak_count'])
     return result
