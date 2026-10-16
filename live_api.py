@@ -563,6 +563,7 @@ class LiveDataService:
             "service": "wude-live-api",
             "us_delayed_history": {
                 "version": "US-FREE-DELAYED-V3", "supported": True,
+                "free_diagnostics_version": 1,
                 "enabled": os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed",
                 "minimum_delay_seconds": 960,
                 "basic_entitlement_verified": False,
@@ -1100,6 +1101,7 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 payload = self._read_json()
                 kind = str(payload.get("kind") or "").lower()
                 private_daily_shadow_samples = None
+                private_free_diagnostics = None
                 if kind == "calendar":
                     data = self.large_buy_service.weight_shadow.calendar.relay_us_year(payload.get("year"))
                 elif kind == "daily_shadow_status":
@@ -1148,7 +1150,11 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                     ]
                     if payload.get("data_mode") == "free_delayed":
                         from us_delayed_market_data import fetch_free_us_quotes
-                        data = fetch_free_us_quotes(symbols)
+                        if payload.get("include_free_diagnostics") is True:
+                            private_free_diagnostics = {}
+                            data = fetch_free_us_quotes(symbols, telemetry=private_free_diagnostics)
+                        else:
+                            data = fetch_free_us_quotes(symbols)
                     elif payload.get("include_daily_shadow") is True:
                         private_daily_shadow_samples = {}
                         data = fetch_us_sip_snapshots(
@@ -1179,6 +1185,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                 result = {"ok": True, "kind": kind, "count": len(data), "data": data}
                 if private_daily_shadow_samples is not None:
                     result["private_daily_shadow_samples"] = private_daily_shadow_samples
+                if private_free_diagnostics is not None:
+                    result["private_free_diagnostics"] = private_free_diagnostics
                 self._send(HTTPStatus.OK, result)
             return
         if parsed.path not in {
