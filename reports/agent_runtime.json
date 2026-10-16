@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-16T16:54:51+00:00",
+  "generated_at": "2026-10-16T17:33:47+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-17T00:34:54.726463+08:00",
+    "checked_at": "2026-10-17T01:33:45.524693+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-17T00:34:51.950170+08:00",
+    "checked_at": "2026-10-17T01:33:44.424626+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -741,18 +741,19 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
-        "reason": "current data requires silent refresh; no delivery receipt is created"
+        "status": "blocked_evidence",
+        "reason": "source_session_not_closed"
       }
     },
     "us_direction_verification": {
       "status": "blocked_evidence",
-      "reason": "mixed_or_missing_us_sessions",
+      "reason": "source_session_not_closed",
       "needs_silent_refresh": false,
       "verified_recovered": false,
-      "last_source_session_date": "",
-      "latest_official_session_date": "",
-      "historical_backfill_allowed": false
+      "last_source_session_date": "2026-10-15",
+      "latest_official_session_date": "2026-10-16",
+      "historical_backfill_allowed": false,
+      "next_session_date": null
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
