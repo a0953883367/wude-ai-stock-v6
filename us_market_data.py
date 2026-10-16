@@ -27,6 +27,7 @@ OIDC_AUDIENCE = "wude-live-data-relay"
 def _relay_request(
     kind: str, payload: dict[str, Any], timeout: int,
     *, daily_shadow_samples: dict[str, Any] | None = None,
+    free_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Use Railway's existing Alpaca credentials from an authenticated Action."""
     base = os.getenv("WUDE_LIVE_API_BASE", "").strip()
@@ -53,6 +54,10 @@ def _relay_request(
         )
         response.raise_for_status()
         result = response.json()
+        if kind == "sip" and free_diagnostics is not None and isinstance(result, dict):
+            private = result.get("private_free_diagnostics")
+            if isinstance(private, dict):
+                free_diagnostics.update(private)
         if kind == "sip" and daily_shadow_samples is not None and isinstance(result, dict):
             private = result.get("private_daily_shadow_samples")
             if isinstance(private, dict):

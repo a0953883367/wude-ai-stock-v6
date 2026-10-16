@@ -11,13 +11,19 @@ sys.path.insert(0, str(ROOT))
 from us_market_data import fetch_us_sip_snapshots, _relay_request
 
 
-def main() -> int:
+def main(*, diagnostics=False) -> int:
     fixture = json.loads((ROOT / 'tests/fixtures/us_free_probe_universe.json').read_text())
     symbols = fixture['symbols']
     if len(symbols) != 188 or len(set(symbols)) != 188:
         raise ValueError('expected frozen 188-symbol US universe')
     os.environ['ALPACA_DATA_MODE'] = 'free_delayed'
-    rows = fetch_us_sip_snapshots(symbols, timeout=90)
+    diagnostic_counts = {}
+    if diagnostics:
+        rows = _relay_request('sip', {'symbols': symbols, 'data_mode': 'free_delayed',
+                             'include_free_diagnostics': True}, 90,
+                             free_diagnostics=diagnostic_counts)
+    else:
+        rows = fetch_us_sip_snapshots(symbols, timeout=90)
     accepted = {symbol: row for symbol, row in rows.items()
                 if symbol in symbols and row.get('us_delayed_data_available') is True
                 and row.get('us_live_data_available') is False
@@ -42,6 +48,8 @@ def main() -> int:
         'basic_account_entitlement_verified': False,
         'paid_subscription_changed': False, 'market_values_exported': False,
     }
+    if diagnostics:
+        result['private_free_diagnostics'] = diagnostic_counts
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if (len(accepted) == 188 and not result['unexpected_live_count']
                  and daily.get('requested_count') == 188
@@ -50,4 +58,8 @@ def main() -> int:
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--diagnostics', action='store_true')
+    args = parser.parse_args()
+    raise SystemExit(main(diagnostics=args.diagnostics))

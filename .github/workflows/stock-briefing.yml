@@ -190,7 +190,7 @@ jobs:
         timeout-minutes: 3
         env:
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
-        run: python tools/probe_free_us_data.py
+        run: python tools/probe_free_us_data.py --diagnostics
   gate:
     if: ${{ inputs.source_validation_only != true && inputs.us_free_report_validation != true }}
     runs-on: ubuntu-latest
