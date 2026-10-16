@@ -171,6 +171,12 @@ class AlpacaLargeBuyStream:
         self._socket: Any = None
 
     def start(self) -> None:
+        if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
+            self.service.set_stream_status(
+                "US", "blocked", subscribed=0,
+                error="免費延遲行情模式：全市場即時大單串流未提供；歷史行情仍可用",
+            )
+            return
         if not self.symbols:
             self.service.set_stream_status("US", "no_symbols")
             return
@@ -339,3 +345,4 @@ class LargeBuyStreams:
     def stop(self) -> None:
         self.stop_event.set()
         self.alpaca.close()
+

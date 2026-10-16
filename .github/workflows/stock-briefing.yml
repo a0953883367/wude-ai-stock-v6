@@ -64,6 +64,12 @@ on:
         default: false
         type: boolean
 
+      us_free_data:
+        description: Read-only 188-symbol delayed SIP probe; source_validation_only required; no billing or publishing
+        required: false
+        default: false
+        type: boolean
+
       tw_cohort_diagnostics:
         description: Inspect fixed TW pilot metadata only within source-validation mode; no ranking or raw exports
         required: false
@@ -145,6 +151,12 @@ jobs:
           python tools/collect_us_daily_shadow_status.py "${args[@]}"
           # The collector writes an allowlisted operational projection only.
           cat reports/us_daily_shadow_status.json
+      - name: Validate opt-in free-compatible US historical path
+        if: ${{ inputs.us_free_data == true }}
+        timeout-minutes: 3
+        env:
+          WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
+        run: python tools/probe_free_us_data.py
   gate:
     if: ${{ inputs.source_validation_only != true }}
     runs-on: ubuntu-latest
@@ -317,6 +329,7 @@ jobs:
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
           ALPACA_STOCK_FEED: ${{ vars.ALPACA_STOCK_FEED || 'sip' }}
+          ALPACA_DATA_MODE: ${{ vars.ALPACA_DATA_MODE || 'paid_live' }}
           ALPACA_OPTION_FEED: ${{ vars.ALPACA_OPTION_FEED }}
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         shell: bash
@@ -467,5 +480,6 @@ jobs:
           steps.delivery_window.outputs.timely != 'true' }}
         run: >-
           echo "Stale report delivery suppressed; fresh public data and private evidence saved."
+
 
 

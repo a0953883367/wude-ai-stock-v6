@@ -521,6 +521,18 @@ class LiveDataService:
         quote = self.us_fetcher({symbol}).get(symbol, {})
         if not quote:
             raise RuntimeError("SIP quote is unavailable")
+        if quote.get("us_delayed_data_available") and not quote.get("us_live_data_available"):
+            # Private display-only bars. Never promote to live NBBO or options.
+            return {
+                "ok": True, "symbol": symbol, "market": "US",
+                "source": quote.get("us_delayed_source"),
+                "fetched_at": quote.get("us_delayed_asof"),
+                "observed_at": quote.get("us_delayed_fetched_at"),
+                "quote_status": "delayed", "realtime": False,
+                "quote": {**quote, "lastPrice": quote.get("us_delayed_price"),
+                          "bids": [], "asks": [], "orderBookComplete": False},
+                "options": {}, "cached": False,
+            }
         options = self._us_options(symbol, quote) if include_options else {}
         return {
             "ok": True,
@@ -549,6 +561,12 @@ class LiveDataService:
         return {
             "ok": True,
             "service": "wude-live-api",
+            "us_delayed_history": {
+                "version": "US-FREE-DELAYED-V1", "supported": True,
+                "enabled": os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed",
+                "minimum_delay_seconds": 960,
+                "basic_entitlement_verified": False,
+            },
             "us_daily_shadow_probe": {
                 "version": "US-SIP-DAILY-IN-MEMORY-V2",
                 "supported": True,
@@ -1101,7 +1119,10 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
                         str(symbol).upper() for symbol in list(payload.get("symbols") or [])[:200]
                         if re.fullmatch(r"[A-Z0-9.\-]{1,16}", str(symbol).upper())
                     ]
-                    if payload.get("include_daily_shadow") is True:
+                    if payload.get("data_mode") == "free_delayed":
+                        from us_delayed_market_data import fetch_delayed_us_bars
+                        data = fetch_delayed_us_bars(symbols)
+                    elif payload.get("include_daily_shadow") is True:
                         private_daily_shadow_samples = {}
                         data = fetch_us_sip_snapshots(
                             symbols, daily_shadow_samples=private_daily_shadow_samples,
@@ -1264,4 +1285,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

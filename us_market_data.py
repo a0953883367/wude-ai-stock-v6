@@ -171,6 +171,8 @@ def fetch_us_sip_snapshots(
     credentials = _credentials()
     if not credentials:
         payload = {"symbols": sorted({str(s).upper() for s in symbols if s})}
+        if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
+            payload["data_mode"] = "free_delayed"
         if daily_shadow_samples is None:
             relayed = _relay_request("sip", payload, timeout)
         else:
@@ -181,6 +183,9 @@ def fetch_us_sip_snapshots(
             return relayed
         LOG.info("Alpaca credentials and authenticated relay absent; US SIP layer will use existing fallbacks")
         return {}
+    if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
+        from us_delayed_market_data import fetch_delayed_us_bars
+        return fetch_delayed_us_bars(symbols, timeout=timeout, session=session, observed_at=observed_at)
     feed = os.getenv("ALPACA_STOCK_FEED", "sip").strip().lower() or "sip"
     client = session or requests.Session()
     output: dict[str, dict[str, Any]] = {}
@@ -250,6 +255,8 @@ def fetch_us_opra_signals(
     timeout: int = 20,
     session: requests.Session | None = None,
 ) -> dict[str, dict[str, Any]]:
+    if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
+        return {}
     credentials = _credentials()
     feed = os.getenv("ALPACA_OPTION_FEED", "").strip().lower()
     if not credentials:
@@ -302,3 +309,4 @@ def fetch_us_opra_signals(
         except requests.RequestException as exc:
             LOG.warning("US option snapshot failed for %s: %s", symbol, exc)
     return output
+

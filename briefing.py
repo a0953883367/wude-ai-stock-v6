@@ -742,7 +742,13 @@ def _attach_next_session_predictions(
                 for bundle in shadow.values()
             ),
         )
-        if row.get("market") == "US" and not row.get("us_live_data_available"):
+        if (
+            row.get("market") == "US"
+            and row.get("us_delayed_data_available")
+            and not row.get("us_live_data_available")
+        ):
+            row["next_session_data_mode"] = "SIP延遲歷史行情（至少16分鐘；非即時，僅供參考）"
+        elif row.get("market") == "US" and not row.get("us_live_data_available"):
             row["next_session_data_mode"] = "FINRA／盤前盤後備援（SIP未取得）"
         elif row.get("market") == "US" and not row.get("us_option_data_available"):
             row["next_session_data_mode"] = "SIP行情；OPRA未取得"
@@ -1307,7 +1313,7 @@ def main() -> int:
     }
     us_daily_shadow_samples = {}
     us_live = _stage(
-        "美股即時行情",
+        "美股行情（依付費即時／免費延遲模式）",
         lambda: fetch_us_sip_snapshots(
             us_symbols | set(TREASURY_SIP_SYMBOLS.values()),
             timeout=SETTINGS.request_timeout,
@@ -1478,7 +1484,10 @@ def main() -> int:
                 row.update(financial_quality.get(stock_id, {}))
                 row.update(broker_branches.get(stock_id, {}))
             elif item.get("market") == "US":
-                row.update(us_live.get(symbol.upper(), {}))
+                row.update({
+                    key: value for key, value in us_live.get(symbol.upper(), {}).items()
+                    if key != "us_delayed_bars"
+                })
                 row.update(us_extended_hours.get(symbol.upper(), {}))
                 row.update(us_short_volume.get(symbol.upper(), {}))
                 if "ETF" not in str(item.get("type", "")).upper():
@@ -1756,9 +1765,18 @@ def main() -> int:
             "broker_optional": True,
             "us_short_volume_count": len(us_short_volume),
             "us_extended_hours_count": len(us_extended_hours),
-            "us_sip_count": sum(1 for symbol in us_symbols if symbol in us_live),
+            "us_sip_count": sum(
+                1 for symbol in us_symbols
+                if us_live.get(symbol, {}).get("us_live_data_available")
+            ),
+            "us_delayed_count": sum(
+                1 for symbol in us_symbols
+                if us_live.get(symbol, {}).get("us_delayed_data_available")
+            ),
+            "us_data_mode": os.getenv("ALPACA_DATA_MODE", "paid_live").strip().lower(),
             "us_treasury_sip_count": sum(
-                1 for symbol in TREASURY_SIP_SYMBOLS.values() if symbol in us_live
+                1 for symbol in TREASURY_SIP_SYMBOLS.values()
+                if us_live.get(symbol, {}).get("us_live_data_available")
             ),
             "us_opra_count": len(us_options),
             "us_sec_company_count": sum(
@@ -1817,7 +1835,7 @@ def main() -> int:
             "market_isolation": "台股個股TW-STOCK-V5、台灣ETF TW-ETF-V5與美股US-V3使用獨立資料契約；台股採個股／同族群／台股市場分層校正，跨市場欄位會在計分前清除",
             "tw_layered_context": "台股個股以個股70%、同族群20%、台股市場10%計分；台灣ETF提高市場層比重。缺少背景資料時不以中性值冒充，且不影響US-V3",
             "extended_hours": "美股盤前／盤後僅作跳空與風險提示，不直接增加AI分數",
-            "us_live_data": "美股以SIP全市場報價為主、OPRA選擇權為風險層；未設定授權時保留Yahoo/StockQ/FINRA備援，Tiingo免費版僅私密測試涵蓋率",
+            "us_live_data": "美股付費模式以SIP全市場報價及OPRA風險層為主；free_delayed模式僅提供至少延遲16分鐘的SIP歷史行情參考，不計為即時資料，不取代正式價格或權重。其他備援保留Yahoo/StockQ/FINRA；Tiingo免費版僅私密測試涵蓋率",
             "us_fundamental_fallback": "美股個股財務資料不足時以免費官方SEC EDGAR companyfacts補空值；不覆蓋既有值、ETF不適用、非美元申報不混入美元絕對金額",
             "macro_risk": "historical sessions are backfilled; adjustment is capped at +/-4 points",
             "after_close_prices": "自動報告盤中不抓、不補、不結算台股價格；中午報沿用上一個完整交易日，晚報收盤後才更新",
@@ -2183,3 +2201,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -10,7 +10,7 @@ TW_ONLY_PREFIXES = (
     "foreign_", "trust_", "dealer_", "institution_", "margin_", "sbl_",
     "short_", "broker_", "top_brokers_",
 )
-US_ONLY_PREFIXES = ("us_short_", "us_live_", "us_option_", "us_market_", "extended_")
+US_ONLY_PREFIXES = ("us_short_", "us_live_", "us_delayed_", "us_option_", "us_market_", "extended_")
 
 
 def _date_value(value: Any) -> date | None:
@@ -167,3 +167,4 @@ def assess_market_data_quality(row: dict[str, Any]) -> dict[str, Any]:
         "market_data_available": available,
         "market_data_missing": missing,
     }
+
