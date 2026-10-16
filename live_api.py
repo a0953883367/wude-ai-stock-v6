@@ -562,7 +562,7 @@ class LiveDataService:
             "ok": True,
             "service": "wude-live-api",
             "us_delayed_history": {
-                "version": "US-FREE-DELAYED-V3", "supported": True,
+                "version": "US-FREE-DELAYED-V4", "supported": True,
                 "enabled": os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed",
                 "minimum_delay_seconds": 960,
                 "basic_entitlement_verified": False,

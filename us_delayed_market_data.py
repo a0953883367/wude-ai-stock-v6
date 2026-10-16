@@ -134,11 +134,22 @@ def fetch_delayed_us_bars(symbols, timeout=20, session=None, observed_at=None):
     deadline = time.monotonic() + 75
     output = {}
     try:
-        minute = _fetch(requested, '1Min', end - timedelta(minutes=90), end,
-                        client, headers, timeout, deadline)
-        missing = [symbol for symbol in requested if not minute[symbol]]
-        daily = _fetch(missing, '1Day', end - timedelta(days=10), end,
-                       client, headers, timeout, deadline) if missing else {}
+        try:
+            minute = _fetch(requested, '1Min', end - timedelta(minutes=90), end,
+                            client, headers, timeout, deadline)
+        except (DelayedDataUnavailable, requests.RequestException, ValueError, TypeError):
+            # Discard the entire failed minute retrieval, including partial pages.
+            # A separately validated completed daily bar remains a valid fallback.
+            minute = {}
+        missing = [symbol for symbol in requested if not minute.get(symbol)]
+        daily = {}
+        if missing and time.monotonic() < deadline:
+            try:
+                daily = _fetch(missing, '1Day', end - timedelta(days=10), end,
+                               client, headers, timeout, deadline)
+            except (DelayedDataUnavailable, requests.RequestException, ValueError, TypeError):
+                # Keep already validated minute data if only daily fallback fails.
+                daily = {}
         for symbol in requested:
             bars = minute.get(symbol) or daily.get(symbol) or []
             if not bars:

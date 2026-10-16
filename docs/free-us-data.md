@@ -26,7 +26,7 @@ Taiwan service and all authorization checks are unchanged.
 ## Validation and activation
 
 1. Deploy the backward-compatible code with mode unset. `/health` reports the
-   `US-FREE-DELAYED-V2` capability without asserting free entitlement.
+   `US-FREE-DELAYED-V4` capability without asserting free entitlement.
 2. In existing `stock-briefing.yml`, dispatch `source_validation_only=true` and
    `us_free_data=true`. The existing OIDC-authenticated relay accepts this opt-in
    read-only request, regardless of the default paid mode. The diagnostic prints

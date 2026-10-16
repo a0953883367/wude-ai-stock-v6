@@ -499,3 +499,75 @@ def test_briefing_delayed_label_distinguishes_yahoo_from_sip():
     sip = {'us_delayed_cached': False}
     exec(statement, {}, {'row': sip})
     assert sip['next_session_data_mode'] == 'SIP延遲歷史行情（至少16分鐘；非即時，僅供參考）'
+
+
+def test_minute_transport_failure_recovers_completed_daily_187_symbols():
+    symbols = [f'TEST{i}' for i in range(188)]
+    client = Client(requests.ReadTimeout('secret transport details'),
+                    payload({s: [bar('2026-10-15T04:00:00Z')] for s in symbols[:187]}))
+    result = fetch(client, symbols)
+    assert set(result) == set(symbols[:187])
+    assert len(client.calls) == 2
+    assert [kwargs['params']['timeframe'] for _, kwargs in client.calls] == ['1Min', '1Day']
+    assert all(row['us_delayed_interval'] == '1Day' and row['us_live_data_available'] is False
+               for row in result.values())
+    assert all(row['us_delayed_asof'].startswith('2026-10-15') for row in result.values())
+    assert 'secret' not in json.dumps(result)
+
+
+def test_validated_minute_rows_survive_missing_symbol_daily_failure():
+    client = Client(payload({'AAPL': [bar()]}), requests.ReadTimeout('secret'))
+    result = fetch(client, ['AAPL', 'MSFT'])
+    assert set(result) == {'AAPL'}
+    assert result['AAPL']['us_delayed_interval'] == '1Min'
+    assert client.calls[1][1]['params']['symbols'] == 'MSFT'
+
+
+def test_both_intervals_failing_produce_no_rows():
+    client = Client(requests.ConnectionError('secret1'), requests.ReadTimeout('secret2'))
+    assert fetch(client) == {}
+    assert len(client.calls) == 2
+
+
+def test_exhausted_minute_budget_does_not_start_daily_request(monkeypatch):
+    import us_delayed_market_data as module
+    ticks = [0]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: ticks[0])
+    class Exhausted(Client):
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            ticks[0] = 76
+            raise requests.ReadTimeout('secret')
+    client = Exhausted()
+    assert fetch(client) == {}
+    assert len(client.calls) == 1
+
+
+def test_daily_after_minute_failure_keeps_shared_deadline(monkeypatch):
+    import us_delayed_market_data as module
+    ticks = [0]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: ticks[0])
+    class SlowMinute(Client):
+        def get(self, url, **kwargs):
+            if not self.calls:
+                self.calls.append((url, kwargs))
+                ticks[0] = 70
+                raise requests.ReadTimeout('secret')
+            return super().get(url, **kwargs)
+    client = SlowMinute(payload({'AAPL': [bar('2026-10-15T04:00:00Z')]}))
+    assert fetch(client)['AAPL']['us_delayed_interval'] == '1Day'
+    assert client.calls[1][1]['timeout'] <= 5
+
+
+def test_failed_minute_pagination_discards_partial_but_accepts_daily():
+    client = Client(payload({'AAPL': [bar()]}, 'next'), requests.ReadTimeout('secret'),
+                    payload({'AAPL': [bar('2026-10-15T04:00:00Z')]}))
+    result = fetch(client)
+    assert result['AAPL']['us_delayed_interval'] == '1Day'
+    assert result['AAPL']['us_delayed_asof'].startswith('2026-10-15')
+
+
+def test_failing_minute_does_not_accept_partial_current_daily_session():
+    client = Client(requests.ReadTimeout('secret'),
+                    payload({'AAPL': [bar('2026-10-16T04:00:00Z')]}))
+    assert fetch(client) == {}
