@@ -248,9 +248,10 @@ def test_authenticated_relay_sidecar_does_not_change_market_data(monkeypatch):
         'data': {'AAPL': {'us_delayed_price': 11}},
         'private_free_diagnostics': {'reason': 'invalid_bar', 'phase': 'bar_ohlcv'}}))
     counts = {}
-    output = us_market_data._relay_request('sip', {'include_free_diagnostics': True}, 90, free_diagnostics=counts)
+    output = us_market_data._relay_request('sip', {'include_free_diagnostics': True, 'data_mode': 'free_delayed'}, 90, free_diagnostics=counts)
     assert output == {'AAPL': {'us_delayed_price': 11}}
-    assert counts == {'reason': 'invalid_bar', 'phase': 'bar_ohlcv'}
+    assert counts['reason'] == 'invalid_bar' and counts['phase'] == 'bar_ohlcv'
+    assert counts['relay']['status'] == 'complete' and counts['relay']['returned_count'] == 1
 
 
 def test_probe_opt_in_uses_existing_calls_only_and_prints_no_prices(tmp_path, monkeypatch, capsys):
