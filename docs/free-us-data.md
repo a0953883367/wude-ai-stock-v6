@@ -80,3 +80,13 @@ The Yahoo fallback checks bounded current/archived report snapshots (27files,
 session within7NY dates. Snapshot publication must itself be after that
 session close plus16minutes, preventing archived partial intraday bars from
 becoming completed merely by aging. No provider calls or cache writes are added.
+
+## User-requested acceptance scope
+
+The frozen universe remains 188 US identities. HNHPF is explicitly excluded from
+required coverage at the user's request; it remains visible with its actual
+availability. Acceptance requires all other 187 symbols for delayed references,
+completed daily availability and report prices. Missing any other symbol fails.
+The report still requires all 188 identity rows and checks false-live, OPRA and
+raw-bar leaks across the entire pool. Diagnostics include excluded_symbols and
+exclusion_reason=user_requested; no universe entry is silently deleted.
