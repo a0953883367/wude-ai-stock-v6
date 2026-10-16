@@ -26,7 +26,7 @@ Taiwan service and all authorization checks are unchanged.
 ## Validation and activation
 
 1. Deploy the backward-compatible code with mode unset. `/health` reports the
-   `US-FREE-DELAYED-V2` capability without asserting free entitlement.
+   `US-FREE-DELAYED-V4` capability without asserting free entitlement.
 2. In existing `stock-briefing.yml`, dispatch `source_validation_only=true` and
    `us_free_data=true`. The existing OIDC-authenticated relay accepts this opt-in
    read-only request, regardless of the default paid mode. The diagnostic prints
@@ -71,3 +71,12 @@ still-paid account: 187/188 symbols returned delayed minute bars, with HNHPF
 missing. Zero unexpected live fields and zero market-value exports were reported.
 V2 adds the separately labelled existing Yahoo daily cache for that gap; it must
 be verified by a new runtime probe before claiming 188/188 functional coverage.
+
+V4 retains validated minute rows if the missing-symbol daily lookup fails and
+tries completed daily bars after a failed minute retrieval under the same75s
+budget. Diagnostic failures remain visible as fixed-category stage receipts.
+The Yahoo fallback checks bounded current/archived report snapshots (27files,
+8MiB/file,64MiB total), selecting the newest non-conflicting valid completed
+session within7NY dates. Snapshot publication must itself be after that
+session close plus16minutes, preventing archived partial intraday bars from
+becoming completed merely by aging. No provider calls or cache writes are added.
