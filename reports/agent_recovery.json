@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-16T09:32:04.845382+08:00",
+  "checked_at": "2026-10-16T15:22:39.052047+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -360,8 +360,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "generated_suppressed",
-      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent",
       "diagnosis": [
         "missing_fixed_generation"
       ]
@@ -369,8 +369,8 @@
     "2026-10-16:noon": {
       "period": "noon",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-10-16:evening": {
       "period": "evening",
@@ -379,7 +379,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-16:noon",
+      "period": "noon",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -391,7 +397,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-16 06:32:51",
+        "updated_at": "2026-10-16 09:33:17",
         "error": null
       }
     },
@@ -648,6 +654,18 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-16T08:21:55.076908+08:00",
       "report_updated_at": "2026-10-16 06:32:51"
+    },
+    "2026-10-16:noon": {
+      "period": "noon",
+      "attempts": [
+        {
+          "at": "2026-10-16T15:22:39.052047+08:00",
+          "guard_run_id": "38866765753",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -664,7 +682,9 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
+  "diagnosis": [
+    "report_freshness"
+  ],
   "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "verified_current",
