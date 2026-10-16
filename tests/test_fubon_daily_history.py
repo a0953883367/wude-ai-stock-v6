@@ -178,7 +178,10 @@ def test_source_lifecycle_precedes_all_report_commit_paths():
     shadow_push = workflow.index("python tools/publish_shadow_report_batch.py")
     full_ownership = workflow.index("      - name: Refresh read-only Fubon ownership supplement")
     assert workflow.index("      - name: Generate report") < probe < first_push < shadow_push < full_ownership
-    assert "git push" not in workflow[:probe] and "publish_shadow_report_batch.py" not in workflow[:probe]
+    # Only the normal report job must warm Fubon before its report writers.
+    # The isolated US reference-cache job never generates or publishes reports.
+    report_prefix = workflow[workflow.index("  briefing:\n"):probe]
+    assert "git push" not in report_prefix and "publish_shadow_report_batch.py" not in report_prefix
     assert workflow.count("run: python fubon_ownership_deploy_gate.py") == 1
     assert "run: python fubon_ownership_relay.py" not in workflow
     # Source-only and ordinary briefing jobs are mutually exclusive.
