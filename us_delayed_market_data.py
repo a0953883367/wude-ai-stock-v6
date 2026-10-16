@@ -125,7 +125,7 @@ def _bar(raw: Any, cutoff: datetime, interval: str, telemetry=None) -> dict:
 
 def _fetch(symbols, interval, start, end, client, headers, timeout, deadline, telemetry=None):
     _mark(telemetry, interval=interval, requested_count=len(symbols),
-          phase='before_request', page_limit=MAX_PAGES, response_byte_limit=MAX_BYTES,
+          phase='before_request', http_status=None, page_limit=MAX_PAGES, response_byte_limit=MAX_BYTES,
           validated_symbol_count=0)
     params = {'symbols': ','.join(symbols), 'timeframe': interval, 'feed': 'sip',
               'adjustment': 'split', 'currency': 'USD', 'sort': 'desc', 'limit': 10000,
@@ -134,7 +134,7 @@ def _fetch(symbols, interval, start, end, client, headers, timeout, deadline, te
     tokens = set()
     stamps = {symbol: set() for symbol in symbols}
     for _ in range(MAX_PAGES):
-        _mark(telemetry, phase='before_request')
+        _mark(telemetry, phase='before_request', http_status=None)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise DelayedDataUnavailable('request_time_budget')
@@ -204,14 +204,40 @@ def fetch_delayed_us_bars(symbols, timeout=20, session=None, observed_at=None, *
           minimum_delay_seconds=DELAY_SECONDS, total_budget_seconds=75,
           request_timeout_seconds=timeout, minute_window_minutes=90)
     output = {}
+    failures = []
+
+    def record_failure(exc):
+        # Preserve each stage's safe receipt before the next request overwrites
+        # current phase/HTTP fields. No exception strings or market data escape.
+        state = dict(telemetry or {})
+        _diagnostic_failure(state, exc)
+        receipt = {key: state[key] for key in (
+            'stage', 'phase', 'reason', 'network_category', 'http_status',
+            'request_count', 'completed_page_count', 'validated_bar_count',
+            'validated_symbol_count') if key in state}
+        receipt['elapsed_ms'] = round((time.monotonic() - started) * 1000)
+        failures.append(receipt)
+
     try:
-        minute = _fetch(requested, '1Min', end - timedelta(minutes=90), end,
-                        client, headers, timeout, deadline, telemetry)
+        try:
+            minute = _fetch(requested, '1Min', end - timedelta(minutes=90), end,
+                            client, headers, timeout, deadline, telemetry)
+        except (DelayedDataUnavailable, requests.RequestException, ValueError, TypeError) as exc:
+            record_failure(exc)
+            minute = {}  # Failed pagination never supplies partially validated rows.
         _mark(telemetry, minute_available_count=sum(bool(rows) for rows in minute.values()))
-        missing = [symbol for symbol in requested if not minute[symbol]]
+        missing = [symbol for symbol in requested if not minute.get(symbol)]
         _mark(telemetry, stage='missing_daily' if missing else 'complete', missing_for_daily_count=len(missing))
-        daily = _fetch(missing, '1Day', end - timedelta(days=10), end,
-                       client, headers, timeout, deadline, telemetry) if missing else {}
+        daily = {}
+        if missing:
+            try:
+                # _fetch checks the same deadline before making any new request.
+                daily = _fetch(missing, '1Day', end - timedelta(days=10), end,
+                               client, headers, timeout, deadline, telemetry)
+            except (DelayedDataUnavailable, requests.RequestException, ValueError, TypeError) as exc:
+                record_failure(exc)
+                # Retain successfully validated minute rows when only fallback fails.
+                daily = {}
         _mark(telemetry, daily_available_count=sum(bool(rows) for rows in daily.values()), phase='output')
         for symbol in requested:
             bars = minute.get(symbol) or daily.get(symbol) or []
@@ -230,10 +256,13 @@ def fetch_delayed_us_bars(symbols, timeout=20, session=None, observed_at=None, *
                 'us_live_data_available': False,
             }
     except (DelayedDataUnavailable, requests.RequestException, ValueError, TypeError) as exc:
-        _diagnostic_failure(telemetry, exc)
-        _mark(telemetry, elapsed_ms=round((time.monotonic() - started) * 1000), returned_count=0)
-        return {}  # Fail closed; existing Yahoo/report path remains available.
-    _mark(telemetry, status='complete', stage='complete', elapsed_ms=round((time.monotonic() - started) * 1000), returned_count=len(output))
+        record_failure(exc)
+        output = {}
+    coverage = 'complete' if len(output) == len(requested) else 'partial' if output else 'unavailable'
+    status = ('recovered' if output else 'blocked') if failures else 'complete'
+    _mark(telemetry, status=status, stage='complete', phase='output', failures=failures,
+          coverage_status=coverage, elapsed_ms=round((time.monotonic() - started) * 1000),
+          returned_count=len(output))
     return output
 
 

@@ -37,7 +37,7 @@ class Client:
         self.calls = []
     def get(self, url, **kwargs):
         self.calls.append((url, kwargs))
-        response = self.responses.pop(0)
+        response = self.responses.pop(0) if self.responses else Response()
         if isinstance(response, Exception):
             raise response
         return response
@@ -85,20 +85,21 @@ def cases():
 def test_every_failed_branch_reports_fixed_reason_and_phase(responses, reason, phase):
     output, counts, client = run(responses)
     assert output == {}
-    assert counts['status'] == 'blocked' and counts['reason'] == reason
-    assert counts['phase'] == phase and counts['stage'] == 'minute'
+    assert counts['status'] == 'blocked' and counts['failures'][0]['reason'] == reason
+    assert counts['failures'][0]['phase'] == phase and counts['failures'][0]['stage'] == 'minute'
     assert counts['returned_count'] == 0
     assert counts['request_count'] == len(client.calls)
     assert all(response.closed for response in responses if isinstance(response, Response))
 
 
-def test_minute_success_then_daily_failure_is_identified_without_changing_v3():
+def test_minute_success_survives_daily_failure_with_receipt():
     output, counts, client = run([Response({'AAPL': [bar()]}), requests.ReadTimeout(SECRET)], ['AAPL', 'MISSING'])
-    assert output == {}  # Preserve deployed V3 all-or-nothing behavior.
-    assert counts['stage'] == 'missing_daily'
+    assert set(output) == {'AAPL'}
+    assert counts['status'] == 'recovered' and counts['coverage_status'] == 'partial'
+    assert counts['failures'][0]['stage'] == 'missing_daily'
     assert counts['minute_available_count'] == 1
     assert counts['missing_for_daily_count'] == 1
-    assert counts['network_category'] == 'read_timeout'
+    assert counts['failures'][0]['network_category'] == 'read_timeout'
     assert counts['request_count'] == 2
     assert client.calls[1][1]['params']['symbols'] == 'MISSING'
 
@@ -106,8 +107,8 @@ def test_minute_success_then_daily_failure_is_identified_without_changing_v3():
 def test_daily_timestamp_validation_is_distinct():
     output, counts, _ = run([Response(), Response({'AAPL': [bar('2026-10-15T15:00:00Z')]})])
     assert not output
-    assert counts['stage'] == 'missing_daily'
-    assert counts['reason'] == 'invalid_bar' and counts['phase'] == 'bar_timestamp'
+    assert counts['failures'][0]['stage'] == 'missing_daily'
+    assert counts['failures'][0]['reason'] == 'invalid_bar' and counts['failures'][0]['phase'] == 'bar_timestamp'
 
 
 def test_current_daily_session_excluded_without_claiming_error():
@@ -119,8 +120,8 @@ def test_current_daily_session_excluded_without_claiming_error():
 def test_byte_budget_distinct(monkeypatch):
     monkeypatch.setattr(module, 'MAX_BYTES', 2)
     output, counts, _ = run([Response({'AAPL': [bar()]})])
-    assert not output and counts['reason'] == 'response_byte_budget'
-    assert counts['phase'] == 'body' and counts['response_bytes'] > 2
+    assert not output and counts['failures'][0]['reason'] == 'response_byte_budget'
+    assert counts['failures'][0]['phase'] == 'body' and counts['response_bytes'] > 2
 
 
 def test_deadline_distinct(monkeypatch):
@@ -131,8 +132,8 @@ def test_deadline_distinct(monkeypatch):
             ticks[0] = 76
             yield self.raw
     output, counts, _ = run([Late({'AAPL': [bar()]})])
-    assert not output and counts['reason'] == 'request_time_budget'
-    assert counts['phase'] == 'body' and counts['elapsed_ms'] == 76000
+    assert not output and counts['failures'][0]['reason'] == 'request_time_budget'
+    assert counts['failures'][0]['phase'] == 'body' and counts['elapsed_ms'] == 76000
 
 
 def test_static_parameters_and_success_counts_unchanged():
@@ -160,15 +161,13 @@ def test_invalid_observation_and_symbol_contract_remains_raise():
         module.fetch_delayed_us_bars(['INVALID!'], observed_at=NOW, telemetry={})
 
 
-def test_diagnostic_disabled_and_enabled_match_deployed_v3_outputs():
+def test_successful_results_match_deployed_v3_outputs():
     spec = importlib.util.spec_from_file_location('v3_reference', Path(__file__).parent / 'fixtures/v3_minute_baseline.py')
     baseline = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(baseline)
     for factory, symbols in [
         (lambda: [Response({'AAPL': [bar()]})], ['AAPL']),
-        (lambda: [Response({'AAPL': [bar()]}), requests.ReadTimeout(SECRET)], ['AAPL', 'MISSING']),
         (lambda: [Response(), Response({'AAPL': [bar('2026-10-15T04:00:00Z')]})], ['AAPL']),
-        (lambda: [Response({'AAPL': [bar(c=-1)]})], ['AAPL']),
     ]:
         expected, _, old_client = run(factory(), symbols, target=baseline, telemetry=False)
         for enabled in (False, True):
@@ -204,23 +203,27 @@ def test_diagnostics_only_available_after_existing_oidc_gate(monkeypatch):
     assert 'private_free_diagnostics' not in sent[-1][1] and calls[-1] == {}
 
 
-def test_187_successful_minute_symbols_are_discarded_by_v3_daily_error():
+def test_187_successful_minute_symbols_survive_daily_error():
     symbols = [f'TEST{i}' for i in range(188)]
     output, counts, _ = run([Response({s: [bar()] for s in symbols[:187]}),
                             requests.ReadTimeout(SECRET)], symbols)
-    assert output == {}
+    assert len(output) == 187
+    assert counts['status'] == 'recovered' and counts['coverage_status'] == 'partial'
     assert counts['minute_available_count'] == 187
     assert counts['missing_for_daily_count'] == 1
-    assert counts['stage'] == 'missing_daily' and counts['request_count'] == 2
-    assert counts['returned_count'] == 0
+    assert counts['failures'][0]['stage'] == 'missing_daily' and counts['request_count'] == 2
+    assert counts['returned_count'] == 187
 
 
 def test_deadline_before_first_request_makes_no_provider_call(monkeypatch):
-    times = iter([0, 76, 76])
-    monkeypatch.setattr(module.time, 'monotonic', lambda: next(times))
+    calls = [0]
+    def clock():
+        calls[0] += 1
+        return 0 if calls[0] == 1 else 76
+    monkeypatch.setattr(module.time, 'monotonic', clock)
     output, counts, client = run([])
     assert not output and not client.calls
-    assert counts['reason'] == 'request_time_budget' and counts['phase'] == 'before_request'
+    assert counts['failures'][0]['reason'] == 'request_time_budget' and counts['failures'][0]['phase'] == 'before_request'
 
 
 def test_swallowed_generic_typeerror_has_no_exception_text():
@@ -228,7 +231,7 @@ def test_swallowed_generic_typeerror_has_no_exception_text():
         def iter_content(self, chunk_size):
             yield SECRET
     output, counts, _ = run([WrongChunk()])
-    assert not output and counts['reason'] == 'invalid_value' and counts['phase'] == 'body'
+    assert not output and counts['failures'][0]['reason'] == 'invalid_value' and counts['failures'][0]['phase'] == 'body'
 
 
 def test_authenticated_relay_sidecar_does_not_change_market_data(monkeypatch):
@@ -281,8 +284,8 @@ def test_probe_opt_in_uses_existing_calls_only_and_prints_no_prices(tmp_path, mo
 def test_network_failure_after_successful_page_has_no_stale_http_status():
     output, counts, _ = run([Response({'AAPL': [bar()]}, token='next'), requests.ReadTimeout(SECRET)])
     assert not output
-    assert counts['http_status'] is None
-    assert counts['request_count'] == 2 and counts['completed_page_count'] == 1
+    assert counts['failures'][0]['http_status'] is None
+    assert counts['failures'][0]['request_count'] == 2 and counts['failures'][0]['completed_page_count'] == 1
 
 
 def test_stream_byte_accounting_updates_only_once_per_response(monkeypatch):
@@ -309,3 +312,67 @@ def test_health_marker_and_workflow_diagnostic_flag_are_explicit():
     workflow = (root / '.github/workflows/stock-briefing.yml').read_text()
     assert 'run: python tools/probe_free_us_data.py --diagnostics' in workflow
     assert 'inputs.us_free_data == true' in workflow
+
+
+def test_minute_transport_error_recovers_187_daily_rows_with_failure_receipt():
+    symbols = [f'TEST{i}' for i in range(188)]
+    output, counts, client = run([requests.ReadTimeout(SECRET),
+        Response({s: [bar('2026-10-15T04:00:00Z')] for s in symbols[:187]})], symbols)
+    assert len(output) == 187
+    assert all(row['us_delayed_interval'] == '1Day' for row in output.values())
+    assert counts['status'] == 'recovered' and counts['coverage_status'] == 'partial'
+    assert counts['minute_available_count'] == 0 and counts['daily_available_count'] == 187
+    assert len(counts['failures']) == 1
+    assert counts['failures'][0]['stage'] == 'minute'
+    assert counts['failures'][0]['reason'] == 'provider_network_failure'
+    assert counts['failures'][0]['network_category'] == 'read_timeout'
+    assert counts['failures'][0]['http_status'] is None
+    assert len(client.calls) == 2
+
+
+def test_validation_failure_can_recover_but_is_not_relabelled_transport():
+    output, counts, _ = run([Response({'AAPL': [bar(c=-1)]}),
+                             Response({'AAPL': [bar('2026-10-15T04:00:00Z')]})])
+    assert output['AAPL']['us_delayed_interval'] == '1Day'
+    assert counts['status'] == 'recovered' and counts['coverage_status'] == 'complete'
+    assert counts['failures'][0]['reason'] == 'invalid_bar'
+    assert counts['failures'][0]['phase'] == 'bar_ohlcv'
+    assert 'network_category' not in counts['failures'][0]
+
+
+def test_both_stages_fail_and_both_safe_receipts_survive():
+    output, counts, _ = run([requests.ConnectTimeout(SECRET), Response(status=403)])
+    assert output == {} and counts['status'] == 'blocked'
+    assert counts['coverage_status'] == 'unavailable'
+    assert [item['stage'] for item in counts['failures']] == ['minute', 'missing_daily']
+    assert [item['reason'] for item in counts['failures']] == ['provider_network_failure', 'provider_http_failure']
+    assert counts['failures'][1]['http_status'] == 403
+    assert 'network_category' not in counts['failures'][1]
+
+
+def test_recovery_keeps_original_total_deadline(monkeypatch):
+    ticks = [0]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: ticks[0])
+    class LateMinute(Client):
+        def get(self, url, **kwargs):
+            if not self.calls:
+                self.calls.append((url, kwargs))
+                ticks[0] = 70
+                raise requests.ReadTimeout(SECRET)
+            return super().get(url, **kwargs)
+    client = LateMinute([Response({'AAPL': [bar('2026-10-15T04:00:00Z')]})])
+    counts = {}
+    result = module.fetch_delayed_us_bars(['AAPL'], session=client, observed_at=NOW, telemetry=counts)
+    assert result['AAPL']['us_delayed_interval'] == '1Day'
+    assert client.calls[1][1]['timeout'] == 5
+    assert counts['total_budget_seconds'] == 75 and counts['status'] == 'recovered'
+
+
+def test_failed_minute_pages_never_reappear_as_minute_rows():
+    output, counts, _ = run([Response({'AAPL': [bar()]}, token='next'),
+                             requests.ReadTimeout(SECRET),
+                             Response({'AAPL': [bar('2026-10-15T04:00:00Z')]})])
+    assert output['AAPL']['us_delayed_interval'] == '1Day'
+    assert counts['minute_available_count'] == 0
+    assert counts['failures'][0]['validated_symbol_count'] == 1
+    assert counts['status'] == 'recovered'
