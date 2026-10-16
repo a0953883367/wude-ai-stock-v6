@@ -158,3 +158,15 @@ def fetch_delayed_us_bars(symbols, timeout=20, session=None, observed_at=None):
     except (DelayedDataUnavailable, requests.RequestException, ValueError, TypeError):
         return {}  # Fail closed; existing Yahoo/report path remains available.
     return output
+
+
+def fetch_free_us_quotes(symbols, timeout=20, session=None, observed_at=None):
+    """Private delayed SIP first, then explicitly labelled existing daily cache."""
+    requested = sorted(set(str(symbol).upper() for symbol in symbols if symbol))
+    output = fetch_delayed_us_bars(requested, timeout=timeout, session=session,
+                                   observed_at=observed_at)
+    missing = sorted(set(requested) - set(output))
+    if missing:
+        from us_cached_daily_fallback import fetch_cached_us_daily
+        output.update(fetch_cached_us_daily(missing, observed_at=observed_at))
+    return output

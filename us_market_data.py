@@ -181,11 +181,14 @@ def fetch_us_sip_snapshots(
         if relayed:
             LOG.info("US SIP layer received %s symbols from the authenticated Railway relay", len(relayed))
             return relayed
+        if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
+            from us_cached_daily_fallback import fetch_cached_us_daily
+            return fetch_cached_us_daily(payload["symbols"], observed_at=observed_at)
         LOG.info("Alpaca credentials and authenticated relay absent; US SIP layer will use existing fallbacks")
         return {}
     if os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed":
-        from us_delayed_market_data import fetch_delayed_us_bars
-        return fetch_delayed_us_bars(symbols, timeout=timeout, session=session, observed_at=observed_at)
+        from us_delayed_market_data import fetch_free_us_quotes
+        return fetch_free_us_quotes(symbols, timeout=timeout, session=session, observed_at=observed_at)
     feed = os.getenv("ALPACA_STOCK_FEED", "sip").strip().lower() or "sip"
     client = session or requests.Session()
     output: dict[str, dict[str, Any]] = {}

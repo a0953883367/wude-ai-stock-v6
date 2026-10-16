@@ -26,18 +26,26 @@ Taiwan service and all authorization checks are unchanged.
 ## Validation and activation
 
 1. Deploy the backward-compatible code with mode unset. `/health` reports the
-   `US-FREE-DELAYED-V1` capability without asserting free entitlement.
+   `US-FREE-DELAYED-V2` capability without asserting free entitlement.
 2. In existing `stock-briefing.yml`, dispatch `source_validation_only=true` and
    `us_free_data=true`. The existing OIDC-authenticated relay accepts this opt-in
    read-only request, regardless of the default paid mode. The diagnostic prints
    counts and missing symbols only, using a frozen current-report 188-symbol pool.
+   It separately checks completed SIP daily bars and the explicitly labelled
+   attested Yahoo daily report cache. The cache does not claim SIP coverage and
+   rejects incomplete, inconsistent, future, duplicate, or over-seven-day rows.
 3. A successful paid-account probe validates this historical route and symbol
    coverage. It does NOT verify the account's entitlement after downgrade.
 4. Before activation, inspect live references, missing symbols (including OTC
    HNHPF), reports, and the owner UI. The separate Vercel source must not be replaced
    by this repository's static preview. Its hard-coded SIP labels require separate
    review before claiming that owner application is ready for free mode.
-5. Only after validation/acceptance, explicitly set `ALPACA_DATA_MODE=free_delayed`
+5. Dispatch `us_free_report_validation=true` alone to exercise the full report
+   pipeline in a temporary runner with free mode. This separate job has read-only
+   repository permission and no delivery, publishing, cache-save, or commit step.
+   It checks all 188 US identities, valid formal prices, delayed references, zero
+   false-live/OPRA claims, and absence of private raw bars in report output.
+6. Only after validation/acceptance, explicitly set `ALPACA_DATA_MODE=free_delayed`
    in the existing Railway service and report environment. Do not remove existing
    credentials; historical Basic requests still require authentication. Then the
    owner can cancel the paid subscription themselves and rerun the same probe to
@@ -57,3 +65,9 @@ Reference report blob `c8a09cab4a8a0d9ccb3c3a11b73b56af883672ca` dated
 2026-10-16 21:56:45 has 380 rows / 188 US rows. Already-paid SIP availability was
 187/188 (HNHPF unavailable), while HNHPF had a Yahoo daily source. This observation
 is not a free-path runtime test or a guarantee of future Yahoo availability.
+
+On 2026-10-16, workflow run 38927404192 verified the V1 historical route on the
+still-paid account: 187/188 symbols returned delayed minute bars, with HNHPF
+missing. Zero unexpected live fields and zero market-value exports were reported.
+V2 adds the separately labelled existing Yahoo daily cache for that gap; it must
+be verified by a new runtime probe before claiming 188/188 functional coverage.

@@ -313,7 +313,7 @@ def test_delayed_internal_relay_keeps_oidc_gate(monkeypatch):
     import us_delayed_market_data
     calls, responses = [], []
     monkeypatch.setattr(live_api, 'verify_github_oidc_token', lambda token: calls.append(token))
-    monkeypatch.setattr(us_delayed_market_data, 'fetch_delayed_us_bars',
+    monkeypatch.setattr(us_delayed_market_data, 'fetch_free_us_quotes',
                         lambda symbols: calls.append(symbols) or {'AAPL': {'us_delayed_price': 11}})
     monkeypatch.setattr(live_api, 'fetch_us_sip_snapshots', lambda *a, **kw: pytest.fail('No live fallback'))
     handler = SimpleNamespace(path='/api/internal/market-data',
@@ -333,3 +333,169 @@ def test_delayed_internal_relay_keeps_oidc_gate(monkeypatch):
     live_api.LiveRequestHandler.do_POST(handler)
     assert responses[-1][0] == 403
     assert calls == ['test-oidc', ['AAPL']]
+
+
+def test_free_wrapper_uses_cache_only_for_missing_symbols(monkeypatch):
+    import us_delayed_market_data as delayed
+    import us_cached_daily_fallback as cached
+    calls = []
+    sip = {'us_delayed_price': 11, 'us_delayed_source': 'Alpaca SIP'}
+    yahoo = {'us_delayed_price': 9, 'us_delayed_cached': True}
+    monkeypatch.setattr(delayed, 'fetch_delayed_us_bars', lambda *a, **kw: {'AAPL': sip})
+    monkeypatch.setattr(cached, 'fetch_cached_us_daily',
+        lambda symbols, **kw: calls.append((symbols, kw)) or {'HNHPF': yahoo})
+    result = delayed.fetch_free_us_quotes(['AAPL', 'HNHPF'], observed_at=NOW)
+    assert result == {'AAPL': sip, 'HNHPF': yahoo}
+    assert calls == [(['HNHPF'], {'observed_at': NOW})]
+
+
+def test_free_wrapper_does_not_read_cache_when_sip_complete(monkeypatch):
+    import us_delayed_market_data as delayed
+    import us_cached_daily_fallback as cached
+    monkeypatch.setattr(delayed, 'fetch_delayed_us_bars', lambda *a, **kw: {'AAPL': {}})
+    monkeypatch.setattr(cached, 'fetch_cached_us_daily', lambda *a, **kw: pytest.fail('No cache read'))
+    assert delayed.fetch_free_us_quotes(['AAPL']) == {'AAPL': {}}
+
+
+def test_free_daily_status_exports_counts_only_after_oidc(monkeypatch):
+    import live_api
+    import us_free_daily_fallback as daily
+    import us_cached_daily_fallback as cached
+    calls, responses = [], []
+    monkeypatch.setattr(live_api, 'verify_github_oidc_token', lambda token: calls.append('auth'))
+    monkeypatch.setattr(daily, 'fetch_free_completed_daily', lambda *a: {
+        'missing_symbols': ['HNHPF'], 'requested_count': 2, 'available_count': 1,
+        'status': 'partial', 'request_count': 1, 'session_date': '2026-10-15',
+        'rows': {'AAPL': {'close': 12345.6789}},
+    })
+    monkeypatch.setattr(cached, 'fetch_cached_us_daily',
+                        lambda symbols: calls.append(symbols) or {'HNHPF': {'us_delayed_price': 98765.4321}})
+    handler = SimpleNamespace(path='/api/internal/market-data',
+        headers={'Authorization': 'Bearer existing'},
+        rate_limiter=SimpleNamespace(allow=lambda: True),
+        large_buy_service=SimpleNamespace(weight_shadow=SimpleNamespace(calendar=object())),
+        _read_json=lambda: {'kind': 'free_daily_status', 'symbols': ['AAPL', 'HNHPF']},
+        _send=lambda status, result: responses.append((status, result)))
+    live_api.LiveRequestHandler.do_POST(handler)
+    status, result = responses[-1]
+    assert status == 200
+    assert calls == ['auth', ['HNHPF']]
+    assert result['data']['sip_daily_count'] == result['data']['cached_yahoo_count'] == 1
+    assert result['data']['status'] == 'complete'
+    assert result['data']['market_values_exported'] is False
+    assert result['data']['basic_entitlement_verified'] is False
+    assert '12345.6789' not in json.dumps(result) and '98765.4321' not in json.dumps(result)
+    assert 'rows' not in result['data']
+    def deny(token):
+        raise PermissionError('denied')
+    monkeypatch.setattr(live_api, 'verify_github_oidc_token', deny)
+    handler._read_json = lambda: pytest.fail('Auth before payload')
+    live_api.LiveRequestHandler.do_POST(handler)
+    assert responses[-1][0] == 403
+    assert calls == ['auth', ['HNHPF']]
+
+
+def test_free_report_validator_requires_complete_non_live_non_raw_coverage():
+    from tools.validate_free_report import summarize
+    row = {'market': 'US', 'symbol': 'AAPL', 'price': 12345.6789,
+           'us_delayed_data_available': True, 'us_live_data_available': False,
+           'us_delayed_price': 11, 'us_delayed_minimum_seconds': 960,
+           'us_delayed_source': 'Alpaca SIP historical (>=16min delayed)',
+           'us_delayed_coverage': 'consolidated', 'us_delayed_interval': '1Min',
+           'us_delayed_asof': '2026-10-16T15:13:00Z',
+           'us_delayed_fetched_at': '2026-10-16T15:30:00Z'}
+    result = summarize({'data': [row]}, ['AAPL'])
+    assert result['passed'] is True
+    assert '12345.6789' not in json.dumps(result)
+    for field, value in [('us_live_data_available', True), ('us_option_data_available', True),
+                         ('us_delayed_bars', []), ('price', float('nan')),
+                         ('us_delayed_data_available', False)]:
+        assert not summarize({'data': [{**row, field: value}]}, ['AAPL'])['passed']
+    assert not summarize({'data': [row, row]}, ['AAPL'])['passed']
+    assert not summarize({'data': [row]}, ['AAPL', 'HNHPF'])['passed']
+    for field in ('us_delayed_source', 'us_delayed_coverage', 'us_delayed_interval',
+                  'us_delayed_asof', 'us_delayed_fetched_at', 'us_delayed_minimum_seconds',
+                  'us_live_data_available'):
+        missing = {key: value for key, value in row.items() if key != field}
+        assert not summarize({'data': [missing]}, ['AAPL'])['passed']
+    for field, value in [('us_delayed_source', 'Real-time SIP'),
+                         ('us_delayed_coverage', 'provider_defined'),
+                         ('us_delayed_asof', '2026-10-16T15:31:00Z'),
+                         ('us_delayed_asof', '2026-10-16T15:15:00Z'),
+                         ('us_delayed_asof', '2026-10-16T15:13:00'),
+                         ('us_delayed_minimum_seconds', True),
+                         ('us_delayed_minimum_seconds', 900),
+                         ('us_delayed_price', float('inf'))]:
+        assert not summarize({'data': [{**row, field: value}]}, ['AAPL'])['passed']
+    yahoo = {**row, 'us_delayed_source': 'Yahoo Finance completed daily report cache',
+             'us_delayed_coverage': 'provider_defined', 'us_delayed_interval': '1Day',
+             'us_delayed_cached': True, 'us_delayed_asof': '2026-10-15T04:00:00Z'}
+    assert summarize({'data': [yahoo]}, ['AAPL'])['passed']
+    assert not summarize({'data': [{**yahoo, 'us_delayed_cached': False}]}, ['AAPL'])['passed']
+    assert not summarize({'data': [{**yahoo, 'us_delayed_interval': '1Min'}]}, ['AAPL'])['passed']
+
+
+def test_free_validation_workflow_has_no_publishing_permissions_or_steps():
+    from pathlib import Path
+    text = (Path(__file__).resolve().parents[1] / '.github/workflows/stock-briefing.yml').read_text()
+    job = text.split('  free_report_validation:\n', 1)[1].split('  source_validation:\n', 1)[0]
+    assert 'contents: read' in job and 'persist-credentials: false' in job
+    assert 'contents: write' not in job and 'actions: write' not in job
+    assert 'ALPACA_DATA_MODE: free_delayed' in job
+    assert '--no-telegram' in job and 'tools/validate_free_report.py' in job
+    assert not any(command in job for command in ('git push', 'git commit', 'publish_owner', 'publish_friend', 'upload-artifact'))
+    gate = text.split('  gate:\n', 1)[1].split('  briefing:\n', 1)[0]
+    assert 'inputs.us_free_report_validation != true' in gate
+
+
+def test_free_mode_without_credentials_or_relay_can_use_attested_cache(monkeypatch):
+    import us_market_data
+    import us_cached_daily_fallback
+    monkeypatch.setenv('ALPACA_DATA_MODE', 'free_delayed')
+    monkeypatch.delenv('ALPACA_API_KEY_ID')
+    monkeypatch.setattr(us_market_data, '_relay_request', lambda *a, **kw: {})
+    calls = []
+    monkeypatch.setattr(us_cached_daily_fallback, 'fetch_cached_us_daily',
+        lambda symbols, **kw: calls.append((symbols, kw)) or {'HNHPF': {'us_delayed_cached': True}})
+    assert us_market_data.fetch_us_sip_snapshots(['HNHPF'], observed_at=NOW) == {'HNHPF': {'us_delayed_cached': True}}
+    assert calls == [(['HNHPF'], {'observed_at': NOW})]
+
+
+@pytest.mark.parametrize('count,daily_status,expected_code', [(188, 'complete', 0), (187, 'complete', 1), (188, 'partial', 1)])
+def test_probe_requires_complete_combined_and_separate_daily_coverage(tmp_path, monkeypatch, capsys, count, daily_status, expected_code):
+    from tools import probe_free_us_data as probe
+    monkeypatch.setenv('ALPACA_DATA_MODE', 'free_delayed')
+    symbols = [f'TEST{i}' for i in range(188)]
+    folder = tmp_path / 'tests/fixtures'
+    folder.mkdir(parents=True)
+    (folder / 'us_free_probe_universe.json').write_text(json.dumps({
+        'symbols': symbols, 'source': 'test', 'source_blob_sha': 'test'}))
+    monkeypatch.setattr(probe, 'ROOT', tmp_path)
+    monkeypatch.setattr(probe, 'fetch_us_sip_snapshots', lambda *a, **kw: {
+        symbol: {'us_delayed_data_available': True, 'us_live_data_available': False,
+                 'us_delayed_minimum_seconds': 960, 'us_delayed_coverage': 'consolidated',
+                 'us_delayed_interval': '1Min', 'us_delayed_price': 12345.6789}
+        for symbol in symbols[:count]})
+    monkeypatch.setattr(probe, '_relay_request', lambda *a, **kw: {
+        'requested_count': 188, 'status': daily_status, 'market_values_exported': False})
+    assert probe.main() == expected_code
+    output = capsys.readouterr().out
+    assert '12345.6789' not in output
+    assert json.loads(output)['historical_available_count'] == count
+
+
+def test_briefing_delayed_label_distinguishes_yahoo_from_sip():
+    import ast
+    from pathlib import Path
+    tree = ast.parse((Path(__file__).resolve().parents[1] / 'briefing.py').read_text())
+    labels = [node for node in ast.walk(tree) if isinstance(node, ast.Assign)
+              and 'Yahoo已完成日線快取' in ast.unparse(node)]
+    assert len(labels) == 1
+    statement = compile(ast.Module(body=labels, type_ignores=[]), '<label>', 'exec')
+    yahoo = {'us_delayed_cached': True}
+    exec(statement, {}, {'row': yahoo})
+    assert yahoo['next_session_data_mode'] == 'Yahoo已完成日線快取（非即時，僅供參考）'
+    assert 'SIP' not in yahoo['next_session_data_mode']
+    sip = {'us_delayed_cached': False}
+    exec(statement, {}, {'row': sip})
+    assert sip['next_session_data_mode'] == 'SIP延遲歷史行情（至少16分鐘；非即時，僅供參考）'

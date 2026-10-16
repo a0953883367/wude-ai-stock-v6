@@ -747,7 +747,11 @@ def _attach_next_session_predictions(
             and row.get("us_delayed_data_available")
             and not row.get("us_live_data_available")
         ):
-            row["next_session_data_mode"] = "SIP延遲歷史行情（至少16分鐘；非即時，僅供參考）"
+            row["next_session_data_mode"] = (
+                "Yahoo已完成日線快取（非即時，僅供參考）"
+                if row.get("us_delayed_cached") is True
+                else "SIP延遲歷史行情（至少16分鐘；非即時，僅供參考）"
+            )
         elif row.get("market") == "US" and not row.get("us_live_data_available"):
             row["next_session_data_mode"] = "FINRA／盤前盤後備援（SIP未取得）"
         elif row.get("market") == "US" and not row.get("us_option_data_available"):
@@ -1772,6 +1776,14 @@ def main() -> int:
             "us_delayed_count": sum(
                 1 for symbol in us_symbols
                 if us_live.get(symbol, {}).get("us_delayed_data_available")
+            ),
+            "us_delayed_sip_count": sum(
+                1 for symbol in us_symbols
+                if us_live.get(symbol, {}).get("us_delayed_coverage") == "consolidated"
+            ),
+            "us_cached_yahoo_count": sum(
+                1 for symbol in us_symbols
+                if us_live.get(symbol, {}).get("us_delayed_cached") is True
             ),
             "us_data_mode": os.getenv("ALPACA_DATA_MODE", "paid_live").strip().lower(),
             "us_treasury_sip_count": sum(

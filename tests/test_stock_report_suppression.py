@@ -87,7 +87,7 @@ def test_source_only_job_is_bounded_and_has_no_production_side_effects():
     for forbidden in ('secrets.', 'git push', 'git commit', 'briefing.py', 'report_delivery.py',
                       'publish_', 'upload-artifact', 'cache/save', 'contents: write', 'actions: write'):
         assert forbidden not in job
-    assert "  gate:\n    if: ${{ inputs.source_validation_only != true }}" in text
+    assert "  gate:\n    if: ${{ inputs.source_validation_only != true && inputs.us_free_report_validation != true }}" in text
     assert "inputs.source_validation_only != true && needs.gate.outputs.should_run == 'true'" in text
     assert 'TELEGRAM_BOT_TOKEN' not in text and 'TELEGRAM_CHAT_ID' not in text
     assert 'python report_delivery.py' not in text
@@ -128,3 +128,4 @@ def test_malformed_generation_is_not_evidence_and_cannot_crash_gate(tmp_path, ma
     assert not generation_is_current({'generation_receipts': malformed}, period='morning', target=TARGET)
     assert not generation_is_current({'generation_receipts': {'morning': malformed}}, period='morning', target=TARGET)
     assert scheduled_gate_decision({}, now=AT, schedule='55 21 * * *', delivery=evidence)[0]
+

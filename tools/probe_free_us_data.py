@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from us_market_data import fetch_us_sip_snapshots
+from us_market_data import fetch_us_sip_snapshots, _relay_request
 
 
 def main() -> int:
@@ -22,7 +22,11 @@ def main() -> int:
                 if symbol in symbols and row.get('us_delayed_data_available') is True
                 and row.get('us_live_data_available') is False
                 and row.get('us_delayed_minimum_seconds', 0) >= 960
-                and row.get('us_delayed_coverage') == 'consolidated'}
+                and (row.get('us_delayed_coverage') == 'consolidated'
+                     or (row.get('us_delayed_coverage') == 'provider_defined'
+                         and row.get('us_delayed_cached') is True
+                         and row.get('us_delayed_source') == 'Yahoo Finance completed daily report cache'))}
+    daily = _relay_request('free_daily_status', {'symbols': symbols}, 90)
     result = {
         'mode': 'free_delayed', 'source': fixture['source'],
         'universe_blob_sha': fixture['source_blob_sha'], 'requested_count': 188,
@@ -30,13 +34,19 @@ def main() -> int:
         'missing_symbols': sorted(set(symbols) - set(accepted)),
         'minute_count': sum(r.get('us_delayed_interval') == '1Min' for r in accepted.values()),
         'completed_daily_count': sum(r.get('us_delayed_interval') == '1Day' for r in accepted.values()),
+        'sip_count': sum(r.get('us_delayed_coverage') == 'consolidated' for r in accepted.values()),
+        'cached_yahoo_count': sum(r.get('us_delayed_cached') is True for r in accepted.values()),
+        'separate_daily_probe': daily,
         'unexpected_live_count': sum(bool(r.get('us_live_data_available')) for r in rows.values()),
         'status': 'complete' if len(accepted) == 188 else 'partial' if accepted else 'blocked',
         'basic_account_entitlement_verified': False,
         'paid_subscription_changed': False, 'market_values_exported': False,
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if accepted and not result['unexpected_live_count'] else 1
+    return 0 if (len(accepted) == 188 and not result['unexpected_live_count']
+                 and daily.get('requested_count') == 188
+                 and daily.get('status') == 'complete'
+                 and daily.get('market_values_exported') is False) else 1
 
 
 if __name__ == '__main__':
