@@ -146,3 +146,50 @@ def test_cached_sources_keep_original_age_and_provenance(reports, cached_source)
     assert not data_refresh_needed(latest, now=NOW, reports=root)
     latest['watchlist'][0]['us_delayed_bars'] = None
     assert data_refresh_needed(latest, now=NOW, reports=root)
+
+
+@pytest.mark.parametrize('offset,valid', [(0, True), (1, False), (-120, True), (-121, False)])
+def test_matching_generation_times_checked_by_helper_and_silent_receipt(reports, offset, valid):
+    from report_delivery import record_delivery, validate_fixed_report
+    from us_free_recovery_validation import healthy_free_report
+    root, latest, analysis = reports
+    latest['updated_at'] = analysis['updated_at'] = (NOW + timedelta(minutes=offset)).isoformat()
+    latest['run_mode'] = 'scheduled_report'
+    for name, value in [('latest', latest), ('all_analysis', analysis)]:
+        recovery.save(root / (name + '.json'), value)
+    (root / 'latest.md').write_text('synthetic report')
+    assert healthy_free_report(latest, analysis, now=NOW) is valid
+    assert validate_fixed_report(latest, expected_period='noon', now=NOW, reports=root)[0] is valid
+    record_delivery(root, period='noon', report_updated_at=latest['updated_at'],
+                    state='suppressed', delivered=False, expected_delivery=False,
+                    detail='test', checked_at=NOW, relay_health={})
+    receipt = json.loads((root / 'delivery_receipts/2026-10-17-noon.json').read_text())
+    assert (receipt['last_generation'].get('generation_validated') is True) is valid
+    assert not receipt['last_success']
+
+
+@pytest.mark.parametrize('stamp,valid', [
+    ('2026-10-17T09:00:00Z', True),
+    ('2026-10-23T03:59:59Z', True),
+    ('2026-10-23T04:00:00Z', False),
+    ('2026-10-24T09:00:00Z', False),
+    ('2026-10-15T19:00:00Z', False),
+])
+def test_standalone_acceptance_observation_age_matches_recovery(reports, stamp, valid):
+    from tools.validate_free_report import summarize
+    from us_free_recovery_validation import healthy_free_report
+    _, latest, analysis = reports
+    observed = datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+    latest['updated_at'] = analysis['updated_at'] = observed.isoformat()
+    result = summarize(analysis, SYMBOLS, observed_at=observed)
+    assert result['reference_freshness_valid'] is valid
+    assert result['passed'] is valid
+    assert healthy_free_report(latest, analysis, now=observed) is valid
+
+
+def test_paid_future_tolerance_unchanged(reports):
+    from report_delivery import validate_fixed_report
+    root, latest, _ = reports
+    latest.update(run_mode='scheduled_report', updated_at=(NOW + timedelta(minutes=1)).isoformat())
+    latest['data_status'].update(us_data_mode='paid_live', us_sip_count=187, us_opra_count=30)
+    assert validate_fixed_report(latest, expected_period='noon', now=NOW, reports=root)[0]

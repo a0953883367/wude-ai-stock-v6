@@ -25,7 +25,7 @@ def required_symbols(expected):
     return set(expected) - set(EXCLUDED_SYMBOLS) if digest == FROZEN_UNIVERSE_SHA256 else None
 
 
-from us_free_reference_validation import valid_delayed_reference, valid_report_reference
+from us_free_reference_validation import valid_delayed_reference, valid_report_reference, references_current
 
 
 def summarize(report, expected, *, observed_at=None):
@@ -42,13 +42,14 @@ def summarize(report, expected, *, observed_at=None):
     required_rows = [row for row in rows if row['symbol'] in required]
     symbols = [row.get('symbol') for row in rows]
     valid_price = lambda row: isinstance(row.get('price'), (int, float)) and not isinstance(row.get('price'), bool) and math.isfinite(row['price']) and row['price'] > 0
+    observed = observed_at or datetime.now(timezone.utc)
+    freshness_valid = references_current(report, rows, observed_at=observed)
     publication_valid = True
     daily_rows = [row for row in rows if isinstance(row.get('us_delayed_source'), str) and row.get('us_delayed_source') in {
         'Alpaca SIP completed daily bars', 'Alpaca SIP completed daily report cache'}]
     if daily_rows:
         try:
             publication = datetime.fromisoformat(str(report['us_daily_reference_published_at']).replace('Z', '+00:00'))
-            observed = observed_at or datetime.now(timezone.utc)
             publication_valid = publication.tzinfo is not None and observed.tzinfo is not None and publication <= observed
             for row in daily_rows:
                 fetched = datetime.fromisoformat(str(row['us_delayed_fetched_at']).replace('Z', '+00:00'))
@@ -60,6 +61,7 @@ def summarize(report, expected, *, observed_at=None):
         except (KeyError, ValueError, TypeError, OverflowError):
             publication_valid = False
     result = {
+        'reference_freshness_valid': freshness_valid,
         'daily_reference_publication_valid': bool(publication_valid),
         'mode': 'free_delayed', 'report_updated_at': report.get('updated_at'),
         'excluded_symbols': EXCLUDED_SYMBOLS, 'exclusion_reason': 'user_requested',
@@ -85,7 +87,7 @@ def summarize(report, expected, *, observed_at=None):
         'basic_account_entitlement_verified': False,
     }
     result['passed'] = bool(
-        publication_valid and len(rows) == len(expected) and not result['missing_symbols']
+        freshness_valid and publication_valid and len(rows) == len(expected) and not result['missing_symbols']
         and not result['unexpected_symbols'] and not result['duplicate_count']
         and result['required_valid_formal_price_count'] == len(required)
         and result['required_validated_delayed_reference_count'] == len(required)

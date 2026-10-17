@@ -70,3 +70,48 @@ def valid_report_reference(row):
             and row.get('us_delayed_source') in {'Alpaca SIP completed daily bars',
                 'Alpaca SIP completed daily report cache', 'Yahoo Finance completed daily report cache'}
             and valid_delayed_reference(row))
+
+
+def generation_is_current(value, *, observed_at):
+    """Free recovery generation time: nonfuture and within the existing 120m limit."""
+    try:
+        stamp = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=ZoneInfo('Asia/Taipei'))
+        return (observed_at.tzinfo is not None
+                and timedelta(0) <= observed_at - stamp <= timedelta(minutes=120))
+    except (ValueError, TypeError, AttributeError, OverflowError):
+        return False
+
+
+def references_current(payload, rows, *, observed_at):
+    """Observation-time bounds shared by formal acceptance and recovery gates.
+
+    Source attestation is checked separately by valid_report_reference. Cache
+    read/publication times never replace the original New York session date.
+    """
+    try:
+        publication = datetime.fromisoformat(payload['us_daily_reference_published_at'].replace('Z', '+00:00'))
+        if publication.tzinfo is None or observed_at.tzinfo is None or publication > observed_at:
+            return False
+        ny = ZoneInfo('America/New_York')
+        for row in rows:
+            if row['symbol'] == 'HNHPF' and row.get('us_delayed_data_available') is not True:
+                continue
+            asof = datetime.fromisoformat(row['us_delayed_asof'].replace('Z', '+00:00'))
+            fetched = datetime.fromisoformat(row['us_delayed_fetched_at'].replace('Z', '+00:00'))
+            if asof.tzinfo is None or fetched.tzinfo is None:
+                return False
+            session = asof.astimezone(ny).date()
+            delay = 960 if row['us_delayed_source'] == 'Yahoo Finance completed daily report cache' else 959
+            if (not asof <= fetched <= publication <= observed_at
+                    or not 1 <= (observed_at.astimezone(ny).date() - session).days <= 7
+                    or fetched < datetime.combine(session + timedelta(days=1), time(), ny) + timedelta(seconds=delay)):
+                return False
+            if row.get('us_delayed_cached') is True and row.get('us_delayed_origin_published_at'):
+                read = datetime.fromisoformat(row['us_delayed_cache_read_at'].replace('Z', '+00:00'))
+                if read.tzinfo is None or read > publication:
+                    return False
+        return True
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
+        return False

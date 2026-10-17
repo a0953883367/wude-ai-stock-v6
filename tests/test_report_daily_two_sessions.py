@@ -162,6 +162,7 @@ def test_report_publication_order_is_verified(monkeypatch, publication, passed):
     value = report()
     value['data'][0].update(reference)
     value['data'][0].pop('us_delayed_cached', None)
+    value.pop('us_daily_reference_published_at', None)
     if publication is not None:
         value['us_daily_reference_published_at'] = publication
     result = summarize(value, SYMBOLS, observed_at=datetime.fromisoformat('2026-10-16T19:00:00+00:00'))
