@@ -270,6 +270,7 @@ jobs:
       - name: Prevent duplicate or expired fixed report
         id: check
         env:
+          ALPACA_DATA_MODE: ${{ vars.ALPACA_DATA_MODE || 'paid_live' }}
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         shell: bash
         run: |
