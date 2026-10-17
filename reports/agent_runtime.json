@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-17T15:54:32+00:00",
+  "generated_at": "2026-10-17T17:22:58+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-17T23:29:18.205753+08:00",
+    "checked_at": "2026-10-18T01:22:56.004731+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-17T23:29:17.168587+08:00",
+    "checked_at": "2026-10-18T01:22:53.504162+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -466,6 +466,24 @@
         "attempts": [],
         "status": "expired",
         "reason": "no valid receipt; expired reports must not be sent"
+      },
+      "2026-10-18:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-18:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-18:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "data_incidents": {
@@ -780,6 +798,18 @@
         "status": "verified_fresh",
         "verified_at": "2026-10-17T23:29:10.975770+08:00",
         "report_updated_at": "2026-10-17 22:30:56"
+      },
+      "2026-10-18:morning": {
+        "period": "morning",
+        "attempts": [
+          {
+            "at": "2026-10-18T01:22:46.998578+08:00",
+            "guard_run_id": "39053467351",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
