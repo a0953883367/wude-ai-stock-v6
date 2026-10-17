@@ -95,7 +95,14 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
         and prediction_policy.get("automatic_orders") is False
         and (unit_learning.get("policy") or {}).get("formal_v6_unchanged") is True
     )
-    safe = guard_status in {"ok", "warning"}
+    policy_safety = {
+        "formal_weight_changes_blocked": (validation.get("rules") or {}).get("automatic_weight_changes") is False,
+        "validation_orders_blocked": (validation.get("rules") or {}).get("automatic_orders") is False,
+        "prediction_orders_blocked": prediction_policy.get("automatic_orders") is False,
+        "formal_promotion_blocked": prediction_policy.get("formal_v6_auto_promotion") is False,
+        "formal_v6_unchanged": (unit_learning.get("policy") or {}).get("formal_v6_unchanged") is True,
+    }
+    safe = guard_status in {"ok", "warning"} and all(policy_safety.values())
     return {
         "status": "completed" if safe else "attention",
         "status_label": "已實際核對影子進度與安全鎖" if safe else "影子巡檢發現異常",
@@ -115,8 +122,10 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
             "automatic_shadow_rollback_after_failures": prediction_policy.get("automatic_shadow_rollback_after_failures", 0),
             "weekly_coach_status": coach.get("status") or "unknown",
             "weekly_coach_mode": coach.get("mode") or "unknown",
-            "formal_v6_locked": not bool((validation.get("rules") or {}).get("automatic_weight_changes", True)),
-            "automatic_orders_blocked": not bool((validation.get("rules") or {}).get("automatic_orders", True)),
+            "policy_safety_checks": policy_safety,
+            "formal_v6_locked": all(policy_safety[key] for key in
+                                    ("formal_weight_changes_blocked", "formal_promotion_blocked", "formal_v6_unchanged")),
+            "automatic_orders_blocked": policy_safety["validation_orders_blocked"] and policy_safety["prediction_orders_blocked"],
         },
         "next_action": "持續累積真實交易日；只做影子驗證，不改正式排名、權重或下單。",
     }
@@ -127,13 +136,16 @@ def _wt_work(root: Path) -> dict[str, Any]:
     spec = _read_json(workspace / "商品資料輸入規格.json")
     workbook = workspace / str(spec.get("workbook") or "WT商品與毛利輸入表.xlsx")
     required = list(spec.get("required_inputs") or [])
+    if not spec or not required or not workbook.is_file():
+        return {"status": "attention", "status_label": "工作區資料不足",
+                "summary": "缺少必要規格或試算表，未完成成本工作。"}
     private = _private_inputs(root, "wt_fasteners")
     supplied = private.get("known_inputs") if isinstance(private.get("known_inputs"), dict) else private
     missing = [name for name in required if supplied.get(name) in (None, "")]
     return {
-        "status": "waiting_input" if missing else "completed",
-        "status_label": "已自動讀取成本來源" if not missing else "已自動搜尋；等待真實成本",
-        "summary": f"已自動檢查工作區與授權輸入來源；仍缺 {len(missing)} 項必要成本，因此沒有捏造毛利。",
+        "status": "waiting_input" if missing else "blocked_missing_executor",
+        "status_label": "成本已讀取；毛利執行器未接通" if not missing else "已自動搜尋；等待真實成本",
+        "summary": f"已檢查工作區與授權輸入來源；仍缺 {len(missing)} 項必要成本。此執行器只驗證輸入，不計算毛利。",
         "evidence": {
             "spec_found": bool(spec),
             "workbook_found": workbook.is_file(),
@@ -150,6 +162,9 @@ def _wt_work(root: Path) -> dict[str, Any]:
 def _packaging_work(root: Path) -> dict[str, Any]:
     workspace = root / "agent_workspaces" / "packaging_startup"
     inputs = _read_json(workspace / "包裝創業試算輸入.json")
+    if not inputs or not (workspace / str(inputs.get("workbook") or "包裝創業產能與損益試算.xlsx")).is_file():
+        return {"status": "attention", "status_label": "工作區資料不足",
+                "summary": "缺少必要輸入或試算表，未完成產能工作。"}
     known = dict(inputs.get("known_inputs") or {})
     private = _private_inputs(root, "packaging_startup")
     private_known = private.get("known_inputs") if isinstance(private.get("known_inputs"), dict) else private
@@ -245,6 +260,7 @@ def execute_safe_task(
         "task_key": decision["task_key"],
         "payload_stored": False,
         "external_side_effect": False,
+        "actual_work_performed": False,
     }
     if decision["executable"]:
         profile = ACTION_CONTEXT_PROFILES.get(action, "formal_answer")
@@ -275,7 +291,9 @@ def execute_safe_task(
             "executor_loaded": capabilities["executor_loaded"],
             "cross_domain_tools": capabilities["cross_domain_tools"],
             "connectors": capabilities.get("connectors") or [],
-            "auto_connectors": [
+            "auto_connectors": [],
+            "connector_status": "declarations_only_not_connected",
+            "declared_auto_connectors": [
                 item["name"] for item in capabilities.get("connectors") or []
                 if item.get("auto_connect")
             ],
@@ -289,6 +307,8 @@ def execute_safe_task(
                     if Path(artifact_name).suffix.casefold() == ".pptx"
                     else verify_artifact(validation_spec, root=root)
                 )
+                result["actual_work_performed"] = True
+                result["capability_plan"]["executor_loaded"] = True
                 result["artifact_validation"] = {
                     "status": validation["status"],
                     "verified": validation["verified"],
@@ -318,15 +338,32 @@ def execute_safe_task(
                     summary="報告已保留草稿狀態；完成來源、數字、跨頁及渲染檢查後才可交付。",
                 )
             return result
-        work = _perform_actual_work(agent_id, action, root)
+        try:
+            if agent_id == "stock_shadow" and action == "analyze":
+                from stock_agent import analyze_stock
+                question = (payload or {}).get("question") or title
+                work = analyze_stock(question, root=root)
+            else:
+                work = _perform_actual_work(agent_id, action, root)
+        except BaseException as exc:
+            if ledger is not None:
+                ledger.task_keys.discard(decision["task_key"])
+            if not isinstance(exc, Exception):
+                raise
+            result.update(status="tool_error", status_label="執行失敗，可重試",
+                          summary="任務執行器失敗；未通過結果驗收。", actual_work_performed=False)
+            return result
         if work:
             result.update(work)
-            result["actual_work_performed"] = True
+            result["actual_work_performed"] = work.get("actual_work_performed", True)
+            result["capability_plan"]["executor_loaded"] = True
+            if agent_id == "stock_shadow" and action == "analyze" and ledger is not None:
+                ledger.task_keys.discard(decision["task_key"])
         else:
             result.update(
-                status="completed",
-                status_label="安全驗收通過",
-                summary="獨立資料空間、動態載入、權限與輸出契約均已通過；未呼叫外部服務。",
+                status="blocked_missing_executor",
+                status_label="尚無任務執行器",
+                summary="僅完成權限與工具規格選擇；未執行所請求的工作。",
                 actual_work_performed=False,
             )
     else:
@@ -339,6 +376,8 @@ def execute_safe_task(
             "cross_domain_tools": capabilities["cross_domain_tools"],
             "connectors": [],
             "auto_connectors": [],
+            "connector_status": "declarations_only_not_connected",
+            "declared_auto_connectors": [],
         }
         result.update(
             status=decision["decision"],
@@ -368,6 +407,7 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
         execute_safe_task(agent_id, action, title, {"validation": True}, ledger, root=root)
         for agent_id, action, title in BOUNDARY_CHECKS
     ]
+    healthy = all(task["status"] in {"completed", "waiting_input"} for task in validations)
     completed = sum(task["status"] == "completed" for task in validations)
     waiting_input = sum(task["status"] == "waiting_input" for task in validations)
     actual_work = sum(bool(task.get("actual_work_performed")) for task in validations)
@@ -378,8 +418,8 @@ def build_runtime_report(reports_dir: Path, *, root: Path | None = None) -> dict
         "schema": "wude.central_agent_runtime.v1",
         "version": RUNTIME_VERSION,
         "generated_at": generated_at,
-        "status": "active" if actual_work == len(validations) and protected == len(gates) else "attention",
-        "status_label": f"三個 Agent 已實際工作；{waiting_input} 項等待輸入" if actual_work == len(validations) and protected == len(gates) else "Agent 執行需要注意",
+        "status": "active" if healthy and actual_work == len(validations) and protected == len(gates) else "attention",
+        "status_label": f"三個 Agent 已實際工作；{waiting_input} 項等待輸入" if healthy and actual_work == len(validations) and protected == len(gates) else "Agent 執行需要注意",
         "control_version": control.get("version") or "尚無控制層紀錄",
         "summary": {
             "agent_count": len(AGENTS),

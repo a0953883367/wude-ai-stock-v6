@@ -16,18 +16,30 @@
       <div>
         <p class="eyebrow">中央 AI｜安全第一版</p>
         <h1>🤖 Agent 控制中心</h1>
-        <p>自動辨識任務、分派給正確助理；各事業資料仍完全分開。</p>
+        <p>規則式任務路由與既有報表研究；各事業資料仍完全分開。</p>
       </div>
       <span id="overallStatus" class="status-chip">正在讀取…</span>
     </header>
 
     <section class="plain-guide" aria-label="使用方式">
-      <h2>你只要說要做什麼</h2>
+      <h2>目前可執行範圍</h2>
       <ol>
-        <li>中央 AI 先辨識股票、WT 或包裝創業。</li>
+        <li>依關鍵字辨識領域；不是通用 LLM 規劃器。</li>
         <li>只讀該事業自己的資料，不會互相混用。</li>
-        <li>安全工作可執行；付款、寄送、下單及設備控制會停下等你同意。</li>
+        <li>只有已接通執行器的工作可執行；其他工作明確顯示阻塞。付款、寄送、下單及設備控制會停下等你同意。</li>
       </ol>
+    </section>
+
+    <section class="task-panel" aria-labelledby="stockResearchHeading">
+      <h2 id="stockResearchHeading">單一股票條件研究</h2>
+      <p>讀取既有報價與新聞報表，不新增行情或模型呼叫。輸入現有報表代號／名稱，例如「MSFT 偏空條件」。使用同網站既有的唯讀裝置授權；此頁不建立新授權。</p>
+      <p>入口為 GitHub Pages 控制中心；不包含另行部署的 Vercel Next App。若此瀏覽器尚未完成既有登入，可前往<a href="live-flow.html">即時資金流頁面</a>完成原有唯讀裝置驗證，再返回本頁。</p>
+      <form id="stockResearchForm"><label for="stockQuestion">股票問題（一次一檔）</label>
+        <input id="stockQuestion" maxlength="240" required placeholder="2330.TW 短線與較長期多空條件">
+        <button type="submit">讀取與驗證資料</button><button id="stockCancel" type="button" disabled>停止等待</button>
+      </form>
+      <p id="stockProgress" role="status" aria-live="polite">尚未執行。中斷後可重新提交；會重新驗證時效。</p>
+      <div id="stockResearchResult"></div>
     </section>
 
     <section>
@@ -68,5 +80,8 @@
   </main>
   <script src="app_shell.js?v=1"></script>
   <script src="agent_control.js?v=9"></script>
+  <script src="live_config.js?v=1"></script>
+  <script src="live_client.js?v=1"></script>
+  <script src="stock_agent.js?v=1"></script>
 </body>
 </html>

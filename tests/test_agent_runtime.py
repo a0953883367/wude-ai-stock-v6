@@ -112,7 +112,7 @@ def test_actual_work_reports_evidence_instead_of_fake_completion(tmp_path: Path)
     assert stock["evidence"]["formal_v6_locked"] is True
     assert stock["evidence"]["self_learning_enabled"] is True
     assert stock["evidence"]["matured_learning_rows"] > 0
-    assert "railway_market_data" in stock["capability_plan"]["auto_connectors"]
+    assert "railway_market_data" in stock["capability_plan"]["declared_auto_connectors"]
     assert packaging["actual_work_performed"] is True
     assert packaging["status"] == "waiting_input"
     assert packaging["evidence"]["monthly_effective_capacity"] == 29568
@@ -250,3 +250,90 @@ def test_ppt_report_requires_every_slide_render_before_completion(tmp_path: Path
     assert row["status"] == "completed"
     assert row["artifact_validation"]["slide_count"] == 1
     assert row["artifact_validation"]["rendered_slide_count"] == 1
+
+
+def test_missing_executor_never_claims_completion():
+    row = execute_safe_task('wt_fasteners', 'analyze', '分析', {}, UsageLedger())
+    assert row['status'] == 'blocked_missing_executor'
+    assert row['actual_work_performed'] is False
+    assert row['capability_plan']['executor_loaded'] is False
+
+
+def test_tool_failure_can_be_retried(monkeypatch):
+    import agent_runtime
+    ledger = UsageLedger()
+    def fail(*args):
+        raise RuntimeError('private provider details')
+    monkeypatch.setattr(agent_runtime, '_perform_actual_work', fail)
+    first = execute_safe_task('stock_shadow', 'shadow_validate', 'test', {}, ledger)
+    assert first['status'] == 'tool_error'
+    assert 'private provider details' not in json.dumps(first)
+    monkeypatch.setattr(agent_runtime, '_perform_actual_work', lambda *args: {'status': 'completed'})
+    second = execute_safe_task('stock_shadow', 'shadow_validate', 'test', {}, ledger)
+    assert second['status'] == 'completed'
+    assert second['actual_work_performed'] is True
+
+
+def test_interrupted_executor_releases_reservation(monkeypatch):
+    import agent_runtime
+    import pytest
+    ledger = UsageLedger()
+    def interrupt(*args):
+        raise KeyboardInterrupt()
+    monkeypatch.setattr(agent_runtime, '_perform_actual_work', interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        execute_safe_task('stock_shadow', 'shadow_validate', 'test', {}, ledger)
+    assert not ledger.task_keys
+
+
+def test_guard_failure_makes_runtime_attention(tmp_path):
+    root = _runtime_root(tmp_path)
+    (root / 'reports' / 'system_guard.json').write_text('{"status":"critical"}')
+    assert build_runtime_report(root / 'reports', root=root)['status'] == 'attention'
+
+
+def test_missing_workspace_never_finishes_business_calculation(tmp_path):
+    import agent_runtime
+    assert agent_runtime._wt_work(tmp_path)['status'] == 'attention'
+    assert agent_runtime._packaging_work(tmp_path)['status'] == 'attention'
+
+
+def test_all_critical_policy_fields_must_be_explicitly_safe(tmp_path):
+    root = _runtime_root(tmp_path)
+    for filename, field, unsafe in [
+        ('prediction_engine.json', 'automatic_orders', True),
+        ('prediction_engine.json', 'formal_v6_auto_promotion', True),
+        ('model_unit_learning.json', 'formal_v6_unchanged', False),
+    ]:
+        path = root / 'reports' / filename
+        original = path.read_text()
+        for missing in (False, True):
+            payload = json.loads(original)
+            if missing:
+                payload['policy'].pop(field)
+            else:
+                payload['policy'][field] = unsafe
+            path.write_text(json.dumps(payload))
+            report = build_runtime_report(root / 'reports', root=root)
+            stock = report['validations'][0]
+            assert stock['status'] == 'attention', (field, missing)
+            assert report['status'] == 'attention'
+            assert not all(stock['evidence']['policy_safety_checks'].values())
+            assert stock['evidence']['self_learning_enabled'] is False
+            if field == 'automatic_orders':
+                assert stock['evidence']['automatic_orders_blocked'] is False
+            else:
+                assert stock['evidence']['formal_v6_locked'] is False
+        path.write_text(original)
+
+
+def test_disabled_controlled_shadow_promotion_is_still_safe(tmp_path):
+    root = _runtime_root(tmp_path)
+    path = root / 'reports' / 'prediction_engine.json'
+    payload = json.loads(path.read_text())
+    payload['policy']['controlled_shadow_auto_promotion'] = False
+    path.write_text(json.dumps(payload))
+    stock = build_runtime_report(root / 'reports', root=root)['validations'][0]
+    assert stock['status'] == 'completed'
+    assert all(stock['evidence']['policy_safety_checks'].values())
+    assert stock['evidence']['self_learning_enabled'] is False
