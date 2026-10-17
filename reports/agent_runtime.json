@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-17T05:45:42+00:00",
+  "generated_at": "2026-10-17T07:47:30+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -812,6 +812,7 @@
       "task_key": "8dc6a67d37a0421735e2569d8e9fb8e385ef15ab7ba148922ffd0b312f13b7ac",
       "payload_stored": false,
       "external_side_effect": false,
+      "actual_work_performed": true,
       "context_plan": {
         "profile": "research",
         "layers": [
@@ -863,7 +864,9 @@
             "auto_connect": true
           }
         ],
-        "auto_connectors": [
+        "auto_connectors": [],
+        "connector_status": "declarations_only_not_connected",
+        "declared_auto_connectors": [
           "github_reports",
           "railway_market_data",
           "google_drive_evidence",
@@ -895,11 +898,17 @@
         "automatic_shadow_rollback_after_failures": 2,
         "weekly_coach_status": "ok",
         "weekly_coach_mode": "openai",
+        "policy_safety_checks": {
+          "formal_weight_changes_blocked": true,
+          "validation_orders_blocked": true,
+          "prediction_orders_blocked": true,
+          "formal_promotion_blocked": true,
+          "formal_v6_unchanged": true
+        },
         "formal_v6_locked": true,
         "automatic_orders_blocked": true
       },
-      "next_action": "持續累積真實交易日；只做影子驗證，不改正式排名、權重或下單。",
-      "actual_work_performed": true
+      "next_action": "持續累積真實交易日；只做影子驗證，不改正式排名、權重或下單。"
     },
     {
       "agent_id": "wt_fasteners",
@@ -910,6 +919,7 @@
       "task_key": "53228ac069136d1a30d4ad98afe79960c0527ca054e617cf668da3f025286112",
       "payload_stored": false,
       "external_side_effect": false,
+      "actual_work_performed": true,
       "context_plan": {
         "profile": "formal_answer",
         "layers": [
@@ -947,14 +957,16 @@
             "auto_connect": true
           }
         ],
-        "auto_connectors": [
+        "auto_connectors": [],
+        "connector_status": "declarations_only_not_connected",
+        "declared_auto_connectors": [
           "github_reports",
           "google_drive_evidence"
         ]
       },
       "status": "waiting_input",
       "status_label": "已自動搜尋；等待真實成本",
-      "summary": "已自動檢查工作區與授權輸入來源；仍缺 6 項必要成本，因此沒有捏造毛利。",
+      "summary": "已檢查工作區與授權輸入來源；仍缺 6 項必要成本。此執行器只驗證輸入，不計算毛利。",
       "evidence": {
         "spec_found": true,
         "workbook_found": true,
@@ -971,8 +983,7 @@
         ],
         "profit_calculated": false
       },
-      "next_action": "填入售價、螺絲、包材、人工、運費、平台與廣告成本後自動重算。",
-      "actual_work_performed": true
+      "next_action": "填入售價、螺絲、包材、人工、運費、平台與廣告成本後自動重算。"
     },
     {
       "agent_id": "packaging_startup",
@@ -983,6 +994,7 @@
       "task_key": "080bb51a20855e316817dc5eabbb0d7e6d44895875f7d8f278ac2ac457b60dd4",
       "payload_stored": false,
       "external_side_effect": false,
+      "actual_work_performed": true,
       "context_plan": {
         "profile": "formal_answer",
         "layers": [
@@ -1020,7 +1032,9 @@
             "auto_connect": true
           }
         ],
-        "auto_connectors": [
+        "auto_connectors": [],
+        "connector_status": "declarations_only_not_connected",
+        "declared_auto_connectors": [
           "github_reports",
           "google_drive_evidence"
         ]
@@ -1051,8 +1065,7 @@
         "monthly_profit": null,
         "payback_months": null
       },
-      "next_action": "補齊重量、人事、水電、包材、設備報價與訂單上限後才計算損益與回收期。",
-      "actual_work_performed": true
+      "next_action": "補齊重量、人事、水電、包材、設備報價與訂單上限後才計算損益與回收期。"
     }
   ],
   "approval_gate_checks": [
@@ -1065,6 +1078,7 @@
       "task_key": "7e64013208994f2736680efb4b6707f35962b0a7709f84857e48e25d4a7ac272",
       "payload_stored": false,
       "external_side_effect": false,
+      "actual_work_performed": false,
       "capability_plan": {
         "skills": [],
         "tools": [],
@@ -1072,7 +1086,9 @@
         "executor_loaded": false,
         "cross_domain_tools": false,
         "connectors": [],
-        "auto_connectors": []
+        "auto_connectors": [],
+        "connector_status": "declarations_only_not_connected",
+        "declared_auto_connectors": []
       },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
@@ -1087,6 +1103,7 @@
       "task_key": "078fd17fe6e5db04138be5b7ebc269c4de250eb8789ac4a06c397caa09ec21d5",
       "payload_stored": false,
       "external_side_effect": false,
+      "actual_work_performed": false,
       "capability_plan": {
         "skills": [],
         "tools": [],
@@ -1094,7 +1111,9 @@
         "executor_loaded": false,
         "cross_domain_tools": false,
         "connectors": [],
-        "auto_connectors": []
+        "auto_connectors": [],
+        "connector_status": "declarations_only_not_connected",
+        "declared_auto_connectors": []
       },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
@@ -1109,6 +1128,7 @@
       "task_key": "6dcb7aaea78424494426c7ebcd4244a627c90ee7e6262c6214b950883bb2452b",
       "payload_stored": false,
       "external_side_effect": false,
+      "actual_work_performed": false,
       "capability_plan": {
         "skills": [],
         "tools": [],
@@ -1116,7 +1136,9 @@
         "executor_loaded": false,
         "cross_domain_tools": false,
         "connectors": [],
-        "auto_connectors": []
+        "auto_connectors": [],
+        "connector_status": "declarations_only_not_connected",
+        "declared_auto_connectors": []
       },
       "status": "waiting_for_approval",
       "status_label": "等待授權",
