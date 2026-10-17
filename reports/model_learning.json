@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-10-17 16:32:52",
+  "updated_at": "2026-10-17 22:11:54",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -8996,12 +8996,12 @@
         "limitation": "列數不是獨立事件數；目前無改善或晉升結論。"
       },
       "event_gap_risk": {
-        "status": "blocked",
+        "status": "collecting",
         "source": "tw_weight_experiment.json:entry_gap_shadow",
         "completed_sessions": 0,
         "invalid_sessions": 2,
-        "pending_receipt": false,
-        "last_block_reason": "missing_frozen_source_signal",
+        "pending_receipt": true,
+        "last_block_reason": null,
         "paired_rule_registered": true,
         "limitation": "只驗證台股跳空進場／留現金規則，不能代表全部新聞事件風險已接通。"
       },
