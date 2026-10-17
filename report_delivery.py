@@ -82,7 +82,7 @@ def record_delivery(
             except (OSError, ValueError):
                 report, markdown = {}, ""
             report = report if isinstance(report, dict) else {}
-            valid, _ = validate_fixed_report(report, expected_period=period, now=now)
+            valid, _ = validate_fixed_report(report, expected_period=period, now=now, reports=reports_dir)
             if valid and markdown and report.get("updated_at") == report_updated_at:
                 generation = {**payload, "generation_validated": True}
         _atomic_json(receipt_path, {"last_attempt": payload, "last_success": success,
@@ -104,6 +104,7 @@ def validate_fixed_report(
     expected_period: str,
     now: datetime | None = None,
     max_age_minutes: int = 120,
+    reports: Path | None = None,
 ) -> tuple[bool, list[str]]:
     current = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
     reasons: list[str] = []
@@ -121,10 +122,15 @@ def validate_fixed_report(
         if age < -10 or age > max_age_minutes:
             reasons.append(f"報表距今 {age:.0f} 分鐘")
     status = report.get("data_status") if isinstance(report.get("data_status"), dict) else {}
-    if int(status.get("us_sip_count") or 0) <= 0:
-        reasons.append("SIP 資料為 0")
-    if int(status.get("us_opra_count") or 0) <= 0:
-        reasons.append("OPRA 資料為 0")
+    if status.get("us_data_mode") == "free_delayed":
+        from briefing_watchdog import us_data_fault
+        if us_data_fault(report, now=current, reports=reports):
+            reasons.append("免費美股資料覆蓋、時效或來源驗證失敗")
+    else:
+        if int(status.get("us_sip_count") or 0) <= 0:
+            reasons.append("SIP 資料為 0")
+        if int(status.get("us_opra_count") or 0) <= 0:
+            reasons.append("OPRA 資料為 0")
     return not reasons, reasons
 
 

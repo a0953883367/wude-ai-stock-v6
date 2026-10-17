@@ -16,7 +16,7 @@ import requests
 
 from agent_control import authorize_task
 from us_direction_agent import inspect_us_direction
-from briefing_watchdog import TAIPEI, TARGETS, generation_is_current, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at, data_refresh_needed, refresh_period
+from briefing_watchdog import TAIPEI, TARGETS, generation_is_current, delivery_is_current, load_daily_delivery, load_report, target_datetime, _parse_updated_at, data_refresh_needed, refresh_period, us_data_fault
 
 REPOSITORY = "a0953883367/wude-ai-stock-v6"
 RETRY_LIMIT = 2
@@ -143,11 +143,11 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
     failures = [x.get('code') for x in guard.get('checks', [])
                 if x.get('level') in {'warning', 'critical'} and x.get('code') in {
                     'report_freshness', 'report_consistency', 'market_session_consistency', 'tw_core_data', 'analysis_output', 'live_backend', 'decision_hub'}]
-    quality = latest.get('data_status') or {}
     if not latest.get('updated_at'):
         failures.append('missing_report')
-    if not quality.get('us_sip_count') or not quality.get('us_opra_count'):
-        failures.append('missing_sip_or_opra')
+    us_fault = us_data_fault(latest, now=now, reports=reports)
+    if us_fault:
+        failures.append(us_fault)
     actions = []
     active = any(r.get('status') in ACTIVE for r in runs or [])
     for period in TARGETS:
@@ -191,7 +191,7 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
     data_key = f'{now.date().isoformat()}:{period}'
     data_item = data_incidents.setdefault(data_key, {'period': period, 'attempts': [], 'status': 'waiting'})
     direction = inspect_us_direction(reports, now)
-    needs_refresh = data_refresh_needed(latest, now=now) or direction["needs_silent_refresh"]
+    needs_refresh = data_refresh_needed(latest, now=now, reports=reports) or direction["needs_silent_refresh"]
     data_status = 'no_required_data_fault_detected'
     if not needs_refresh:
         if direction['status'] not in {'verified_current', 'not_observable'}:
@@ -287,7 +287,7 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
         target = target_datetime(now, period)
         if key != f'{now.astimezone(TAIPEI).date().isoformat()}:{period}' or (is_data and period != refresh_period(now)) or (not is_data and now > target + timedelta(minutes=120)):
             attempt['state'] = 'skipped_expired'
-        elif is_data and not (data_refresh_needed(load_report(reports / 'latest.json'), now=now)
+        elif is_data and not (data_refresh_needed(load_report(reports / 'latest.json'), now=now, reports=reports)
                              or inspect_us_direction(reports, now)['needs_silent_refresh']):
             attempt['state'] = 'skipped_already_fresh'
         elif not is_data and generation_is_current(delivery, period=period, target=target):

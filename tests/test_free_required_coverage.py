@@ -1,13 +1,18 @@
 import copy
 import json
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 from tools import probe_free_us_data as probe
-from tools.validate_free_report import summarize, required_symbols
+from tools.validate_free_report import summarize as summarize_report, required_symbols
 
 SYMBOLS = json.loads((Path(__file__).parent / 'fixtures/us_free_probe_universe.json').read_text())['symbols']
 REQUIRED = [s for s in SYMBOLS if s != 'HNHPF']
+
+
+def summarize(report, expected):
+    return summarize_report(report, expected, observed_at=datetime.fromisoformat('2026-10-17T09:00:00+00:00'))
 
 
 def row(symbol):
@@ -16,12 +21,12 @@ def row(symbol):
         'us_delayed_price': 11, 'us_delayed_minimum_seconds': 960,
         'us_delayed_source': 'Yahoo Finance completed daily report cache', 'us_delayed_cached': True,
         'us_delayed_coverage': 'provider_defined', 'us_delayed_interval': '1Day',
-        'us_delayed_asof': '2026-10-16T15:13:00Z',
+        'us_delayed_asof': '2026-10-15T04:00:00Z',
         'us_delayed_fetched_at': '2026-10-16T15:30:00Z'}
 
 
 def report():
-    return {'data': [row(s) if s != 'HNHPF' else {
+    return {'us_daily_reference_published_at': '2026-10-16T18:00:00Z', 'data': [row(s) if s != 'HNHPF' else {
         'market': 'US', 'symbol': 'HNHPF', 'price': None,
         'us_delayed_data_available': False, 'us_live_data_available': False} for s in SYMBOLS]}
 

@@ -405,13 +405,15 @@ def test_free_report_validator_requires_complete_non_live_non_raw_coverage():
         untouched = [fixture_row(s) for s in SYMBOLS if s != target]
         if len(expected) > 1:
             untouched = [r for r in untouched if r['symbol'] != 'HNHPF']
-        return summarize_all({'data': untouched + candidates}, SYMBOLS)
+        return summarize_all({'data': untouched + candidates,
+            'us_daily_reference_published_at': '2026-10-16T18:00:00Z'}, SYMBOLS,
+            observed_at=datetime.fromisoformat('2026-10-17T09:00:00+00:00'))
     row = {'market': 'US', 'symbol': 'AAPL', 'price': 12345.6789,
            'us_delayed_data_available': True, 'us_live_data_available': False,
            'us_delayed_price': 11, 'us_delayed_minimum_seconds': 960,
            'us_delayed_source': 'Yahoo Finance completed daily report cache', 'us_delayed_cached': True,
            'us_delayed_coverage': 'provider_defined', 'us_delayed_interval': '1Day',
-           'us_delayed_asof': '2026-10-16T15:13:00Z',
+           'us_delayed_asof': '2026-10-15T04:00:00Z',
            'us_delayed_fetched_at': '2026-10-16T15:30:00Z'}
     result = summarize({'data': [row]}, ['AAPL'])
     assert result['passed'] is True
