@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-17T12:22:51.311479+08:00",
+  "checked_at": "2026-10-17T12:41:44.245845+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -393,8 +393,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
       "diagnosis": [
         "missing_fixed_generation"
       ]
@@ -406,7 +406,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-17:noon",
+      "period": "noon",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -418,7 +424,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-17 07:50:53",
+        "updated_at": "2026-10-17 12:23:55",
         "error": null
       }
     },
@@ -713,8 +719,14 @@
     },
     "2026-10-17:noon": {
       "period": "noon",
-      "attempts": [],
-      "status": "waiting_primary_or_active_run",
+      "attempts": [
+        {
+          "at": "2026-10-17T12:41:44.245845+08:00",
+          "guard_run_id": "39003449693",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -732,8 +744,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "diagnosis": [
+    "us_data_mode_mismatch"
+  ],
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
