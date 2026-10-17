@@ -26,7 +26,7 @@ console.log('stock agent UI checks passed');
     setTimeout:()=>1,clearTimeout(){},fetch:()=>new Promise(resolve=>pending.push(resolve))};
   mount(win);
   const submit=()=>elements.stockResearchForm.handlers.submit({preventDefault(){}});
-  await submit();assert(elements.stockProgress.textContent.includes('缺少既有擁有人授權'));
+  await submit();assert(elements.stockProgress.textContent.includes('缺少既有唯讀裝置授權'));
   token='test-only';
   const lost=submit();elements.stockCancel.handlers.click();
   pending.shift()({ok:true,json:async()=>({ok:true,data:result})});await lost;

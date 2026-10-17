@@ -7,11 +7,23 @@ changes, weight changes or shadow graduation are introduced.
 
 ## Request and actual execution
 
+The entry point is `https://a0953883367.github.io/wude-ai-stock-v6/agent-control.html`
+after frontend and Railway deployment. This PR does not update the separately
+deployed Vercel Next app. A browser already paired on these GitHub Pages can reuse
+its normal read-only login. The existing `live-flow.html` pairing page is linked
+for the original login flow; the form never requests a master secret. Tokens in
+Vercel localStorage are not transferred across origins. Actual production
+authenticated acceptance has not been performed.
+
 The existing Agent Control page accepts one current report symbol or company
 name within a short question. `POST /api/agent/stock-analysis` accepts exactly
-`{"question":"2313.TW 偏空與避險"}`. It requires the existing owner authorization,
-existing allowed origin and existing rate limiter. Public/site tokens and paired
-read-only device tokens do not become owner grants. No CORS exceptions are added.
+`{"question":"2313.TW 偏空與避險"}`. It accepts the existing explicit owner token or a valid already-paired read-only
+device token, using the existing private-research token validator, plus the existing
+allowed origin and rate limiter. Public/site tokens, public-read mode and trusted
+proxy-header fallback are rejected. Device tokens do not become owner grants;
+trading and owner-only routes retain their original checks. No CORS exceptions
+are added. This limited integration authorizes only the existing report reader;
+it must not be reused for future paid calls, private-source access or mutations.
 The endpoint must be deployed alongside the page; an older backend returns an
 explicit HTTP error, not a completed task. No deployment is part of this PR.
 
@@ -111,3 +123,27 @@ Canonical watchlist validation, Python compile and `git diff --check` passed.
 Browser cancellation/overlap regressions also prove that an interrupted or older
 response cannot replace the latest displayed result. These local checks do not
 assert live API deployment, delivery or real-account entitlement.
+
+## Independent-review corrections
+
+The report-only route now reuses `_private_research_authorized()` for the existing
+explicit owner or signed paired research device token. The normal existing
+GitHub Pages device login can therefore pass this route without a master secret.
+This is not a general role expansion: site/public-read/proxy fallback, expired,
+tampered, unknown and revoked signatures are rejected, Vercel gets no new CORS
+exception, and trading configuration/execution remain owner-only. Offline signed
+fixtures exercise the actual verifier; no live authenticated acceptance is claimed.
+
+Stock safety verification now checks the prediction-engine order and formal
+promotion locks plus the model-learning formal-V6 lock. Missing or unsafe values
+produce attention and false lock evidence; disabling controlled shadow promotion
+alone remains safe. Policies themselves are never modified.
+
+Each included news article's publication date is checked against observation and
+scan time and the existing 14-day window. Malformed/future/old articles are
+excluded and counted; incomplete article evidence blocks conditional short
+interpretation and suppresses the original summary. Genuine empty scans remain
+empty, never positive news. Original `publisher` and legacy `source` attribution
+are preserved. Existing upstream date-only UTC publication values retain that
+precision; an intraday publication time cannot be recovered from a date-only
+value. This change does not modify upstream news classification or rankings.

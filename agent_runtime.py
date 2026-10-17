@@ -95,9 +95,14 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
         and prediction_policy.get("automatic_orders") is False
         and (unit_learning.get("policy") or {}).get("formal_v6_unchanged") is True
     )
-    safe = (guard_status in {"ok", "warning"}
-            and (validation.get("rules") or {}).get("automatic_weight_changes") is False
-            and (validation.get("rules") or {}).get("automatic_orders") is False)
+    policy_safety = {
+        "formal_weight_changes_blocked": (validation.get("rules") or {}).get("automatic_weight_changes") is False,
+        "validation_orders_blocked": (validation.get("rules") or {}).get("automatic_orders") is False,
+        "prediction_orders_blocked": prediction_policy.get("automatic_orders") is False,
+        "formal_promotion_blocked": prediction_policy.get("formal_v6_auto_promotion") is False,
+        "formal_v6_unchanged": (unit_learning.get("policy") or {}).get("formal_v6_unchanged") is True,
+    }
+    safe = guard_status in {"ok", "warning"} and all(policy_safety.values())
     return {
         "status": "completed" if safe else "attention",
         "status_label": "已實際核對影子進度與安全鎖" if safe else "影子巡檢發現異常",
@@ -117,8 +122,10 @@ def _stock_shadow_work(root: Path) -> dict[str, Any]:
             "automatic_shadow_rollback_after_failures": prediction_policy.get("automatic_shadow_rollback_after_failures", 0),
             "weekly_coach_status": coach.get("status") or "unknown",
             "weekly_coach_mode": coach.get("mode") or "unknown",
-            "formal_v6_locked": not bool((validation.get("rules") or {}).get("automatic_weight_changes", True)),
-            "automatic_orders_blocked": not bool((validation.get("rules") or {}).get("automatic_orders", True)),
+            "policy_safety_checks": policy_safety,
+            "formal_v6_locked": all(policy_safety[key] for key in
+                                    ("formal_weight_changes_blocked", "formal_promotion_blocked", "formal_v6_unchanged")),
+            "automatic_orders_blocked": policy_safety["validation_orders_blocked"] and policy_safety["prediction_orders_blocked"],
         },
         "next_action": "持續累積真實交易日；只做影子驗證，不改正式排名、權重或下單。",
     }

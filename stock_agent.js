@@ -27,7 +27,7 @@
     }).join('');
     html+='<h4>資料與風險缺口</h4>'+list(r.missing_data);
     if(r.hedging)html+='<h4>反向ETF／放空與避險：資料不足</h4><p>'+esc(r.hedging.summary)+'</p>'+list(r.hedging.risks);
-    html+='<h4>來源與時間</h4>'+(r.sources||[]).map(function(s){return '<p>'+esc(s.source)+'｜'+esc(s.status)+'｜來源交易日／掃描：'+esc(s.source_session_date||s.as_of)+'｜報表發布：'+esc(s.published_at)+'｜讀取：'+esc(s.retrieved_at)+'</p>'+(s.summary?'<p>'+esc(s.summary)+' '+esc(s.note)+'</p>':'')+list((s.articles||[]).map(function(a){return (a.title||'')+'｜'+(a.published_at||'未提供文章時間')+'｜'+(a.url||'');}));}).join('');
+    html+='<h4>來源與時間</h4>'+(r.sources||[]).map(function(s){return '<p>'+esc(s.source)+'｜'+esc(s.status)+'｜來源交易日／掃描：'+esc(s.source_session_date||s.as_of)+'｜報表發布：'+esc(s.published_at)+'｜讀取：'+esc(s.retrieved_at)+'</p>'+(s.summary?'<p>'+esc(s.summary)+' '+esc(s.note)+'</p>':'')+list((s.articles||[]).map(function(a){return (a.title||'')+'｜'+(a.publisher||a.source||'來源未標示')+'｜'+(a.published_at||'未提供文章時間')+'｜'+(a.url||'');}));}).join('');
     html+='<p>任務：'+esc(r.task_key)+'｜結果驗證：'+(r.verified?'已檢查輸出契約':'未通過／尚未執行')+'｜有效至：'+esc(r.expires_at)+'</p>';
     html+='<p>有限規則式研究，沒有校準機率、目標價或保證獲利。總經預警未在此版本實作。</p><p>'+esc((r.limits||{}).decision_needed)+'</p>';
     return html;
@@ -42,7 +42,7 @@
       event.preventDefault();var seq=++sequence;if(controller)controller.abort();controller=new AbortController();
       last=null;output.innerHTML='';if(timer)win.clearTimeout(timer);
       var token=win.WudeLiveClient.accessToken(win.localStorage);
-      if(!token){progress.textContent='受阻：缺少既有擁有人授權，未執行分析。';cancel.disabled=true;return;}
+      if(!token){progress.textContent='受阻：缺少既有唯讀裝置授權，未執行分析；請由同網站即時資金流頁面登入後返回。';cancel.disabled=true;return;}
       cancel.disabled=false;progress.textContent='讀取報表、驗證來源並產出條件中；尚未完成。';
       var timeout=win.setTimeout(function(){if(seq===sequence && controller)controller.abort();},30000);
       try{

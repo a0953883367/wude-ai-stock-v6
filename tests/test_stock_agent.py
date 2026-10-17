@@ -145,17 +145,17 @@ def test_runtime_analyze_calls_executor_and_repeat_is_not_fake_duplicate(report,
         assert r['capability_plan']['executor_loaded']
 
 
-def test_endpoint_requires_existing_owner_and_origin(monkeypatch):
+def test_endpoint_requires_existing_read_only_authorization_and_origin(monkeypatch):
     import live_api
     responses = []
     handler = SimpleNamespace(path='/api/agent/stock-analysis',
-        _owner_authorized=lambda: False, _origin=lambda: 'https://existing.example',
+        _private_research_authorized=lambda: False, _origin=lambda: 'https://existing.example',
         _send=lambda status, body: responses.append((status, body)),
         rate_limiter=SimpleNamespace(allow=lambda: True),
         _read_json=lambda: {'question': 'MSFT'})
     live_api.LiveRequestHandler.do_POST(handler)
     assert responses[-1][0] == 401
-    handler._owner_authorized = lambda: True
+    handler._private_research_authorized = lambda: True
     handler._origin = lambda: None
     live_api.LiveRequestHandler.do_POST(handler)
     assert responses[-1][0] == 403
@@ -179,3 +179,103 @@ def test_output_verifier_rejects_invented_prices_and_probabilities(report):
     result = run(report)
     result['horizons'][0]['probability'] = 0.9
     assert not verify_result(result, report[2])
+
+
+@pytest.mark.parametrize('kind,expected', [
+    ('paired', 200), ('owner', 200), ('expired', 401), ('tampered', 401),
+    ('site', 401), ('anonymous_public_read', 401), ('proxy', 401),
+    ('revoked', 401), ('unknown', 401),
+    ('paired_vercel', 403), ('paired_bad_origin', 403),
+])
+def test_real_existing_device_auth_for_report_route_only(monkeypatch, kind, expected):
+    import hashlib
+    import hmac
+    from email.message import Message
+    from types import MethodType
+    import live_api
+    import agent_runtime
+    # Synthetic fixtures only: never obtain/issue a real token or send a pairing code.
+    secret = 'offline-only-stock-agent-auth-regression-secret'
+    monkeypatch.setenv('LIVE_ACCESS_TOKEN', secret)
+    monkeypatch.setenv('LIVE_PUBLIC_READ', '1')
+    monkeypatch.setenv('LIVE_TRUSTED_AUTH_HEADER', 'X-Test-Proxy')
+    monkeypatch.setenv('LIVE_ALLOWED_ORIGINS', 'https://a0953883367.github.io')
+    device = live_api.DevicePairingService(lambda message: pytest.fail('no pairing messages'), clock=lambda: 1000)
+    expiry = 999 if kind == 'expired' else 2000
+    body = f'wude-device-v1.{expiry}.synthetic-nonce'
+    token = body + '.' + hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()
+    if kind == 'tampered':
+        token += 'bad'
+    if kind == 'unknown':
+        token = 'unknown-synthetic-device-token'
+    if kind == 'revoked':
+        monkeypatch.setenv('LIVE_ACCESS_TOKEN', 'rotated-offline-only-stock-agent-auth-secret')
+    if kind == 'owner':
+        token = secret
+    if kind in {'site', 'anonymous_public_read', 'proxy'}:
+        token = ''
+    headers = Message()
+    if token:
+        headers['X-Live-Token'] = token
+    if kind == 'site':
+        monkeypatch.setenv('LIVE_SITE_TOKEN_SHA256', hashlib.sha256(b'synthetic-site').hexdigest())
+        headers['X-Site-Live-Token'] = 'synthetic-site'
+    if kind == 'proxy':
+        monkeypatch.delenv('LIVE_ACCESS_TOKEN')
+        headers['X-Test-Proxy'] = 'synthetic-proxy'
+    headers['Origin'] = ('https://wude-ai-stock-app.vercel.app' if kind == 'paired_vercel'
+                         else 'https://untrusted.invalid' if kind == 'paired_bad_origin'
+                         else 'https://a0953883367.github.io')
+    responses, executed = [], []
+    handler = SimpleNamespace(path='/api/agent/stock-analysis', headers=headers, device_pairing=device,
+        _send=lambda status, payload: responses.append((status, payload)),
+        rate_limiter=SimpleNamespace(allow=lambda: True), _read_json=lambda: {'question': 'MSFT'})
+    for name in ('_private_research_authorized', '_owner_authorized', '_origin'):
+        setattr(handler, name, MethodType(getattr(live_api.LiveRequestHandler, name), handler))
+    def execute(*args, **kwargs):
+        executed.append(args)
+        return {'status': 'limited', 'actual_work_performed': True}
+    monkeypatch.setattr(agent_runtime, 'execute_safe_task', execute)
+    live_api.LiveRequestHandler.do_POST(handler)
+    assert responses[-1][0] == expected
+    assert len(executed) == (1 if expected == 200 else 0)
+    if kind == 'paired':
+        assert handler._owner_authorized() is False
+        for path in ('/api/trading/config', '/api/trading/run'):
+            handler.path = path
+            live_api.LiveRequestHandler.do_POST(handler)
+            assert responses[-1][0] == 401
+        assert len(executed) == 1
+
+
+@pytest.mark.parametrize('published', ['2099-01-01', '2099-01-01T00:00:00Z', 'bad', None, {'date': '2026-10-16'}, '2026-10-17T07:00:01Z'])
+def test_invalid_or_future_articles_are_not_evidence(report, published):
+    report[2]['news_articles'] = [{'title': 'DO_NOT_USE', 'published_at': published, 'publisher': 'Publisher'}]
+    report[3]()
+    result = run(report)
+    news = result['sources'][1]
+    assert news['status'] == 'partial_invalid_articles'
+    assert news['articles'] == [] and news['rejected_article_count'] == 1
+    assert news['evidence_complete'] is False and news['summary'] is None
+    assert result['status'] == 'insufficient_data'
+    assert 'DO_NOT_USE' not in json.dumps(result)
+
+
+def test_news_preserves_publisher_and_empty_scan_is_not_positive_evidence(report):
+    empty = run(report)
+    assert empty['sources'][1]['empty_scan'] is True
+    assert all(e['source_id'] != 'news' for h in empty['horizons']
+               for e in h['bullish_evidence'] + h['bearish_evidence'])
+    report[2]['news_articles'] = [
+        {'title': 'valid date', 'published_at': '2026-10-16', 'publisher': 'Original Publisher'},
+        {'title': 'valid timestamp', 'published_at': '2026-10-17T06:00:00Z', 'source': 'Legacy Source'},
+        {'title': 'future excluded', 'published_at': '2099-01-01', 'publisher': 'Never Adopt'},
+    ]
+    report[3]()
+    news = run(report)['sources'][1]
+    assert news['accepted_article_count'] == 2 and news['rejected_article_count'] == 1
+    assert news['evidence_complete'] is False
+    assert news['articles'][0]['publisher'] == 'Original Publisher'
+    assert news['articles'][0]['source'] == 'Original Publisher'
+    assert news['articles'][0]['publication_precision'] == 'date_only_utc'
+    assert news['articles'][1]['source'] == 'Legacy Source'

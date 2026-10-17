@@ -1073,9 +1073,11 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         if parsed.path == "/api/agent/stock-analysis":
-            # Existing owner authorization only. No new site/device grants.
-            if not self._owner_authorized():
-                self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "owner authentication required"})
+            # Existing signed read-only devices may read public report research.
+            # Reuse the explicit owner/device validator, never public/site/proxy fallbacks.
+            # This does not authorize any trading or owner-only operation.
+            if not self._private_research_authorized():
+                self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "existing read-only device authorization required"})
                 return
             if parsed.query or parsed.fragment or not self._origin():
                 self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": "analysis origin or path denied"})

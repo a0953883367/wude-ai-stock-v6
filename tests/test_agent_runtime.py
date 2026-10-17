@@ -296,3 +296,44 @@ def test_missing_workspace_never_finishes_business_calculation(tmp_path):
     import agent_runtime
     assert agent_runtime._wt_work(tmp_path)['status'] == 'attention'
     assert agent_runtime._packaging_work(tmp_path)['status'] == 'attention'
+
+
+def test_all_critical_policy_fields_must_be_explicitly_safe(tmp_path):
+    root = _runtime_root(tmp_path)
+    for filename, field, unsafe in [
+        ('prediction_engine.json', 'automatic_orders', True),
+        ('prediction_engine.json', 'formal_v6_auto_promotion', True),
+        ('model_unit_learning.json', 'formal_v6_unchanged', False),
+    ]:
+        path = root / 'reports' / filename
+        original = path.read_text()
+        for missing in (False, True):
+            payload = json.loads(original)
+            if missing:
+                payload['policy'].pop(field)
+            else:
+                payload['policy'][field] = unsafe
+            path.write_text(json.dumps(payload))
+            report = build_runtime_report(root / 'reports', root=root)
+            stock = report['validations'][0]
+            assert stock['status'] == 'attention', (field, missing)
+            assert report['status'] == 'attention'
+            assert not all(stock['evidence']['policy_safety_checks'].values())
+            assert stock['evidence']['self_learning_enabled'] is False
+            if field == 'automatic_orders':
+                assert stock['evidence']['automatic_orders_blocked'] is False
+            else:
+                assert stock['evidence']['formal_v6_locked'] is False
+        path.write_text(original)
+
+
+def test_disabled_controlled_shadow_promotion_is_still_safe(tmp_path):
+    root = _runtime_root(tmp_path)
+    path = root / 'reports' / 'prediction_engine.json'
+    payload = json.loads(path.read_text())
+    payload['policy']['controlled_shadow_auto_promotion'] = False
+    path.write_text(json.dumps(payload))
+    stock = build_runtime_report(root / 'reports', root=root)['validations'][0]
+    assert stock['status'] == 'completed'
+    assert all(stock['evidence']['policy_safety_checks'].values())
+    assert stock['evidence']['self_learning_enabled'] is False

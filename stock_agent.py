@@ -176,17 +176,51 @@ def analyze_stock(question, *, root=Path('.'), now=None, calendar=None):
                            'levels': [{'label': label, 'value': row[key]} for key, label in
                                       [('ma20', '20日均線'), ('ma60', '60日均線'), ('support1', '既有支撐'), ('resistance1', '既有壓力')]
                                       if _positive(row.get(key))]}
-    news_ok = (row.get('news_data_available') is True and not row.get('news_cache_stale')
+    scan_ok = (row.get('news_data_available') is True and not row.get('news_cache_stale')
                and _news_observation_valid(row.get('news_scanned_at'), now))
-    articles = row.get('news_articles') if isinstance(row.get('news_articles'), list) else []
+    scan_stamp = _stamp(row.get('news_scanned_at'))
+    raw_articles = row.get('news_articles')
+    articles, rejected = [], []
+    if not isinstance(raw_articles, list):
+        rejected.append('invalid_article_collection')
+    for article in raw_articles if isinstance(raw_articles, list) else []:
+        if not isinstance(article, dict):
+            rejected.append('invalid_article'); continue
+        publication = article.get('published_at')
+        date_only = isinstance(publication, str) and bool(re.fullmatch(r'\d{4}-\d{2}-\d{2}', publication))
+        stamp = _stamp(publication) if isinstance(publication, str) else None
+        if stamp is None:
+            rejected.append('invalid_publication_date'); continue
+        if date_only:
+            # Existing news_risk serializes the UTC publication date only.
+            # Preserve that precision; never claim an independently verified hour.
+            day = stamp.date()
+            future = day > now.astimezone(timezone.utc).date() or bool(
+                scan_stamp and day > scan_stamp.astimezone(timezone.utc).date())
+            old = (now.astimezone(timezone.utc).date() - day).days > 14
+        else:
+            future = stamp > now or bool(scan_stamp and stamp > scan_stamp)
+            old = now - stamp > timedelta(days=14)
+        if future or old:
+            rejected.append('future_publication' if future else 'publication_outside_14_days'); continue
+        articles.append({k: article.get(k) for k in ('title', 'url', 'published_at', 'publisher', 'source')})
+        articles[-1]['source'] = article.get('source') or article.get('publisher')
+        articles[-1]['publication_precision'] = 'date_only_utc' if date_only else 'timestamp'
+    news_ok = scan_ok and not rejected
     result['sources'].append({'id': 'news', 'source': 'existing news_risk scan',
-        'as_of': row.get('news_scanned_at'), 'status': 'scan_available' if news_ok else 'missing_or_stale',
+        'as_of': row.get('news_scanned_at'),
+        'status': ('partial_invalid_articles' if scan_ok and rejected else
+                   'scan_available' if news_ok else 'missing_or_stale'),
         'summary': row.get('news_summary') if news_ok else None,
-        'articles': [{k: article.get(k) for k in ('title', 'url', 'published_at', 'source')}
-                     for article in articles[:5] if isinstance(article, dict)] if news_ok else [],
-        'note': '未發現符合掃描規則的新聞，不等於沒有風險；摘要不是已驗證事件。'})
-    if not news_ok:
+        'articles': articles[:5] if scan_ok else [],
+        'accepted_article_count': len(articles) if scan_ok else 0,
+        'rejected_article_count': len(rejected), 'rejection_reasons': sorted(set(rejected)),
+        'evidence_complete': news_ok, 'empty_scan': news_ok and not articles,
+        'note': '空掃描不是正面新聞或無風險證據；日期精度文章無法驗證發布時分，摘要不是已驗證事件。'})
+    if not scan_ok:
         result['missing_data'].append('新聞掃描缺少有效18小時內時間戳或已過期')
+    if rejected:
+        result['missing_data'].append('新聞文章已排除，完整性不足：' + '、'.join(sorted(set(rejected))))
     # A generic report publication timestamp cannot date a financial statement or index.
     result['missing_data'] += ['中長期財報期間與來源時間未獨立驗證', '總經事件日曆與市場指數時效未獨立驗證',
                                '放空借券成本、可借數量與反向ETF商品條款未取得']
@@ -210,7 +244,7 @@ def analyze_stock(question, *, root=Path('.'), now=None, calendar=None):
                         'invalidation': f'後續完成收盤收復 {key} {level:g} 或來源過期' if ready else None,
                         'opposing_evidence': support},
             'missing_data': ([] if ready else ['缺少可用價格及均線']) +
-                            ([] if news_ok else ['新聞缺漏或過期']) +
+                            ([] if news_ok else ['新聞缺漏、過期或文章日期無效']) +
                             (['未驗證財報期間、長期價格序列與總經風險，不能形成完整中長期結論'] if horizon == 'longer' else []),
         })
     result['hedging'] = {'status': 'insufficient_data',
