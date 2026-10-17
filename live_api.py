@@ -58,6 +58,10 @@ PRIVATE_RESEARCH_BROWSER_ORIGIN = "https://wude-ai-stock-app.vercel.app"
 PRIVATE_RESEARCH_BROWSER_PATH = "/api/private/us-research"
 
 
+def _free_us_quote_mode() -> bool:
+    return os.getenv("ALPACA_DATA_MODE", "").strip().lower() == "free_delayed"
+
+
 def _persistent_data_root() -> Path:
     """Return the Railway volume mount without creating a false local volume."""
     configured = (
@@ -408,7 +412,7 @@ class LiveDataService:
         self.fubon_login = fubon_login
         self.quote_ttl = quote_ttl if quote_ttl is not None else float(os.getenv("LIVE_QUOTE_TTL_SECONDS", "2"))
         self.option_ttl = option_ttl if option_ttl is not None else float(os.getenv("LIVE_OPTION_TTL_SECONDS", "60"))
-        self._cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
+        self._cache: dict[tuple[str, str, str], tuple[float, dict[str, Any]]] = {}
         self._option_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._fubon_sdk: Any = None
         self._lock = threading.RLock()
@@ -448,7 +452,7 @@ class LiveDataService:
                     break
         return data
 
-    def _cached(self, key: tuple[str, str]) -> dict[str, Any] | None:
+    def _cached(self, key: tuple[str, str, str]) -> dict[str, Any] | None:
         row = self._cache.get(key)
         if row and self.clock() - row[0] <= self.quote_ttl:
             result = dict(row[1])
@@ -521,6 +525,10 @@ class LiveDataService:
         quote = self.us_fetcher({symbol}).get(symbol, {})
         if not quote:
             raise RuntimeError("SIP quote is unavailable")
+        if _free_us_quote_mode():
+            from us_free_reference_validation import valid_delayed_reference
+            if not valid_delayed_reference(quote) or quote.get("us_option_data_available"):
+                raise RuntimeError("Free historical quote is unavailable")
         if quote.get("us_delayed_data_available") and not quote.get("us_live_data_available"):
             # Private display-only bars. Never promote to live NBBO or options.
             return {
@@ -547,7 +555,9 @@ class LiveDataService:
 
     def fetch(self, symbol: str, market: str, *, include_options: bool = True) -> dict[str, Any]:
         symbol, market = normalize_symbol(symbol, market)
-        key = (market, symbol)
+        # Never reuse a paid quote after switching to historical display mode.
+        mode = "free_delayed" if market == "US" and _free_us_quote_mode() else "paid_live"
+        key = (market, symbol, mode)
         with self._lock:
             cached = self._cached(key)
         if cached is not None:
@@ -1026,7 +1036,8 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
             })
             return
         market = query.get("market", [""])[0].strip().upper()
-        if not market_live_window(market):
+        historical_us = market == "US" and _free_us_quote_mode()
+        if not historical_us and not market_live_window(market):
             label = market_closed_label(market)
             self._send(HTTPStatus.TOO_EARLY, {"ok": False, "error": label, "code": "MARKET_CLOSED"})
             return

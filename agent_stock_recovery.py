@@ -145,7 +145,8 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
                     'report_freshness', 'report_consistency', 'market_session_consistency', 'tw_core_data', 'analysis_output', 'live_backend', 'decision_hub'}]
     if not latest.get('updated_at'):
         failures.append('missing_report')
-    us_fault = us_data_fault(latest, now=now, reports=reports)
+    us_fault = us_data_fault(latest, now=now, reports=reports,
+                            expected_mode=os.getenv("ALPACA_DATA_MODE", "paid_live"))
     if us_fault:
         failures.append(us_fault)
     actions = []
@@ -191,7 +192,8 @@ def inspect(reports: Path, now: datetime, *, runs: list[dict] | None, web: dict,
     data_key = f'{now.date().isoformat()}:{period}'
     data_item = data_incidents.setdefault(data_key, {'period': period, 'attempts': [], 'status': 'waiting'})
     direction = inspect_us_direction(reports, now)
-    needs_refresh = data_refresh_needed(latest, now=now, reports=reports) or direction["needs_silent_refresh"]
+    needs_refresh = data_refresh_needed(latest, now=now, reports=reports,
+                                       expected_mode=os.getenv("ALPACA_DATA_MODE", "paid_live")) or direction["needs_silent_refresh"]
     data_status = 'no_required_data_fault_detected'
     if not needs_refresh:
         if direction['status'] not in {'verified_current', 'not_observable'}:
@@ -287,7 +289,8 @@ def execute_reserved(reports: Path, now: datetime, executor: GitHubExecutor, *, 
         target = target_datetime(now, period)
         if key != f'{now.astimezone(TAIPEI).date().isoformat()}:{period}' or (is_data and period != refresh_period(now)) or (not is_data and now > target + timedelta(minutes=120)):
             attempt['state'] = 'skipped_expired'
-        elif is_data and not (data_refresh_needed(load_report(reports / 'latest.json'), now=now, reports=reports)
+        elif is_data and not (data_refresh_needed(load_report(reports / 'latest.json'), now=now, reports=reports,
+                                                    expected_mode=os.getenv("ALPACA_DATA_MODE", "paid_live"))
                              or inspect_us_direction(reports, now)['needs_silent_refresh']):
             attempt['state'] = 'skipped_already_fresh'
         elif not is_data and generation_is_current(delivery, period=period, target=target):

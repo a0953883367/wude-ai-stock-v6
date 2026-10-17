@@ -17,6 +17,7 @@ SYMBOLS = json.loads((Path(__file__).parent / 'fixtures/us_free_probe_universe.j
 
 @pytest.fixture
 def reports(tmp_path, monkeypatch):
+    monkeypatch.setenv("ALPACA_DATA_MODE", "free_delayed")
     rows = [dict(reference(s), price=200) if s != 'HNHPF' else
             dict(symbol=s, market='US', price=None, us_live_data_available=False,
                  us_delayed_data_available=False) for s in SYMBOLS]

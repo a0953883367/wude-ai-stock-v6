@@ -50,6 +50,7 @@ jobs:
         run: python system_guard.py --state-change-only --notify-critical
       - name: Diagnose and reserve bounded stock recovery
         env:
+          ALPACA_DATA_MODE: ${{ vars.ALPACA_DATA_MODE || 'paid_live' }}
           GH_TOKEN: ${{ github.token }}
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -73,6 +74,7 @@ jobs:
           exit 1
       - name: Execute only the reserved protected recovery
         env:
+          ALPACA_DATA_MODE: ${{ vars.ALPACA_DATA_MODE || 'paid_live' }}
           GH_TOKEN: ${{ github.token }}
           WUDE_LIVE_API_BASE: https://wude-ai-stock-v6-production.up.railway.app
         run: |

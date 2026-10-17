@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Any
@@ -66,25 +67,40 @@ def refresh_period(now: datetime) -> str:
     return "evening" if hour >= 20 else "noon" if hour >= 12 else "morning"
 
 
-def us_data_fault(report: dict[str, Any], *, now: datetime, reports: Path | None = None) -> str | None:
+def effective_us_data_mode(value: Any) -> str:
+    """Match provider selection: only normalized free_delayed opts into free mode.
+
+    Historical reports without a mode, blank values and unknown configuration
+    retain the existing paid path and its SIP/OPRA requirements.
+    """
+    return "free_delayed" if isinstance(value, str) and value.strip().lower() == "free_delayed" else "paid_live"
+
+
+def us_data_fault(report: dict[str, Any], *, now: datetime, reports: Path | None = None,
+                  expected_mode: str | None = None) -> str | None:
     quality = report.get("data_status")
     quality = quality if isinstance(quality, dict) else {}
-    if quality.get("us_data_mode") == "free_delayed":
+    actual_mode = effective_us_data_mode(quality.get("us_data_mode"))
+    if expected_mode is not None and actual_mode != effective_us_data_mode(expected_mode):
+        return "us_data_mode_mismatch"
+    if actual_mode == "free_delayed":
         from us_free_recovery_validation import healthy_free_report
         analysis = load_report(reports / "all_analysis.json") if reports is not None else {}
         return None if healthy_free_report(report, analysis, now=now) else "invalid_free_us_data"
     return "missing_sip_or_opra" if not quality.get("us_sip_count") or not quality.get("us_opra_count") else None
 
 
-def data_refresh_needed(report: dict[str, Any], *, now: datetime, reports: Path | None = None) -> bool:
+def data_refresh_needed(report: dict[str, Any], *, now: datetime, reports: Path | None = None,
+                        expected_mode: str | None = None) -> bool:
     updated = _parse_updated_at(report.get("updated_at"))
     return bool(updated is None or updated > now or
                 now - updated > timedelta(minutes=120) or
-                us_data_fault(report, now=now, reports=reports))
+                us_data_fault(report, now=now, reports=reports, expected_mode=expected_mode))
 
 
-def silent_refresh_needed(report: dict[str, Any], *, reports: Path, now: datetime) -> bool:
-    if data_refresh_needed(report, now=now, reports=reports):
+def silent_refresh_needed(report: dict[str, Any], *, reports: Path, now: datetime,
+                          expected_mode: str | None = None) -> bool:
+    if data_refresh_needed(report, now=now, reports=reports, expected_mode=expected_mode):
         return True
     # Recompute the same diagnosis; a fresh price report does not prove that
     # the independent immutable direction ledger or calendar is available.
@@ -251,7 +267,9 @@ def main() -> int:
             "reason": reason,
         }
     elif args.data_refresh:
-        should_run = args.period == refresh_period(now) and silent_refresh_needed(report, reports=Path(args.report).parent, now=now)
+        should_run = args.period == refresh_period(now) and silent_refresh_needed(
+            report, reports=Path(args.report).parent, now=now,
+            expected_mode=os.getenv("ALPACA_DATA_MODE", "paid_live"))
         values = {"should_run": str(should_run).lower(),
                   "reason": "silent current-data refresh" if should_run else "data refresh no longer required"}
     elif args.recovery:
