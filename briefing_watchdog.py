@@ -66,16 +66,25 @@ def refresh_period(now: datetime) -> str:
     return "evening" if hour >= 20 else "noon" if hour >= 12 else "morning"
 
 
-def data_refresh_needed(report: dict[str, Any], *, now: datetime) -> bool:
+def us_data_fault(report: dict[str, Any], *, now: datetime, reports: Path | None = None) -> str | None:
+    quality = report.get("data_status")
+    quality = quality if isinstance(quality, dict) else {}
+    if quality.get("us_data_mode") == "free_delayed":
+        from us_free_recovery_validation import healthy_free_report
+        analysis = load_report(reports / "all_analysis.json") if reports is not None else {}
+        return None if healthy_free_report(report, analysis, now=now) else "invalid_free_us_data"
+    return "missing_sip_or_opra" if not quality.get("us_sip_count") or not quality.get("us_opra_count") else None
+
+
+def data_refresh_needed(report: dict[str, Any], *, now: datetime, reports: Path | None = None) -> bool:
     updated = _parse_updated_at(report.get("updated_at"))
-    quality = report.get("data_status") or {}
     return bool(updated is None or updated > now or
                 now - updated > timedelta(minutes=120) or
-                not quality.get("us_sip_count") or not quality.get("us_opra_count"))
+                us_data_fault(report, now=now, reports=reports))
 
 
 def silent_refresh_needed(report: dict[str, Any], *, reports: Path, now: datetime) -> bool:
-    if data_refresh_needed(report, now=now):
+    if data_refresh_needed(report, now=now, reports=reports):
         return True
     # Recompute the same diagnosis; a fresh price report does not prove that
     # the independent immutable direction ledger or calendar is available.
