@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-17T19:00:39.841998+08:00",
+  "checked_at": "2026-10-17T22:18:19.279717+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -402,8 +402,8 @@
     "2026-10-17:evening": {
       "period": "evening",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     }
   },
   "next_actions": [],
@@ -418,7 +418,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-17 16:32:52",
+        "updated_at": "2026-10-17 22:11:54",
         "error": null
       }
     },
@@ -729,6 +729,13 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-17T13:45:33.246681+08:00",
       "report_updated_at": "2026-10-17 12:42:52"
+    },
+    "2026-10-17:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-10-17T22:18:19.279717+08:00",
+      "report_updated_at": "2026-10-17 22:11:54"
     }
   },
   "permission_probe": {
@@ -745,10 +752,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data"
-  ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
