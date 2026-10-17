@@ -40,3 +40,9 @@ def test_capability_limits_are_enforced():
     assert plan["usage"]["tools"] <= 1
     assert plan["usage"]["schema_bytes"] <= 400
     assert plan["usage"]["omitted_skills"] >= 1
+
+
+def test_schemas_are_not_executors():
+    plan = build_capability_plan('股票分析', 'analyze', explicit_agent='stock_shadow')
+    assert plan['schemas_selected'] is True
+    assert plan['executor_loaded'] is False

@@ -101,7 +101,9 @@ def build_capability_plan(
             "omitted_skills": omitted_skills,
             "omitted_tools": omitted_tools,
         },
-        "executor_loaded": not blocked and bool(selected_tools),
+        "schemas_selected": not blocked and bool(selected_tools),
+        # Planning selects descriptions; only the runtime can attest execution.
+        "executor_loaded": False,
         "blocked_action": blocked,
         "cross_domain_tools": False,
     }

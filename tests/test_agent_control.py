@@ -66,3 +66,11 @@ def test_report_reads_stock_shadow_status_and_keeps_other_domains_isolated(tmp_p
     assert report["data_policy"]["cross_domain_reads"] is False
     assert report["safety"]["automatic_orders"] is False
     assert report["safety"]["automatic_external_messages"] is False
+
+
+def test_coach_attempts_counter_including_zero(tmp_path):
+    for attempts in (0, 2):
+        (tmp_path / 'weekly_shadow_coach.json').write_text(json.dumps({
+            'api': {'attempts': attempts, 'request_count': 99}}))
+        stock = build_report(tmp_path)['agents'][0]['runtime']
+        assert stock['weekly_coach_api_requests'] == attempts

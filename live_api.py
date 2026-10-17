@@ -1072,6 +1072,32 @@ class LiveRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path == "/api/agent/stock-analysis":
+            # Existing owner authorization only. No new site/device grants.
+            if not self._owner_authorized():
+                self._send(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "owner authentication required"})
+                return
+            if parsed.query or parsed.fragment or not self._origin():
+                self._send(HTTPStatus.FORBIDDEN, {"ok": False, "error": "analysis origin or path denied"})
+                return
+            if not self.rate_limiter.allow():
+                self._send(HTTPStatus.TOO_MANY_REQUESTS, {"ok": False, "error": "request limit reached"})
+                return
+            try:
+                payload = self._read_json()
+                if (set(payload) != {"question"} or not isinstance(payload["question"], str)
+                        or not 1 <= len(payload["question"].strip()) <= 240):
+                    raise ValueError("invalid analysis request")
+                from agent_runtime import execute_safe_task
+                result = execute_safe_task("stock_shadow", "analyze", "單一股票條件研究",
+                                           payload, root=Path(__file__).resolve().parent)
+            except (TypeError, ValueError):
+                self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid analysis request"})
+            except Exception:
+                self._send(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "analysis unavailable"})
+            else:
+                self._send(HTTPStatus.OK, {"ok": True, "data": result})
+            return
         if parsed.path == "/api/private/us-research":
             if parsed.query or parsed.fragment:
                 self._send(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "private research query parameters are not supported"})

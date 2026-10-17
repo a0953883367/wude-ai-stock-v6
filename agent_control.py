@@ -186,7 +186,8 @@ def _stock_status(reports_dir: Path) -> dict[str, Any]:
     coach = _read_json(reports_dir / "weekly_shadow_coach.json")
     guard = _read_json(reports_dir / "system_guard.json")
     progress = learning.get("progress") or {}
-    calls = ((coach.get("api") or {}).get("request_count"))
+    api = coach.get("api") or {}
+    calls = api.get("attempts", api.get("request_count"))
     return {
         "status": "running_shadow",
         "status_label": "影子驗證運作中",
