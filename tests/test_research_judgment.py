@@ -2,6 +2,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from report_research import _judgment_context, _research_judgment, integrate_research
@@ -105,22 +106,31 @@ def test_missing_hub_does_not_invent_recommendation():
 def test_published_full_pool_coverage_and_formal_fields_unchanged():
     reports=Path('reports');source=json.loads((reports/'all_analysis.json').read_text())
     original=deepcopy(source)
-    result=integrate_research(source,reports,engine_succeeded=True,judgment_now=NOW)
+    # Replay the checked-in batch, not a fixed date that scheduled report
+    # updates can overtake while a PR is being tested. This is not live data.
+    checked_at=datetime.fromisoformat(source['updated_at'])
+    if checked_at.tzinfo is None: checked_at=checked_at.replace(tzinfo=ZoneInfo('Asia/Taipei'))
+    plan=json.loads((reports/'trade_plan_shadow.json').read_text())
+    evaluated=datetime.fromisoformat(plan['evaluated_at'].replace('Z','+00:00'))
+    checked_at=max(checked_at,evaluated)
+    result=integrate_research(source,reports,engine_succeeded=True,judgment_now=checked_at)
     assert source==original
     assert len(result['data'])==len(source['data'])==result['research_integration']['judgment_rows_accounted']
     assert {(r['market'],r['symbol']) for r in result['data']}=={(r['market'],r['symbol']) for r in source['data']}
     hub_manifest=json.loads((reports/'decision_hub.json').read_text())
     expected={}
-    assert hub_manifest['updated_at']==source['updated_at']
-    for name in hub_manifest['decision_files']:
-        part=json.loads((reports/name).read_text())
-        assert part['updated_at']==source['updated_at']
-        expected.update({(d['market'],d['symbol']):d['horizons']['short']['recommendation'] for d in part['decisions']})
+    if hub_manifest['updated_at']==source['updated_at']:
+        for name in hub_manifest['decision_files']:
+            part=json.loads((reports/name).read_text())
+            if part['updated_at']!=source['updated_at']:
+                expected={}
+                break
+            expected.update({(d['market'],d['symbol']):d['horizons']['short']['recommendation'] for d in part['decisions']})
     for old,new in zip(source['data'],result['data']):
         assert {k:v for k,v in old.items() if k!='research'}=={k:v for k,v in new.items() if k!='research'}
         j=new['research']['judgment']
         assert all(k in j for k in ('short','quarter','long_term'))
-        assert j['short']['inherited_recommendation']==expected[(new['market'],new['symbol'])]
+        assert j['short']['inherited_recommendation']==expected.get((new['market'],new['symbol']))
         assert not j['execution_authorized'] and not j['holdings_assumed']
 
 
