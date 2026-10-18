@@ -11,6 +11,8 @@ import math
 
 from market_calendar import OfficialMarketCalendar
 
+OFFICIAL_PRICE_SOURCES = {"TWSE OpenAPI", "TPEx OpenAPI", "TWSE Open Data"}
+
 
 def evidence_valid(proof, date, opening=None, closing=None):
     if not isinstance(proof, dict) or proof.get("status") != "verified" or proof.get("date") != date:
@@ -21,7 +23,7 @@ def evidence_valid(proof, date, opening=None, closing=None):
     calendar = proof.get("calendar_status") or {}
     if calendar.get("available") is not True or calendar.get("is_session") is not True or proof.get("session_complete") is not True:
         return False
-    if proof.get("source") not in {"TWSE OpenAPI", "TPEx OpenAPI"}:
+    if proof.get("source") not in OFFICIAL_PRICE_SOURCES:
         return False
     try:
         o, c = float(proof["open"]), float(proof["close"])
@@ -50,7 +52,7 @@ def prepare_rows(rows, prices, calendar, updated_at):
             valid = (status.get("available") is True and status.get("is_session") is True
                      and complete and snapshot.get("tw_official_price_available") is True
                      and snapshot.get("tw_price_unit") == "TWD/shares"
-                     and snapshot.get("tw_price_source") in {"TWSE OpenAPI", "TPEx OpenAPI"}
+                     and snapshot.get("tw_price_source") in OFFICIAL_PRICE_SOURCES
                      and session == row.get("official_session_date"))
             evidence = {"status": "verified" if valid else "unverified",
                         "reason": None if valid else "official_calendar_or_source_mismatch",

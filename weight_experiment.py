@@ -1187,7 +1187,7 @@ def update_weight_experiment(
         bars = reference.setdefault("prices", {}).setdefault(row["symbol"], {})
         if session not in bars:
             bars[session] = {"open": proof["open"], "close": proof["close"],
-                             "source": "TWSE" if proof["source"] == "TWSE OpenAPI" else "TPEx",
+                             "source": "TPEx" if proof["source"] == "TPEx OpenAPI" else "TWSE",
                              "evidence_sha256": proof["sha256"], "captured_at": updated_at}
         calendar = reference.setdefault("calendar", {})
         calendar["completed_through"] = max(str(calendar.get("completed_through") or ""), session)
