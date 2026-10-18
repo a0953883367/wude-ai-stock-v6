@@ -80,3 +80,22 @@ def test_safe_wrapper_quarantines_failure(monkeypatch, tmp_path: Path):
     assert health["status"] == "warning"
     assert health["formal_pipeline_continues"] is True
     assert health["changes_rankings"] is False
+
+
+def test_untouched_line_does_not_imply_continuation():
+    from chart_pattern_validation import _settle_signal
+    signal = {"signal_close": 110, "direction": "bullish", "pattern": "雙重底", "entry": 100, "session_index": 0}
+    _settle_signal(signal, 1, {"close": 108, "high": 109, "low": 107, "relative_volume": None,
+                             "pattern": "雙重底", "pattern_direction": "bullish",
+                             "pattern_volume_confirmed": False, "session_date": "2026-09-09"})
+    check = signal["next_session_confirmation"]
+    assert check["retest_status"] == "not_retested"
+    assert check["direction_confirmed"] is False
+    assert check["session_date"] == "2026-09-09"
+
+
+def test_historical_geometry_is_not_recorded_as_new_active_signal(tmp_path):
+    row = _row('2026-09-01', 90)
+    row['chart_pattern_shadow_active_reference'] = False
+    report = update_chart_pattern_validation(tmp_path, [row], period='evening', updated_at='now', intraday=False)
+    assert report['summary']['signal_count'] == 0
