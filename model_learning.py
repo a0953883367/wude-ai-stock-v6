@@ -212,6 +212,29 @@ def _candidate_registry(
     return candidates
 
 
+def _related_rotation_audit(reports_dir: Path) -> dict:
+    """Link the executed ranking experiment without equating two hypotheses."""
+    from market_rotation_shadow import _summary
+    report = _read(reports_dir / "market_rotation_shadow.json")
+    markets = {}
+    for market, state in (report.get("markets") or {}).items():
+        summary = _summary(state)
+        markets[market] = {
+            "summary_matches_outcomes": summary == state.get("summary"),
+            "summary": summary,
+        }
+    return {
+        "source": "market_rotation_shadow.json",
+        "updated_at": report.get("updated_at"),
+        "status": "reported" if markets else "unavailable",
+        "same_candidate": False,
+        "scope": "正式V6 TOP10 對照 85%原分數＋15%同市場族群輪動排序；不是看跌反轉規則。",
+        "comparison_basis": "paired_daily_trials_not_compounded_account_return",
+        "markets": markets,
+        "promotion_allowed": False,
+    }
+
+
 def _shadow_execution_audit(reports_dir: Path, direction: dict, weight: dict) -> dict:
     """Separate error evidence and baseline diagnostics from executed challengers."""
     gap = weight.get("entry_gap_shadow") or {}
@@ -244,7 +267,8 @@ def _shadow_execution_audit(reports_dir: Path, direction: dict, weight: dict) ->
             "baseline_valid_sessions": {market: int(((state.get("summary") or {}).get("overall") or {}).get("valid_sessions") or 0)
                                         for market, state in (missed.get("markets") or {}).items()},
             "paired_rule_registered": False,
-            "limitation": "已有強勢股漏選診斷；尚無固定輪動改善規則的前向A/B，錯誤事件數不是候選績效。",
+            "related_experiment": _related_rotation_audit(reports_dir),
+            "limitation": "已有漏選診斷及獨立的15%輪動排序A/B；本候選的看跌反轉假說尚無對應固定前向A/B。相關實驗減少虧損不等於獲利，也不能當成本候選驗證或晉升依據。",
         },
         "intraday_reversal": {
             "status": "signal_confirmation_only" if int((confirmation.get("summary") or {}).get("tracked_signals") or 0) else "diagnostics_only",

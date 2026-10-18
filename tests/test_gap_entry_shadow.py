@@ -128,3 +128,50 @@ def test_existing_weight_producer_connects_freeze_settlement_and_repeat_safely(t
     assert len(before)==1 and before[0]['skipped_gap_positions']==1
     update_weight_experiment(tmp_path,execution,period='evening',updated_at='2026-10-05 20:15:00')
     assert json.loads(path.read_text())['entry_gap_shadow']['days']==before
+
+
+def test_partial_same_day_retries_persist_proofs_without_rewriting_signal():
+    state = frozen(); receipt = deepcopy(state['pending'])
+    bars = rows('2026-10-05', '2026-10-06')
+    first = update(state, source(), bars[:5], '2026-10-05 20:00:00')
+    assert first['pending'] == receipt and not first['days']
+    # A process restart reloads JSON; a different partial response completes 9/10.
+    second = update(json.loads(json.dumps(first)), source(), bars[5:9], '2026-10-05 21:00:00')
+    assert second['days'][0]['available_prices'] == 9
+    assert second['days'][0]['frozen_receipt'] == receipt
+    assert first['execution_price_observations']['prices']['S0'] == bars[0]['shadow_price_evidence']
+
+
+def test_partial_proofs_survive_expiry_but_never_rehabilitate_invalid_day():
+    bars = rows('2026-10-05', '2026-10-06')
+    state = update(frozen(), source(), bars[:3], '2026-10-05 20:00:00')
+    expired = update(state, source(), [], '2026-10-06 06:00:00')
+    assert expired['invalid_days'][0]['available_prices'] == 3
+    assert len(expired['invalid_days'][0]['missing_symbols']) == 7
+    later = update(expired, source(), bars, '2026-10-06 20:00:00')
+    assert later['invalid_days'] == expired['invalid_days'] and later['days'] == []
+    assert update(frozen(), source(), bars, '2026-10-06 20:00:00')['days'] == []
+
+
+def test_future_target_and_future_capture_never_settle():
+    state = frozen()
+    future = rows('2026-10-05', '2026-10-06')
+    waiting = update(state, source(), future, '2026-10-04 21:00:00')
+    assert waiting['pending'] == state['pending'] and waiting['days'] == []
+    assert update(state, source(), future, '2026-10-05 19:00:00')['days'] == []
+
+
+@pytest.mark.parametrize('corruption', ['proof_hash', 'different_sample'])
+def test_persisted_prices_are_revalidated_and_isolated_by_frozen_sample(corruption):
+    bars = rows('2026-10-05', '2026-10-06')
+    state = update(frozen(), source(), bars[:8], '2026-10-05 20:00:00')
+    receipt = deepcopy(state['pending'])
+    if corruption == 'proof_hash':
+        state['execution_price_observations']['prices']['S0']['close'] = 999
+    else:
+        state['execution_price_observations']['sample_id'] = 'different-frozen-sample'
+    result = update(state, source(), bars[8:9], '2026-10-05 21:00:00')
+    assert result['days'] == [] and result['pending'] == receipt
+    expired = update(result, source(), [], '2026-10-06 06:00:00')
+    assert expired['invalid_days'][0]['available_prices'] == (8 if corruption == 'proof_hash' else 1)
+    assert expired['promotion_allowed'] is False

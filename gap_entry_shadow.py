@@ -86,9 +86,23 @@ def update(existing, source_model, rows, updated_at, *, intraday=False):
             state['promotion_allowed'] = False
             return state
         target = pending['execution_session_date']
-        priced, missing = [], []
+        # Keep full, hash-verified same-day observations across existing scheduled retries.
+        # Separate from the immutable signal receipt; never reconstruct old proofs
+        # from the historical audit's prices/hash or resurrect invalidated samples.
+        observed = state.get('execution_price_observations') or {}
+        if observed.get('sample_id') != pending['sample_id']:
+            observed = {'sample_id': pending['sample_id'], 'prices': {}}
+        prices = observed['prices']
         for pick in pending['picks']:
             proof = (row_map.get(pick['symbol']) or {}).get('shadow_price_evidence') or {}
+            captured = _at(proof.get('captured_at'))
+            if (now.date().isoformat() == target and captured and captured <= now
+                    and captured.date().isoformat() == target and evidence_valid(proof, target)):
+                prices.setdefault(pick['symbol'], deepcopy(proof))
+        state['execution_price_observations'] = observed
+        priced, missing = [], []
+        for pick in pending['picks']:
+            proof = prices.get(pick['symbol']) or {}
             if evidence_valid(proof, target):
                 priced.append((pick, proof))
             else:
@@ -130,10 +144,13 @@ def update(existing, source_model, rows, updated_at, *, intraday=False):
                     'baseline_cash_twd':sum(p['allocation_twd'] for p in positions if not p['baseline_executed']),
                     'gap_cash_twd':sum(p['allocation_twd'] for p in positions if not p['gap_cash_executed'])})
             state['pending'] = None
+            state.pop('execution_price_observations', None)
         elif now.date().isoformat() > target:
             state['invalid_days'].append({'reason':'expired_missing_exact_session_prices', 'missing_symbols':missing,
+                'available_prices':len(priced), 'execution_price_observations':deepcopy(observed),
                 'pending':deepcopy(pending), 'invalidated_at':updated_at})
             state['pending'] = None
+            state.pop('execution_price_observations', None)
         else:
             _block(state, 'waiting_for_exact_session_official_prices', pending['source_snapshot_id'], target)
     if state['pending'] or len(state['days']) >= 60:

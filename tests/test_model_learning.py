@@ -242,3 +242,25 @@ def test_execution_audit_does_not_treat_error_events_as_challenger_results(tmp_p
     assert not candidates['missed_strength_rotation']['paired_rule_registered']
     assert candidates['etf_model_separation']['status'] == 'proposal_only'
     assert candidates['intraday_reversal']['status'] == 'diagnostics_only'
+
+
+def test_related_rotation_is_reported_but_not_equated_to_reversal_candidate(tmp_path):
+    from market_rotation_shadow import _summary
+    from model_learning import _shadow_execution_audit
+    state = {'market': 'TW', 'outcomes': [{'status': 'valid', 'models': {
+        'baseline': {'net_profit_twd': -100, 'positions': []},
+        'rotation': {'net_profit_twd': -70, 'positions': []}}}]}
+    state['summary'] = _summary(state)
+    _write(tmp_path / 'market_rotation_shadow.json', {'updated_at': '2026-10-18 06:30:12', 'markets': {'TW': state}})
+    candidate = _shadow_execution_audit(tmp_path, {}, {})['candidates']['missed_strength_rotation']
+    assert candidate['paired_rule_registered'] is False
+    related = candidate['related_experiment']
+    assert related['same_candidate'] is False and related['promotion_allowed'] is False
+    assert related['updated_at'] == '2026-10-18 06:30:12'
+    assert related['markets']['TW']['summary_matches_outcomes'] is True
+    assert related['markets']['TW']['summary']['rotation_incremental_net_profit_twd'] == 30
+    state['summary']['valid_trading_days'] = 100
+    _write(tmp_path / 'market_rotation_shadow.json', {'markets': {'TW': state}})
+    related = _shadow_execution_audit(tmp_path, {}, {})['candidates']['missed_strength_rotation']['related_experiment']
+    assert related['markets']['TW']['summary_matches_outcomes'] is False
+    assert related['markets']['TW']['summary']['valid_trading_days'] == 1
