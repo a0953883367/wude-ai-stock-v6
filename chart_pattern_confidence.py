@@ -41,16 +41,35 @@ def _direction_arrow(value: float, reference: float) -> str:
 
 
 def _latest_signal(report: dict[str, Any], row: dict[str, Any]) -> dict[str, Any] | None:
-    candidates = [
-        item for item in report.get("signals", [])
-        if item.get("market") == str(row.get("market") or "").upper()
-        and str(item.get("symbol") or "").upper() == str(row.get("symbol") or "").upper()
-        and item.get("pattern") == row.get("chart_pattern_shadow_name")
-    ]
-    return max(candidates, key=lambda item: str(item.get("signal_date") or ""), default=None)
+    identity = row.get("chart_pattern_shadow_identity")
+    asof = row.get("chart_pattern_shadow_session_date")
+    if not identity or not asof:
+        return None
+    sessions = (report.get("sessions") or {}).get(str(row.get("market") or "").upper(), [])
+    if asof not in sessions:
+        return None
+    candidates = []
+    for item in report.get("signals", []):
+        date = item.get("signal_date")
+        check_date = (item.get("next_session_confirmation") or {}).get("session_date")
+        if (item.get("market") == str(row.get("market") or "").upper()
+            and str(item.get("symbol") or "").upper() == str(row.get("symbol") or "").upper()
+            and item.get("pattern") == row.get("chart_pattern_shadow_name")
+            and item.get("direction") == row.get("chart_pattern_shadow_direction")
+            and item.get("pattern_identity") == identity
+            and date in sessions and check_date in sessions
+            and 1 <= sessions.index(asof)-sessions.index(date) <= 5
+            and sessions.index(check_date) == sessions.index(date)+1
+            and check_date <= asof):
+            candidates.append(item)
+    return max(candidates, key=lambda item: item["signal_date"], default=None)
 
 
 def _history_stat(report: dict[str, Any], row: dict[str, Any]) -> tuple[float | None, str]:
+    asof = row.get("chart_pattern_shadow_session_date") or row.get("official_session_date")
+    sessions = (report.get("sessions") or {}).get(str(row.get("market") or "").upper(), [])
+    if asof and any(date > asof for date in sessions):
+        return None, "歷史統計含較晚交易日，不混入目前快照"
     match = next((
         item for item in report.get("pattern_statistics", [])
         if item.get("market") == str(row.get("market") or "").upper()
@@ -64,7 +83,7 @@ def _history_stat(report: dict[str, Any], row: dict[str, Any]) -> tuple[float | 
         samples = int(item.get("sample_count") or 0)
         rate = _number(item.get("hit_rate_pct"))
         if samples >= 5 and rate is not None:
-            return rate, f"{horizon}日命中 {rate:.1f}%（{samples}筆）"
+            return rate, f"歷史整體{horizon}日方向命中 {rate:.1f}%（{samples}筆，非本次勝率）"
     total = max((int((horizons.get(h) or {}).get("sample_count") or 0) for h in ("1", "3", "5")), default=0)
     return None, f"歷史樣本累積中（最多{total}筆，滿5筆計分）"
 
@@ -93,7 +112,7 @@ def _component_scores(row: dict[str, Any], report: dict[str, Any]) -> list[dict[
     retest_map = {
         "held": (100.0, "隔日回踩／反抽守住"),
         "failed": (0.0, "隔日回踩／反抽失敗"),
-        "not_retested": (70.0, "隔日方向延續，尚未回測"),
+        "not_retested": (None, "隔日未碰確認線；不代表方向延續"),
     }
     retest_score, retest_text = retest_map.get(retest, (None, "等待隔日回踩／反抽"))
 
@@ -185,6 +204,7 @@ def attach_chart_pattern_confidence(rows: list[dict[str, Any]], report: dict[str
         score, coverage = _score(components)
         holding_score, holding_parts = _holding_score(row)
         row.update({
+            "chart_pattern_rank_evidence_version": 2,
             "chart_pattern_rank_score": score,
             "chart_pattern_rank_coverage_pct": coverage,
             "chart_pattern_rank_components": components,

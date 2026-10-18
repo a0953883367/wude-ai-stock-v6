@@ -39,11 +39,13 @@ def test_pattern_rank_is_isolated_and_orders_stronger_confirmation_first():
 
 def test_forward_history_and_retest_join_the_active_pattern_only():
     row = _row("TEST")
+    row.update(chart_pattern_shadow_identity="same-pivots", chart_pattern_shadow_session_date="2026-09-09")
     report = {
+        "sessions": {"TW": ["2026-09-08", "2026-09-09"]},
         "signals": [{
             "market": "TW", "symbol": "TEST", "pattern": "雙重底",
-            "signal_date": "2026-09-08",
-            "next_session_confirmation": {"retest_status": "held"},
+            "signal_date": "2026-09-08", "direction": "bullish", "pattern_identity": "same-pivots",
+            "next_session_confirmation": {"retest_status": "held", "session_date": "2026-09-09"},
         }],
         "pattern_statistics": [{
             "market": "TW", "pattern": "雙重底",
@@ -85,3 +87,49 @@ def test_direction_status_uses_arrows_without_removing_indicator_names():
     components = {item["key"]: item for item in bearish["chart_pattern_rank_components"]}
     assert components["kd"]["status"] == "日KD▼／週KD▼"
     assert components["rsi_macd"]["status"] == "RSI 61.0／MACD▼"
+
+
+def test_retest_requires_same_pivots_direction_dates_and_bounded_age():
+    import copy
+    from chart_pattern_confidence import _latest_signal
+    row = _row("TEST")
+    row.update(chart_pattern_shadow_identity="current", chart_pattern_shadow_session_date="2026-09-09")
+    signal = {"market": "TW", "symbol": "TEST", "pattern": "雙重底", "direction": "bullish",
+              "signal_date": "2026-09-08", "pattern_identity": "current",
+              "next_session_confirmation": {"session_date": "2026-09-09", "retest_status": "held"}}
+    report = {"sessions": {"TW": ["2026-09-08", "2026-09-09", "2026-09-10"]}, "signals": [signal]}
+    assert _latest_signal(report, row) == signal
+    for key, value in (("pattern_identity", "older"), ("direction", "bearish"), ("signal_date", "2026-09-10")):
+        changed = copy.deepcopy(report); changed["signals"][0][key] = value
+        assert _latest_signal(changed, row) is None
+    changed = copy.deepcopy(report)
+    changed["signals"][0]["next_session_confirmation"]["session_date"] = "2026-09-10"
+    assert _latest_signal(changed, row) is None  # future check unavailable at as-of
+    for key in ("chart_pattern_shadow_identity", "chart_pattern_shadow_session_date"):
+        changed_row = dict(row); changed_row.pop(key)
+        assert _latest_signal(report, changed_row) is None
+    report["sessions"]["TW"] += ["2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16"]
+    row["chart_pattern_shadow_session_date"] = "2026-09-16"
+    assert _latest_signal(report, row) is None
+
+
+def test_no_retest_does_not_award_continuation_points():
+    from chart_pattern_confidence import _component_scores
+    row = _row("TEST")
+    row.update(chart_pattern_shadow_identity="current", chart_pattern_shadow_session_date="2026-09-09")
+    report = {"sessions": {"TW": ["2026-09-08", "2026-09-09"]}, "signals": [{
+        "market": "TW", "symbol": "TEST", "pattern": "雙重底", "direction": "bullish",
+        "signal_date": "2026-09-08", "pattern_identity": "current",
+        "next_session_confirmation": {"session_date": "2026-09-09", "retest_status": "not_retested", "direction_confirmed": False}}]}
+    item = next(c for c in _component_scores(row, report) if c["key"] == "retest")
+    assert item["score"] is None
+    assert item["status"] == "隔日未碰確認線；不代表方向延續"
+
+
+def test_later_aggregate_is_not_applied_to_older_snapshot():
+    from chart_pattern_confidence import _history_stat
+    row = _row('TEST')
+    row['chart_pattern_shadow_session_date'] = '2026-09-08'
+    report = {'sessions': {'TW': ['2026-09-08','2026-09-09']}, 'pattern_statistics': [
+        {'market': 'TW','pattern': '雙重底','horizons': {'5': {'sample_count': 20,'hit_rate_pct': 90}}}]}
+    assert _history_stat(report, row)[0] is None

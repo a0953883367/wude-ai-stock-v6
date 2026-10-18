@@ -90,6 +90,7 @@ def _session_observation(row: dict[str, Any]) -> dict[str, Any] | None:
         "high": _price(row, "high") or close,
         "low": _price(row, "low") or close,
         "relative_volume": _finite(row.get("relative_volume")),
+        "session_date": row.get("official_session_date"),
         "pattern": str(row.get("chart_pattern_shadow_name") or "未偵測"),
         "pattern_direction": str(row.get("chart_pattern_shadow_direction") or "neutral"),
         "pattern_status": str(row.get("chart_pattern_shadow_status") or ""),
@@ -137,6 +138,7 @@ def _settle_signal(signal: dict[str, Any], session_index: int,
             else:
                 retest_status = "not_retested"
         signal["next_session_confirmation"] = {
+            "session_date": observation.get("session_date"),
             "status": "confirmed" if same_direction and price_direction else "not_confirmed",
             "direction_confirmed": same_direction and price_direction,
             "volume_confirmed": volume_confirmed,
@@ -254,6 +256,8 @@ def update_chart_pattern_validation(
                 direction = observation["pattern_direction"]
                 if pattern == "未偵測" or direction not in {"bullish", "bearish"}:
                     continue
+                if row.get("chart_pattern_shadow_active_reference") is False:
+                    continue  # historical/invalid/unknown geometry is not a new active occurrence
                 if previous.get(symbol) == pattern:
                     continue
                 signal_id = f"{market}:{symbol}:{session_date}:{pattern}"
@@ -266,6 +270,7 @@ def update_chart_pattern_validation(
                     "name": str(row.get("name") or symbol),
                     "asset_type": str(row.get("type") or ""),
                     "signal_date": session_date,
+                    "pattern_identity": row.get("chart_pattern_shadow_identity"),
                     "session_index": session_index,
                     "pattern": pattern,
                     "direction": direction,

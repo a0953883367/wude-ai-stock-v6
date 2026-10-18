@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import hashlib
+import json
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -10,6 +12,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
+from chart_pattern_state import pattern_state
 from config import TAIPEI
 from daily_price_provenance import observed_daily_volume, us_daily_metadata
 from tw_market_context import attach_tw_context
@@ -306,7 +309,9 @@ def _chart_pattern_shadow_features(
         "low": pd.to_numeric(low, errors="coerce"),
         "close": pd.to_numeric(close, errors="coerce"),
         "volume": pd.to_numeric(volume, errors="coerce").fillna(0),
-    }).dropna(subset=["high", "low", "close"]).tail(80).reset_index(drop=True)
+    }).dropna(subset=["high", "low", "close"]).tail(80)
+    source_dates = [index.date().isoformat() if isinstance(index, (pd.Timestamp, datetime)) else None for index in frame.index]
+    frame = frame.reset_index(drop=True)
     if len(frame) < 25:
         return empty
 
@@ -346,7 +351,8 @@ def _chart_pattern_shadow_features(
             "target": (upper+height if bullish else max(lower-height, 0.0)) if directional else None,
             "confirmed": bool(confirmed),
             "confidence": _clamp(confidence+(8 if confirmed else 0)+(5 if confirmed and volume_confirmed else 0)),
-            "pivots": [{"index": int(index), "price": round(float(price), 2)} for index, price in used],
+            "pivots": [{"index": int(index), "date": source_dates[index], "price": round(float(price), 2)} for index, price in used],
+            "extrapolation_bars": latest-min(max(i for i, _ in used[:3]), max(i for i, _ in used[3:])) if len(used) == 6 else latest-max(i for i, _ in used),
         })
 
     # Two comparable extremes are not enough: require an intervening move of
@@ -411,7 +417,11 @@ def _chart_pattern_shadow_features(
         status = "收盤確認突破" if chosen["direction"] == "bullish" else "收盤確認跌破"
     else:
         status = "疑似形成，等待收盤確認"
-    return {
+    result = {
+        "chart_pattern_shadow_source_close": round(float(closes[-1]), 6),
+        "chart_pattern_shadow_session_date": source_dates[-1],
+        "chart_pattern_shadow_price_basis": "analysis_daily_close",
+        "chart_pattern_shadow_extrapolation_bars": chosen["extrapolation_bars"],
         "chart_pattern_shadow_name": chosen["name"],
         "chart_pattern_shadow_direction": chosen["direction"],
         "chart_pattern_shadow_status": status,
@@ -425,6 +435,18 @@ def _chart_pattern_shadow_features(
         "chart_pattern_shadow_pivots": chosen["pivots"],
         "chart_pattern_shadow_affects_formal": False,
     }
+    # Absolute pivot dates keep identity stable when the rolling window moves.
+    identity = [chosen["name"], chosen["direction"],
+                [(p["date"], p["price"]) for p in chosen["pivots"]]]
+    result["chart_pattern_shadow_identity"] = (
+        hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+        if all(p["date"] for p in chosen["pivots"]) else None)
+    result.update(pattern_state(result))
+    labels = {"target_crossed": "歷史型態：資料收盤已越過量度目標",
+              "invalidated": "歷史型態：資料收盤已越過反向失效線",
+              "historical": "歷史型態：外推過久或確認線遠離資料收盤"}
+    result["chart_pattern_shadow_status"] = labels.get(result["chart_pattern_shadow_lifecycle"], status)
+    return result
 
 
 def _chart_pattern_momentum_features(
