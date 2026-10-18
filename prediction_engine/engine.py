@@ -260,6 +260,7 @@ def _make_predictions(
             else:
                 result = forecast(features, code, **arguments)
             evidence = dict(extracted["evidence"])
+            evidence["trade_blocked"] = _trade_blocked(row)
             evidence["active_model_version"] = selection["model_version"]
             evidence["model_selected_before_session"] = True
             evidence["factor_explanation"] = explain_prediction(
@@ -436,10 +437,18 @@ def _compact_prediction(row: dict[str, Any]) -> dict[str, Any]:
         "downside_risk_pct": row["downside_risk_pct"],
         "data_quality_pct": row["data_quality_pct"],
         "chase_risk_points": evidence.get("chase_risk_points", 0),
-        "trade_blocked": bool(row.get("trade_blocked")),
+        "trade_blocked": (True if row.get("trade_blocked") is True or evidence.get("trade_blocked") is True
+                          else False if row.get("trade_blocked") is False or evidence.get("trade_blocked") is False
+                          else None),
         "ranking_score": round(_ranking_score(row), 2),
         "factor_explanation": copy.deepcopy(evidence.get("factor_explanation") or {}),
     }
+    for key in ("created_at", "source_price", "horizon_sessions", "status", "outcome_session_date",
+                "outcome_price", "realized_return_pct", "direction_correct"):
+        compact[key] = row.get(key)
+    compact["trade_block_evidence_recorded"] = isinstance(evidence.get("trade_blocked"), bool)
+    if row.get("recent_outcomes"):
+        compact["recent_outcomes"] = [_compact_prediction(item) for item in row["recent_outcomes"]]
     if row.get("horizon_code") == "UP_60D" and isinstance(evidence.get("industry_lifecycle"), dict):
         compact["industry_lifecycle"] = copy.deepcopy(evidence["industry_lifecycle"])
     return compact
@@ -478,8 +487,13 @@ def _build_public_contract(
                 "target_side", "probability_pct", "expected_return_pct", "buyability_score",
                 "downside_risk_pct", "data_quality_pct", "chase_risk_points", "trade_blocked",
                 "ranking_score", "model_version", "factor_explanation",
+                "session_date", "created_at", "source_price", "horizon_sessions", "status",
+                "outcome_session_date", "outcome_price", "realized_return_pct", "direction_correct",
+                "trade_block_evidence_recorded",
             )
         }
+        if row.get("recent_outcomes"):
+            horizon_payload["recent_outcomes"] = row["recent_outcomes"]
         if isinstance(row.get("industry_lifecycle"), dict):
             horizon_payload["industry_lifecycle"] = copy.deepcopy(row["industry_lifecycle"])
         symbol["horizons"][row["horizon_code"]] = horizon_payload

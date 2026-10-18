@@ -15,8 +15,9 @@ from zoneinfo import ZoneInfo
 
 from market_calendar import OfficialMarketCalendar
 from shadow_stock_conclusion import _timing, _news_observation_valid, source_snapshot
+from stock_prediction_evidence import load_catalog, build_evidence, direction
 
-VERSION = 'STOCK-AGENT-REPORT-V1'
+VERSION = 'STOCK-AGENT-REPORT-V2'
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 LIMITS = {
     'planner': 'deterministic_single_symbol_report_reader',
@@ -78,6 +79,11 @@ def verify_result(result, row):
             return False
         if any(horizon.get(k) is not None for k in ('probability', 'target_price', 'target_date')):
             return False
+    for forecast in (result.get('frozen_predictions') or {}).get('forecasts') or []:
+        if (forecast.get('direction') != direction(forecast.get('expected_return_pct'))
+                or forecast.get('probability_calibrated') is not False
+                or forecast.get('trigger') is not None or forecast.get('invalidation') is not None):
+            return False
     return bool(result.get('source_fingerprint') and result['limits'] == LIMITS
                 and result.get('actual_work_performed') is True)
 
@@ -93,6 +99,7 @@ def analyze_stock(question, *, root=Path('.'), now=None, calendar=None):
         'verified': False, 'payload_stored': False,
     }
     path = root / 'reports' / 'all_analysis.json'
+    catalog = load_catalog(root / 'reports')
     try:
         with path.open('rb') as stream:
             raw = stream.read(MAX_REPORT_BYTES + 1)
@@ -103,25 +110,32 @@ def analyze_stock(question, *, root=Path('.'), now=None, calendar=None):
         if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
             raise ValueError('invalid_rows')
     except (OSError, ValueError, KeyError, TypeError):
-        result.update(status='tool_error', status_label='報表讀取失敗，可安全重試',
-                      summary='未取得有效的既有報表，未完成分析。')
-        return result
+        if not catalog['records']:
+            result.update(status='tool_error', status_label='報表讀取失敗，可安全重試',
+                          summary='未取得有效的既有報表，未完成分析。')
+            return result
+        report, rows, raw = {}, [], b''
+        result['missing_data'].append('目前報價報表缺失或無效；只呈現可讀取的凍結模型紀錄')
     result['actual_work_performed'] = True
     result['progress'].append({'step': 'read_existing_report', 'status': 'completed'})
-    symbols = _resolve(question, rows)
+    symbols = _resolve(question, rows + catalog['records'])
     if len(symbols) != 1:
         result.update(status='waiting_input', status_label='請指定一個現有報表代號或名稱',
                       summary='此版本只辨識單一股票；未執行通用自然語言規劃。')
         return result
     symbol = symbols[0]
     matches = [row for row in rows if row.get('symbol') == symbol]
-    if len(matches) != 1:
+    if len(matches) > 1:
         result.update(status='insufficient_data', status_label='重複股票資料，停止分析', summary='無法驗證唯一來源。')
         return result
-    row = matches[0]
+    identities = [r for r in catalog['records'] if r.get('symbol') == symbol]
+    row = matches[0] if matches else {k: identities[0].get(k) for k in ('symbol', 'name', 'market')}
     digest = hashlib.sha256(raw).hexdigest()
+    evidence = build_evidence(catalog, symbol, row.get('market'), now, root / 'reports')
+    result['frozen_predictions'] = evidence
+    task_digest = hashlib.sha256((digest + json.dumps(evidence, sort_keys=True, ensure_ascii=False)).encode()).hexdigest()
     result.update(symbol=symbol, name=row.get('name'), market=row.get('market'),
-                  task_key=hashlib.sha256((VERSION + symbol + digest).encode()).hexdigest(),
+                  task_key=hashlib.sha256((VERSION + symbol + task_digest).encode()).hexdigest(),
                   source_fingerprint=digest)
     result['progress'].append({'step': 'resolve_single_symbol', 'status': 'completed'})
     published = _stamp(report.get('updated_at'))
@@ -271,4 +285,7 @@ def analyze_stock(question, *, root=Path('.'), now=None, calendar=None):
     result.update(status='limited' if usable and news_ok else 'insufficient_data',
                   status_label='有限研究已產出；仍有資料缺口' if usable and news_ok else '資料不足；不給方向結論',
                   summary='已讀取既有報表並驗證來源；條件是觀察規則，不是漲跌機率、目標價或承諾。')
+    if evidence['forecasts']:
+        result['status_label'] = '既有凍結判斷與檢討已列出；即時資料另行驗證'
+        result['summary'] = '先看各週期凍結模型的方向與預期報酬，再對照原始因素、到期結果及誤差；不是重新預測，也不是買賣指令。'
     return result

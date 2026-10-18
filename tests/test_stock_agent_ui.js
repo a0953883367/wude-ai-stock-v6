@@ -40,3 +40,20 @@ console.log('stock agent UI checks passed');
   assert(!elements.stockResearchResult.innerHTML.includes('OLD'));
   console.log('Stock request cancellation and overlap checks passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+const projected={status:'frozen_forecasts_available',forecasts:[{
+ key:{horizon_code:'NEXT_1D',session_date:'2026-10-16'},label:'下一交易日',model_version:'frozen-v1',
+ expected_return_pct:-0.35,direction:'DOWN',event_target:'UP',event_probability_pct:35,
+ trade_feasibility:'blocked',outcome:{status:'matured',session_date:'2026-10-19',realized_return_pct:-2,
+ expected_direction_correct:true,return_error_pp:-1.65,legacy_event_target_correct:0},
+ upward_drivers:[{label:'新聞<script>',expected_return_contribution_pct:.1}],downward_drivers:[],
+ improvement_trial:{scope:'同週期試驗'},rule_status:'未保存規則',recent_outcomes:[]
+}],sources:[],issues:[]};
+const projection=require('../stock_agent.js').predictions(projected);
+assert(projection.includes('偏空 -0.35%'));
+assert(projection.includes('事件目標 UP'));
+assert(projection.includes('未校準，非勝率'));
+assert(projection.includes('方向判斷 正確'));
+assert(projection.includes('舊事件目標命中欄 0'));
+assert(projection.includes('<details>'));
+assert(!projection.includes('<script>'));
