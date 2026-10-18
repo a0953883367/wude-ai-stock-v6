@@ -88,3 +88,29 @@ settlement is a separate evidence-contract decision; no such expansion is made.
 Oct5 and Oct12 remain invalid; current Oct16 signal for Oct19 remains normally
 pending. The 2% rule, 9/10 gate, 0.685% cost and 20/60 review gates are unchanged.
 The official fallback can still fail or lack bars; missing data remains missing.
+
+## Final review and upstream investigation
+
+The final diff changes only learning-audit linkage, gap-observation persistence,
+their regressions, and this evidence note. Source allowlists, weight-experiment
+code, strategy policy, and all report datasets match the base unchanged.
+Additional replay tests verify that a modified cached proof is rejected and that
+observations from a different frozen sample cannot help reach the 9/10 gate.
+
+Read-only inspection of the TWSE path shows `_parse_twse` reads `Date` directly
+from `STOCK_DAY_ALL`; `_iso_date` only converts YYYYMMDD/ROC dates, and `_get_json`
+uses direct requests without an application response cache. On total fetch
+failure the outer fallback returns empty daily prices, not cached daily bars.
+The historical records therefore establish stale endpoint-labelled snapshots,
+but do not preserve raw HTTP bodies/headers sufficient to identify an upstream
+publication/CDN cause. Existing PR349 documentation also records a later raw
+OpenAPI/open-data date discrepancy; that does not authorize changing eligibility.
+
+A single bounded current read of the existing OpenAPI endpoint in this workspace
+was blocked by the environment proxy (CONNECT 403 Forbidden). It was not retried
+through another route and no workflow was dispatched. No additional upstream
+parser/fetch defect is established by this audit. A possible separate minimal
+observability change would preserve fetch timestamp, response Date/Age/Last-
+Modified headers, and raw source-date counts for the existing endpoint, with no
+price substitution or source-eligibility changes. It is proposed only, not
+implemented or represented as a cure for the stale dates.

@@ -159,3 +159,19 @@ def test_future_target_and_future_capture_never_settle():
     waiting = update(state, source(), future, '2026-10-04 21:00:00')
     assert waiting['pending'] == state['pending'] and waiting['days'] == []
     assert update(state, source(), future, '2026-10-05 19:00:00')['days'] == []
+
+
+@pytest.mark.parametrize('corruption', ['proof_hash', 'different_sample'])
+def test_persisted_prices_are_revalidated_and_isolated_by_frozen_sample(corruption):
+    bars = rows('2026-10-05', '2026-10-06')
+    state = update(frozen(), source(), bars[:8], '2026-10-05 20:00:00')
+    receipt = deepcopy(state['pending'])
+    if corruption == 'proof_hash':
+        state['execution_price_observations']['prices']['S0']['close'] = 999
+    else:
+        state['execution_price_observations']['sample_id'] = 'different-frozen-sample'
+    result = update(state, source(), bars[8:9], '2026-10-05 21:00:00')
+    assert result['days'] == [] and result['pending'] == receipt
+    expired = update(result, source(), [], '2026-10-06 06:00:00')
+    assert expired['invalid_days'][0]['available_prices'] == (8 if corruption == 'proof_hash' else 1)
+    assert expired['promotion_allowed'] is False
