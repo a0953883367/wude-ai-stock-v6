@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
+from pathlib import Path
 
 import pytest
 
@@ -85,6 +86,62 @@ def test_missing_invalid_or_mismatched_price_blocks(tmp_path, price):
     row = row_for()
     row["price"] = price
     assert conclude(tmp_path, row)["code"] == "insufficient"
+
+
+@pytest.mark.parametrize("close,price,passed", [
+    (17.56, 17.569, True), (17.56, 17.57, True), (17.56, 17.571, False),
+    (17.56, 17.551, True), (17.56, 17.55, True), (17.56, 17.549, False),
+    (2000, 2000.019, True), (2000, 2000.02, True), (2000, 2000.021, False),
+    (2000, 1999.981, True), (2000, 1999.98, True), (2000, 1999.979, False),
+    (1000, 1000.01, True), (1000, 1000.0101, False),
+])
+def test_price_gate_decimal_boundary_without_tolerance_expansion(tmp_path, close, price, passed):
+    row = row_for()
+    row['price'] = price
+    row['source_snapshot']['close'] = close
+    original = deepcopy(row)
+    result = conclude(tmp_path, row)
+    assert next(g['passed'] for g in result['gates'] if g['code'] == 'price') is passed
+    assert row == original
+    assert result['automatic_orders'] is False
+    assert result['validation']['formal_adoption_ready'] is False
+
+
+def test_published_pool_only_eighteen_boundary_failures_change(tmp_path):
+    fixture = json.loads((Path(__file__).parent / 'fixtures' / 'price_boundary_20261019.json').read_text())
+    assert fixture['source_commit'] == '61b8cb52fb55b6eadbfb9f9e93ee242a2dbb9f68'
+    calendar = calendar_file(tmp_path)
+    changed, price_failed, yahoo_failed = set(), set(), set()
+    for sample in fixture['rows']:
+        # Replay only the published prices/sources against the fixed valid test
+        # calendar; this does not re-evaluate historical investment eligibility.
+        row = row_for(sample['market'])
+        row['symbol'] = sample['symbol']
+        row['evidence'][0]['symbol'] = sample['symbol']
+        row['price'] = sample['price']
+        row['source_snapshot'].update(close=sample['completed_close'], source=sample['source'])
+        original = deepcopy(row)
+        result = build_conclusion(row, _plan_for_horizon(row, 'short'), calendar=calendar, now=NOW)
+        gates = {g['code']: g['passed'] for g in result['gates']}
+        assert gates['price'] is sample['expected_price_passed'], sample['symbol']
+        if gates['price'] == sample['price_gate_failed']:
+            changed.add(sample['symbol'])
+        if not gates['price']:
+            price_failed.add(sample['symbol'])
+        if sample['yahoo_gate_failed']:
+            assert gates['source'] is False
+            assert result['code'] == 'insufficient'
+            yahoo_failed.add(sample['symbol'])
+        assert row == original
+        assert result['automatic_orders'] is False
+        assert result['validation']['formal_adoption_ready'] is False
+        assert result['entry_evaluation']['eligible'] is None
+    assert len(fixture['rows']) == 380
+    assert len(price_failed) == 222
+    assert len(yahoo_failed) == 188
+    assert changed == {'00989A.TW', 'NXPI', 'APH', 'ATS', 'CSCO', 'ETR', 'DUK',
+                       'SOUN', 'CCJ', 'IREN', 'LSCC', 'VGT', 'ARTY', 'ANET',
+                       'SOXQ', 'UMC', 'IONQ', 'OKLO'}
 
 
 def test_stale_and_unfinished_sessions_block(tmp_path):
