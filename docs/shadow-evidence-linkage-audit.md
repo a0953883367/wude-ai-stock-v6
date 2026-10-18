@@ -69,19 +69,21 @@ day invalidation therefore listed all ten missing even though the price audit
 retained partial same-day bars. The audit stores prices/hash, not complete hash-verified
 proofs, so it is not used to reconstruct historical forward results.
 
-Repairs:
+Repair: preserve full validated target-day proofs separately from the immutable
+frozen receipt across existing same-day retries. Accumulate only observations
+received on the execution date, with capture time on that date and not in the
+future. Keep first observed proof; retain partial evidence and missing symbols on
+expiry. Do not import late historical bars, rewrite receipts, or revive invalid
+days. Same-day persistence repairs future collection/diagnostics; it could not
+have made the historical 1/10 or 3/10 samples eligible.
 
-1. Accept the already-integrated official `TWSE Open Data` source in the shadow
-   price evidence contract, retaining calendar/date/unit/positive-price gates.
-   Preserve TWSE identity when persisting its audit bar (previous binary mapping
-   would mislabel any non-OpenAPI source as TPEx). No new fetch or subscription.
-2. Preserve full validated target-day proofs separately from the immutable frozen
-   receipt across existing same-day retries. Accumulate only observations received
-   on the execution date, with capture time on that date and not in the future.
-   Keep first observed proof; retain partial evidence and missing symbols on
-   expiry. Do not import late historical bars, rewrite receipts, or revive invalid
-   days. Same-day persistence repairs future collection/diagnostics; it could not
-   have made the historical 1/10 or 3/10 samples eligible.
+The existing `TWSE Open Data` fallback is deliberately excluded from weight
+price evidence: PR349, `docs/tw-open-data-fallback.md`, and the end-to-end test in
+`tests/test_tw_open_data_fallback.py` explicitly preserve that boundary. An initial
+attempt to accept it failed that regression and was withdrawn. It is not treated
+as an accidental allowlist omission. This repair leaves source eligibility and
+all weight-experiment code unchanged. Authorizing this fallback for shadow
+settlement is a separate evidence-contract decision; no such expansion is made.
 
 Oct5 and Oct12 remain invalid; current Oct16 signal for Oct19 remains normally
 pending. The 2% rule, 9/10 gate, 0.685% cost and 20/60 review gates are unchanged.

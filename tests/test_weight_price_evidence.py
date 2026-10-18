@@ -124,30 +124,3 @@ def test_official_revaluation_keeps_mismatched_raw_observation():
     assert audit["official_subset_revalued_gross_profit_twd"] == -5000
     assert audit["confirmed_price_error_delta_twd"] == -15000
     assert audit["status"] == "incomplete"
-
-
-def test_existing_official_open_data_fallback_is_accepted_without_relaxing_date_gate():
-    row = {'symbol': '2330.TW', 'market': 'TW', 'official_session_date': '2026-10-02'}
-    prices = {'2330': {'date': '2026-10-02', 'open': 100, 'close': 102,
-        'tw_price_source': 'TWSE Open Data', 'tw_price_unit': 'TWD/shares',
-        'tw_official_price_available': True}}
-    safe = prepare_rows([row], prices, Calendar(), '2026-10-02 20:00:00')[0]
-    assert evidence_valid(safe['shadow_price_evidence'], '2026-10-02')
-    assert safe['shadow_price_evidence']['source'] == 'TWSE Open Data'
-    row['official_session_date'] = '2026-10-05'
-    assert not evidence_valid(prepare_rows([row], prices, Calendar(), '2026-10-05 20:00:00')[0]['shadow_price_evidence'], '2026-10-05')
-
-
-def test_open_data_audit_keeps_twse_identity(tmp_path, monkeypatch):
-    import weight_price_evidence
-    row = {'symbol': '2330.TW', 'market': 'TW', 'official_session_date': '2026-10-02'}
-    prices = {'2330': {'date': '2026-10-02', 'open': 100, 'close': 102,
-        'tw_price_source': 'TWSE Open Data', 'tw_price_unit': 'TWD/shares',
-        'tw_official_price_available': True}}
-    safe = prepare_rows([row], prices, Calendar(), '2026-10-02 20:00:00')
-    monkeypatch.setattr(weight_price_evidence, 'prepare_from_cache', lambda *args: safe)
-    update_weight_experiment(tmp_path, [row], period='evening', updated_at='2026-10-02 20:00:00')
-    audit = json.loads((tmp_path / 'tw_weight_price_audit.json').read_text())
-    assert audit['prices']['2330.TW']['2026-10-02']['source'] == 'TWSE'
-    prices['2330']['tw_price_source'] = 'unapproved'
-    assert not evidence_valid(prepare_rows([row], prices, Calendar(), '2026-10-02 20:00:00')[0]['shadow_price_evidence'], '2026-10-02')
