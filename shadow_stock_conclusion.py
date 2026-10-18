@@ -6,6 +6,7 @@ This snapshot assesses plan/source conditions, not a later-quote entry trigger.
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 import math
 import hashlib
 import json
@@ -27,6 +28,17 @@ def _positive(value: Any) -> bool:
     try:
         return not isinstance(value, bool) and math.isfinite(float(value)) and float(value) > 0
     except (TypeError, ValueError):
+        return False
+
+
+def _price_matches_close(price: Any, close: Any) -> bool:
+    """Apply the existing tolerance to decimal prices, including its boundary."""
+    if not (_positive(price) and _positive(close)):
+        return False
+    try:
+        quote, completed = Decimal(str(price)), Decimal(str(close))
+        return abs(quote - completed) <= max(Decimal("0.01"), abs(completed) * Decimal("0.00001"))
+    except InvalidOperation:
         return False
 
 
@@ -249,9 +261,7 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     gate("completed", timing["completed"], "尚無已完成的正式收盤")
     gate("freshness", timing["fresh"], "收盤快照已落後，等待最新完成交易日")
     price, close = row.get("price"), snapshot.get("close")
-    gate("price", _positive(price) and _positive(close)
-         and abs(float(price) - float(close)) <= max(0.01, abs(float(close)) * 0.00001)
-         if _positive(price) and _positive(close) else False,
+    gate("price", _price_matches_close(price, close),
          "缺少可驗證收盤價，或現價與收盤基準不一致")
     gate("snapshot", source_coherent, "中央報告與分檔不是同一批次，等待重算")
     gate("core_data", not row.get("core_data_missing"), "關鍵資料缺漏")
