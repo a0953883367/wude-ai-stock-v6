@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-10-18 06:30:12",
+  "updated_at": "2026-10-18 14:09:57",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -9013,7 +9013,110 @@
           "US": 29
         },
         "paired_rule_registered": false,
-        "limitation": "已有強勢股漏選診斷；尚無固定輪動改善規則的前向A/B，錯誤事件數不是候選績效。"
+        "related_experiment": {
+          "source": "market_rotation_shadow.json",
+          "updated_at": "2026-10-18 14:09:57",
+          "status": "reported",
+          "same_candidate": false,
+          "scope": "正式V6 TOP10 對照 85%原分數＋15%同市場族群輪動排序；不是看跌反轉規則。",
+          "comparison_basis": "paired_daily_trials_not_compounded_account_return",
+          "markets": {
+            "TW": {
+              "summary_matches_outcomes": true,
+              "summary": {
+                "valid_trading_days": 32,
+                "invalid_trading_days": 1,
+                "baseline_net_profit_twd": -467627.12,
+                "rotation_net_profit_twd": -421494.86,
+                "rotation_incremental_net_profit_twd": 46132.26,
+                "baseline_net_return_pct": -46.7627,
+                "rotation_net_return_pct": -42.1495,
+                "strict_5of5_net_profit_twd": -12091.47,
+                "practical_4of5_net_profit_twd": -77147.79,
+                "review_status": "preliminary_review",
+                "formal_ranking_locked": true,
+                "model_metrics": {
+                  "baseline": {
+                    "samples": 319,
+                    "win_rate_pct": 24.7649,
+                    "misjudgment_rate_pct": 75.2351,
+                    "avg_net_return_pct": -1.4659,
+                    "opening_gap_invalidated": 22
+                  },
+                  "rotation": {
+                    "samples": 319,
+                    "win_rate_pct": 27.2727,
+                    "misjudgment_rate_pct": 72.7273,
+                    "avg_net_return_pct": -1.3213,
+                    "opening_gap_invalidated": 22
+                  },
+                  "strict_5of5": {
+                    "samples": 4,
+                    "win_rate_pct": 0.0,
+                    "misjudgment_rate_pct": 100.0,
+                    "avg_net_return_pct": -3.0229,
+                    "opening_gap_invalidated": 1
+                  },
+                  "practical_4of5": {
+                    "samples": 43,
+                    "win_rate_pct": 11.6279,
+                    "misjudgment_rate_pct": 88.3721,
+                    "avg_net_return_pct": -1.7941,
+                    "opening_gap_invalidated": 3
+                  }
+                }
+              }
+            },
+            "US": {
+              "summary_matches_outcomes": true,
+              "summary": {
+                "valid_trading_days": 28,
+                "invalid_trading_days": 0,
+                "baseline_net_profit_twd": -200567.53,
+                "rotation_net_profit_twd": -197689.92,
+                "rotation_incremental_net_profit_twd": 2877.61,
+                "baseline_net_return_pct": -20.0568,
+                "rotation_net_return_pct": -19.769,
+                "strict_5of5_net_profit_twd": null,
+                "practical_4of5_net_profit_twd": null,
+                "review_status": "preliminary_review",
+                "formal_ranking_locked": true,
+                "model_metrics": {
+                  "baseline": {
+                    "samples": 280,
+                    "win_rate_pct": 38.9286,
+                    "misjudgment_rate_pct": 61.0714,
+                    "avg_net_return_pct": -0.7163,
+                    "opening_gap_invalidated": 22
+                  },
+                  "rotation": {
+                    "samples": 280,
+                    "win_rate_pct": 38.2143,
+                    "misjudgment_rate_pct": 61.7857,
+                    "avg_net_return_pct": -0.706,
+                    "opening_gap_invalidated": 20
+                  },
+                  "strict_5of5": {
+                    "samples": 0,
+                    "win_rate_pct": null,
+                    "misjudgment_rate_pct": null,
+                    "avg_net_return_pct": null,
+                    "opening_gap_invalidated": 0
+                  },
+                  "practical_4of5": {
+                    "samples": 0,
+                    "win_rate_pct": null,
+                    "misjudgment_rate_pct": null,
+                    "avg_net_return_pct": null,
+                    "opening_gap_invalidated": 0
+                  }
+                }
+              }
+            }
+          },
+          "promotion_allowed": false
+        },
+        "limitation": "已有漏選診斷及獨立的15%輪動排序A/B；本候選的看跌反轉假說尚無對應固定前向A/B。相關實驗減少虧損不等於獲利，也不能當成本候選驗證或晉升依據。"
       },
       "intraday_reversal": {
         "status": "diagnostics_only",
