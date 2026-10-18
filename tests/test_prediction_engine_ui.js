@@ -19,7 +19,7 @@ assert.match(html, /UP_126D/);
 assert.match(html, /產業位置、生命週期、當時證據、風險、日期與來源/);
 assert.match(html, /正式 V6、原本 5 日／60 日紀錄/);
 assert.match(js, /reports\/prediction_engine\.json/);
-assert.match(html, /prediction_engine\.js\?v=4/);
+assert.match(html, /prediction_engine\.js\?v=5/);
 assert.match(js, /requestedHorizon/);
 assert.match(js, /URLSearchParams/);
 assert.match(js, /UP_45D/);
@@ -42,3 +42,19 @@ assert.match(central, /prediction_engine/);
 assert.match(central, /AI 多週期預判/);
 
 console.log('prediction engine UI checks passed');
+
+// Execute the actual renderer: an UP event with negative expected return is bearish.
+const vm=require('node:vm');
+const sandbox={window:{location:{search:''}},URLSearchParams,
+ document:{querySelectorAll:()=>[],getElementById:()=>({})},
+ fetch:()=>new Promise(()=>{})};
+vm.runInNewContext(js.replace(/\}\)\(\);\s*$/, 'window.testCard=card;})();'),sandbox);
+const negative=sandbox.window.testCard({target_side:'UP',expected_return_pct:-0.35,probability_pct:35,
+ trade_blocked:true,model_version:'frozen'});
+assert(negative.includes('預期報酬偏空'));
+assert(negative.includes('上漲事件機率（未校準）'));
+assert(negative.includes('交易限制：阻擋'));
+assert(!negative.includes('📈 上漲預判'));
+const unknown=sandbox.window.testCard({target_side:'DOWN',expected_return_pct:null,trade_blocked:false});
+assert(unknown.includes('方向資料不足'));
+assert(unknown.includes('凍結阻擋證據未保存，未知'));

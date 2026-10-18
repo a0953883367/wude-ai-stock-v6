@@ -31,12 +31,12 @@
     </section>
 
     <section class="task-panel" aria-labelledby="stockResearchHeading">
-      <h2 id="stockResearchHeading">單一股票條件研究</h2>
-      <p>讀取既有報價與新聞報表，不新增行情或模型呼叫。輸入現有報表代號／名稱，例如「MSFT 偏空條件」。使用同網站既有的唯讀裝置授權；此頁不建立新授權。</p>
+      <h2 id="stockResearchHeading">個股凍結判斷與結果檢討</h2>
+      <p>讀取既有凍結模型判斷、到期結果及報價新聞，不新增行情或模型呼叫。輸入股票代號／名稱，例如「IREN 判斷與檢討」。使用同網站既有的唯讀裝置授權；此頁不建立新授權。</p>
       <p>入口為 GitHub Pages 控制中心；不包含另行部署的 Vercel Next App。若此瀏覽器尚未完成既有登入，可前往<a href="live-flow.html">即時資金流頁面</a>完成原有唯讀裝置驗證，再返回本頁。</p>
       <form id="stockResearchForm"><label for="stockQuestion">股票問題（一次一檔）</label>
-        <input id="stockQuestion" maxlength="240" required placeholder="2330.TW 短線與較長期多空條件">
-        <button type="submit">讀取與驗證資料</button><button id="stockCancel" type="button" disabled>停止等待</button>
+        <input id="stockQuestion" maxlength="240" required placeholder="IREN 判斷與檢討">
+        <button type="submit">查看判斷與檢討</button><button id="stockCancel" type="button" disabled>停止等待</button>
       </form>
       <p id="stockProgress" role="status" aria-live="polite">尚未執行。中斷後可重新提交；會重新驗證時效。</p>
       <div id="stockResearchResult"></div>
@@ -82,6 +82,6 @@
   <script src="agent_control.js?v=9"></script>
   <script src="live_config.js?v=1"></script>
   <script src="live_client.js?v=1"></script>
-  <script src="stock_agent.js?v=1"></script>
+  <script src="stock_agent.js?v=2"></script>
 </body>
 </html>

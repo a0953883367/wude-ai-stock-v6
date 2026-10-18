@@ -677,7 +677,8 @@ class PredictionStore:
             row["probability_pct"], row["expected_return_pct"],
             row["buyability_score"], row["downside_risk_pct"],
             row["data_quality_pct"], json.dumps(row["features"], separators=(",", ":")),
-            json.dumps(row["evidence"], ensure_ascii=False, separators=(",", ":")),
+            json.dumps({**row["evidence"], **({"trade_blocked": bool(row.get("trade_blocked") or row["evidence"].get("trade_blocked"))}
+                       if isinstance(row.get("trade_blocked"), bool) else {})}, ensure_ascii=False, separators=(",", ":")),
             row.get("status", "pending"), row["created_at"],
         ) for row in rows]
         with self.connect() as db:
@@ -803,10 +804,23 @@ class PredictionStore:
                     AND latest.session_date=p.session_date
                 ORDER BY p.market,p.asset_group,p.horizon_code,p.symbol""",
             ).fetchall()
+            # Bounded review history for the existing report, never a rewritten
+            # forecast or a replacement training/settlement label.
+            history = db.execute("""SELECT * FROM (
+                SELECT p.*, ROW_NUMBER() OVER (
+                    PARTITION BY market,symbol,horizon_code ORDER BY session_date DESC
+                ) AS review_order FROM predictions p WHERE status='matured'
+            ) WHERE review_order<=3""").fetchall()
+        reviews = {}
+        for item in history:
+            key = (item["market"], item["symbol"], item["horizon_code"])
+            reviews.setdefault(key, []).append({**dict(item), "evidence": json.loads(item["evidence_json"])})
         return [{
             **dict(row),
             "features": json.loads(row["feature_json"]),
             "evidence": json.loads(row["evidence_json"]),
+            "recent_outcomes": [item for item in reviews.get((row["market"], row["symbol"], row["horizon_code"]), [])
+                                if item["session_date"] < row["session_date"]],
         } for row in rows]
 
     def model_by_version(self, model_version: str) -> dict[str, Any] | None:

@@ -1,5 +1,9 @@
 # Report-backed stock agent, first version
 
+The V2 frozen-judgment/result linkage is documented in
+[stock-prediction-evidence.md](stock-prediction-evidence.md). Its separately labeled
+event probabilities and historical outcomes extend this original V1 contract.
+
 This adds a narrow deterministic executor to the existing central agent runtime.
 It is not a general natural-language LLM planner. No model or provider calls,
 new credentials, access grants, subscriptions, notifications, orders, ranking
