@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-18T23:49:05.785801+08:00",
+  "checked_at": "2026-10-19T00:01:16.426863+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -432,6 +432,24 @@
       "attempts": [],
       "status": "expired",
       "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-10-19:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-19:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-19:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -803,6 +821,13 @@
       "attempts": [],
       "status": "verified_fresh",
       "verified_at": "2026-10-18T23:48:58.905558+08:00",
+      "report_updated_at": "2026-10-18 22:58:48"
+    },
+    "2026-10-19:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-10-19T00:01:16.426863+08:00",
       "report_updated_at": "2026-10-18 22:58:48"
     }
   },
