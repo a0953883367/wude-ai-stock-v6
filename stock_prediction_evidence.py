@@ -139,6 +139,7 @@ def _project(row):
             'probability_calibrated': False,
             'trade_feasibility': 'blocked' if blocked else 'not_blocked_not_order_authorization' if known else 'unknown_frozen_guard_evidence',
             'buyability_score': row.get('buyability_score'),
+            'data_quality_pct': row.get('data_quality_pct'),
             'upward_drivers': factors.get('upward_drivers') or [],
             'downward_drivers': factors.get('downward_drivers') or [],
             'factor_scope': '凍結模型貢獻，不是已證實因果；向上因素不一定支持本筆方向。',
@@ -147,7 +148,7 @@ def _project(row):
             'outcome': outcome}
 
 
-def build_evidence(catalog, symbol, market, now, reports):
+def build_evidence(catalog, symbol, market, now, reports, *, include_related_diagnostics=True):
     selected = [r for r in catalog['records'] if r.get('symbol') == symbol and r.get('market') == market]
     forecasts, issues = [], list(catalog['issues'])
     try:
@@ -185,29 +186,30 @@ def build_evidence(catalog, symbol, market, now, reports):
         }
         forecasts.append(item)
     diagnostics = []
-    try:
-        performance, _ = _read(reports / 'performance.json', 16 * 1024 * 1024)
-        learning, _ = _read(reports / 'model_learning.json', 16 * 1024 * 1024)
-        for report in (performance, learning):
-            at = datetime.fromisoformat(report['updated_at'])
-            at = at if at.tzinfo else at.replace(tzinfo=ZoneInfo('Asia/Taipei'))
-            if at > now:
-                raise ValueError('future_diagnostics')
-        for event in (performance.get('error_cases') or {}).get('event_clusters') or []:
-            if event.get('symbol') != symbol or event.get('market') != market:
-                continue
-            if str(event.get('evaluated_end_date') or '') > now.date().isoformat():
-                continue
-            cause = event.get('primary_cause')
-            diagnostics.append({k: event.get(k) for k in ('event_id', 'source_start_date', 'evaluated_end_date',
-                'horizons', 'diagnosis', 'learning_action', 'classification_status')})
-            diagnostics[-1].update(scope='不同預測系統的歷史錯題，未與本筆凍結模型一對一對應；分類不是因果',
-                candidate=((learning.get('shadow_execution_audit') or {}).get('candidates') or {}).get(cause),
-                performance_updated_at=performance.get('updated_at'), learning_updated_at=learning.get('updated_at'))
-            if len(diagnostics) >= 5:
-                break
-    except (OSError, ValueError, TypeError, KeyError):
-        issues.append('historical_diagnostics_unavailable')
+    if include_related_diagnostics:
+        try:
+            performance, _ = _read(reports / 'performance.json', 16 * 1024 * 1024)
+            learning, _ = _read(reports / 'model_learning.json', 16 * 1024 * 1024)
+            for report in (performance, learning):
+                at = datetime.fromisoformat(report['updated_at'])
+                at = at if at.tzinfo else at.replace(tzinfo=ZoneInfo('Asia/Taipei'))
+                if at > now:
+                    raise ValueError('future_diagnostics')
+            for event in (performance.get('error_cases') or {}).get('event_clusters') or []:
+                if event.get('symbol') != symbol or event.get('market') != market:
+                    continue
+                if str(event.get('evaluated_end_date') or '') > now.date().isoformat():
+                    continue
+                cause = event.get('primary_cause')
+                diagnostics.append({k: event.get(k) for k in ('event_id', 'source_start_date', 'evaluated_end_date',
+                    'horizons', 'diagnosis', 'learning_action', 'classification_status')})
+                diagnostics[-1].update(scope='不同預測系統的歷史錯題，未與本筆凍結模型一對一對應；分類不是因果',
+                    candidate=((learning.get('shadow_execution_audit') or {}).get('candidates') or {}).get(cause),
+                    performance_updated_at=performance.get('updated_at'), learning_updated_at=learning.get('updated_at'))
+                if len(diagnostics) >= 5:
+                    break
+        except (OSError, ValueError, TypeError, KeyError):
+            issues.append('historical_diagnostics_unavailable')
     return {'status': 'frozen_forecasts_available' if forecasts else 'unavailable',
             'forecasts': forecasts, 'sources': catalog['sources'], 'issues': issues,
             'related_historical_diagnostics': diagnostics,

@@ -420,6 +420,8 @@ def _project(entries, artifact, now, scope_info, census_counts, input_provenance
     return {"schema_version": 1, "contract": "PUBLIC-RESEARCH-STATUS-V1",
             **scope_info, "generated_at": _iso(now),
             "contract_kind": "plan_eligibility_status_only", "quote_cache_replacement": False,
+            "count_semantics": {"eligible_actions": "release_policy_count_not_research_opportunity_count",
+                                "upstream_data_gate_passed_plans": "data_gate_count_not_buy_signals"},
             "release_policy": dict(PUBLIC_RELEASE_POLICY),
             "provenance": {**input_provenance, "artifact_sha256": artifact_digest,
                            "source_batch_at": _iso(batch_at) if "artifact_time_invalid" not in common else None,
@@ -483,5 +485,6 @@ def render_research_status_preview(briefing):
         validated.append((key, f"{key}｜{origin}｜{role}｜{labels}"))
     return "\n".join([f"計畫資格與資料狀態（{heading}）", "未經驗證；不提供買進指示或可下單價位。",
                       "本表僅核對清單身分與計畫狀態；未取代另存的官方報價資料。",
+                      "行動未放行不代表沒有研究方向；資料合格計畫數不是買點數。",
                       f"清單身分共 {len(rows)} 項；此表公開計畫數值 0 項；可執行指示 0 項。",
                       *(text for _, text in sorted(validated))]) + "\n"
