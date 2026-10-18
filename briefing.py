@@ -2175,7 +2175,8 @@ def main() -> int:
     }
     from report_research import integrate_research_safely
     all_analysis_payload = integrate_research_safely(
-        all_analysis_payload, SETTINGS.reports_dir, engine_succeeded=prediction_engine_succeeded)
+        all_analysis_payload, SETTINGS.reports_dir, engine_succeeded=prediction_engine_succeeded,
+        judgment_now=datetime.now(TAIPEI))
     all_analysis_path = SETTINGS.reports_dir / "all_analysis.json"
     all_analysis_tmp = SETTINGS.reports_dir / "all_analysis.tmp"
     _stamp_us_daily_reference_publication(all_analysis_payload)
