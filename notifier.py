@@ -46,13 +46,35 @@ def _signed(value: Any) -> str:
     return f"{float(value):+,.0f}"
 
 
+def _research_lines(research):
+    lines = ["   研究方向與證據（歷史凍結，非新預測／買入指令；完整因素、版本、驗證結果見同批全池資料）："]
+    for item in research.get("horizons", []):
+        code = item.get("horizon_code")
+        if item.get("status") != "frozen_research":
+            lines.append(f"   • {code}：研究缺失／未通過來源核對")
+            continue
+        support = item.get('supporting_evidence') or []
+        opposition = item.get('opposing_evidence') or []
+        positive = str(support[0].get('label') or support[0].get('factor')) if support else '未保存'
+        negative = str(opposition[0].get('label') or opposition[0].get('factor')) if opposition else '未保存'
+        lines.append(f"   • {code}／{item['horizon_sessions']}日｜{item['session_date']} 凍結｜{item['direction']} {_optional_percent(item.get('expected_return_pct'))}｜主要支持方向：{positive}；反對方向：{negative}")
+    data = research.get("data_sufficiency") or {}
+    lines.append(f"   資料：{data.get('market_data_quality') or '未提供'}｜來源日 {data.get('official_session_date') or '未知'}；時效與完整性仍須核對。因素為模型貢獻，不是因果。")
+    conflicts = (research.get("model_disagreement") or {}).get("same_session_horizon_conflicts") or []
+    lines.append(f"   同日同期間模型分歧 {len(conflicts)} 組；跨期間／系統不合併投票，缺分歧資料不代表一致。")
+    condition = (research.get("existing_conditions") or {}).get("outlook_change_condition")
+    lines.append(f"   既有當期轉向條件：{condition or '未保存'}；凍結模型未保存觸發／失效點，不補造。")
+    lines.append("   執行：不放行行動或計畫價位；零可執行指示不是零研究方向。歷史例數不是總驗證樣本，機率未校準。")
+    return lines
+
+
 def _stock_block(row: dict[str, Any]) -> str:
     action = str(row.get("action", "🟡 觀察"))
     light = action[:1] if action[:1] in {"🟢", "🟡", "🔴"} else "🟡"
     action_text = action[1:].strip()
     lines = [
         f"{light} {row['name']} {_code(row)}｜{_num(row.get('price'))}｜{_change(row.get('change_pct'))}｜量 {_num(row.get('volume_pace'))}x",
-        f"   {row.get('outlook_direction', '↔️ 震盪平盤')}｜未來1～5日｜信心度 {_num(row.get('outlook_confidence'), 1)}%",
+        f"   {row.get('outlook_direction', '↔️ 震盪平盤')}｜未來1～5日｜指標信心 {_num(row.get('outlook_confidence'), 1)}分（非校準勝率）",
         f"   均線 5/10/20：{_num(row.get('ma5'))}/{_num(row.get('ma10'))}/{_num(row.get('ma20'))}",
         f"   K線：{row.get('kline_pattern', 'N/A')}｜{row.get('volume_price_pattern', '量價中性')}｜日量 {_num(row.get('daily_volume_ratio'))}x",
         f"   買進區 {_num(row.get('buy_zone_low'))}～{_num(row.get('buy_zone_high'))}｜支撐 {_num(row.get('support1'))}｜壓力 {_num(row.get('resistance1'))}｜{action_text}｜{row.get('risk', '一般波動')}",
@@ -99,6 +121,8 @@ def _stock_block(row: dict[str, Any]) -> str:
             f"   ⚠️ {row.get('scenario_no_chase')}",
             f"   🛡️ {row.get('scenario_breakdown_text')}",
         ])
+    if isinstance(row.get("research"), dict):
+        lines.extend(_research_lines(row["research"]))
     return "\n".join(lines)
 
 
@@ -109,6 +133,13 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"🕒 {report['updated_at']}（台灣時間）",
         f"固定清單 {report['watchlist_analyzed_count']}/{report['watchlist_count']} 檔｜背景掃描 {report['universe_count']} 檔",
     ]
+    if report.get("research_reference"):
+        integration = report.get("research_integration") or {}
+        lines.extend([
+            "🧭 研究方向／資料是否足夠／執行是否放行分開解讀；資料合格計畫不是買點，零可執行指示不是零研究機會。",
+            f"完整研究池：reports/all_analysis.json｜必須核對批次 {report['updated_at']}｜整合 {integration.get('status', '請讀目標檔狀態，不假定已完成')}",
+            "文字固定清單不是完整研究池；逐檔逐期間證據、條件缺口及結果以同批完整資料為準。ChatGPT原生任務接入尚未驗收。",
+        ])
     status = report.get("data_status", {})
     if not status.get("finmind_configured"):
         lines.append("⚠️ 籌碼通報：FINMIND_TOKEN 未設定；缺少的籌碼維度不納入計分，並降低資料信心")

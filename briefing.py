@@ -1891,6 +1891,16 @@ def main() -> int:
         },
         "disclaimer": "資料整理與風險輔助，不保證獲利，不是代客下單建議。",
     }
+    # A carried close row may contain the previous batch projection. The
+    # early fallback must never present it as freshly integrated evidence.
+    for row in report["watchlist"] + report.get("top", []):
+        row.pop("research", None)
+    report["research_reference"] = {
+        "path": "reports/all_analysis.json", "source_batch_at": report["updated_at"],
+        "scope": "full_analysis_pool_not_only_watchlist",
+        "status": "read_target_batch_and_research_integration_status",
+        "native_chatgpt_task": "not_modified_or_acceptance_verified",
+    }
     markdown = render_markdown(report)
     _stamp_us_daily_reference_publication(report)
     latest_json, latest_md = save_report(
@@ -2090,7 +2100,7 @@ def main() -> int:
     )
     # The new multi-horizon engine owns a separate private SQLite database.
     # Central AI may read only its compact result contract after this succeeds.
-    _update_prediction_engine_safely(
+    prediction_engine_succeeded = _update_prediction_engine_safely(
         SETTINGS.reports_dir,
         ranked,
         period=args.period,
@@ -2163,6 +2173,9 @@ def main() -> int:
             universe, ranked, history, tw_official.get("prices", {})
         ),
     }
+    from report_research import integrate_research_safely
+    all_analysis_payload = integrate_research_safely(
+        all_analysis_payload, SETTINGS.reports_dir, engine_succeeded=prediction_engine_succeeded)
     all_analysis_path = SETTINGS.reports_dir / "all_analysis.json"
     all_analysis_tmp = SETTINGS.reports_dir / "all_analysis.tmp"
     _stamp_us_daily_reference_publication(all_analysis_payload)
@@ -2171,6 +2184,10 @@ def main() -> int:
         encoding="utf-8",
     )
     all_analysis_tmp.replace(all_analysis_path)
+    # Preserve the early saved fallback; enrichment runs only after same-batch
+    # prediction and the full analysis pool are published. Never sends messages.
+    from report_research import finalize_research_markdown
+    markdown = finalize_research_markdown(report, all_analysis_payload, latest_md, markdown)
 
     validation_notices = [
         item
