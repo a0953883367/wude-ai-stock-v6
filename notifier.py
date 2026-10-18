@@ -46,6 +46,25 @@ def _signed(value: Any) -> str:
     return f"{float(value):+,.0f}"
 
 
+def _judgment_lines(research):
+    j = research.get('judgment')
+    if not isinstance(j, dict):
+        return []
+    short = j['short']
+    return [f"   綜合研究判斷（非即時）｜{j.get('source_session_date') or '日期缺失'}｜{short['horizon']}：{j['headline']}",
+            f"   新進場：{short['new_entry']}", f"   若已持有（未假設實際持倉）：{short['if_already_held']}",
+            f"   主要依據：{short.get('reason') or '缺同批既有中樞理由'}；"+'；'.join(short.get('legacy_outlook_reasons') or []),
+            "   支持凍結方向的因素："+'、'.join(short['supporting_reasons'] or ['未保存']),
+            "   反對凍結方向的因素："+'、'.join(short['opposing_reasons'] or ['未保存']),
+            "   重要衝突："+'；'.join(short['important_conflicts'] or ['未讀到可核對衝突，不代表模型一致']),
+            f"   改判觀察：{short.get('change_condition') or '未保存'}（{short['condition_status']}）",
+            "   尚缺："+'；'.join(short['missing']),
+            "   持倉另缺："+'、'.join(short['position_information_missing']),
+            "   三個月："+j['quarter']['conclusion']+'；缺項：'+'；'.join(j['quarter']['missing']),
+            "   三個月因素（非已證實因果）：支持各模型方向 "+'、'.join(j['quarter']['supporting_reasons'] or ['未保存'])+'；反對 '+'、'.join(j['quarter']['opposing_reasons'] or ['未保存']),
+            "   5～10年："+j['long_term']['conclusion']+'；缺項：'+'；'.join(j['long_term']['missing'])]
+
+
 def _research_lines(research):
     lines = ["   研究方向與證據（歷史凍結，非新預測／買入指令；完整因素、版本、驗證結果見同批全池資料）："]
     for item in research.get("horizons", []):
@@ -72,7 +91,10 @@ def _stock_block(row: dict[str, Any]) -> str:
     action = str(row.get("action", "🟡 觀察"))
     light = action[:1] if action[:1] in {"🟢", "🟡", "🔴"} else "🟡"
     action_text = action[1:].strip()
-    lines = [
+    judgment_lines = _judgment_lines(row.get("research") or {})
+    if judgment_lines:
+        judgment_lines[0] = f"{row['name']} {_code(row)}｜" + judgment_lines[0].strip()
+    lines = judgment_lines + [
         f"{light} {row['name']} {_code(row)}｜{_num(row.get('price'))}｜{_change(row.get('change_pct'))}｜量 {_num(row.get('volume_pace'))}x",
         f"   {row.get('outlook_direction', '↔️ 震盪平盤')}｜未來1～5日｜指標信心 {_num(row.get('outlook_confidence'), 1)}分（非校準勝率）",
         f"   均線 5/10/20：{_num(row.get('ma5'))}/{_num(row.get('ma10'))}/{_num(row.get('ma20'))}",
