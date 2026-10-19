@@ -49,8 +49,11 @@ def _judgment(value):
     result['short']['forecast_basis'] = [
         {k: item[k] for k in ('code', 'date', 'direction') if k in item}
         for item in value['short'].get('forecast_basis', [])]
+    learning_status = value['quarter'].get('learning_status', {})
+    if not isinstance(learning_status, dict):
+        raise ValueError('judgment_learning_status_invalid')
     result['quarter']['learning_status'] = {
-        k: v for k, v in value['quarter'].get('learning_status', {}).items()
+        k: v for k, v in learning_status.items()
         if k in ('UP_60D', 'UP_63D') and (v is None or isinstance(v, str))}
     def check(node):
         if isinstance(node, dict):

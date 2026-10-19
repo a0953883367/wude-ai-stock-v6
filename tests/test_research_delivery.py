@@ -141,3 +141,17 @@ def test_unexpected_nested_private_object_is_not_serialized(reports):
     analysis['data'][0]['research']['judgment']['short']['reason'] = {'private': 'secret'}
     save(reports/'all_analysis.json', analysis)
     assert not delivery.publish_delivery_safely(reports)
+
+
+@pytest.mark.parametrize('invalid', [None, [], 'invalid', 42])
+def test_invalid_learning_status_cannot_abort_core_report(reports, invalid):
+    assert delivery.publish_delivery_safely(reports)
+    analysis = read(reports/'all_analysis.json')
+    analysis['data'][0]['research']['judgment']['quarter']['learning_status'] = invalid
+    save(reports/'all_analysis.json', analysis)
+    before = (reports/'all_analysis.json').read_bytes()
+    with pytest.raises(ValueError, match='judgment_learning_status_invalid'):
+        delivery.build_delivery(reports)
+    assert delivery.publish_delivery_safely(reports) is False
+    assert read(reports/delivery.INDEX)['status'] == 'unavailable'
+    assert (reports/'all_analysis.json').read_bytes() == before
