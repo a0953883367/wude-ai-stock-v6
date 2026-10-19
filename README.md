@@ -2,6 +2,8 @@
 
 台股＋美股 AI 選股系統，以及每天自動執行的「AI 股票早、中、晚報」。GitHub Pages 手機版儀表板、ChatGPT 股票助理與 Telegram 使用同一份固定觀察清單。
 
+完整逐檔研究讀取入口：[研究交付索引](reports/research_delivery.json)。由既有產報流程產生，包含全部已分析身份的判斷分片與10期間預測分片對應，不以TOP名單代替完整池；[讀取與完整性契約](docs/research-delivery.md)。
+
 ## 手機版儀表板
 
 - 顯示台股、美股、ETF TOP 20
