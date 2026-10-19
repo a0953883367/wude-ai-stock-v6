@@ -2185,6 +2185,8 @@ def main() -> int:
         encoding="utf-8",
     )
     all_analysis_tmp.replace(all_analysis_path)
+    from research_delivery import publish_delivery_safely
+    publish_delivery_safely(SETTINGS.reports_dir)
     # Preserve the early saved fallback; enrichment runs only after same-batch
     # prediction and the full analysis pool are published. Never sends messages.
     from report_research import finalize_research_markdown
