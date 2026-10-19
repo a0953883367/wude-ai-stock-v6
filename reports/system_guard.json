@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-19T19:00:11+08:00",
+  "checked_at": "2026-10-20T00:30:58+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-19 17:52:05",
-  "report_age_minutes": 68.1,
+  "report_updated_at": "2026-10-20 00:27:01",
+  "report_age_minutes": 4.0,
   "counts": {
     "ok": 26,
-    "info": 12,
-    "warning": 1,
+    "info": 10,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 385.4 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 389.8 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -26,7 +26,7 @@
       "title": "影子證據私人備份",
       "level": "ok",
       "label": "正常",
-      "detail": "完整資料庫備份已校驗（11.1 MB）；未發布至網站，正式V6未變更",
+      "detail": "完整資料庫備份已校驗（11.3 MB）；未發布至網站，正式V6未變更",
       "action": ""
     },
     {
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 68 分鐘",
+      "detail": "最近更新距今 4 分鐘",
       "action": ""
     },
     {
@@ -90,15 +90,15 @@
       "title": "分析輸出",
       "level": "ok",
       "label": "正常",
-      "detail": "完成 380/380 檔；排行 232 檔",
+      "detail": "完成 379/380 檔；排行 231 檔",
       "action": ""
     },
     {
       "code": "us_direction_ledger",
       "title": "美股方向原始帳本",
-      "level": "ok",
-      "label": "正常",
-      "detail": "行情 2026-10-16；已驗證帳本 2026-10-16；immutable_eligible_snapshot_matches_official_session",
+      "level": "warning",
+      "label": "注意",
+      "detail": "行情 2026-10-19；已驗證帳本 2026-10-16；source_session_not_closed",
       "action": "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測"
     },
     {
@@ -106,7 +106,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-10-16 33/33；TW_STOCK 2026-10-16 159/159；US_ETF 2026-10-16 35/35；US_STOCK 2026-10-16 153/153",
+      "detail": "TW_ETF 2026-10-19 33/33；TW_STOCK 2026-10-19 157/158；US_ETF 2026-10-19 35/35；US_STOCK 2026-10-19 153/153",
       "action": ""
     },
     {
@@ -122,7 +122,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 192、法人 192、信用 192（沿用最近完整收盤）",
+      "detail": "價格 191、法人 191、信用 188",
       "action": ""
     },
     {
@@ -160,10 +160,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "info",
-      "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
-      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
+      "level": "ok",
+      "label": "正常",
+      "detail": "私密完整快取涵蓋 188 檔；原始價格未進入網站或計算",
+      "action": ""
     },
     {
       "code": "us_sec_fundamentals",
@@ -178,7 +178,7 @@
       "title": "60日向前驗證",
       "level": "ok",
       "label": "正常",
-      "detail": "真實交易日 40/60；進度監控正常；TW 2026-10-16／38天、US 2026-10-16／35天",
+      "detail": "真實交易日 41/60；進度監控正常；TW 2026-10-19／39天、US 2026-10-16／35天",
       "action": ""
     },
     {
@@ -194,7 +194,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 4327 筆錯誤列合併為 932 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
+      "detail": "已將 4475 筆錯誤列合併為 944 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -202,7 +202,7 @@
       "title": "11個證據單元獨立學習",
       "level": "ok",
       "label": "正常",
-      "detail": "專屬帳本 11/11；已成熟 110474 筆；啟用影子信任 10 路；近期升級／退版事件 1 件，正式V6未變更",
+      "detail": "專屬帳本 11/11；已成熟 112576 筆；啟用影子信任 10 路；近期升級／退版事件 0 件，正式V6未變更",
       "action": ""
     },
     {
@@ -218,17 +218,17 @@
       "title": "多期間真實答案帳本",
       "level": "ok",
       "label": "正常",
-      "detail": "台美股共 56 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
+      "detail": "台美股共 57 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
-      "cohort_count": 56,
-      "ledger_updated_at": "2026-10-19 17:52:05"
+      "cohort_count": 57,
+      "ledger_updated_at": "2026-10-20 00:27:01"
     },
     {
       "code": "unified_evidence",
       "title": "統一證據格式",
       "level": "ok",
       "label": "正常",
-      "detail": "已驗證 3800 筆證據，格式錯誤 0 筆",
+      "detail": "已驗證 3790 筆證據，格式錯誤 0 筆",
       "action": ""
     },
     {
@@ -317,20 +317,22 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     },
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "info",
-      "label": "資訊",
+      "level": "warning",
+      "label": "注意",
       "detail": "最近執行 2026-10-19T19:00:09.908887+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
-    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
+    "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測",
+    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
+    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
   ],
   "safety": {
     "changes_rankings": false,
