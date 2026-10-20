@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import time
 from collections import Counter
@@ -852,6 +853,63 @@ def _is_tw_price_symbol(symbol: str) -> bool:
     return str(symbol).upper().endswith((".TW", ".TWO"))
 
 
+def _sanitize_carried_tw_financials(prior: dict) -> dict:
+    """Fail closed on mixed legacy fields without refreshing a frozen vintage."""
+    row = dict(prior)
+    if (
+        row.get("market") != "TW"
+        or row.get("financial_quality_source") != "MOPS via TWSE/TPEx OpenAPI"
+    ):
+        return row
+
+    def available(field: str) -> bool:
+        value = row.get(field)
+        if isinstance(value, bool):
+            return False
+        try:
+            return math.isfinite(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return False
+
+    declared = row.get("financial_quality_fields")
+    declared = [field for field in declared if isinstance(field, str)] if isinstance(declared, list) else []
+    excluded = {}
+    # This source never supplies actual interest-bearing debt. In pre-schema-2
+    # rows the key is total liabilities; do not alias it into another field.
+    if "total_debt" in row or "total_debt" in declared:
+        row.pop("total_debt", None)
+        excluded["total_debt"] = "official_source_does_not_supply_actual_debt"
+    # Legacy overlays can retain FinMind liabilities in TWD beside official
+    # statements in TWD thousands. Only the official field manifest establishes
+    # ownership; numerical similarity or a 1000x ratio is not provenance.
+    if "total_liabilities" in row or "total_liabilities" in declared:
+        if not (
+            "total_liabilities" in declared
+            and row.get("financial_quality_official") is True
+            and row.get("financial_statement_unit") == "TWD_thousands_as_reported"
+            and row.get("financial_report_date")
+            and available("total_liabilities")
+        ):
+            row.pop("total_liabilities", None)
+            excluded["total_liabilities"] = "unverified_source_unit_or_unavailable"
+
+    fields = sorted({field for field in declared if field not in excluded and available(field)})
+    row["financial_quality_fields"] = fields
+    row["financial_quality_field_count"] = len(fields)
+    # Cash flow / EPS growth can legitimately survive from the original
+    # FinMind overlay without belonging to the official field manifest.
+    row["financial_quality_available"] = float(bool(fields) or any(available(field) for field in (
+        "eps_yoy_pct", "gross_margin_pct", "operating_margin_pct", "roe_pct",
+        "debt_ratio_pct", "operating_cash_flow",
+    )))
+    if excluded:
+        row["carried_financial_exclusions"] = {
+            **(row.get("carried_financial_exclusions") or {}), **excluded,
+        }
+    row["carried_financial_semantics_version"] = 1
+    return row
+
+
 def _carry_completed_tw_rows(
     universe: list[dict], previous: dict[str, dict],
 ) -> list[dict]:
@@ -864,7 +922,7 @@ def _carry_completed_tw_rows(
         prior = previous.get(symbol)
         if not prior or not prior.get("official_session_date"):
             continue
-        row = dict(prior)
+        row = _sanitize_carried_tw_financials(prior)
         row["after_close_price_policy"] = "carried_completed_session"
         row["price_fetch_deferred_until_close"] = True
         output.append(row)
@@ -1045,7 +1103,7 @@ def _carry_forward_symbol_session_regressions(
             and current_session < previous_session
             and previous_session == dominant_session
         ):
-            replacement = dict(previous_row)
+            replacement = _sanitize_carried_tw_financials(previous_row)
             cohort = _cohort_name(row)
             replacement.update({
                 "session_carry_forward": True,
