@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-20T17:23:46.889838+08:00",
+  "checked_at": "2026-10-20T21:42:43.581752+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -487,12 +487,28 @@
     },
     "2026-10-20:evening": {
       "period": "evening",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-20T21:42:43.581752+08:00",
+          "guard_run_id": "39432693009",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation",
+        "report_freshness"
+      ]
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-20:evening",
+      "period": "evening"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -918,6 +934,12 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-20T17:23:40.366016+08:00",
       "report_updated_at": "2026-10-20 17:03:08"
+    },
+    "2026-10-20:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -934,8 +956,11 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "invalid_free_us_data",
+    "report_freshness"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
