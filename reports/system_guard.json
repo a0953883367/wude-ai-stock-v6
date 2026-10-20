@@ -2,10 +2,10 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-20T21:47:50+08:00",
+  "checked_at": "2026-10-20T22:21:06+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-20 21:44:09",
-  "report_age_minutes": 3.7,
+  "report_updated_at": "2026-10-20 22:17:43",
+  "report_age_minutes": 3.4,
   "counts": {
     "ok": 27,
     "info": 11,
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 4 分鐘",
+      "detail": "最近更新距今 3 分鐘",
       "action": ""
     },
     {
@@ -106,7 +106,7 @@
       "title": "美股方向原始帳本",
       "level": "warning",
       "label": "注意",
-      "detail": "行情 未知；已驗證帳本 無；mixed_or_missing_us_sessions",
+      "detail": "行情 2026-10-20；已驗證帳本 2026-10-19；source_session_not_closed",
       "action": "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測"
     },
     {
@@ -114,7 +114,7 @@
       "title": "市場交易日一致性",
       "level": "ok",
       "label": "正常",
-      "detail": "TW_ETF 2026-10-20 33/33；TW_STOCK 2026-10-20 159/159；US_ETF 2026-10-20 33/35；US_STOCK 2026-10-20 151/153",
+      "detail": "TW_ETF 2026-10-20 33/33；TW_STOCK 2026-10-20 159/159；US_ETF 2026-10-20 35/35；US_STOCK 2026-10-20 153/153",
       "action": ""
     },
     {
@@ -130,7 +130,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 192、法人 192、信用 188",
+      "detail": "價格 192、法人 192、信用 107",
       "action": ""
     },
     {
@@ -229,7 +229,7 @@
       "detail": "台美股共 59 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 59,
-      "ledger_updated_at": "2026-10-20 21:44:09"
+      "ledger_updated_at": "2026-10-20 22:17:43"
     },
     {
       "code": "unified_evidence",
@@ -333,7 +333,7 @@
       "title": "股票三報產報檢查",
       "level": "info",
       "label": "資訊",
-      "detail": "最近執行 2026-10-20T21:42:43.581752+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
+      "detail": "最近執行 2026-10-20T21:42:51.358161+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
