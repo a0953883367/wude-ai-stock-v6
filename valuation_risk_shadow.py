@@ -111,6 +111,10 @@ def _company_values(row: dict[str, Any]) -> dict[str, Any]:
 
     total_cash = _finite(row.get("total_cash"))
     total_debt = _finite(row.get("total_debt"))
+    # Archived official TW rows used this key for total liabilities, not debt.
+    # Do not derive EV from that legacy alias, even when cash is later supplied.
+    if row.get("financial_quality_source") == "MOPS via TWSE/TPEx OpenAPI":
+        total_debt = None
     if total_debt is not None and statement_multiplier != 1.0:
         total_debt *= statement_multiplier
     enterprise_value = _positive(row.get("enterprise_value"))

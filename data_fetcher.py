@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -499,6 +500,46 @@ def _ratio_percent(value: Any) -> float | None:
     return number * 100 if abs(number) <= 1 else number
 
 
+# These Yahoo quote fields have a ratio contract (1.01 means 101%).
+# Dividend and ETF fields deliberately retain their existing separate handling.
+_US_RATIO_FIELDS = ("revenue_yoy_pct", "eps_yoy_pct", "gross_margin_pct",
+                    "operating_margin_pct", "roe_pct")
+_US_COMPANY_FIELDS = ("per", "pbr", "dividend_yield", *_US_RATIO_FIELDS,
+                      "debt_ratio_pct", "operating_cash_flow", "eps", "market_cap",
+                      "free_cash_flow", "enterprise_value", "total_revenue_ttm",
+                      "net_income_ttm", "total_cash", "total_debt", "shares_outstanding")
+
+
+def _contract_ratio_percent(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        result = float(value) * 100
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return result if math.isfinite(result) else None
+
+
+def _safe_us_ratio_cache(item: dict[str, Any]) -> dict[str, Any]:
+    """Old normalized Yahoo values cannot be unambiguously reverse-scaled."""
+    item = dict(item)
+    if item.get("us_fundamentals_ratio_schema_version") == 2:
+        return item
+    official_fields = item.get("us_sec_fallback_field_names") or []
+    for field in _US_RATIO_FIELDS:
+        if field not in official_fields:
+            item[field] = None
+    item["us_company_data_fields"] = sum(item.get(k) is not None for k in _US_COMPANY_FIELDS)
+    item["us_company_data_available"] = item["us_company_data_fields"] > 0
+    item["fundamental_available"] = float(any(item.get(k) is not None for k in
+        ("per", "pbr", "dividend_yield", "revenue_yoy_pct")))
+    item["financial_quality_available"] = float(any(item.get(k) is not None for k in
+        ("eps_yoy_pct", "gross_margin_pct", "operating_margin_pct", "roe_pct",
+         "debt_ratio_pct", "operating_cash_flow")))
+    # No new schema/date: the next ordinary run must still attempt raw refresh.
+    return item
+
+
 def _normalize_etf_info(info: dict[str, Any]) -> dict[str, Any]:
     """Normalize Yahoo fund fields and keep missing values explicitly unavailable."""
     def number(*keys: str) -> float | None:
@@ -617,11 +658,11 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
     per = number("trailingPE", "forwardPE")
     pbr = number("priceToBook")
     dividend = _ratio_percent(info.get("dividendYield"))
-    revenue_growth = _ratio_percent(info.get("revenueGrowth"))
-    earnings_growth = _ratio_percent(info.get("earningsGrowth")) if info.get("earningsGrowth") is not None else None
-    gross_margin = _ratio_percent(info.get("grossMargins"))
-    operating_margin = _ratio_percent(info.get("operatingMargins"))
-    roe = _ratio_percent(info.get("returnOnEquity"))
+    revenue_growth = _contract_ratio_percent(info.get("revenueGrowth"))
+    earnings_growth = _contract_ratio_percent(info.get("earningsGrowth")) if info.get("earningsGrowth") is not None else None
+    gross_margin = _contract_ratio_percent(info.get("grossMargins"))
+    operating_margin = _contract_ratio_percent(info.get("operatingMargins"))
+    roe = _contract_ratio_percent(info.get("returnOnEquity"))
     debt_to_equity = number("debtToEquity")
     debt_ratio = None
     if debt_to_equity is not None and debt_to_equity >= 0:
@@ -658,6 +699,7 @@ def _normalize_us_equity_info(info: dict[str, Any]) -> dict[str, Any]:
         "total_debt": total_debt,
         "shares_outstanding": shares_outstanding,
         "valuation_shadow_schema_version": 1,
+        "us_fundamentals_ratio_schema_version": 2,
         "fundamental_available": float(any(value is not None for value in (per, pbr, dividend, revenue_growth))),
         "financial_quality_available": float(any(value is not None for value in (earnings_growth, gross_margin, operating_margin, roe, debt_ratio, operating_cash_flow))),
         "us_company_data_available": available > 0,
@@ -684,11 +726,14 @@ def fetch_us_company_metadata(universe: list[dict[str, Any]], cache_path: Path |
         cached = {}
     output, pending = {}, []
     for symbol in symbols:
-        item = cached.get(symbol, {})
+        item = _safe_us_ratio_cache(cached.get(symbol, {}))
+        if symbol in cached:
+            cached[symbol] = item
         try:
             fresh = (
                 (today - date.fromisoformat(str(item.get("cached_at")))).days < 1
                 and int(item.get("valuation_shadow_schema_version") or 0) >= 1
+                and item.get("us_fundamentals_ratio_schema_version") == 2
             )
         except (TypeError, ValueError):
             fresh = False

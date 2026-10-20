@@ -18,7 +18,7 @@ from typing import Any, Callable
 import requests
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 TPEX_BASE = "https://www.tpex.org.tw/openapi/v1"
 INDUSTRY_TYPES = ("basi", "bd", "ci", "fh", "ins", "mim")
@@ -144,8 +144,8 @@ def aggregate_official_financial_rows(
                 item["total_assets"] = assets
                 fields.append("total_assets")
             if liabilities is not None:
-                item["total_debt"] = liabilities
-                fields.append("total_debt")
+                item["total_liabilities"] = liabilities
+                fields.append("total_liabilities")
             if equity is not None:
                 item["total_equity"] = equity
                 fields.append("total_equity")
@@ -180,6 +180,20 @@ def _read_cache(path: Path) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _migrate_cached_liabilities(row: dict[str, Any]) -> dict[str, Any]:
+    """This adapter historically mislabeled total liabilities as debt."""
+    row = dict(row)
+    if "total_debt" in row:
+        row.setdefault("total_liabilities", row.pop("total_debt"))
+        fields = row.get("financial_quality_fields")
+        if isinstance(fields, list):
+            row["financial_quality_fields"] = sorted({
+                "total_liabilities" if field == "total_debt" else field for field in fields
+            })
+            row["financial_quality_field_count"] = len(row["financial_quality_fields"])
+    return row
+
+
 def fetch_tw_official_financials(
     stock_ids: set[str],
     *,
@@ -191,6 +205,8 @@ def fetch_tw_official_financials(
     stock_ids = {str(item) for item in stock_ids if str(item).isdigit()}
     cached_payload = _read_cache(cache_path)
     cached_rows = cached_payload.get("symbols") if isinstance(cached_payload.get("symbols"), dict) else {}
+    cached_rows = {sid: _migrate_cached_liabilities(row)
+                   for sid, row in cached_rows.items() if isinstance(row, dict)}
     cached_requested = {
         str(item) for item in (cached_payload.get("requested_symbols") or cached_rows.keys())
     }
@@ -210,6 +226,11 @@ def fetch_tw_official_financials(
         # but cannot include it in ``symbols``.  Missing one optional financial
         # row must lower only that stock's data coverage; it must never abort
         # the complete report on later runs made on the same day.
+        if cached_payload.get("schema_version") != SCHEMA_VERSION or cached_payload.get("symbols") != cached_rows:
+            migrated = {**cached_payload, "schema_version": SCHEMA_VERSION, "symbols": cached_rows}
+            tmp = cache_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(migrated, ensure_ascii=False, indent=2), encoding="utf-8")
+            tmp.replace(cache_path)
         return {
             sid: dict(cached_rows[sid])
             for sid in stock_ids
