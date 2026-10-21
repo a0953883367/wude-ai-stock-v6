@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-21T21:59:24.816623+08:00",
+  "checked_at": "2026-10-22T01:07:33.543693+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -541,9 +541,33 @@
         "missing_fixed_generation",
         "report_freshness"
       ]
+    },
+    "2026-10-22:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-22:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-22:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-22:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -555,7 +579,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-21 17:09:32",
+        "updated_at": "2026-10-22 00:15:58",
         "error": null
       }
     },
@@ -1014,6 +1038,18 @@
       "attempts": [],
       "status": "waiting_primary_or_active_run",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-10-22:morning": {
+      "period": "morning",
+      "attempts": [
+        {
+          "at": "2026-10-22T01:07:33.543693+08:00",
+          "guard_run_id": "39640874672",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -1031,20 +1067,18 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
+    "invalid_free_us_data"
   ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "status": "blocked_evidence",
+    "reason": "source_session_not_closed",
     "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-10-20",
-    "latest_official_session_date": "2026-10-20",
+    "latest_official_session_date": "2026-10-21",
     "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-10-20",
-    "captured_at": "2026-10-21 06:29:10"
+    "next_session_date": null
   },
   "capabilities": {
     "actions_read_confirmed": true,
