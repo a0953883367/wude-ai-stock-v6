@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-23T01:07:09.957940+08:00",
+  "checked_at": "2026-10-23T02:40:21.284063+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -612,7 +612,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-23 00:11:00",
+        "updated_at": "2026-10-23 01:08:45",
         "error": null
       }
     },
@@ -1121,8 +1121,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "current data requires silent refresh; no delivery receipt is created"
+      "status": "blocked_evidence",
+      "reason": "source_session_not_closed"
     }
   },
   "permission_probe": {
@@ -1139,10 +1139,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "blocked_evidence",
   "us_direction_verification": {
     "status": "blocked_evidence",
     "reason": "source_session_not_closed",
