@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-22T17:22:57.651933+08:00",
+  "checked_at": "2026-10-22T21:57:20.833983+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -566,12 +566,28 @@
     },
     "2026-10-22:evening": {
       "period": "evening",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-22T21:57:20.833983+08:00",
+          "guard_run_id": "39791387896",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation",
+        "report_freshness"
+      ]
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-22:evening",
+      "period": "evening"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -583,7 +599,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-22 17:11:17",
+        "updated_at": "2026-10-22 17:24:07",
         "error": null
       }
     },
@@ -1076,6 +1092,12 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-10-22:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -1093,9 +1115,10 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [
-    "invalid_free_us_data"
+    "invalid_free_us_data",
+    "report_freshness"
   ],
-  "data_recovery_status": "ready_silent_refresh",
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
