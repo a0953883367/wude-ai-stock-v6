@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-22T07:47:32+00:00",
+  "generated_at": "2026-10-22T09:23:04+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-22T15:47:28.496099+08:00",
+    "checked_at": "2026-10-22T17:23:01.451815+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-22T15:47:25.624543+08:00",
+    "checked_at": "2026-10-22T17:22:57.651933+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1111,6 +1111,11 @@
             "at": "2026-10-22T15:47:17.470117+08:00",
             "guard_run_id": "39742888676",
             "state": "dispatch_accepted"
+          },
+          {
+            "at": "2026-10-22T17:22:49.668569+08:00",
+            "guard_run_id": "39754897081",
+            "state": "dispatch_accepted"
           }
         ],
         "status": "awaiting_verification",
@@ -1166,8 +1171,8 @@
           "reference",
           "research"
         ],
-        "files": 11,
-        "bytes": 133950,
+        "files": 9,
+        "bytes": 192028,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -1222,7 +1227,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 43/60 日、錯誤事件 1008 筆、成熟學習 123003 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "summary": "已讀取影子證據：向前驗證 44/60 日、錯誤事件 1033 筆、成熟學習 125115 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -1232,13 +1237,13 @@
           "model_unit_learning.json": true,
           "weekly_shadow_coach.json": true
         },
-        "validation_days": 43,
+        "validation_days": 44,
         "target_days": 60,
-        "eligible_samples": 2294,
-        "independent_error_events": 1008,
+        "eligible_samples": 2356,
+        "independent_error_events": 1033,
         "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 123003,
+        "matured_learning_rows": 125115,
         "active_shadow_trust_streams": 12,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
@@ -1509,7 +1514,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.33,
+    "average_reduction_pct": 36.29,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
