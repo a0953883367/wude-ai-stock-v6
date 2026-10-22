@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-22T06:32:44.176700+08:00",
+  "checked_at": "2026-10-22T08:40:27.479843+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -551,8 +551,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
       "diagnosis": [
         "invalid_free_us_data",
         "missing_fixed_generation"
@@ -583,7 +583,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-22 02:49:01",
+        "updated_at": "2026-10-22 06:34:06",
         "error": null
       }
     },
@@ -1057,7 +1057,7 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "waiting_primary_or_active_run",
+      "status": "exhausted",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -1078,15 +1078,17 @@
   "diagnosis": [
     "invalid_free_us_data"
   ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "data_recovery_status": "exhausted",
   "us_direction_verification": {
-    "status": "ready_silent_refresh",
-    "reason": "direction_receipt_missing_inside_forecast_window",
-    "needs_silent_refresh": true,
-    "verified_recovered": false,
-    "last_source_session_date": "2026-10-20",
+    "status": "verified_current",
+    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "needs_silent_refresh": false,
+    "verified_recovered": true,
+    "last_source_session_date": "2026-10-21",
     "latest_official_session_date": "2026-10-21",
-    "historical_backfill_allowed": false
+    "historical_backfill_allowed": false,
+    "snapshot_id": "US:2026-10-21",
+    "captured_at": "2026-10-22 06:34:06"
   },
   "capabilities": {
     "actions_read_confirmed": true,
