@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-23T02:40:30.561872+08:00",
+  "checked_at": "2026-10-23T06:31:59.437947+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -583,9 +583,20 @@
     },
     "2026-10-23:morning": {
       "period": "morning",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-23T06:31:59.437947+08:00",
+          "guard_run_id": "39865584062",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation",
+        "report_freshness"
+      ]
     },
     "2026-10-23:noon": {
       "period": "noon",
@@ -600,7 +611,12 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-23:morning",
+      "period": "morning"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1121,8 +1137,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "blocked_evidence",
-      "reason": "source_session_not_closed"
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -1139,17 +1155,19 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "blocked_evidence",
+  "diagnosis": [
+    "invalid_free_us_data",
+    "report_freshness"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
-    "status": "blocked_evidence",
-    "reason": "source_session_not_closed",
-    "needs_silent_refresh": false,
+    "status": "ready_silent_refresh",
+    "reason": "direction_receipt_missing_inside_forecast_window",
+    "needs_silent_refresh": true,
     "verified_recovered": false,
     "last_source_session_date": "2026-10-21",
     "latest_official_session_date": "2026-10-22",
-    "historical_backfill_allowed": false,
-    "next_session_date": null
+    "historical_backfill_allowed": false
   },
   "capabilities": {
     "actions_read_confirmed": true,
