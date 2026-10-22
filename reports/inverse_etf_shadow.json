@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-22 15:48:55",
+  "updated_at": "2026-10-22 16:54:04",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -271,6 +271,27 @@
           },
           "status": "complete",
           "quarantine_reason": null
+        },
+        {
+          "cohort_id": "TW:2026-10-22:00632R.TW",
+          "market": "TW",
+          "signal_session_date": "2026-10-22",
+          "inverse_symbol": "00632R.TW",
+          "inverse_name": "元大台灣50反1",
+          "daily_target": -1,
+          "bear_score": 91.3,
+          "evidence": {
+            "coverage": 186,
+            "negative_breadth_pct": 93.5,
+            "median_change_pct": -2.56,
+            "breakdown_pct": 36.6
+          },
+          "signal_close": 9.880000114440918,
+          "entry_open": null,
+          "observed_sessions": [],
+          "outcomes": {},
+          "status": "pending_entry",
+          "quarantine_reason": null
         }
       ],
       "current_candidates": [
@@ -279,18 +300,18 @@
           "inverse_symbol": "00632R.TW",
           "inverse_name": "元大台灣50反1",
           "daily_target": -1,
-          "bear_score": 10.2,
-          "status": "waiting",
+          "bear_score": 91.3,
+          "status": "confirmed",
           "constituent_count": 186,
           "evidence": {
             "coverage": 186,
-            "negative_breadth_pct": 17.7,
-            "median_change_pct": 1.17,
-            "breakdown_pct": 1.6
+            "negative_breadth_pct": 93.5,
+            "median_change_pct": -2.56,
+            "breakdown_pct": 36.6
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": -1.72,
-          "product_volume_ratio_20d": 0.76,
+          "product_session_change_pct": 2.17,
+          "product_opening_gap_pct": -1.93,
+          "product_volume_ratio_20d": 0.86,
           "no_chase": false
         },
         {
@@ -298,18 +319,18 @@
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 9.2,
+          "bear_score": 50.1,
           "status": "waiting",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
-            "negative_breadth_pct": 16.7,
-            "median_change_pct": 0.6,
+            "negative_breadth_pct": 83.3,
+            "median_change_pct": -0.35,
             "breakdown_pct": 0.0
           },
-          "product_session_change_pct": null,
+          "product_session_change_pct": 1.24,
           "product_opening_gap_pct": -0.82,
-          "product_volume_ratio_20d": 0.29,
+          "product_volume_ratio_20d": 1.73,
           "no_chase": false
         }
       ],
