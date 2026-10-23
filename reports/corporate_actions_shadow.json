@@ -1,7 +1,7 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-10-22T23:59:04.838500+00:00",
-  "status": "warning",
+  "generated_at": "2026-10-23T23:51:46.217779+00:00",
+  "status": "ok",
   "summary": {
     "tracked_total": 380,
     "tracked_stocks": 312,
@@ -13,14 +13,14 @@
     "event_count": 0,
     "warning_count": 0,
     "critical_count": 0,
-    "source_failure_count": 1,
+    "source_failure_count": 0,
     "degraded_source_count": 1,
     "degraded_sources": [
       "sec_registry"
     ],
-    "registry_source_failure_count": 1,
+    "registry_source_failure_count": 0,
     "event_source_failure_count": 0,
-    "available_registry_source_count": 6
+    "available_registry_source_count": 7
   },
   "events": [],
   "source_health": {
@@ -33,14 +33,17 @@
       "live_ok": true
     },
     "tpex_registry": {
-      "ok": false,
-      "record_count": 0,
-      "error": "ChunkedEncodingError: Response ended prematurely"
+      "ok": true,
+      "record_count": 894,
+      "error": "",
+      "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
+      "mode": "live",
+      "live_ok": true
     },
     "sec_registry": {
       "ok": false,
       "record_count": 0,
-      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 45.5 days exceeds 7"
+      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 46.5 days exceeds 7"
     },
     "twse_securities": {
       "ok": true,
@@ -78,7 +81,7 @@
     },
     "us_symbol_directory": {
       "ok": true,
-      "record_count": 13260,
+      "record_count": 13262,
       "error": "",
       "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
       "mode": "live",
@@ -86,20 +89,20 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 120,
-      "event_count": 6,
+      "record_count": 46,
+      "event_count": 0,
       "error": ""
     },
     "tpex_announcements": {
       "ok": true,
-      "record_count": 30,
-      "event_count": 0,
+      "record_count": 64,
+      "event_count": 1,
       "error": ""
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 66,
-      "event_count": 66,
+      "record_count": 89,
+      "event_count": 89,
       "error": ""
     }
   },
