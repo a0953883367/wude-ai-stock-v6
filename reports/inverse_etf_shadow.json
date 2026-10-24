@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-24 16:37:55",
+  "updated_at": "2026-10-24 20:50:21",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -287,10 +287,19 @@
             "breakdown_pct": 36.6
           },
           "signal_close": 9.880000114440918,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 9.880000114440918,
+          "observed_sessions": [
+            "2026-10-23"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-10-23",
+              "actual_etf_return_pct": 0.0,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         }
       ],
@@ -300,18 +309,18 @@
           "inverse_symbol": "00632R.TW",
           "inverse_name": "元大台灣50反1",
           "daily_target": -1,
-          "bear_score": 94.3,
-          "status": "confirmed",
+          "bear_score": 0.3,
+          "status": "waiting",
           "constituent_count": 186,
           "evidence": {
             "coverage": 186,
-            "negative_breadth_pct": 95.2,
-            "median_change_pct": -2.73,
-            "breakdown_pct": 37.1
+            "negative_breadth_pct": 0.5,
+            "median_change_pct": 0.0,
+            "breakdown_pct": 0.0
           },
-          "product_session_change_pct": 2.17,
-          "product_opening_gap_pct": -0.51,
-          "product_volume_ratio_20d": 0.89,
+          "product_session_change_pct": 0.0,
+          "product_opening_gap_pct": 0.0,
+          "product_volume_ratio_20d": 0.0,
           "no_chase": false
         },
         {
@@ -319,26 +328,26 @@
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 63.4,
-          "status": "watch",
+          "bear_score": 0.0,
+          "status": "waiting",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
-            "negative_breadth_pct": 100.0,
-            "median_change_pct": -0.7,
+            "negative_breadth_pct": 0.0,
+            "median_change_pct": 0.0,
             "breakdown_pct": 0.0
           },
-          "product_session_change_pct": 1.24,
-          "product_opening_gap_pct": 0.42,
-          "product_volume_ratio_20d": 2.05,
+          "product_session_change_pct": 0.0,
+          "product_opening_gap_pct": 0.0,
+          "product_volume_ratio_20d": 0.0,
           "no_chase": false
         }
       ],
       "summary": {
         "1": {
-          "samples": 5,
-          "win_rate_pct": 60.0,
-          "average_return_pct": 0.124
+          "samples": 6,
+          "win_rate_pct": 50.0,
+          "average_return_pct": 0.103
         },
         "2": {
           "samples": 5,
