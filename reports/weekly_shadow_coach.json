@@ -1,44 +1,44 @@
 {
   "schema": "wude.weekly_shadow_coach.v1",
-  "generated_at": "2026-10-17T21:09:39.195636+00:00",
+  "generated_at": "2026-10-24T21:21:25.081242+00:00",
   "status": "ok",
   "mode": "openai",
   "source": {
-    "report_updated_at": "2026-10-18 03:38:53",
-    "trading_days_collected": 40,
+    "report_updated_at": "2026-10-25 03:37:41",
+    "trading_days_collected": 45,
     "promotion_review_days": 60,
-    "raw_error_rows": 4327,
-    "independent_events": 932,
-    "duplicate_rows_collapsed": 3395,
+    "raw_error_rows": 5182,
+    "independent_events": 1106,
+    "duplicate_rows_collapsed": 4076,
     "cause_counts": {
-      "event_gap_risk": 56,
+      "event_gap_risk": 59,
       "missed_strength_rotation": 76,
-      "etf_model_separation": 92,
-      "direction_calibration": 703,
-      "intraday_reversal": 5
+      "etf_model_separation": 102,
+      "direction_calibration": 841,
+      "intraday_reversal": 28
     },
     "signal_health": {
       "TW_STOCK": {
         "label": "台股個股",
-        "direction_samples": 1639,
-        "trade_signal_samples": 28,
+        "direction_samples": 1979,
+        "trade_signal_samples": 34,
         "status": "collecting_trade_outcomes",
-        "detail": "已有 28 筆完整交易訊號結果，繼續前向驗證。",
+        "detail": "已有 34 筆完整交易訊號結果，繼續前向驗證。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
           "diagnosis": "healthy_triggered",
-          "qualified_setups": 44,
-          "evaluated_setups": 42,
-          "triggered_setups": 28,
-          "pending_setups": 2,
+          "qualified_setups": 48,
+          "evaluated_setups": 48,
+          "triggered_setups": 34,
+          "pending_setups": 0,
           "untouched_entry_zones": 14,
-          "source_ineligible_rows": 3685,
-          "guard_blocked_rows": 1565,
+          "source_ineligible_rows": 4308,
+          "guard_blocked_rows": 1902,
           "data_contract_errors": 0,
           "evaluation_status_counts": {
             "entry_zone_not_touched": 14,
-            "completed_session_zone_touch": 28
+            "completed_session_zone_touch": 34
           },
           "affects_formal_v6": false,
           "places_orders": false
@@ -59,7 +59,7 @@
           "triggered_setups": 0,
           "pending_setups": 0,
           "untouched_entry_zones": 0,
-          "source_ineligible_rows": 0,
+          "source_ineligible_rows": 1,
           "guard_blocked_rows": 0,
           "data_contract_errors": 0,
           "evaluation_status_counts": {},
@@ -69,25 +69,25 @@
       },
       "US_STOCK": {
         "label": "美股個股",
-        "direction_samples": 272,
-        "trade_signal_samples": 4,
+        "direction_samples": 307,
+        "trade_signal_samples": 5,
         "status": "collecting_trade_outcomes",
-        "detail": "已有 4 筆完整交易訊號結果，繼續前向驗證。",
+        "detail": "已有 5 筆完整交易訊號結果，繼續前向驗證。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
           "diagnosis": "healthy_triggered",
-          "qualified_setups": 8,
-          "evaluated_setups": 7,
-          "triggered_setups": 4,
+          "qualified_setups": 12,
+          "evaluated_setups": 11,
+          "triggered_setups": 5,
           "pending_setups": 1,
-          "untouched_entry_zones": 3,
-          "source_ineligible_rows": 452,
+          "untouched_entry_zones": 6,
+          "source_ineligible_rows": 548,
           "guard_blocked_rows": 0,
           "data_contract_errors": 0,
           "evaluation_status_counts": {
-            "entry_zone_not_touched": 3,
-            "completed_session_zone_touch": 4
+            "entry_zone_not_touched": 6,
+            "completed_session_zone_touch": 5
           },
           "affects_formal_v6": false,
           "places_orders": false
@@ -95,10 +95,10 @@
       },
       "US_ETF": {
         "label": "美國ETF",
-        "direction_samples": 174,
+        "direction_samples": 204,
         "trade_signal_samples": 0,
         "status": "no_qualified_setup",
-        "detail": "已有 174 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
+        "detail": "已有 204 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
@@ -108,8 +108,8 @@
           "triggered_setups": 0,
           "pending_setups": 0,
           "untouched_entry_zones": 0,
-          "source_ineligible_rows": 460,
-          "guard_blocked_rows": 18,
+          "source_ineligible_rows": 560,
+          "guard_blocked_rows": 25,
           "data_contract_errors": 0,
           "evaluation_status_counts": {},
           "affects_formal_v6": false,
@@ -411,32 +411,32 @@
       }
     ],
     "backup": {
-      "created_at": "2026-10-18 03:38:53",
+      "created_at": "2026-10-25 03:37:41",
       "verified": true,
       "table_counts": {
         "metadata": 1,
-        "market_sessions": 80,
-        "prices": 11966,
-        "predictions": 100268,
-        "model_versions": 120,
-        "portfolios": 261,
-        "portfolio_positions": 1291,
-        "source_usage": 74,
-        "model_control": 8,
-        "model_control_events": 120,
-        "unit_learning_predictions": 115874,
+        "market_sessions": 90,
+        "prices": 13866,
+        "predictions": 119268,
+        "model_versions": 170,
+        "portfolios": 315,
+        "portfolio_positions": 1561,
+        "source_usage": 84,
+        "model_control": 12,
+        "model_control_events": 168,
+        "unit_learning_predictions": 136752,
         "unit_trust_control": 44,
-        "unit_trust_events": 1188,
-        "forward_outcome_cohorts": 56,
-        "forward_outcome_candidates": 8632,
-        "forward_outcome_results": 27531
+        "unit_trust_events": 1408,
+        "forward_outcome_cohorts": 66,
+        "forward_outcome_candidates": 10192,
+        "forward_outcome_results": 35296
       }
     },
     "cloud_archive": {
       "verified": true,
-      "total": 156,
+      "total": 176,
       "uploaded": 1,
-      "verified_existing": 58,
+      "verified_existing": 52,
       "errors": 0
     },
     "tw_signal_confirmation_shadow": {
@@ -461,66 +461,66 @@
     }
   },
   "coach": {
-    "headline": "本週重點：方向校準為主，事件跳空與強勢輪動需影子驗證",
+    "headline": "本週重點：方向校準是主因，事件跳空與漏抓輪動次之；僅做影子驗證，不改正式系統。",
     "root_causes": [
       {
         "cause": "方向校準偏差",
-        "evidence_events": 703,
-        "explanation": "占成熟錯誤最多，顯示一般方向判斷仍是主要改善來源。",
-        "shadow_experiment": "按市場與持有期分層，前向比較校準信心與方向命中率。",
-        "risk": "不得回看結果調整正式分數；分層樣本可能不均。"
+        "evidence_events": 841,
+        "explanation": "占成熟錯誤最多，但目前缺少市場、週期與預測信心分層，尚不能判定單一修正方向。",
+        "shadow_experiment": "前向分層記錄方向信心、持有週期與結果，和現行基準比較校準誤差。",
+        "risk": "樣本混合可能掩蓋市場差異；不得據此修改正式分數或權重。"
       },
       {
         "cause": "ETF模型分離不足",
-        "evidence_events": 92,
-        "explanation": "ETF錯誤事件次數不低，但目前沒有合格交易訊號。",
-        "shadow_experiment": "僅影子記錄ETF與個股特徵差異，待取得完整結果再評估。",
-        "risk": "目前交易樣本不足，不應放寬ETF門檻或推論績效。"
+        "evidence_events": 102,
+        "explanation": "ETF錯誤量居次；但台灣ETF僅1筆方向樣本，美國ETF無合格設定，證據仍不足。",
+        "shadow_experiment": "分市場、ETF類型與波動環境記錄影子方向表現，不放寬買進門檻。",
+        "risk": "交易訊號樣本不足，可能把無設定誤判為模型失效。"
       },
       {
-        "cause": "漏抓強勢輪動",
-        "evidence_events": 76,
-        "explanation": "近期台股多次由看跌轉強，需檢查突破、量能與族群共振。",
-        "shadow_experiment": "前向標記突破、攻擊量及族群廣度，觀察轉強前可辨識性。",
-        "risk": "避免使用事後強勢表現回填排名或調整正式權重。"
+        "cause": "漏抓強勢輪動與事件跳空",
+        "evidence_events": 135,
+        "explanation": "漏抓輪動76、事件風險59；成熟案例顯示轉強與異常跳空不宜混作一般方向錯誤。",
+        "shadow_experiment": "分開測試族群廣度、突破量能及盤前事件異常的棄權或降信心效果。",
+        "risk": "事件資料可能不完整，且不得使用事後新聞或把贏家回填排名。"
       }
     ],
     "priority_actions": [
-      "優先拆解方向錯誤的市場、持有期與信心區間。",
-      "對美股個股建立事件風險影子標記，僅用當時可得資訊。",
-      "對台股個股追蹤強勢輪動訊號，不改正式V6或排名。"
+      "優先建立方向錯誤的市場、週期、信心分層統計，確認841筆是否集中於特定條件。",
+      "事件風險與強勢輪動分開驗證，僅使用預測當時可取得的資料。",
+      "維持ETF正式門檻；持續收集設定與結果，不因零交易訊號而放寬條件。"
     ],
     "data_gaps": [
-      "TW_ETF僅1筆方向結果、0筆交易結果，無法評估ETF模型。",
-      "US_ETF無完整交易結果，事件與門檻診斷樣本不足。",
-      "盤中至收盤確認影子目前0筆，無法評估反轉規則。"
+      "缺少方向校準按市場、預測信心與持有週期的交叉結果。",
+      "事件案例缺少可核驗的盤前新聞、跳空幅度與資料可得時間戳。",
+      "TW盤中確認影子目前追蹤0筆，無法評估盤中反轉或收盤確認價值。"
     ],
     "confidence_notes": [
-      "資料含932個獨立事件，已合併3395筆重複列。",
-      "台股個股28筆、美股個股4筆完整交易結果，仍屬持續收集。",
-      "intraday_reversal僅5事件，暫不宜形成正式改善結論。"
+      "45個交易日、1106個獨立事件足以觀察方向錯誤量，但不足以直接改正式規則。",
+      "TW_STOCK完整交易訊號34筆、US_STOCK5筆，仍屬前向收集期。",
+      "近期成熟案例中事件跳空與漏抓輪動各有重複模式，但尚未完成控制組比較。"
     ],
     "candidate_proposals": [
       {
         "rule_id": "direction_calibration",
         "cohort": "ALL",
-        "hypothesis": "方向信心需按市場與持有期校準，可能降低極端誤判。",
-        "measurement": "以前向事件比較各信心分箱的命中率、校準誤差與樣本數。",
-        "risk_control": "只做影子標記；達到預設樣本量前不影響正式分數或下單。"
+        "hypothesis": "按信心與持有週期分層後，方向錯誤可能集中於特定區間。",
+        "measurement": "以前向新事件比較各分層校準誤差、命中率與最差方向報酬，對照現行基準。",
+        "risk_control": "僅影子標記；達到預設樣本量前不改正式分數、排名或權重。"
       },
       {
         "rule_id": "event_gap_risk",
         "cohort": "US_STOCK",
-        "hypothesis": "預測時可得的新聞與盤前異常，可能辨識部分跳空風險。",
-        "measurement": "比較標記與未標記事件的跳空率、最大不利幅度及棄權比例。",
-        "risk_control": "只可降信心或影子棄權；不得使用事後新聞，並保留未標記對照組。"
+        "hypothesis": "盤前可得的事件與異常波動訊號，可能降低跳空造成的方向傷害。",
+        "measurement": "比較影子降信心或棄權與現行基準的極端報酬、錯誤率及覆蓋率。",
+        "risk_control": "只用預測時點資料；限制棄權比例，並保留未觸發訊號作對照。"
       },
       {
         "rule_id": "missed_strength_rotation",
         "cohort": "TW_STOCK",
-        "hypothesis": "突破、攻擊量與族群廣度，可能提早識別看跌後轉強。",
-        "measurement": "以前向資料統計轉強前訊號覆蓋率、誤報率與分層收益。",
-        "risk_control": "僅記錄候選標記，不回填排名、不修改正式權重，設定最小樣本門檻。"
+        "hypothesis": "突破量能、族群廣度與攻擊量同步時，可能較早識別由弱轉強。",
+        "measurement": "以前向事件記錄三項訊號是否同時出現，評估方向改善、延遲與誤報率。",
+        "risk_control": "只作影子反轉標記，不回填歷史排名、不產生個股買賣指令。"
       }
     ]
   },
@@ -532,18 +532,18 @@
   "api": {
     "called": true,
     "model": "gpt-5.6-luna",
-    "response_id": "resp_0c7c204a06bc9f3a016ad3e40966f887d28878ee5151607d63",
+    "response_id": "resp_0fffb01ed108bd7e016add21491f9887d09eac87ba29d3142e",
     "usage": {
-      "input_tokens": 4013,
+      "input_tokens": 4014,
       "input_tokens_details": {
-        "cache_write_tokens": 4010,
+        "cache_write_tokens": 4011,
         "cached_tokens": 0
       },
-      "output_tokens": 1098,
+      "output_tokens": 1273,
       "output_tokens_details": {
-        "reasoning_tokens": 265
+        "reasoning_tokens": 293
       },
-      "total_tokens": 5111
+      "total_tokens": 5287
     },
     "attempts": 1,
     "store": false
