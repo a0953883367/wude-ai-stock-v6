@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-24T07:28:35+00:00",
+  "generated_at": "2026-10-24T08:51:14+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-24T15:28:32.873558+08:00",
+    "checked_at": "2026-10-24T16:51:11.130983+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-24T15:28:30.396802+08:00",
+    "checked_at": "2026-10-24T16:51:09.999485+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1275,8 +1275,10 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
-        "reason": "current data requires silent refresh; no delivery receipt is created"
+        "status": "verified_fresh",
+        "reason": "current data requires silent refresh; no delivery receipt is created",
+        "verified_at": "2026-10-24T16:51:02.466903+08:00",
+        "report_updated_at": "2026-10-24 16:37:55"
       }
     },
     "us_direction_verification": {
@@ -1329,7 +1331,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 139397,
+        "bytes": 139394,
         "truncated": true,
         "cross_domain_reads": false
       },
