@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-24T16:13:30+00:00",
+  "generated_at": "2026-10-24T16:45:22+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-24T23:52:50.610831+08:00",
+    "checked_at": "2026-10-25T00:45:19.786301+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-24T23:52:48.362166+08:00",
+    "checked_at": "2026-10-25T00:45:18.675447+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -719,6 +719,24 @@
           "invalid_free_us_data",
           "missing_fixed_generation"
         ]
+      },
+      "2026-10-25:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-25:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-25:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "data_incidents": {
@@ -1301,6 +1319,13 @@
         ],
         "status": "awaiting_verification",
         "reason": "current data requires silent refresh; no delivery receipt is created"
+      },
+      "2026-10-25:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "verified_fresh",
+        "verified_at": "2026-10-25T00:45:10.539441+08:00",
+        "report_updated_at": "2026-10-24 23:54:21"
       }
     },
     "us_direction_verification": {
