@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-26T00:10:17.468162+08:00",
+  "checked_at": "2026-10-26T01:07:17.846409+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -715,7 +715,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-26:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -727,7 +733,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-25 20:41:39",
+        "updated_at": "2026-10-26 00:11:40",
         "error": null
       }
     },
@@ -1360,9 +1366,14 @@
           "at": "2026-10-26T00:10:11.407612+08:00",
           "guard_run_id": "40210337967",
           "state": "dispatch_accepted"
+        },
+        {
+          "at": "2026-10-26T01:07:17.846409+08:00",
+          "guard_run_id": "40214880660",
+          "state": "reserved"
         }
       ],
-      "status": "awaiting_verification",
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
