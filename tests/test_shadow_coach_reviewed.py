@@ -202,3 +202,70 @@ def test_corrupted_pinned_source_hash_blocks_without_reset(calendar, tmp_path, m
     with pytest.raises(ValueError, match="reviewed_coach_source_changed"):
         update_bridge(tmp_path, {}, "2026-10-25 13:00:00")
     assert path.read_bytes() == before
+
+
+@pytest.fixture
+def december_calendar(calendar):
+    for market in ("TW", "US"):
+        year = calendar._state["markets"][market]["years"]["2026"]
+        year["sessions"] = ["2026-12-01", "2026-12-02", "2026-12-03", "2026-12-04", "2026-12-07", "2026-12-08", "2026-12-30", "2026-12-31"]
+        year["session_details"] = {d: {"open": "09:30", "close": "16:00"} for d in year["sessions"]}
+    return calendar
+
+
+@pytest.mark.parametrize("market", ["TW", "US"])
+@pytest.mark.parametrize("horizon,target", [(1, "2026-12-02"), (2, "2026-12-03"), (3, "2026-12-04"), (5, "2026-12-08")])
+def test_december_first_uses_only_required_verified_prefix(december_calendar, monkeypatch, market, horizon, target):
+    from shadow_coach_bridge import _next_session
+    ends = []
+    lookup = december_calendar.lookup
+    def track(market, start, end):
+        ends.append(end)
+        return lookup(market, start, end)
+    monkeypatch.setattr(december_calendar, "lookup", track)
+    actual, _ = _next_session(december_calendar, market, "2026-12-01", horizon)
+    assert actual == target
+    assert ends[-1] == target
+    assert all(end <= target for end in ends)
+    assert "2027" not in december_calendar._state["markets"][market]["years"]
+
+
+@pytest.mark.parametrize("market", ["TW", "US"])
+def test_december_daily_bridge_registers_all_horizons_without_next_year(december_calendar, market):
+    r = saved()
+    state = build_bridge(r, {}, {}, december_calendar, "2026-11-30 12:00:00")
+    s = snapshot("2026-12-01", market=market)
+    s["captured_at"] = "2026-12-01 14:00:00" if market == "TW" else "2026-12-02 05:00:00"
+    s["integrity_sha256"] = _snapshot_hash(s)
+    now = "2026-12-01 15:00:00" if market == "TW" else "2026-12-02 06:00:00"
+    result = build_bridge(r, state, {"snapshots": [s]}, december_calendar, now)
+    e = direction(result)
+    assert e["registered_rows"] == 4
+    assert e["registered_forecasts"] == 1
+    assert {d["receipt"]["target_session"] for d in e["decisions"].values()} == {"2026-12-02", "2026-12-03", "2026-12-04", "2026-12-08"}
+
+
+@pytest.mark.parametrize("market", ["TW", "US"])
+def test_next_year_is_required_only_when_target_crosses_year(december_calendar, market):
+    from shadow_coach_bridge import _next_session
+    assert _next_session(december_calendar, market, "2026-12-30", 1)[0] == "2026-12-31"
+    with pytest.raises(ValueError, match="verified_calendar_unavailable"):
+        _next_session(december_calendar, market, "2026-12-30", 2)
+    years = december_calendar._state["markets"][market]["years"]
+    years["2027"] = {"status": "cached", "sessions": ["2027-01-04"], "session_details": {"2027-01-04": {"open": "09:30", "close": "16:00"}}}
+    with pytest.raises(ValueError, match="verified_calendar_unavailable"):
+        _next_session(december_calendar, market, "2026-12-30", 2)
+    years["2027"]["status"] = "verified"
+    assert _next_session(december_calendar, market, "2026-12-30", 2)[0] == "2027-01-04"
+
+
+def test_missing_required_prefix_never_skipped(december_calendar, monkeypatch):
+    from shadow_coach_bridge import _next_session
+    lookup = december_calendar.lookup
+    def missing_day(market, start, end):
+        if end == "2026-12-03":
+            return {"available": False, "status": "official_calendar_unavailable", "sessions": []}
+        return lookup(market, start, end)
+    monkeypatch.setattr(december_calendar, "lookup", missing_day)
+    with pytest.raises(ValueError, match="verified_calendar_unavailable"):
+        _next_session(december_calendar, "TW", "2026-12-01", 5)

@@ -126,3 +126,19 @@ found. The selected checkout and `/workspace/.agents` had no AGENTS.md or skill
 files. No old task or its artifacts were accessed. PR #373 stays draft; no merge or
 deployment is authorized in this task. Independent PR review, natural producer
 acceptance, and future effectiveness remain distinct from offline acceptance.
+
+## Review correction: required calendar prefix
+
+Independent review found that the original fixed `origin + 32 days` lookup
+unnecessarily required a 2027 cache for December 2026 forecasts. The bridge now
+expands a verified prefix one calendar day at a time, stopping at the nth official
+session. It crosses a year boundary only when that target requires it. The existing
+32-day bound remains; missing/unverified required coverage blocks immediately,
+without guessing sessions or fetching another calendar.
+
+Thirteen regressions cover TW/US December 1 horizons 1/2/3/5 with a 2026-only cache,
+actual bridge registration of all four horizons, required year crossing, missing or
+unverified 2027 coverage, and an unavailable intermediate prefix. Twelve fail on
+the prior implementation; all thirteen pass with the fix. Existing frozen targets
+and data gates are unchanged; no lost historical decisions are backfilled. Remaining
+independent review findings must be resolved before any merge decision.

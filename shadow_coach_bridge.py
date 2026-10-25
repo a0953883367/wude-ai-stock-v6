@@ -81,11 +81,20 @@ def _source_error(report, now):
 
 
 def _next_session(calendar, market, origin, horizon=1):
-    end = (datetime.fromisoformat(origin) + timedelta(days=32)).date().isoformat()
-    window = calendar.lookup(market, origin, end)
-    if window.get("status") != "verified" or len(window.get("sessions", [])) < horizon:
+    # Verify only the prefix needed for this horizon. A fixed 32-day query
+    # unnecessarily required next year's cache for early-December forecasts.
+    # Retain the bounded search, but never skip an unavailable prefix or infer
+    # sessions from weekdays; cross a year boundary only if still necessary.
+    for days in range(1, 33):
+        end = (datetime.fromisoformat(origin) + timedelta(days=days)).date().isoformat()
+        window = calendar.lookup(market, origin, end)
+        if window.get("available") is not True or window.get("status") != "verified":
+            raise ValueError("verified_calendar_unavailable")
+        if len(window.get("sessions", [])) >= horizon:
+            target = window["sessions"][horizon - 1]
+            break
+    else:
         raise ValueError("verified_calendar_unavailable")
-    target = window["sessions"][horizon - 1]
     info = calendar.session_status(market, target)
     opening = info.get("open") if market == "US" else "09:00"
     if not opening:
