@@ -228,7 +228,7 @@ def test_daily_pipeline_link_and_corrupt_state_is_visible(calendar, tmp_path):
     assert first["coach_execution_bridge"]["status"] == "accepted"
     (tmp_path / "prediction_history.json").write_text(json.dumps({"snapshots": [snapshot()]}))
     result = update_model_learning(tmp_path, updated_at="2026-10-26 15:00:00")
-    assert next(iter(result["coach_execution_bridge"]["experiments"].values()))["registered_rows"] == 1
+    assert next(e for e in result["coach_execution_bridge"]["experiments"].values() if e["template"] == TEMPLATE)["registered_rows"] == 1
     (tmp_path / "shadow_coach_experiments.json").write_text("corrupt")
     result = update_model_learning(tmp_path, updated_at="2026-10-26 16:00:00")
     assert result["coach_execution_bridge"]["status"] == "blocked"
@@ -314,8 +314,9 @@ def test_coach_boundary_accepts_explicit_template_without_real_api(tmp_path):
                                 archive_result=tmp_path / "archive.json", generated_at="2026-10-25T00:00:00Z")
     assert report["coach"]["candidate_proposals"][0]["execution_template"] == TEMPLATE
     state = update_bridge(tmp_path, {}, "2026-10-25 12:00:00")
-    assert only(state)["status"] == "collecting"
-    assert only(state)["provenance"]["api"]["response_id"] == "resp_test"
+    e = next(e for e in state["experiments"].values() if e["contract"]["template"] == TEMPLATE)
+    assert e["status"] == "collecting"
+    assert e["provenance"]["api"]["response_id"] == "resp_test"
 
 
 @pytest.mark.parametrize("strength,direction,expected", [(64, "DOWN", "ABSTAIN"), (65, "DOWN", "DOWN"), (70, "UP", "UP")])

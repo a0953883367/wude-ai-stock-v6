@@ -100,7 +100,7 @@ COACH_SCHEMA: dict[str, Any] = {
                     "measurement": {"type": "string"},
                     "risk_control": {"type": "string"},
                     "execution_template": {"type": "string", "enum": [
-                        "direction_strength_abstention_65_v1", "unsupported"
+                        "direction_strength_abstention_65_v1", "direction_strength_horizon_audit_v1", "unsupported"
                     ]},
                 },
                 "required": [
@@ -357,7 +357,7 @@ def _validate_candidate_proposals(coach: dict[str, Any]) -> list[dict[str, str]]
             raise CoachBlocked("candidate proposal contains an empty explanation")
         if "execution_template" in raw:
             template = raw["execution_template"]
-            if template not in ("direction_strength_abstention_65_v1", "unsupported"):
+            if template not in ("direction_strength_abstention_65_v1", "direction_strength_horizon_audit_v1", "unsupported"):
                 raise CoachBlocked("unknown execution template")
             if template != "unsupported" and rule_id != "direction_calibration":
                 raise CoachBlocked("execution template does not match rule")
@@ -487,9 +487,10 @@ def _openai_coach(
         "禁止修改正式V6、正式排名、正式權重、歷史資料或下單。"
         "提出的每項改善都必須是可前向驗證的影子實驗；樣本不足時明確說明。"
         "每週最多提出3個candidate_proposals，而且rule_id與cohort只能使用格式列出的選項。"
-        "execution_template只可選direction_strength_abstention_65_v1或unsupported。"
+        "execution_template可選direction_strength_abstention_65_v1、direction_strength_horizon_audit_v1或unsupported。"
         "前者只適用direction_calibration：固定full_day一日方向，strength低於65棄權，其他保持原方向，按cohort分組。"
-        "只在假說與此固定比較一致時選前者；分層校準、多日、事件、反轉等其他假說必須選unsupported。"
+        "direction_strength_horizon_audit_v1只適用direction_calibration：保持原方向，按市場資產、固定strength區間0/50/65/80/100及1/2/3/5交易日分層比較命中率和最差方向報酬；strength不是機率，不能算機率校準誤差。"
+        "只選與假說一致的模板；事件、反轉或其他不符上述定義的假說必須選unsupported。"
         "既有舊資料不回填，等待接入後的新預測；不可輸出程式碼、指令或自動下單內容。"
         "請保持精簡：每個陣列最多3項，每段說明最多80個中文字，避免輸出被截斷。"
     )

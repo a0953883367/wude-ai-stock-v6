@@ -327,9 +327,14 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
             "status": bridge["source_status"], "report": "shadow_coach_experiments.json",
             "effectiveness": bridge["effectiveness"],
             "all_candidates_execution_verified": bridge["all_candidates_execution_verified"],
-            "experiments": {key: {name: row[name] for name in (
+            "reviewed_source_status": bridge.get("reviewed_source_status"),
+            "experiments": {key: {**{name: row[name] for name in (
                 "status", "registered_rows", "completed_rows", "execution_verified", "outcome_verified"
-            )} for key, row in bridge["experiments"].items()},
+            )}, "template": row["contract"]["template"],
+                "definition": row["contract"].get("reviewed_definition"),
+                "registered_forecasts": row.get("registered_forecasts", 0),
+                "count_unit": row.get("count_unit", "forecast_rows"),
+            } for key, row in bridge["experiments"].items()},
         }
     except (ValueError, TypeError, KeyError, OSError) as exc:
         bridge_audit = {"status": "blocked", "reason": str(exc),

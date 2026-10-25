@@ -12,7 +12,9 @@ import hashlib
 import json
 import math
 from zoneinfo import ZoneInfo
+from pathlib import Path
 
+from shadow_coach_definitions import STRATIFIED_TEMPLATE, REVIEWED_REPORT_SHA256, reviewed_definition, stratified_contract
 from direction_shadow_validation import RULE
 from market_calendar import MARKET_ZONES, OfficialMarketCalendar
 from performance import AUDIT_SCHEMA_VERSION, _metric, _snapshot_integrity
@@ -39,6 +41,8 @@ def finite(value):
 
 
 def _contract(proposal):
+    if proposal.get("execution_template") == STRATIFIED_TEMPLATE and proposal.get("rule_id") == "direction_calibration":
+        return stratified_contract(proposal["cohort"])
     if proposal.get("execution_template") != TEMPLATE or proposal.get("rule_id") != "direction_calibration":
         return {"template": proposal.get("execution_template"), "version": 1,
                 "cohort": proposal["cohort"], "executable": False}
@@ -76,12 +80,12 @@ def _source_error(report, now):
     return None
 
 
-def _next_session(calendar, market, origin):
+def _next_session(calendar, market, origin, horizon=1):
     end = (datetime.fromisoformat(origin) + timedelta(days=32)).date().isoformat()
     window = calendar.lookup(market, origin, end)
-    if window.get("status") != "verified" or not window.get("sessions"):
+    if window.get("status") != "verified" or len(window.get("sessions", [])) < horizon:
         raise ValueError("verified_calendar_unavailable")
-    target = window["sessions"][0]
+    target = window["sessions"][horizon - 1]
     info = calendar.session_status(market, target)
     opening = info.get("open") if market == "US" else "09:00"
     if not opening:
@@ -143,6 +147,8 @@ def _valid_row(row, market, session):
 
 def _execute(experiment, snapshots, calendar, now):
     """Register only unseen future decisions; settle only with a matching frozen close."""
+    stratified = experiment["contract"]["template"] == STRATIFIED_TEMPLATE
+    horizons = experiment["contract"]["rule"]["horizons"] if stratified else [1]
     counts = Counter()
     decisions = experiment["decisions"]
     verified_decisions = 0
@@ -150,6 +156,8 @@ def _execute(experiment, snapshots, calendar, now):
     ids = Counter(str(s.get("id") or "") for s in snapshots if isinstance(s, dict))
     valid = []
     for s in snapshots:
+        if isinstance(s, dict) and s.get("id") in experiment["excluded_snapshot_ids"]:
+            continue
         try:
             if not isinstance(s, dict) or not s.get("id") or ids[str(s["id"])] != 1:
                 raise ValueError("duplicate_or_missing_snapshot_id")
@@ -170,59 +178,64 @@ def _execute(experiment, snapshots, calendar, now):
         for row in s["predictions"]:
             if experiment["proposal"]["cohort"] not in ("ALL", row.get("cohort")):
                 continue
-            key = f'{s["id"]}|{row["symbol"]}'
-            try:
-                if not _valid_row(row, market, origin):
-                    raise ValueError("frozen_source_contract_invalid")
-                target, opens = _next_session(calendar, market, origin)
-                if key not in decisions:
-                    if row.get("outcomes") or now >= opens or captured >= opens:
-                        raise ValueError("late_decision_or_visible_outcome")
-                    consensus = ((row.get("track_predictions") or {}).get("full_day") or {}).get("consensus") or {}
-                    strength, baseline = consensus.get("confidence"), consensus.get("direction")
-                    if not finite(strength) or not 0 <= strength <= 100 or baseline not in ("UP", "DOWN", "ABSTAIN"):
-                        raise ValueError("invalid_frozen_direction")
-                    decision = {"registered_at": now.isoformat(), "snapshot_hash": s["integrity_sha256"],
-                                "target_session": target, "target_open": opens.isoformat(),
-                                "cohort": row["cohort"], "strength": strength, "baseline": baseline,
-                                "candidate": baseline if strength >= RULE["minimum_strength"] else "ABSTAIN"}
-                    decisions[key] = {"receipt": decision, "receipt_sha256": digest(decision)}
-                record = decisions[key]
-                if record.get("quarantined"):
-                    raise ValueError(record["quarantined"])
-                d = record["receipt"]
-                if (record["receipt_sha256"] != digest(d) or d["snapshot_hash"] != s["integrity_sha256"]
-                        or d["target_session"] != target or d["target_open"] != opens.isoformat()
-                        or stamp(d["registered_at"]) >= opens):
-                    record["quarantined"] = "frozen_decision_or_calendar_changed"
-                    raise ValueError(record["quarantined"])
-                verified_decisions += 1
-                outcome = (row.get("outcomes") or {}).get("1")
-                if not outcome:
-                    continue
-                if (outcome.get("evaluated_session_date") != target
-                        or not calendar.session_complete(market, target, at_epoch=now.timestamp())):
-                    raise ValueError("outcome_session_invalid_or_incomplete")
-                proofs = paired.get((market, target, row["symbol"]), [])
-                if len(proofs) != 1:
-                    raise ValueError("missing_or_ambiguous_frozen_target_price")
-                ps, pr, pc = proofs[0]
-                if pc.astimezone(MARKET_ZONES[market]).date().isoformat() != target:
-                    raise ValueError("late_target_price_capture")
-                expected = round((pr["official_price"] / row["official_price"] - 1) * 100, 4)
-                actual = outcome.get("close_to_close_return_pct")
-                if not finite(actual) or abs(actual - expected) > 0.00011:
-                    raise ValueError("outcome_price_mismatch")
-                receipt = {"outcome": deepcopy(outcome), "target_snapshot_hash": ps["integrity_sha256"]}
-                if "outcome_receipt" in record and record["outcome_receipt"] != receipt:
-                    record["quarantined"] = "outcome_revision_quarantined"
-                    raise ValueError(record["quarantined"])
-                record.setdefault("outcome_receipt", receipt)
-                completed[d["cohort"]].append((actual, d))
-                sessions[d["cohort"]].add(target)
-            except (ValueError, TypeError, KeyError, OverflowError, AttributeError) as exc:
-                counts[str(exc)] += 1
+            for horizon in horizons:
+                key = f'{s["id"]}|{row["symbol"]}' + (f"|h{horizon}" if stratified else "")
+                try:
+                    if not _valid_row(row, market, origin):
+                        raise ValueError("frozen_source_contract_invalid")
+                    target, opens = _next_session(calendar, market, origin, horizon)
+                    _, admission_open = _next_session(calendar, market, origin)
+                    if key not in decisions:
+                        if row.get("outcomes") or now >= admission_open or captured >= admission_open:
+                            raise ValueError("late_decision_or_visible_outcome")
+                        consensus = ((row.get("track_predictions") or {}).get("full_day") or {}).get("consensus") or {}
+                        strength, baseline = consensus.get("confidence"), consensus.get("direction")
+                        if not finite(strength) or not 0 <= strength <= 100 or baseline not in ("UP", "DOWN", "ABSTAIN"):
+                            raise ValueError("invalid_frozen_direction")
+                        decision = {"registered_at": now.isoformat(), "snapshot_hash": s["integrity_sha256"],
+                                    "target_session": target, "target_open": opens.isoformat(),
+                                    "cohort": row["cohort"], "strength": strength, "baseline": baseline,
+                                    "horizon": horizon, "admission_open": admission_open.isoformat(),
+                                    "candidate": baseline if stratified or strength >= RULE["minimum_strength"] else "ABSTAIN"}
+                        decisions[key] = {"receipt": decision, "receipt_sha256": digest(decision)}
+                    record = decisions[key]
+                    if record.get("quarantined"):
+                        raise ValueError(record["quarantined"])
+                    d = record["receipt"]
+                    if (record["receipt_sha256"] != digest(d) or d["snapshot_hash"] != s["integrity_sha256"]
+                            or d["target_session"] != target or d["target_open"] != opens.isoformat()
+                            or stamp(d["registered_at"]) >= admission_open
+                            or d.get("admission_open", admission_open.isoformat()) != admission_open.isoformat()):
+                        record["quarantined"] = "frozen_decision_or_calendar_changed"
+                        raise ValueError(record["quarantined"])
+                    verified_decisions += 1
+                    outcome = (row.get("outcomes") or {}).get(str(horizon))
+                    if not outcome:
+                        continue
+                    if (outcome.get("evaluated_session_date") != target
+                            or not calendar.session_complete(market, target, at_epoch=now.timestamp())):
+                        raise ValueError("outcome_session_invalid_or_incomplete")
+                    proofs = paired.get((market, target, row["symbol"]), [])
+                    if len(proofs) != 1:
+                        raise ValueError("missing_or_ambiguous_frozen_target_price")
+                    ps, pr, pc = proofs[0]
+                    if pc.astimezone(MARKET_ZONES[market]).date().isoformat() != target:
+                        raise ValueError("late_target_price_capture")
+                    expected = round((pr["official_price"] / row["official_price"] - 1) * 100, 4)
+                    actual = outcome.get("close_to_close_return_pct")
+                    if not finite(actual) or abs(actual - expected) > 0.00011:
+                        raise ValueError("outcome_price_mismatch")
+                    receipt = {"outcome": deepcopy(outcome), "target_snapshot_hash": ps["integrity_sha256"]}
+                    if "outcome_receipt" in record and record["outcome_receipt"] != receipt:
+                        record["quarantined"] = "outcome_revision_quarantined"
+                        raise ValueError(record["quarantined"])
+                    record.setdefault("outcome_receipt", receipt)
+                    completed[d["cohort"]].append((actual, d))
+                    sessions[d["cohort"]].add(target)
+                except (ValueError, TypeError, KeyError, OverflowError, AttributeError) as exc:
+                    counts[str(exc)] += 1
     experiment["registered_rows"] = len(decisions)
+    experiment["registered_forecasts"] = len({key.rsplit("|h", 1)[0] for key in decisions})
     experiment["completed_rows"] = sum(map(len, completed.values()))
     experiment["cohorts"] = {}
     for cohort, rows in completed.items():
@@ -235,10 +248,49 @@ def _execute(experiment, snapshots, calendar, now):
                     result[arm][name] = None
         result["newly_abstained_rows"] = sum(d["baseline"] != "ABSTAIN" and d["candidate"] == "ABSTAIN" for _, d in rows)
         experiment["cohorts"][cohort] = result
+    if stratified:
+        experiment["stratified_audit"] = _stratified_summary(completed, experiment["contract"])
+        experiment["comparison_kind"] = "observational_strata_vs_same_cohort_horizon_baseline"
+        experiment["count_unit"] = "forecast_horizon_rows_not_independent_events"
+        # Never pool horizons into a misleading aggregate performance number.
+        experiment["cohorts"] = {cohort: {"completed_rows": len(rows), "completed_sessions": len(sessions[cohort])}
+                                 for cohort, rows in completed.items()}
     experiment["gate_counts"] = dict(sorted(counts.items()))
     experiment["status"] = "collecting_with_exclusions" if counts else "collecting"
     experiment["execution_verified"] = bool(verified_decisions)
     experiment["outcome_verified"] = bool(experiment["completed_rows"])
+
+
+def _stratified_summary(completed, contract):
+    result = {}
+    for cohort, rows in completed.items():
+        result[cohort] = {}
+        for horizon in contract["rule"]["horizons"]:
+            group = [(v, d) for v, d in rows if d["horizon"] == horizon]
+            def metric(items):
+                values = [(v, d["baseline"]) for v, d in items if d["baseline"] != "ABSTAIN"]
+                m = _metric(values, len(items))
+                if not values:
+                    for key in ("win_rate_pct", "avg_return_pct", "worst_return_pct", "lowest_actual_return_pct", "highest_actual_return_pct"):
+                        m[key] = None
+                m["direction_error_pct"] = None if not values else round(100 - m["win_rate_pct"], 1)
+                return m
+            baseline = metric(group)
+            bins = {}
+            for low, high in contract["rule"]["strength_bins"]:
+                selected = [(v, d) for v, d in group if low <= d["strength"] < high]
+                m = metric(selected)
+                m["hit_rate_difference_pp"] = (round(m["win_rate_pct"] - baseline["win_rate_pct"], 1)
+                                                if m["win_rate_pct"] is not None else None)
+                session_count = len({d["target_session"] for _, d in selected})
+                m["completed_sessions"] = session_count
+                m["review_ready"] = (session_count >= contract["minimum_review_sessions"]
+                                     and m["samples"] >= contract["minimum_rows_per_stratum"])
+                bins[f"{low}..{min(high, 100)}" + ("_inclusive" if high == 101 else "_exclusive")] = m
+            result[cohort][str(horizon)] = {"baseline": baseline, "strength_bins": bins,
+                                          "probability_calibration_error": None,
+                                          "calibration_unavailable_reason": "heuristic_strength_not_probability"}
+    return result
 
 
 def build_bridge(report, previous, history, calendar, generated_at):
@@ -255,13 +307,17 @@ def build_bridge(report, previous, history, calendar, generated_at):
         raise ValueError("bridge_clock_regressed")
     state.update({"updated_at": now.isoformat(), "policy": dict(LOCKED_POLICY, automatic_promotion=False),
                   "effectiveness": "unproven", "integration": "deterministic_template_bridge_v1",
-                  "metric_limitations": "One-session directional comparison, not probability calibration or trading P&L; rows are correlated. No automatic promotion."})
+                  "metric_limitations": "Directional comparisons and strength/horizon strata, not probability calibration or trading P&L; rows and overlapping horizons are correlated. No automatic promotion."})
     error = _source_error(report, now)
     state["source_status"] = error or "accepted"
     if not error:
         report_hash = digest(report)
         for p in report["coach"]["candidate_proposals"]:
-            contract = _contract(p)
+            review = reviewed_definition(report_hash, digest(p))
+            effective = {**p, "execution_template": review["execution_template"]} if review else p
+            contract = _contract(effective)
+            if review:
+                contract["reviewed_definition"] = review
             identity = digest({"proposal": p, "contract": contract})
             experiments = state["experiments"]
             if identity in experiments:
@@ -269,10 +325,12 @@ def build_bridge(report, previous, history, calendar, generated_at):
             if len(experiments) >= MAX_EXPERIMENTS:
                 state["source_status"] = "experiment_capacity_reached"
                 break
-            template = p.get("execution_template")
+            template = effective.get("execution_template")
             status = ("blocked_missing_execution_template" if not template else
-                      "ready" if template == TEMPLATE and p["rule_id"] == "direction_calibration" else
+                      "ready" if template in (TEMPLATE, STRATIFIED_TEMPLATE) and p["rule_id"] == "direction_calibration" else
                       "unsupported_execution_template")
+            if review and template == "unsupported":
+                status = review["readiness"]
             frozen = {"proposal": deepcopy(p), "contract": contract,
                       "registered_at": now.isoformat(),
                       "provenance": {"report": "weekly_shadow_coach.json", "report_sha256": report_hash,
@@ -286,7 +344,14 @@ def build_bridge(report, previous, history, calendar, generated_at):
         if not isinstance(e.get("proposal"), dict) or not isinstance(e.get("contract"), dict):
             raise ValueError("invalid_frozen_contract_preserve_existing")
         frozen = {k: e[k] for k in ("proposal", "contract", "registered_at", "provenance", "excluded_snapshot_ids", "initial_status")}
-        if (digest(frozen) != e["frozen_sha256"] or e["contract"] != _contract(e["proposal"])
+        expected_contract = _contract(e["proposal"])
+        review = e["contract"].get("reviewed_definition")
+        if review:
+            expected_review = reviewed_definition(e["provenance"]["report_sha256"], digest(e["proposal"]))
+            if expected_review:
+                expected_contract = _contract({**e["proposal"], "execution_template": expected_review["execution_template"]})
+                expected_contract["reviewed_definition"] = expected_review
+        if (digest(frozen) != e["frozen_sha256"] or e["contract"] != expected_contract
                 or identity != digest({"proposal": e["proposal"], "contract": e["contract"]})):
             e.update(status="blocked_frozen_contract_changed", execution_verified=False, outcome_verified=False, completed_rows=0, cohorts={})
             continue
@@ -294,6 +359,18 @@ def build_bridge(report, previous, history, calendar, generated_at):
             _execute(e, history.get("snapshots", []), calendar, now)
     state["all_candidates_execution_verified"] = bool(state["experiments"]) and all(e["execution_verified"] for e in state["experiments"].values())
     return state
+
+
+def build_reviewed_bridge(report, previous, history, calendar, generated_at):
+    """Same bounded ingestion for the daily producer and read-only acceptance run."""
+    seed = json.loads(Path(__file__).with_name("shadow_coach_reviewed.json").read_text())
+    if digest(seed) != REVIEWED_REPORT_SHA256:
+        raise ValueError("reviewed_coach_source_changed")
+    # Preserve the actual approved source even if a later weekly run replaces latest.
+    seeded = build_bridge(seed, previous, history, calendar, generated_at)
+    result = build_bridge(report, seeded, history, calendar, generated_at)
+    result["reviewed_source_status"] = seeded["source_status"]
+    return result
 
 
 def update_bridge(reports_dir, history, generated_at):
@@ -304,7 +381,7 @@ def update_bridge(reports_dir, history, generated_at):
     coach_path = reports_dir / "weekly_shadow_coach.json"
     report = json.loads(coach_path.read_text()) if coach_path.exists() else {}
     calendar = OfficialMarketCalendar(reports_dir / "official_market_calendar.json", auto_refresh=False, allow_network=False)
-    result = build_bridge(report, previous, history, calendar, generated_at)
+    result = build_reviewed_bridge(report, previous, history, calendar, generated_at)
     temp = path.with_suffix(".tmp")
     temp.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
     temp.replace(path)
