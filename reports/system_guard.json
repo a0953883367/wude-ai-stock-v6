@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-25T09:25:37+08:00",
+  "checked_at": "2026-10-25T14:30:33+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-25 09:23:07",
-  "report_age_minutes": 2.5,
+  "report_age_minutes": 307.4,
   "counts": {
     "ok": 26,
-    "info": 11,
-    "warning": 2,
+    "info": 10,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-23 已正確入帳，報表距今 0.0 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-23 已正確入帳，報表距今 5.1 小時",
       "action": ""
     },
     {
@@ -317,21 +317,22 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近執行 2026-10-25T09:21:19.926638+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近執行 2026-10-25T09:21:27.197341+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
+    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
+    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
   ],
   "safety": {
     "changes_rankings": false,
