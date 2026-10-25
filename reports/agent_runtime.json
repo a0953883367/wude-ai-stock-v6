@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-25T12:40:17+00:00",
+  "generated_at": "2026-10-25T16:10:23+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-25T20:40:14.689496+08:00",
+    "checked_at": "2026-10-26T00:10:20.035645+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-25T20:40:12.568596+08:00",
+    "checked_at": "2026-10-26T00:10:17.468162+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -757,6 +757,24 @@
           "invalid_free_us_data",
           "missing_fixed_generation"
         ]
+      },
+      "2026-10-26:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-26:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-10-26:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "data_incidents": {
@@ -1378,6 +1396,18 @@
         "attempts": [],
         "status": "waiting_primary_or_active_run",
         "reason": "current data requires silent refresh; no delivery receipt is created"
+      },
+      "2026-10-26:morning": {
+        "period": "morning",
+        "attempts": [
+          {
+            "at": "2026-10-26T00:10:11.407612+08:00",
+            "guard_run_id": "40210337967",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
@@ -1429,8 +1459,8 @@
           "reference",
           "research"
         ],
-        "files": 11,
-        "bytes": 142299,
+        "files": 9,
+        "bytes": 199919,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -1772,7 +1802,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.33,
+    "average_reduction_pct": 36.29,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
