@@ -1384,6 +1384,15 @@ def _new_snapshot(
             "market_model": row.get("next_session_market_model") or row.get("market_model_version"),
             "official_session_date": session_date,
             "official_price": round(price, 4),
+            # Freeze existing source attestations for the isolated coach bridge.
+            # No historical backfill or source-eligibility expansion.
+            "coach_price_evidence": {key: row.get(key) for key in (
+                "source_daily_ohlcv_complete", "source_daily_ohlcv_session_date",
+                "official_open_price", "official_high_price", "official_low_price",
+                "official_close_price", "official_volume", "official_adjusted_close_price",
+                "tw_official_price_available", "tw_official_session_date", "tw_price_source", "tw_price_unit",
+                "us_daily_price_available", "us_daily_session_date", "us_daily_source", "us_daily_price_unit",
+            )},
             "validation_eligible": validation_eligible,
             "validation_missing_fields": validation_missing,
             "evidence_coverage_pct": evidence_coverage,

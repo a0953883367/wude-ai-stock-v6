@@ -1,0 +1,168 @@
+{
+  "kind": "offline_saved_proposal_ingestion_acceptance",
+  "generated_at": "2026-10-25T04:34:15.338665+00:00",
+  "live_market_execution_claimed": false,
+  "effectiveness": "unproven",
+  "source_commit": "8366f9ee4d3e07415eee50d52245656a6d7297a6",
+  "reviewed_report_sha256": "42601eada3e3d45a9d38b026bebf1bcc10603b2f97cbf9b704803d0eddc2b3ff",
+  "latest_report_sha256": "42601eada3e3d45a9d38b026bebf1bcc10603b2f97cbf9b704803d0eddc2b3ff",
+  "input_file_sha256": {
+    "reports/weekly_shadow_coach.json": "18eed2c8a940ecd6e651bf8c0875267958fdee381150bad34c9dc8cfb8e741c5",
+    "reports/prediction_history.json.gz": "c81d2b451f62b0e7a151f36c37591dc502baface8d7c4fc7723809026c3b1776",
+    "reports/official_market_calendar.json": "6bec902e9af89fac7a4c9a3cf7af7930189f21c99dc8a3405c4ffbc5dfcfcbe0"
+  },
+  "inputs_unchanged": true,
+  "historical_snapshots_excluded": 81,
+  "source_status": "accepted",
+  "reviewed_source_status": "accepted",
+  "experiments": [
+    {
+      "experiment_id": "566058fc204d7ae8e8bf3f2ff7a483a2a007b6a2ad5ed23436e07fd5b2b7d4f5",
+      "proposal": {
+        "rule_id": "direction_calibration",
+        "cohort": "ALL",
+        "hypothesis": "按信心與持有週期分層後，方向錯誤可能集中於特定區間。",
+        "measurement": "以前向新事件比較各分層校準誤差、命中率與最差方向報酬，對照現行基準。",
+        "risk_control": "僅影子標記；達到預設樣本量前不改正式分數、排名或權重。"
+      },
+      "contract": {
+        "template": "direction_strength_horizon_audit_v1",
+        "version": 1,
+        "cohort": "ALL",
+        "rule": {
+          "track": "full_day",
+          "horizons": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "strength_bins": [
+            [
+              0,
+              50
+            ],
+            [
+              50,
+              65
+            ],
+            [
+              65,
+              80
+            ],
+            [
+              80,
+              101
+            ]
+          ],
+          "action": "observe_frozen_baseline_only"
+        },
+        "admission": "before_next_official_open",
+        "settlement": "verified_matching_exact_horizon_session_snapshot_v1",
+        "minimum_review_sessions": 20,
+        "minimum_rows_per_stratum": 30,
+        "probability_calibration_error": "unavailable_heuristic_strength",
+        "automatic_promotion": false,
+        "reviewed_definition": {
+          "execution_template": "direction_strength_horizon_audit_v1",
+          "readiness": "supported_prospective_stratification",
+          "rationale": "The saved proposal explicitly requests strength/horizon strata against the current baseline, not a changed trading rule. Fixed bins and existing 1/2/3/5-session horizons operationalize that diagnostic prospectively.",
+          "missing_fields": [],
+          "unavailable_measurements": [
+            "probability_calibration_error: strength is not a calibrated probability"
+          ],
+          "review_version": "saved-coach-20261024-v1",
+          "source_commit": "8366f9ee4d3e07415eee50d52245656a6d7297a6",
+          "report_sha256": "42601eada3e3d45a9d38b026bebf1bcc10603b2f97cbf9b704803d0eddc2b3ff",
+          "proposal_sha256": "938950ff9a997b5d1b8edd560b8b5efd44143a4717bb0f143a3d70583cceab0f"
+        }
+      },
+      "registered_at": "2026-10-25T04:34:15.338665+00:00",
+      "status": "collecting",
+      "registered_rows": 0,
+      "completed_rows": 0,
+      "execution_verified": false,
+      "outcome_verified": false
+    },
+    {
+      "experiment_id": "b2809f1a5dae64d6f182314def5e0ce1ecf3627367317be820b687d33e8ed695",
+      "proposal": {
+        "rule_id": "event_gap_risk",
+        "cohort": "US_STOCK",
+        "hypothesis": "盤前可得的事件與異常波動訊號，可能降低跳空造成的方向傷害。",
+        "measurement": "比較影子降信心或棄權與現行基準的極端報酬、錯誤率及覆蓋率。",
+        "risk_control": "只用預測時點資料；限制棄權比例，並保留未觸發訊號作對照。"
+      },
+      "contract": {
+        "template": "unsupported",
+        "version": 1,
+        "cohort": "US_STOCK",
+        "executable": false,
+        "reviewed_definition": {
+          "execution_template": "unsupported",
+          "readiness": "blocked_missing_event_definition_and_frozen_signal",
+          "rationale": "US premarket event/abnormal-volatility abstention is not the existing Taiwan gap-entry experiment. Neither an exact trigger nor its timestamped frozen input is defined.",
+          "missing_fields": [
+            "event_source_and_event_types",
+            "event_available_at_before_forecast",
+            "abnormal_volatility_measure_and_threshold",
+            "confidence_reduction_or_abstention_action",
+            "maximum_abstention_fraction",
+            "frozen_source_signal"
+          ],
+          "unavailable_measurements": [],
+          "review_version": "saved-coach-20261024-v1",
+          "source_commit": "8366f9ee4d3e07415eee50d52245656a6d7297a6",
+          "report_sha256": "42601eada3e3d45a9d38b026bebf1bcc10603b2f97cbf9b704803d0eddc2b3ff",
+          "proposal_sha256": "a5d965d3395ba26922141fedf65ce84831173984419f225af0d31a41253b5e1e"
+        }
+      },
+      "registered_at": "2026-10-25T04:34:15.338665+00:00",
+      "status": "blocked_missing_event_definition_and_frozen_signal",
+      "registered_rows": 0,
+      "completed_rows": 0,
+      "execution_verified": false,
+      "outcome_verified": false
+    },
+    {
+      "experiment_id": "304e6f7d92690c77bd54d2e58cd3f24127f3ae55749fcb1f8a7c6a079355a1fa",
+      "proposal": {
+        "rule_id": "missed_strength_rotation",
+        "cohort": "TW_STOCK",
+        "hypothesis": "突破量能、族群廣度與攻擊量同步時，可能較早識別由弱轉強。",
+        "measurement": "以前向事件記錄三項訊號是否同時出現，評估方向改善、延遲與誤報率。",
+        "risk_control": "只作影子反轉標記，不回填歷史排名、不產生個股買賣指令。"
+      },
+      "contract": {
+        "template": "unsupported",
+        "version": 1,
+        "cohort": "TW_STOCK",
+        "executable": false,
+        "reviewed_definition": {
+          "execution_template": "unsupported",
+          "readiness": "blocked_missing_reversal_signal_definition",
+          "rationale": "The saved hypothesis requires simultaneous breakout volume, sector breadth and attack volume. Existing rotation rankings and missed-strength diagnostics do not implement that conjunction.",
+          "missing_fields": [
+            "breakout_lookback_and_volume_threshold",
+            "sector_universe_and_breadth_threshold",
+            "attack_volume_definition_and_threshold",
+            "simultaneity_window",
+            "frozen_signal_availability_timestamps",
+            "reversal_label_and_delay_reference"
+          ],
+          "unavailable_measurements": [],
+          "review_version": "saved-coach-20261024-v1",
+          "source_commit": "8366f9ee4d3e07415eee50d52245656a6d7297a6",
+          "report_sha256": "42601eada3e3d45a9d38b026bebf1bcc10603b2f97cbf9b704803d0eddc2b3ff",
+          "proposal_sha256": "cf4340da61cfd6305b35eec620bdb5cb18835d22ea4e00f0c8e50ebbbe4f906d"
+        }
+      },
+      "registered_at": "2026-10-25T04:34:15.338665+00:00",
+      "status": "blocked_missing_reversal_signal_definition",
+      "registered_rows": 0,
+      "completed_rows": 0,
+      "execution_verified": false,
+      "outcome_verified": false
+    }
+  ]
+}

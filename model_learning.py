@@ -314,12 +314,34 @@ def update_model_learning(reports_dir: Path, *, updated_at: str = "") -> dict[st
     generated_at = updated_at or str(performance.get("updated_at") or datetime.now().isoformat(timespec="seconds"))
     complete_catalog = build_complete_learning_catalog(reports_dir)
     weight_assessment = weight_experiment.get("preliminary_assessment") or {}
+    prediction_history = _read(reports_dir / "prediction_history.json")
     direction_validation = build_direction_validation(
-        _read(reports_dir / "prediction_history.json"),
+        prediction_history,
         previous.get("direction_calibration_validation") or {}, generated_at,
     )
 
+    try:
+        from shadow_coach_bridge import update_bridge
+        bridge = update_bridge(reports_dir, prediction_history, generated_at)
+        bridge_audit = {
+            "status": bridge["source_status"], "report": "shadow_coach_experiments.json",
+            "effectiveness": bridge["effectiveness"],
+            "all_candidates_execution_verified": bridge["all_candidates_execution_verified"],
+            "reviewed_source_status": bridge.get("reviewed_source_status"),
+            "experiments": {key: {**{name: row[name] for name in (
+                "status", "registered_rows", "completed_rows", "execution_verified", "outcome_verified"
+            )}, "template": row["contract"]["template"],
+                "definition": row["contract"].get("reviewed_definition"),
+                "registered_forecasts": row.get("registered_forecasts", 0),
+                "count_unit": row.get("count_unit", "forecast_rows"),
+            } for key, row in bridge["experiments"].items()},
+        }
+    except (ValueError, TypeError, KeyError, OSError) as exc:
+        bridge_audit = {"status": "blocked", "reason": str(exc),
+                        "all_candidates_execution_verified": False, "effectiveness": "unproven"}
+
     payload = {
+        "coach_execution_bridge": bridge_audit,
         "schema_version": SCHEMA_VERSION,
         "updated_at": generated_at,
         "mode": "event_level_shadow_learning_only",
