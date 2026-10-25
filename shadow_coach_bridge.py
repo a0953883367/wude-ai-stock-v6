@@ -353,7 +353,7 @@ def build_bridge(report, previous, history, calendar, generated_at):
                 expected_contract["reviewed_definition"] = expected_review
         if (digest(frozen) != e["frozen_sha256"] or e["contract"] != expected_contract
                 or identity != digest({"proposal": e["proposal"], "contract": e["contract"]})):
-            e.update(status="blocked_frozen_contract_changed", execution_verified=False, outcome_verified=False, completed_rows=0, cohorts={})
+            e.update(status="blocked_frozen_contract_changed", execution_verified=False, outcome_verified=False, completed_rows=0, cohorts={}, stratified_audit={})
             continue
         if e["initial_status"] == "ready":
             _execute(e, history.get("snapshots", []), calendar, now)
@@ -366,7 +366,7 @@ def build_reviewed_bridge(report, previous, history, calendar, generated_at):
     seed = json.loads(Path(__file__).with_name("shadow_coach_reviewed.json").read_text())
     if digest(seed) != REVIEWED_REPORT_SHA256:
         raise ValueError("reviewed_coach_source_changed")
-    # Preserve the actual approved source even if a later weekly run replaces latest.
+    # Preserve the actual reviewed source even if a later weekly run replaces latest.
     seeded = build_bridge(seed, previous, history, calendar, generated_at)
     result = build_bridge(report, seeded, history, calendar, generated_at)
     result["reviewed_source_status"] = seeded["source_status"]

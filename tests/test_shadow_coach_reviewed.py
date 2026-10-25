@@ -162,6 +162,7 @@ def test_reviewed_contract_edit_is_blocked(calendar):
     direction(state)["contract"]["rule"]["strength_bins"][0][1] = 60
     result = build_bridge(saved(), state, {}, calendar, "2026-10-25 12:00:00")
     assert direction(result)["status"] == "blocked_frozen_contract_changed"
+    assert direction(result)["stratified_audit"] == {}
 
 
 def test_prior_blocked_versions_are_preserved_when_reviewed_definition_is_added(calendar):
