@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-26T23:19:57.730210+08:00",
+  "checked_at": "2026-10-27T02:40:17.945864+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -724,6 +724,24 @@
       "attempts": [],
       "status": "expired",
       "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-10-27:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-27:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-27:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -738,7 +756,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-26 17:37:24",
+        "updated_at": "2026-10-27 01:44:11",
         "error": null
       }
     },
@@ -1408,6 +1426,12 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-10-27:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "blocked_evidence",
+      "reason": "source_session_not_closed"
     }
   },
   "permission_probe": {
@@ -1424,21 +1448,17 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "blocked_evidence",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "status": "blocked_evidence",
+    "reason": "source_session_not_closed",
     "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-10-23",
-    "latest_official_session_date": "2026-10-23",
+    "latest_official_session_date": "2026-10-26",
     "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-10-23",
-    "captured_at": "2026-10-24 06:26:41"
+    "next_session_date": null
   },
   "capabilities": {
     "actions_read_confirmed": true,
