@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-27T04:39:57+08:00",
+  "updated_at": "2026-10-27T04:44:09+08:00",
   "system": "股票成長控制塔 V1",
   "status": "attention",
   "light": "yellow",
@@ -11,7 +11,7 @@
     "monitoring_layers": 6,
     "tracked_models": 7,
     "models_waiting_owner": 0,
-    "validation_days": 45,
+    "validation_days": 46,
     "validation_target": 60
   },
   "workflow_stages": [
@@ -31,7 +31,7 @@
       "status": "attention",
       "light": "yellow",
       "status_label": "注意",
-      "detail": "系統值班檢查：異常 0 項、注意 2 項。"
+      "detail": "系統值班檢查：異常 0 項、注意 1 項。"
     },
     {
       "id": "formal_v6",
@@ -58,8 +58,8 @@
       "status": "collecting",
       "light": "blue",
       "status_label": "累積中",
-      "detail": "60日中央驗證目前 45/60；交易計畫已成熟 3098 筆。",
-      "current": 45,
+      "detail": "60日中央驗證目前 46/60；交易計畫已成熟 3098 筆。",
+      "current": 46,
       "target": 60
     },
     {
@@ -101,9 +101,9 @@
     {
       "id": "model",
       "label": "模型監控",
-      "status": "ok",
-      "light": "green",
-      "status_label": "正常",
+      "status": "attention",
+      "light": "yellow",
+      "status_label": "注意",
       "detail": "準確率、報酬、回撤、獲利因子與預判引擎健康。"
     },
     {
@@ -138,14 +138,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 45,
+      "current": 46,
       "target": 60,
-      "progress_pct": 75.0,
-      "formal_validation_days": 45,
+      "progress_pct": 76.7,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": false,
-      "reason": "模型資料進度 45/60，尚未達初評門檻",
+      "reason": "模型資料進度 46/60，尚未達初評門檻",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -158,11 +158,11 @@
       "current": 8000,
       "target": 100,
       "progress_pct": 100.0,
-      "formal_validation_days": 45,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 45/60；目前只可初評，不可畢業；有效交易日最少 26/10",
+      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 46/60；目前只可初評，不可畢業；有效交易日最少 26/10",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -172,14 +172,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 34,
+      "current": 35,
       "target": 60,
-      "progress_pct": 56.7,
-      "formal_validation_days": 45,
+      "progress_pct": 58.3,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": false,
-      "reason": "模型資料進度 34/60，尚未達初評門檻",
+      "reason": "模型資料進度 35/60，尚未達初評門檻",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -192,11 +192,11 @@
       "current": 27,
       "target": 20,
       "progress_pct": 100.0,
-      "formal_validation_days": 45,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 27/20，但正式共同驗證只有 45/60；目前只可初評，不可畢業；20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
+      "reason": "模型資料門檻已達 27/20，但正式共同驗證只有 46/60；目前只可初評，不可畢業；20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -209,11 +209,11 @@
       "current": 116,
       "target": 20,
       "progress_pct": 100.0,
-      "formal_validation_days": 45,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 116/20，但正式共同驗證只有 45/60；目前只可初評，不可畢業",
+      "reason": "模型資料門檻已達 116/20，但正式共同驗證只有 46/60；目前只可初評，不可畢業",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -226,9 +226,9 @@
       "current": 37,
       "target": 60,
       "progress_pct": 61.7,
-      "formal_validation_days": 45,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": false,
       "reason": "模型資料進度 37/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
@@ -240,14 +240,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 31,
+      "current": 32,
       "target": 60,
-      "progress_pct": 51.7,
-      "formal_validation_days": 45,
+      "progress_pct": 53.3,
+      "formal_validation_days": 46,
       "formal_validation_target": 60,
-      "formal_progress_pct": 75.0,
+      "formal_progress_pct": 76.7,
       "component_gate_passed": false,
-      "reason": "模型資料進度 31/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
+      "reason": "模型資料進度 32/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     }
@@ -259,9 +259,14 @@
       "detail": "正式 V6 維持不變，先確認黃色項目。"
     },
     {
+      "priority": "review",
+      "title": "檢查預判引擎健康",
+      "detail": "獨立預判有警示；不影響正式 V6，但不可升級。"
+    },
+    {
       "priority": "wait",
       "title": "繼續累積60日證據",
-      "detail": "目前 45/60，尚差 15 個有效交易日。"
+      "detail": "目前 46/60，尚差 14 個有效交易日。"
     }
   ],
   "rules": {
@@ -294,13 +299,6 @@
     "note": "控制塔只整理既有證據與提醒人工決定，不控制券商、不付款。"
   },
   "pending_notifications": [
-    {
-      "id": "layer:data:attention:2026-10-12T00:42:32+08:00",
-      "type": "control_layer_change",
-      "level": "warning",
-      "created_at": "2026-10-12T00:42:32+08:00",
-      "message": "🟡 股票成長控制塔：資料監控變為注意。完整度、來源、更新時間與缺值隔離。"
-    },
     {
       "id": "layer:system:attention:2026-10-12T00:42:32+08:00",
       "type": "control_layer_change",
@@ -433,6 +431,13 @@
       "level": "warning",
       "created_at": "2026-10-17T12:41:42+08:00",
       "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
+    },
+    {
+      "id": "layer:model:attention:2026-10-27 04:41:35",
+      "type": "control_layer_change",
+      "level": "warning",
+      "created_at": "2026-10-27 04:41:35",
+      "message": "🟡 股票成長控制塔：模型監控變為注意。準確率、報酬、回撤、獲利因子與預判引擎健康。"
     }
   ]
 }
