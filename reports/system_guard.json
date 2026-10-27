@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-27T21:24:55+08:00",
+  "checked_at": "2026-10-27T21:25:09+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-10-27 17:40:55",
-  "report_age_minutes": 224.0,
+  "report_age_minutes": 224.2,
   "counts": {
     "ok": 27,
-    "info": 10,
-    "warning": 3,
+    "info": 11,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -331,16 +331,15 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "warning",
-      "label": "注意",
-      "detail": "最近執行 2026-10-27T17:47:17.112208+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "info",
+      "label": "資訊",
+      "detail": "最近執行 2026-10-27T21:25:05.689229+08:00；待驗收 1、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
-    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
+    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
   ],
   "safety": {
     "changes_rankings": false,
