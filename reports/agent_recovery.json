@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-28T18:32:38.134860+08:00",
+  "checked_at": "2026-10-28T21:17:58.805848+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -789,12 +789,27 @@
     },
     "2026-10-28:evening": {
       "period": "evening",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-28T21:17:58.805848+08:00",
+          "guard_run_id": "40695061819",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation"
+      ]
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-28:evening",
+      "period": "evening"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1537,6 +1552,12 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-28T18:32:31.463142+08:00",
       "report_updated_at": "2026-10-28 18:20:44"
+    },
+    "2026-10-28:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -1553,8 +1574,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "invalid_free_us_data"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
