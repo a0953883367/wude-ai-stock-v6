@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-28T13:58:40.165183+08:00",
+  "checked_at": "2026-10-28T13:58:46.112296+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -776,10 +776,10 @@
         {
           "at": "2026-10-28T13:58:40.165183+08:00",
           "guard_run_id": "40641024755",
-          "state": "reserved"
+          "state": "dispatch_accepted"
         }
       ],
-      "status": "reserved",
+      "status": "awaiting_verification",
       "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
       "diagnosis": [
         "invalid_free_us_data",
@@ -794,12 +794,7 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [
-    {
-      "incident_key": "2026-10-28:noon",
-      "period": "noon"
-    }
-  ],
+  "next_actions": [],
   "web_probe": {
     "ok": true,
     "endpoints": {
