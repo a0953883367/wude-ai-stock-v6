@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-29T02:57:52.934665+08:00",
+  "checked_at": "2026-10-29T07:22:01.110404+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -805,9 +805,20 @@
     },
     "2026-10-29:morning": {
       "period": "morning",
-      "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "attempts": [
+        {
+          "at": "2026-10-29T07:22:01.110404+08:00",
+          "guard_run_id": "40786766378",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation",
+        "report_freshness"
+      ]
     },
     "2026-10-29:noon": {
       "period": "noon",
@@ -822,7 +833,12 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-10-29:morning",
+      "period": "morning"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1575,8 +1591,8 @@
     "2026-10-29:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "blocked_evidence",
-      "reason": "mixed_or_missing_us_sessions"
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -1593,8 +1609,11 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "blocked_evidence",
+  "diagnosis": [
+    "invalid_free_us_data",
+    "report_freshness"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "blocked_evidence",
     "reason": "mixed_or_missing_us_sessions",
