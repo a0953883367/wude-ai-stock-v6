@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-10-29T18:52:21.440698+08:00",
+  "checked_at": "2026-10-30T01:00:19.824154+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -831,6 +831,24 @@
       "attempts": [],
       "status": "waiting_window",
       "reason": "primary delivery grace / future period"
+    },
+    "2026-10-30:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-30:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-10-30:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -845,7 +863,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-10-29 18:39:58",
+        "updated_at": "2026-10-30 00:05:09",
         "error": null
       }
     },
@@ -1610,6 +1628,12 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-10-29T18:52:12.267855+08:00",
       "report_updated_at": "2026-10-29 18:39:58"
+    },
+    "2026-10-30:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "blocked_evidence",
+      "reason": "source_session_not_closed"
     }
   },
   "permission_probe": {
@@ -1627,17 +1651,16 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "data_recovery_status": "blocked_evidence",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "status": "blocked_evidence",
+    "reason": "source_session_not_closed",
     "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-10-28",
-    "latest_official_session_date": "2026-10-28",
+    "latest_official_session_date": "2026-10-29",
     "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-10-28",
-    "captured_at": "2026-10-29 07:23:36"
+    "next_session_date": null
   },
   "capabilities": {
     "actions_read_confirmed": true,
