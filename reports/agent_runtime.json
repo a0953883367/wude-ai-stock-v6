@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-10-28T23:22:11+00:00",
+  "generated_at": "2026-10-29T01:48:00+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-10-29T07:22:09.634111+08:00",
+    "checked_at": "2026-10-29T09:47:56.210920+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-10-29T07:22:07.282757+08:00",
+    "checked_at": "2026-10-29T09:47:54.139637+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -874,8 +874,8 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
-        "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+        "status": "generated_suppressed",
+        "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
         "diagnosis": [
           "invalid_free_us_data",
           "missing_fixed_generation",
@@ -1629,19 +1629,27 @@
       },
       "2026-10-29:morning": {
         "period": "morning",
-        "attempts": [],
-        "status": "waiting_primary_or_active_run",
+        "attempts": [
+          {
+            "at": "2026-10-29T09:47:46.878217+08:00",
+            "guard_run_id": "40802497159",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
         "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
-      "status": "blocked_evidence",
-      "reason": "mixed_or_missing_us_sessions",
+      "status": "verified_current",
+      "reason": "immutable_eligible_snapshot_matches_official_session",
       "needs_silent_refresh": false,
-      "verified_recovered": false,
-      "last_source_session_date": "",
-      "latest_official_session_date": "",
-      "historical_backfill_allowed": false
+      "verified_recovered": true,
+      "last_source_session_date": "2026-10-28",
+      "latest_official_session_date": "2026-10-28",
+      "historical_backfill_allowed": false,
+      "snapshot_id": "US:2026-10-28",
+      "captured_at": "2026-10-29 07:23:36"
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
@@ -1681,8 +1689,8 @@
           "reference",
           "research"
         ],
-        "files": 8,
-        "bytes": 198162,
+        "files": 11,
+        "bytes": 143448,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -1737,7 +1745,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 48/60 日、錯誤事件 1114 筆、成熟學習 139712 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "summary": "已讀取影子證據：向前驗證 48/60 日、錯誤事件 1125 筆、成熟學習 141780 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -1749,12 +1757,12 @@
         },
         "validation_days": 48,
         "target_days": 60,
-        "eligible_samples": 2605,
-        "independent_error_events": 1114,
+        "eligible_samples": 2633,
+        "independent_error_events": 1125,
         "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 139712,
-        "active_shadow_trust_streams": 11,
+        "matured_learning_rows": 141780,
+        "active_shadow_trust_streams": 12,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
         "automatic_shadow_rollback_after_failures": 2,
@@ -2024,7 +2032,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.29,
+    "average_reduction_pct": 36.33,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
