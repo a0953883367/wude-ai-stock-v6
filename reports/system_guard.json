@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-11-01T01:15:18+08:00",
+  "checked_at": "2026-11-01T02:40:02+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-11-01 00:24:42",
-  "report_age_minutes": 50.6,
+  "report_age_minutes": 135.3,
   "counts": {
-    "ok": 25,
-    "info": 13,
+    "ok": 27,
+    "info": 11,
     "warning": 1,
     "critical": 0
   },
@@ -42,7 +42,7 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-10-30 已正確入帳，報表距今 0.8 小時",
+      "detail": "週末休市；最近完成交易日 2026-10-30 已正確入帳，報表距今 2.3 小時",
       "action": ""
     },
     {
@@ -266,42 +266,42 @@
     {
       "code": "live_backend",
       "title": "Railway 即時後端",
-      "level": "warning",
-      "label": "注意",
-      "detail": "Railway 健康網址連續 2 次無法連線：ReadTimeout: HTTPSConnectionPool(host='wude-ai-stock-v6-production.up.railway.app', port=443): Read timed out. (read timeout=10.0)",
-      "action": "檢查 Railway 服務、部署紀錄與公開網域；正式收盤報表仍由 GitHub Actions 分開判斷",
-      "consecutive_failures": 2
+      "level": "ok",
+      "label": "正常",
+      "detail": "wude-live-api 正常回應；與 App 畫面及手機授權分開判斷",
+      "action": "",
+      "consecutive_failures": 0
     },
     {
       "code": "stream_tw",
       "title": "台股即時串流",
       "level": "info",
       "label": "資訊",
-      "detail": "因 Railway 無法連線，本次不能判定串流；不誤標成個別行情來源故障",
+      "detail": "市場未開盤，串流正在等待；不視為更新或故障",
       "action": ""
     },
     {
       "code": "stream_us",
       "title": "美股即時串流",
-      "level": "info",
-      "label": "資訊",
-      "detail": "因 Railway 無法連線，本次不能判定串流；不誤標成個別行情來源故障",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "串流狀態：blocked；免費延遲行情模式：全市場即時大單串流未提供；歷史行情仍可用",
+      "action": "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
     },
     {
       "code": "telegram_delivery",
       "title": "Telegram 即時通知",
       "level": "info",
       "label": "資訊",
-      "detail": "因 Railway 無法連線，本次不能判定 Telegram；不影響正式報表保存",
-      "action": ""
+      "detail": "最近一次送達為 2026-09-01T10:44:58+00:00，已超過 7 天；期間若無警報，不代表傳送失敗",
+      "action": "下次出現即時訊號時核對送達；舊成功紀錄不再顯示為目前正常"
     },
     {
       "code": "device_authorization",
       "title": "手機唯讀授權",
-      "level": "info",
-      "label": "資訊",
-      "detail": "因 Railway 無法連線，本次不能判定授權服務；不代表正式排名失敗",
+      "level": "ok",
+      "label": "正常",
+      "detail": "手機驗證服務已設定；單支手機權杖失效只影響該裝置",
       "action": ""
     },
     {
@@ -330,7 +330,7 @@
     }
   ],
   "action_required": [
-    "檢查 Railway 服務、部署紀錄與公開網域；正式收盤報表仍由 GitHub Actions 分開判斷"
+    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
   ],
   "safety": {
     "changes_rankings": false,
