@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-10-31T15:14:04+08:00",
+  "checked_at": "2026-10-31T17:57:55+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-10-31 15:11:54",
-  "report_age_minutes": 2.2,
+  "report_updated_at": "2026-10-31 17:56:09",
+  "report_age_minutes": 1.8,
   "counts": {
     "ok": 26,
-    "info": 12,
-    "warning": 1,
+    "info": 11,
+    "warning": 2,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 472.2 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 472.3 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -162,7 +162,7 @@
       "title": "Tiingo 免費版覆蓋測試",
       "level": "info",
       "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "detail": "免費版分批收集中，目前已嘗試 94 檔；尚未切換半套快取",
       "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
@@ -221,7 +221,7 @@
       "detail": "台美股共 75 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 75,
-      "ledger_updated_at": "2026-10-31 15:11:54"
+      "ledger_updated_at": "2026-10-31 17:56:09"
     },
     {
       "code": "unified_evidence",
@@ -323,14 +323,15 @@
     {
       "code": "stock_agent_recovery",
       "title": "股票三報產報檢查",
-      "level": "info",
-      "label": "資訊",
-      "detail": "最近執行 2026-10-31T15:10:15.662491+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "level": "warning",
+      "label": "注意",
+      "detail": "最近執行 2026-10-31T15:10:23.059819+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
-    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
+    "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
+    "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
   ],
   "safety": {
     "changes_rankings": false,
