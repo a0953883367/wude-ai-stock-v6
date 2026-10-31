@@ -1,44 +1,44 @@
 {
   "schema": "wude.weekly_shadow_coach.v1",
-  "generated_at": "2026-10-24T21:21:25.081242+00:00",
+  "generated_at": "2026-10-31T22:03:54.805123+00:00",
   "status": "ok",
   "mode": "openai",
   "source": {
-    "report_updated_at": "2026-10-25 03:37:41",
-    "trading_days_collected": 45,
+    "report_updated_at": "2026-11-01 02:41:49",
+    "trading_days_collected": 50,
     "promotion_review_days": 60,
-    "raw_error_rows": 5182,
-    "independent_events": 1106,
-    "duplicate_rows_collapsed": 4076,
+    "raw_error_rows": 5906,
+    "independent_events": 1192,
+    "duplicate_rows_collapsed": 4714,
     "cause_counts": {
-      "event_gap_risk": 59,
-      "missed_strength_rotation": 76,
-      "etf_model_separation": 102,
-      "direction_calibration": 841,
-      "intraday_reversal": 28
+      "event_gap_risk": 70,
+      "missed_strength_rotation": 94,
+      "etf_model_separation": 119,
+      "direction_calibration": 903,
+      "intraday_reversal": 6
     },
     "signal_health": {
       "TW_STOCK": {
         "label": "台股個股",
-        "direction_samples": 1979,
-        "trade_signal_samples": 34,
+        "direction_samples": 2216,
+        "trade_signal_samples": 40,
         "status": "collecting_trade_outcomes",
-        "detail": "已有 34 筆完整交易訊號結果，繼續前向驗證。",
+        "detail": "已有 40 筆完整交易訊號結果，繼續前向驗證。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
           "diagnosis": "healthy_triggered",
-          "qualified_setups": 48,
-          "evaluated_setups": 48,
-          "triggered_setups": 34,
+          "qualified_setups": 55,
+          "evaluated_setups": 55,
+          "triggered_setups": 40,
           "pending_setups": 0,
-          "untouched_entry_zones": 14,
-          "source_ineligible_rows": 4308,
-          "guard_blocked_rows": 1902,
+          "untouched_entry_zones": 15,
+          "source_ineligible_rows": 4936,
+          "guard_blocked_rows": 2242,
           "data_contract_errors": 0,
           "evaluation_status_counts": {
-            "entry_zone_not_touched": 14,
-            "completed_session_zone_touch": 34
+            "entry_zone_not_touched": 15,
+            "completed_session_zone_touch": 40
           },
           "affects_formal_v6": false,
           "places_orders": false
@@ -69,25 +69,25 @@
       },
       "US_STOCK": {
         "label": "美股個股",
-        "direction_samples": 307,
-        "trade_signal_samples": 5,
+        "direction_samples": 358,
+        "trade_signal_samples": 8,
         "status": "collecting_trade_outcomes",
-        "detail": "已有 5 筆完整交易訊號結果，繼續前向驗證。",
+        "detail": "已有 8 筆完整交易訊號結果，繼續前向驗證。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
           "diagnosis": "healthy_triggered",
-          "qualified_setups": 12,
-          "evaluated_setups": 11,
-          "triggered_setups": 5,
+          "qualified_setups": 16,
+          "evaluated_setups": 15,
+          "triggered_setups": 8,
           "pending_setups": 1,
-          "untouched_entry_zones": 6,
-          "source_ineligible_rows": 548,
+          "untouched_entry_zones": 7,
+          "source_ineligible_rows": 644,
           "guard_blocked_rows": 0,
           "data_contract_errors": 0,
           "evaluation_status_counts": {
-            "entry_zone_not_touched": 6,
-            "completed_session_zone_touch": 5
+            "entry_zone_not_touched": 7,
+            "completed_session_zone_touch": 8
           },
           "affects_formal_v6": false,
           "places_orders": false
@@ -95,10 +95,10 @@
       },
       "US_ETF": {
         "label": "美國ETF",
-        "direction_samples": 204,
+        "direction_samples": 247,
         "trade_signal_samples": 0,
         "status": "no_qualified_setup",
-        "detail": "已有 204 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
+        "detail": "已有 247 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
@@ -108,7 +108,7 @@
           "triggered_setups": 0,
           "pending_setups": 0,
           "untouched_entry_zones": 0,
-          "source_ineligible_rows": 560,
+          "source_ineligible_rows": 660,
           "guard_blocked_rows": 25,
           "data_contract_errors": 0,
           "evaluation_status_counts": {},
@@ -411,32 +411,32 @@
       }
     ],
     "backup": {
-      "created_at": "2026-10-25 03:37:41",
+      "created_at": "2026-11-01 02:41:49",
       "verified": true,
       "table_counts": {
         "metadata": 1,
-        "market_sessions": 90,
-        "prices": 13866,
-        "predictions": 119268,
-        "model_versions": 170,
-        "portfolios": 315,
-        "portfolio_positions": 1561,
-        "source_usage": 84,
+        "market_sessions": 99,
+        "prices": 15574,
+        "predictions": 136348,
+        "model_versions": 224,
+        "portfolios": 369,
+        "portfolio_positions": 1813,
+        "source_usage": 94,
         "model_control": 12,
-        "model_control_events": 168,
-        "unit_learning_predictions": 136752,
+        "model_control_events": 222,
+        "unit_learning_predictions": 155540,
         "unit_trust_control": 44,
-        "unit_trust_events": 1408,
-        "forward_outcome_cohorts": 66,
-        "forward_outcome_candidates": 10192,
-        "forward_outcome_results": 35296
+        "unit_trust_events": 1606,
+        "forward_outcome_cohorts": 75,
+        "forward_outcome_candidates": 11593,
+        "forward_outcome_results": 42286
       }
     },
     "cloud_archive": {
       "verified": true,
-      "total": 176,
+      "total": 198,
       "uploaded": 1,
-      "verified_existing": 52,
+      "verified_existing": 54,
       "errors": 0
     },
     "tw_signal_confirmation_shadow": {
@@ -461,66 +461,69 @@
     }
   },
   "coach": {
-    "headline": "本週重點：方向校準是主因，事件跳空與漏抓輪動次之；僅做影子驗證，不改正式系統。",
+    "headline": "本週重點：方向錯誤占主因，事件跳空與強勢輪動需分流驗證。",
     "root_causes": [
       {
-        "cause": "方向校準偏差",
-        "evidence_events": 841,
-        "explanation": "占成熟錯誤最多，但目前缺少市場、週期與預測信心分層，尚不能判定單一修正方向。",
-        "shadow_experiment": "前向分層記錄方向信心、持有週期與結果，和現行基準比較校準誤差。",
-        "risk": "樣本混合可能掩蓋市場差異；不得據此修改正式分數或權重。"
+        "cause": "方向判定與持有期表現不一致",
+        "evidence_events": 903,
+        "explanation": "方向類事件占1192件中的903件，需按市場、資產、期限及強度分層確認。",
+        "shadow_experiment": "保留原方向，僅影子比較不同strength區間與1/2/3/5日命中率及最差報酬。",
+        "risk": "strength不是機率；分層樣本不足時不採納結論。"
       },
       {
-        "cause": "ETF模型分離不足",
-        "evidence_events": 102,
-        "explanation": "ETF錯誤量居次；但台灣ETF僅1筆方向樣本，美國ETF無合格設定，證據仍不足。",
-        "shadow_experiment": "分市場、ETF類型與波動環境記錄影子方向表現，不放寬買進門檻。",
-        "risk": "交易訊號樣本不足，可能把無設定誤判為模型失效。"
+        "cause": "漏抓強勢與族群輪動",
+        "evidence_events": 94,
+        "explanation": "多起看跌後轉強，可能與量能、突破及族群共振變化未被捕捉有關。",
+        "shadow_experiment": "只用預測當時資料，前向標記量能、突破、族群廣度與後續反轉率。",
+        "risk": "不可事後把已知贏家回填排名，且可能產生過早反轉訊號。"
       },
       {
-        "cause": "漏抓強勢輪動與事件跳空",
-        "evidence_events": 135,
-        "explanation": "漏抓輪動76、事件風險59；成熟案例顯示轉強與異常跳空不宜混作一般方向錯誤。",
-        "shadow_experiment": "分開測試族群廣度、突破量能及盤前事件異常的棄權或降信心效果。",
-        "risk": "事件資料可能不完整，且不得使用事後新聞或把贏家回填排名。"
+        "cause": "突發事件與隔夜跳空",
+        "evidence_events": 70,
+        "explanation": "事件型錯誤出現極端幅度，普通量價方向模型不宜直接承擔。",
+        "shadow_experiment": "建立事件與盤前異常影子標記，前向比較標記與未標記事件的尾端損益。",
+        "risk": "新聞資料可能延遲、誤報，降信心可能錯失正常行情。"
       }
     ],
     "priority_actions": [
-      "優先建立方向錯誤的市場、週期、信心分層統計，確認841筆是否集中於特定條件。",
-      "事件風險與強勢輪動分開驗證，僅使用預測當時可取得的資料。",
-      "維持ETF正式門檻；持續收集設定與結果，不因零交易訊號而放寬條件。"
+      "先完成ALL方向強度與期限分層審計，不改正式方向或權重。",
+      "在TW_STOCK影子追蹤量能、突破與族群廣度反轉特徵。",
+      "在US_STOCK建立事件與盤前異常標記，檢查極端跳空風險。"
     ],
     "data_gaps": [
-      "缺少方向校準按市場、預測信心與持有週期的交叉結果。",
-      "事件案例缺少可核驗的盤前新聞、跳空幅度與資料可得時間戳。",
-      "TW盤中確認影子目前追蹤0筆，無法評估盤中反轉或收盤確認價值。"
+      "TW_ETF僅1筆方向結果；US_ETF無完整交易訊號，ETF分離結論仍不足。",
+      "TW_STOCK已有40筆、US_STOCK已有8筆完整交易結果，仍需持續前向累積。",
+      "盤中轉收盤確認影子目前0筆，尚無法評估intraday_reversal。"
     ],
     "confidence_notes": [
-      "45個交易日、1106個獨立事件足以觀察方向錯誤量，但不足以直接改正式規則。",
-      "TW_STOCK完整交易訊號34筆、US_STOCK5筆，仍屬前向收集期。",
-      "近期成熟案例中事件跳空與漏抓輪動各有重複模式，但尚未完成控制組比較。"
+      "本報告僅使用已成熟的1192個獨立事件，重複觀察窗已合併。",
+      "方向類樣本充足；事件與輪動雖有明確案例，特徵效果仍待前向驗證。",
+      "所有結論均為影子實驗，不修改正式V6、排名、權重或下單流程。"
     ],
     "candidate_proposals": [
       {
         "rule_id": "direction_calibration",
         "cohort": "ALL",
-        "hypothesis": "按信心與持有週期分層後，方向錯誤可能集中於特定區間。",
-        "measurement": "以前向新事件比較各分層校準誤差、命中率與最差方向報酬，對照現行基準。",
-        "risk_control": "僅影子標記；達到預設樣本量前不改正式分數、排名或權重。"
+        "hypothesis": "strength可能在不同市場、資產與期限呈現不同方向辨識力，但不應視為機率。",
+        "measurement": "保持原方向，按TW/US與STOCK/ETF，strength 0/50/65/80/100及1/2/3/5交易日比較命中率與最差方向報酬。",
+        "risk_control": "僅前向接入的新預測；不改方向、不計算機率校準誤差，分層樣本不足則標記未定。",
+        "execution_template": "direction_strength_horizon_audit_v1"
       },
       {
         "rule_id": "event_gap_risk",
         "cohort": "US_STOCK",
-        "hypothesis": "盤前可得的事件與異常波動訊號，可能降低跳空造成的方向傷害。",
-        "measurement": "比較影子降信心或棄權與現行基準的極端報酬、錯誤率及覆蓋率。",
-        "risk_control": "只用預測時點資料；限制棄權比例，並保留未觸發訊號作對照。"
+        "hypothesis": "預測時可取得的新聞或盤前異常，可能辨識部分極端事件跳空風險。",
+        "measurement": "以前向事件標記分組，比較1/2/3/5日尾端報酬、跳空幅度與方向失誤率。",
+        "risk_control": "只用預測當時資料；不自動棄權、不回填舊資料，並監測誤標造成的訊號損失。",
+        "execution_template": "unsupported"
       },
       {
         "rule_id": "missed_strength_rotation",
         "cohort": "TW_STOCK",
-        "hypothesis": "突破量能、族群廣度與攻擊量同步時，可能較早識別由弱轉強。",
-        "measurement": "以前向事件記錄三項訊號是否同時出現，評估方向改善、延遲與誤報率。",
-        "risk_control": "只作影子反轉標記，不回填歷史排名、不產生個股買賣指令。"
+        "hypothesis": "預測時的量能、突破與族群廣度，可能提前識別看跌後的強勢反轉。",
+        "measurement": "前向記錄特徵後，比較反轉率、各期限方向報酬及最差報酬，不重排歷史結果。",
+        "risk_control": "維持正式方向；僅影子評估，避免以事後高點或已知贏家定義特徵。",
+        "execution_template": "unsupported"
       }
     ]
   },
@@ -532,18 +535,18 @@
   "api": {
     "called": true,
     "model": "gpt-5.6-luna",
-    "response_id": "resp_0fffb01ed108bd7e016add21491f9887d09eac87ba29d3142e",
+    "response_id": "resp_0de74be3490acdd3016ae665bc4eec87d18a2ce81aeebb7402",
     "usage": {
-      "input_tokens": 4014,
+      "input_tokens": 4211,
       "input_tokens_details": {
-        "cache_write_tokens": 4011,
+        "cache_write_tokens": 4208,
         "cached_tokens": 0
       },
-      "output_tokens": 1273,
+      "output_tokens": 1782,
       "output_tokens_details": {
-        "reasoning_tokens": 293
+        "reasoning_tokens": 765
       },
-      "total_tokens": 5287
+      "total_tokens": 5993
     },
     "attempts": 1,
     "store": false
