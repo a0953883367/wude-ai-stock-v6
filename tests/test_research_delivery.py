@@ -155,3 +155,47 @@ def test_invalid_learning_status_cannot_abort_core_report(reports, invalid):
     assert delivery.publish_delivery_safely(reports) is False
     assert read(reports/delivery.INDEX)['status'] == 'unavailable'
     assert (reports/'all_analysis.json').read_bytes() == before
+
+
+@pytest.mark.parametrize('symbol', ['8046.TW', '4971.TWO'])
+def test_missing_analysis_history_diagnoses_extra_frozen_predictions(reports, caplog, symbol):
+    assert delivery.publish_delivery_safely(reports)
+    analysis = read(reports/'all_analysis.json')
+    analysis['data'] = [r for r in analysis['data'] if r['symbol'] != symbol]
+    analysis['analyzed_count'] = len(analysis['data'])
+    assert analysis['analyzed_count'] == 379
+    save(reports/'all_analysis.json', analysis)
+    before = {p.name: p.read_bytes() for p in reports.iterdir() if p.name != delivery.INDEX}
+    with pytest.raises(ValueError, match='incomplete_or_extra_prediction_census'):
+        delivery.build_delivery(reports)
+    assert not delivery.publish_delivery_safely(reports)
+    assert 'expected=3790 actual=3800 missing=0 extra=10' in caplog.text
+    assert f"extra_symbols=['TW:{symbol}']" in caplog.text
+    assert 'reason=incomplete_or_extra_prediction_census' in caplog.text
+    index = read(reports/delivery.INDEX)
+    assert index['status'] == 'unavailable'
+    assert index['reason'] == 'delivery_integrity_check_failed'
+    assert index['identities'] == index['prediction_files'] == index['judgment_files'] == []
+    assert all((reports/name).read_bytes() == raw for name, raw in before.items())
+
+
+@pytest.mark.parametrize('error', [OSError, ValueError, KeyError, TypeError])
+def test_external_exception_details_are_not_logged(reports, monkeypatch, caplog, error):
+    assert delivery.publish_delivery_safely(reports)
+    def fail(*args):
+        raise error('PRIVATE_SENTINEL /private/path token=example')
+    monkeypatch.setattr(delivery, 'build_delivery', fail)
+    assert not delivery.publish_delivery_safely(reports)
+    assert f'reason={error.__name__}' in caplog.text
+    assert 'PRIVATE_SENTINEL' not in caplog.text
+    assert '/private/path' not in caplog.text
+    assert read(reports/delivery.INDEX)['status'] == 'unavailable'
+
+
+def test_census_log_samples_are_bounded_and_reject_multiline_values():
+    keys = {('TW', f'{i:04}.TW', 'NEXT_1D') for i in range(20)}
+    keys.add(('TW', 'BAD\nPRIVATE_SENTINEL', 'NEXT_1D'))
+    samples = delivery._census_symbols(keys)
+    assert len(samples) == 10
+    assert 'PRIVATE_SENTINEL' not in str(samples)
+    assert samples == sorted(samples)

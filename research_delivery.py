@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from pathlib import Path
 
 from prediction_engine.models import HORIZONS
@@ -13,6 +14,17 @@ MAX_BYTES = 300_000
 JUDGMENT_BYTES = 200_000
 INDEX = 'research_delivery.json'
 VERSION = 'PUBLIC-RESEARCH-DELIVERY-V1'
+
+
+class DeliveryIntegrityError(ValueError):
+    """A fixed internal guard code, safe to include in producer logs."""
+
+
+def _census_symbols(keys):
+    """Bound public-symbol diagnostics; never log forecast or malformed values."""
+    return sorted({f'{market}:{symbol}' for market, symbol, _ in keys
+                   if market in ('TW', 'US') and isinstance(symbol, str)
+                   and re.fullmatch(r'[A-Z0-9^][A-Z0-9.^-]{0,23}', symbol)})[:10]
 
 
 def _bytes(value):
@@ -34,16 +46,16 @@ JUDGMENT_FIELDS = {
 
 def _judgment(value):
     if not isinstance(value, dict) or any(k not in value for k in JUDGMENT_FIELDS):
-        raise ValueError('judgment_missing')
+        raise DeliveryIntegrityError('judgment_missing')
     if (value.get('execution_authorized') is not False or value.get('holdings_assumed') is not False
             or value.get('probability') is not None or value.get('target_price') is not None):
-        raise ValueError('judgment_release_contract')
+        raise DeliveryIntegrityError('judgment_release_contract')
     result = {k: value[k] for k in ('mode', 'evaluated_at', 'source_session_date', 'headline',
                                   'execution_authorized', 'holdings_assumed', 'probability', 'target_price')}
     for section, fields in JUDGMENT_FIELDS.items():
         source = value[section]
         if not isinstance(source, dict):
-            raise ValueError('judgment_section_invalid')
+            raise DeliveryIntegrityError('judgment_section_invalid')
         result[section] = {k: source[k] for k in fields.split() if k in source}
     # Nested objects also have an explicit schema; lists elsewhere contain text.
     result['short']['forecast_basis'] = [
@@ -51,7 +63,7 @@ def _judgment(value):
         for item in value['short'].get('forecast_basis', [])]
     learning_status = value['quarter'].get('learning_status', {})
     if not isinstance(learning_status, dict):
-        raise ValueError('judgment_learning_status_invalid')
+        raise DeliveryIntegrityError('judgment_learning_status_invalid')
     result['quarter']['learning_status'] = {
         k: v for k, v in learning_status.items()
         if k in ('UP_60D', 'UP_63D') and (v is None or isinstance(v, str))}
@@ -60,14 +72,14 @@ def _judgment(value):
             for v in node.values(): check(v)
         elif isinstance(node, list):
             if any(not isinstance(v, str) for v in node):
-                raise ValueError('judgment_nontext_list')
+                raise DeliveryIntegrityError('judgment_nontext_list')
         elif node is not None and type(node) not in (str, bool):
-            raise ValueError('judgment_unexpected_value')
+            raise DeliveryIntegrityError('judgment_unexpected_value')
     basis = result['short'].pop('forecast_basis')
     learning = result['quarter'].pop('learning_status')
     for section in JUDGMENT_FIELDS:
         if any(isinstance(v, dict) for v in result[section].values()):
-            raise ValueError('judgment_unexpected_nested_object')
+            raise DeliveryIntegrityError('judgment_unexpected_nested_object')
     check(result)
     for item in basis: check(item)
     result['short']['forecast_basis'] = basis
@@ -84,12 +96,12 @@ def build_delivery(reports):
     if (not rows or analysis.get('analyzed_count') != len(rows)
             or len(set(identities)) != len(rows)
             or any(m not in ('TW', 'US') or not isinstance(s, str) or not s for m, s in identities)):
-        raise ValueError('analysis_census_invalid')
+        raise DeliveryIntegrityError('analysis_census_invalid')
     meta = analysis.get('research_integration') or {}
     catalog = load_catalog(reports)
     if (meta.get('status') != 'complete_projection' or catalog['issues']
             or catalog['manifest'].get('updated_at') != batch):
-        raise ValueError('prediction_batch_or_integrity')
+        raise DeliveryIntegrityError('prediction_batch_or_integrity')
     expected_hashes = {s['path']: s['sha256'] for s in meta.get('sources', [])}
     files = []; locations = {}
     for source in catalog['sources']:
@@ -97,31 +109,38 @@ def build_delivery(reports):
         obj, raw = _read(reports/name)
         if (len(raw) > MAX_BYTES or _sha(raw) != source['sha256']
                 or expected_hashes.get(name) != _sha(raw) or obj.get('updated_at') != batch):
-            raise ValueError('prediction_hash_batch_or_size')
+            raise DeliveryIntegrityError('prediction_hash_batch_or_size')
         file_id = len(files)
         files.append({'file_id': file_id, 'path': name, 'sha256': _sha(raw), 'bytes': len(raw), 'updated_at': batch})
         if name == 'prediction_engine.json': continue
         for record in obj['predictions']:
             key = (record['market'], record['symbol'], record['horizon_code'])
-            if key in locations: raise ValueError('duplicate_prediction_identity')
+            if key in locations: raise DeliveryIntegrityError('duplicate_prediction_identity')
             locations[key] = (file_id, record)
     wanted = {(m, s, h) for m, s in identities for h in HORIZONS}
-    if set(locations) != wanted:
-        raise ValueError('incomplete_or_extra_prediction_census')
+    actual = set(locations)
+    if actual != wanted:
+        missing, extra = wanted-actual, actual-wanted
+        logging.warning(
+            'Public research prediction census mismatch: expected=%d actual=%d '
+            'missing=%d extra=%d missing_symbols=%s extra_symbols=%s',
+            len(wanted), len(actual), len(missing), len(extra),
+            _census_symbols(missing), _census_symbols(extra))
+        raise DeliveryIntegrityError('incomplete_or_extra_prediction_census')
     projected = []; mapping = []
     for row in rows:
         m, s = row['market'], row['symbol']
         research = row['research']
         horizons = research['horizons']
         if len(horizons) != len(HORIZONS) or {h['horizon_code'] for h in horizons} != set(HORIZONS):
-            raise ValueError('research_horizon_census')
+            raise DeliveryIntegrityError('research_horizon_census')
         refs = {}
         for horizon in horizons:
             code = horizon['horizon_code']; file_id, record = locations[m, s, code]
             if (horizon.get('status') != 'frozen_research' or any(
                     horizon.get(k) != record.get(k) for k in
                     ('session_date', 'model_version', 'created_at', 'expected_return_pct'))):
-                raise ValueError('research_prediction_mismatch')
+                raise DeliveryIntegrityError('research_prediction_mismatch')
             refs[code] = file_id
         projected.append({'market': m, 'symbol': s, 'name': row.get('name'),
                           'research': {'judgment': _judgment(research.get('judgment'))}})
@@ -137,7 +156,7 @@ def build_delivery(reports):
         for entry in mapping[sum(p['identity_count'] for p in parts[:-1]):sum(p['identity_count'] for p in parts)]:
             entry['judgment_file'] = name
     for row in projected:
-        if len(encoded([row])) > JUDGMENT_BYTES: raise ValueError('judgment_row_oversize')
+        if len(encoded([row])) > JUDGMENT_BYTES: raise DeliveryIntegrityError('judgment_row_oversize')
         if chunk and len(encoded(chunk+[row])) > JUDGMENT_BYTES:
             flush(); chunk = []
         chunk.append(row)
@@ -157,7 +176,7 @@ def build_delivery(reports):
                  'execution_authorized': False,
                  'scope': 'existing_public_research_not_new_investment_validation'}}
     output[INDEX] = _bytes(index)
-    if len(output[INDEX]) > MAX_BYTES: raise ValueError('index_oversize')
+    if len(output[INDEX]) > MAX_BYTES: raise DeliveryIntegrityError('index_oversize')
     return output
 
 
@@ -176,8 +195,11 @@ def publish_delivery_safely(reports):
             if name != INDEX: _atomic(reports/name, raw)
         _atomic(reports/INDEX, output[INDEX])
         return True
-    except (OSError, ValueError, KeyError, TypeError):
-        logging.warning('Public research delivery incomplete; core analysis unchanged')
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        # Only our fixed guard codes are logged. Parser/I/O exception messages
+        # may contain source values or paths and must not escape into diagnostics.
+        reason = str(exc) if isinstance(exc, DeliveryIntegrityError) else type(exc).__name__
+        logging.warning('Public research delivery incomplete; reason=%s; core analysis unchanged', reason)
         try:
             analysis, _ = _read(reports/'all_analysis.json', 16*1024*1024)
             batch = analysis.get('updated_at')
