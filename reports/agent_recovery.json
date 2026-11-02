@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-03T02:36:35.493953+08:00",
+  "checked_at": "2026-11-03T05:50:39.966099+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -955,7 +955,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-02 19:57:40",
+        "updated_at": "2026-11-03 04:57:36",
         "error": null
       }
     },
@@ -1860,7 +1860,7 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
+      "status": "waiting_primary_or_active_run",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -1878,21 +1878,16 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
-    "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "status": "ready_silent_refresh",
+    "reason": "direction_receipt_missing_inside_forecast_window",
+    "needs_silent_refresh": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-10-30",
-    "latest_official_session_date": "2026-10-30",
-    "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-10-30",
-    "captured_at": "2026-10-31 04:57:52"
+    "latest_official_session_date": "2026-11-02",
+    "historical_backfill_allowed": false
   },
   "capabilities": {
     "actions_read_confirmed": true,
