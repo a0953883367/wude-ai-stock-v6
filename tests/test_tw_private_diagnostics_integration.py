@@ -44,6 +44,14 @@ class Response:
 
 
 def fixtures(monkeypatch):
+    # Calendar, candles and frozen reports all describe NOW. Keep wall time in
+    # that batch so the real rolling-window guard is exercised deterministically.
+    # Monotonic time stays live for the timeout/cancellation tests below.
+    class FixtureDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW.astimezone(tz) if tz is not None else NOW.replace(tzinfo=None)
+    monkeypatch.setattr(f, "datetime", FixtureDateTime)
     history_calls, ca_calls, get_calls = [], [], []
     private_refs = []
     def candles(**kwargs):
