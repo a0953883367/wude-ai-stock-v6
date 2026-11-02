@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-02T15:50:35.017290+08:00",
+  "checked_at": "2026-11-02T20:18:20.793789+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -921,8 +921,8 @@
     "2026-11-02:evening": {
       "period": "evening",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
     }
   },
   "next_actions": [],
@@ -937,7 +937,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-02 09:17:49",
+        "updated_at": "2026-11-02 19:57:40",
         "error": null
       }
     },
@@ -1825,6 +1825,13 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-02:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-11-02T20:18:20.793789+08:00",
+      "report_updated_at": "2026-11-02 19:57:40"
     }
   },
   "permission_probe": {
@@ -1841,11 +1848,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
