@@ -1,28 +1,42 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-11-02T00:40:17.568054+00:00",
-  "status": "ok",
+  "generated_at": "2026-11-03T02:54:20.551720+00:00",
+  "status": "warning",
   "summary": {
     "tracked_total": 380,
     "tracked_stocks": 312,
     "tracked_etfs": 68,
-    "officially_matched": 380,
+    "officially_matched": 379,
     "officially_matched_stocks": 312,
-    "officially_matched_etfs": 68,
-    "unmatched": 0,
-    "event_count": 0,
+    "officially_matched_etfs": 67,
+    "unmatched": 1,
+    "event_count": 1,
     "warning_count": 0,
     "critical_count": 0,
-    "source_failure_count": 0,
+    "source_failure_count": 1,
     "degraded_source_count": 1,
     "degraded_sources": [
       "sec_registry"
     ],
-    "registry_source_failure_count": 0,
+    "registry_source_failure_count": 1,
     "event_source_failure_count": 0,
-    "available_registry_source_count": 7
+    "available_registry_source_count": 6
   },
-  "events": [],
+  "events": [
+    {
+      "type": "TRADING_RESUMED",
+      "label": "恢復交易",
+      "level": "info",
+      "symbol": "LITE",
+      "asset_type": "STOCK",
+      "source": "nasdaq_halts",
+      "source_date": "11/02/2026",
+      "headline": "LITE",
+      "action": "只解除影子暫停標記；下一個有效交易日重新抓取，不回填不存在的成交價",
+      "event_id": "7a5b6aa5ccc26b550ca1",
+      "requires_manual_approval": true
+    }
+  ],
   "source_health": {
     "twse_registry": {
       "ok": true,
@@ -43,7 +57,7 @@
     "sec_registry": {
       "ok": false,
       "record_count": 0,
-      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 55.6 days exceeds 7"
+      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 56.6 days exceeds 7"
     },
     "twse_securities": {
       "ok": true,
@@ -54,12 +68,9 @@
       "live_ok": true
     },
     "tpex_securities": {
-      "ok": true,
-      "record_count": 13360,
-      "error": "",
-      "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
-      "mode": "live",
-      "live_ok": true
+      "ok": false,
+      "record_count": 0,
+      "error": "ChunkedEncodingError: Response ended prematurely"
     },
     "tpex_emerging_securities": {
       "ok": true,
@@ -81,7 +92,7 @@
     },
     "us_symbol_directory": {
       "ok": true,
-      "record_count": 13249,
+      "record_count": 13242,
       "error": "",
       "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
       "mode": "live",
@@ -89,7 +100,7 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 4,
+      "record_count": 92,
       "event_count": 0,
       "error": ""
     },
@@ -101,8 +112,8 @@
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 14,
-      "event_count": 14,
+      "record_count": 71,
+      "event_count": 71,
       "error": ""
     }
   },
