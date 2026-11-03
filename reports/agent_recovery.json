@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-03T09:41:49.088907+08:00",
+  "checked_at": "2026-11-03T11:27:47.729431+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -955,7 +955,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-03 04:57:36",
+        "updated_at": "2026-11-03 11:10:45",
         "error": null
       }
     },
@@ -1865,8 +1865,10 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "current data requires silent refresh; no delivery receipt is created"
+      "status": "verified_fresh",
+      "reason": "current data requires silent refresh; no delivery receipt is created",
+      "verified_at": "2026-11-03T11:27:47.729431+08:00",
+      "report_updated_at": "2026-11-03 11:10:45"
     }
   },
   "permission_probe": {
@@ -1883,19 +1885,18 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
-    "status": "ready_silent_refresh",
-    "reason": "direction_receipt_missing_inside_forecast_window",
-    "needs_silent_refresh": true,
-    "verified_recovered": false,
-    "last_source_session_date": "2026-10-30",
+    "status": "verified_current",
+    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "needs_silent_refresh": false,
+    "verified_recovered": true,
+    "last_source_session_date": "2026-11-02",
     "latest_official_session_date": "2026-11-02",
-    "historical_backfill_allowed": false
+    "historical_backfill_allowed": false,
+    "snapshot_id": "US:2026-11-02",
+    "captured_at": "2026-11-03 09:43:28"
   },
   "capabilities": {
     "actions_read_confirmed": true,
