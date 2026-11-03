@@ -8,7 +8,7 @@
     "experiments": {
       "566058fc204d7ae8e8bf3f2ff7a483a2a007b6a2ad5ed23436e07fd5b2b7d4f5": {
         "status": "collecting_with_exclusions",
-        "registered_rows": 1216,
+        "registered_rows": 1220,
         "completed_rows": 286,
         "execution_verified": true,
         "outcome_verified": true,
@@ -26,7 +26,7 @@
           "report_sha256": "42601eada3e3d45a9d38b026bebf1bcc10603b2f97cbf9b704803d0eddc2b3ff",
           "proposal_sha256": "938950ff9a997b5d1b8edd560b8b5efd44143a4717bb0f143a3d70583cceab0f"
         },
-        "registered_forecasts": 304,
+        "registered_forecasts": 305,
         "count_unit": "forecast_horizon_rows_not_independent_events"
       },
       "b2809f1a5dae64d6f182314def5e0ce1ecf3627367317be820b687d33e8ed695": {
@@ -87,13 +87,13 @@
       },
       "264ac6ca9e67249e57f6341b5279018090b1ccbc4bda7a948ac28d96415b8cae": {
         "status": "collecting_with_exclusions",
-        "registered_rows": 148,
+        "registered_rows": 152,
         "completed_rows": 0,
         "execution_verified": true,
         "outcome_verified": false,
         "template": "direction_strength_horizon_audit_v1",
         "definition": null,
-        "registered_forecasts": 37,
+        "registered_forecasts": 38,
         "count_unit": "forecast_horizon_rows_not_independent_events"
       },
       "966dd9424b2915617c72b45b48ae9ce77aa0836441ef1ee68365d2be30aeae30": {
@@ -121,7 +121,7 @@
     }
   },
   "schema_version": 2,
-  "updated_at": "2026-11-03 04:57:36",
+  "updated_at": "2026-11-03 09:43:28",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -132,15 +132,15 @@
     "remaining_to_promotion_review": 9
   },
   "error_learning": {
-    "raw_error_rows": 6057,
-    "independent_events": 1250,
+    "raw_error_rows": 6097,
+    "independent_events": 1252,
     "unique_symbols": 290,
-    "duplicate_rows_collapsed": 4807,
+    "duplicate_rows_collapsed": 4845,
     "cause_counts": {
-      "event_gap_risk": 76,
+      "event_gap_risk": 75,
       "missed_strength_rotation": 95,
-      "etf_model_separation": 119,
-      "direction_calibration": 954,
+      "etf_model_separation": 120,
+      "direction_calibration": 956,
       "intraday_reversal": 6
     },
     "recent_events": [
@@ -332,6 +332,31 @@
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
         "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
+        "classification_status": "自動初判、等待前向驗證",
+        "affects_formal_model": false
+      },
+      {
+        "event_id": "US:LITE:2026-10-29:2026-11-02",
+        "market": "US",
+        "symbol": "LITE",
+        "name": "Lumentum",
+        "cohort": "US_STOCK",
+        "source_start_date": "2026-10-29",
+        "evaluated_end_date": "2026-11-02",
+        "row_count": 2,
+        "horizons": [
+          1,
+          2
+        ],
+        "predicted_directions": [
+          "UP"
+        ],
+        "worst_directional_return_pct": -25.6113,
+        "largest_actual_move_pct": 25.6113,
+        "primary_cause": "event_gap_risk",
+        "cause_label": "突發事件／跳空風險",
+        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
+        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。",
         "classification_status": "自動初判、等待前向驗證",
         "affects_formal_model": false
       },
@@ -656,34 +681,6 @@
         ],
         "worst_directional_return_pct": -20.6081,
         "largest_actual_move_pct": 20.6081,
-        "primary_cause": "missed_strength_rotation",
-        "cause_label": "漏抓強勢／族群輪動",
-        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
-        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。",
-        "classification_status": "自動初判、等待前向驗證",
-        "affects_formal_model": false
-      },
-      {
-        "event_id": "TW:2368.TW:2026-09-15:2026-09-23",
-        "market": "TW",
-        "symbol": "2368.TW",
-        "name": "金像電",
-        "cohort": "TW_STOCK",
-        "source_start_date": "2026-09-15",
-        "evaluated_end_date": "2026-09-23",
-        "row_count": 8,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "DOWN",
-          "UP"
-        ],
-        "worst_directional_return_pct": -20.0,
-        "largest_actual_move_pct": 20.0,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
@@ -23470,6 +23467,326 @@
         "candidate": "DOWN",
         "strength": 79.0,
         "cohort": "TW_STOCK"
+      },
+      "US:2026-11-02|SPCX": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "UP",
+        "strength": 65.5,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|TSLA": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "UP",
+        "strength": 68.3,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|MPWR": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "ABSTAIN",
+        "strength": 61.5,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|TT": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "UP",
+        "strength": 66.3,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|EMR": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|ROK": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "ABSTAIN",
+        "strength": 64.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|LSCC": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "UP",
+        "strength": 66.5,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|TEM": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|ISRG": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|ATS": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "UP",
+        "strength": 66.9,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|NVDA": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|AVGO": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|TXN": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|PWR": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|APTV": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "ABSTAIN",
+        "strength": 63.4,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|MGA": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "ABSTAIN",
+        "strength": 64.5,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|ADI": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|GOOGL": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|FN": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|NOW": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_STOCK"
+      },
+      "US:2026-11-02|ITA": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "UP",
+        "candidate": "UP",
+        "strength": 65.2,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|VOO": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|PPA": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|SHLD": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|HACK": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|XAR": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|ARKQ": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|BOTZ": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|NLR": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|ROBT": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|ROBO": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|DTCR": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|WCLD": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|DRIV": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|KARS": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|LIT": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|IDRV": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|DRAM": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "ABSTAIN",
+        "candidate": "ABSTAIN",
+        "strength": 0.0,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|QQQM": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "DOWN",
+        "candidate": "ABSTAIN",
+        "strength": 64.2,
+        "cohort": "US_ETF"
+      },
+      "US:2026-11-02|QQQ": {
+        "registered_at": "2026-11-03 09:43:28",
+        "snapshot_hash": "e60e05817f352b55e921310ab27917da24f326cca83305c7d717ac86c9a66f9d",
+        "baseline": "DOWN",
+        "candidate": "ABSTAIN",
+        "strength": 64.9,
+        "cohort": "US_ETF"
       }
     },
     "excluded_snapshot_ids": [
@@ -23604,13 +23921,13 @@
         "newly_abstained_rows": 0
       },
       "US_STOCK": {
-        "completed_rows": 300,
-        "completed_sessions": 15,
+        "completed_rows": 320,
+        "completed_sessions": 16,
         "baseline": {
           "samples": 124,
-          "eligible_samples": 300,
-          "abstain_samples": 176,
-          "coverage_pct": 41.3,
+          "eligible_samples": 320,
+          "abstain_samples": 196,
+          "coverage_pct": 38.8,
           "win_rate_pct": 44.4,
           "avg_return_pct": -0.41,
           "worst_return_pct": -12.66,
@@ -23620,9 +23937,9 @@
         },
         "candidate": {
           "samples": 59,
-          "eligible_samples": 300,
-          "abstain_samples": 241,
-          "coverage_pct": 19.7,
+          "eligible_samples": 320,
+          "abstain_samples": 261,
+          "coverage_pct": 18.4,
           "win_rate_pct": 45.8,
           "avg_return_pct": -0.18,
           "worst_return_pct": -7.91,
@@ -23633,13 +23950,13 @@
         "newly_abstained_rows": 65
       },
       "US_ETF": {
-        "completed_rows": 300,
-        "completed_sessions": 15,
+        "completed_rows": 320,
+        "completed_sessions": 16,
         "baseline": {
           "samples": 98,
-          "eligible_samples": 300,
-          "abstain_samples": 202,
-          "coverage_pct": 32.7,
+          "eligible_samples": 320,
+          "abstain_samples": 222,
+          "coverage_pct": 30.6,
           "win_rate_pct": 44.9,
           "avg_return_pct": -0.39,
           "worst_return_pct": -5.57,
@@ -23649,9 +23966,9 @@
         },
         "candidate": {
           "samples": 51,
-          "eligible_samples": 300,
-          "abstain_samples": 249,
-          "coverage_pct": 17.0,
+          "eligible_samples": 320,
+          "abstain_samples": 269,
+          "coverage_pct": 15.9,
           "win_rate_pct": 37.3,
           "avg_return_pct": -0.41,
           "worst_return_pct": -3.55,
@@ -23662,7 +23979,7 @@
         "newly_abstained_rows": 47
       }
     },
-    "registered_rows": 2846,
+    "registered_rows": 2886,
     "verdict": "尚無晉升或改善結論；維持20／60日門檻，結果只供人工審查。",
     "exclusion_history": []
   },
@@ -23672,8 +23989,8 @@
       "direction_calibration": {
         "status": "collecting",
         "source": "model_learning.json:direction_calibration_validation",
-        "registered_rows": 2846,
-        "completed_rows": 2647,
+        "registered_rows": 2886,
+        "completed_rows": 2687,
         "paired_rule_registered": true,
         "limitation": "列數不是獨立事件數；目前無改善或晉升結論。"
       },
@@ -23692,12 +24009,12 @@
         "source": "missed_strength_validation.json",
         "baseline_valid_sessions": {
           "TW": 45,
-          "US": 39
+          "US": 40
         },
         "paired_rule_registered": false,
         "related_experiment": {
           "source": "market_rotation_shadow.json",
-          "updated_at": "2026-11-03 04:57:36",
+          "updated_at": "2026-11-03 09:43:28",
           "status": "reported",
           "same_candidate": false,
           "scope": "正式V6 TOP10 對照 85%原分數＋15%同市場族群輪動排序；不是看跌反轉規則。",
@@ -23883,7 +24200,7 @@
         "triggered_setups": 8,
         "pending_setups": 1,
         "untouched_entry_zones": 7,
-        "source_ineligible_rows": 644,
+        "source_ineligible_rows": 664,
         "guard_blocked_rows": 0,
         "data_contract_errors": 0,
         "evaluation_status_counts": {
@@ -23909,8 +24226,8 @@
         "triggered_setups": 0,
         "pending_setups": 0,
         "untouched_entry_zones": 0,
-        "source_ineligible_rows": 660,
-        "guard_blocked_rows": 25,
+        "source_ineligible_rows": 680,
+        "guard_blocked_rows": 27,
         "data_contract_errors": 0,
         "evaluation_status_counts": {},
         "affects_formal_v6": false,
@@ -23945,7 +24262,7 @@
       "candidate_id": "shadow:direction_calibration:v1",
       "name": "方向門檻校準影子候選",
       "cause": "direction_calibration",
-      "evidence_event_count": 954,
+      "evidence_event_count": 956,
       "purpose": "在固定資料上比較共識門檻，不回頭改寫正式V6預測。",
       "required_evidence": "相同市場、盤勢與期間的獨立前向事件",
       "stage": "preliminary_review_only",
@@ -23958,7 +24275,7 @@
       "candidate_id": "shadow:etf_model_separation:v1",
       "name": "ETF專屬影子候選",
       "cause": "etf_model_separation",
-      "evidence_event_count": 119,
+      "evidence_event_count": 120,
       "purpose": "台灣ETF與美國ETF分開驗證，不再以個股規則解讀ETF。",
       "required_evidence": "ETF類型、成分／槓桿結構及分市場前向結果",
       "stage": "preliminary_review_only",
@@ -23984,7 +24301,7 @@
       "candidate_id": "shadow:event_gap_risk:v1",
       "name": "事件風險防護影子候選",
       "cause": "event_gap_risk",
-      "evidence_event_count": 76,
+      "evidence_event_count": 75,
       "purpose": "遇到預測當時已存在的重大新聞或盤前異常跳空時，降低方向信心或棄權。",
       "required_evidence": "具時間戳的事前新聞、公告與盤前異常資料",
       "stage": "preliminary_review_only",
@@ -24214,9 +24531,9 @@
               "samples": 358,
               "detail": {
                 "samples": 358,
-                "eligible_samples": 798,
-                "abstain_samples": 440,
-                "coverage_pct": 44.9,
+                "eligible_samples": 818,
+                "abstain_samples": 460,
+                "coverage_pct": 43.8,
                 "win_rate_pct": 50.0,
                 "avg_return_pct": 0.28,
                 "worst_return_pct": -13.25,
@@ -24270,9 +24587,9 @@
               "samples": 247,
               "detail": {
                 "samples": 247,
-                "eligible_samples": 785,
-                "abstain_samples": 538,
-                "coverage_pct": 31.5,
+                "eligible_samples": 805,
+                "abstain_samples": 558,
+                "coverage_pct": 30.7,
                 "win_rate_pct": 45.3,
                 "avg_return_pct": -0.09,
                 "worst_return_pct": -5.75,
@@ -24359,9 +24676,9 @@
                 },
                 "US_STOCK": {
                   "samples": 478,
-                  "eligible_samples": 798,
-                  "abstain_samples": 320,
-                  "coverage_pct": 59.9,
+                  "eligible_samples": 818,
+                  "abstain_samples": 340,
+                  "coverage_pct": 58.4,
                   "win_rate_pct": 49.0,
                   "avg_return_pct": -0.03,
                   "worst_return_pct": -26.96,
@@ -24371,9 +24688,9 @@
                 },
                 "US_ETF": {
                   "samples": 345,
-                  "eligible_samples": 785,
-                  "abstain_samples": 440,
-                  "coverage_pct": 43.9,
+                  "eligible_samples": 805,
+                  "abstain_samples": 460,
+                  "coverage_pct": 42.9,
                   "win_rate_pct": 43.5,
                   "avg_return_pct": -0.21,
                   "worst_return_pct": -6.79,
@@ -24433,7 +24750,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 51,
-              "samples": 3524,
+              "samples": 3539,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 2819,
@@ -24460,24 +24777,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 400,
-                  "eligible_samples": 798,
-                  "abstain_samples": 398,
-                  "coverage_pct": 50.1,
-                  "win_rate_pct": 49.5,
-                  "avg_return_pct": 0.08,
+                  "samples": 403,
+                  "eligible_samples": 818,
+                  "abstain_samples": 415,
+                  "coverage_pct": 49.3,
+                  "win_rate_pct": 49.9,
+                  "avg_return_pct": 0.1,
                   "worst_return_pct": -13.25,
                   "lowest_actual_return_pct": -13.25,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 305,
-                  "eligible_samples": 785,
-                  "abstain_samples": 480,
-                  "coverage_pct": 38.9,
-                  "win_rate_pct": 43.0,
-                  "avg_return_pct": -0.22,
+                  "samples": 317,
+                  "eligible_samples": 805,
+                  "abstain_samples": 488,
+                  "coverage_pct": 39.4,
+                  "win_rate_pct": 45.1,
+                  "avg_return_pct": -0.12,
                   "worst_return_pct": -6.15,
                   "lowest_actual_return_pct": -6.15,
                   "highest_actual_return_pct": 6.49,
@@ -24563,9 +24880,9 @@
                 },
                 "US_STOCK": {
                   "samples": 340,
-                  "eligible_samples": 798,
-                  "abstain_samples": 458,
-                  "coverage_pct": 42.6,
+                  "eligible_samples": 818,
+                  "abstain_samples": 478,
+                  "coverage_pct": 41.6,
                   "win_rate_pct": 47.9,
                   "avg_return_pct": 0.09,
                   "worst_return_pct": -26.96,
@@ -24575,9 +24892,9 @@
                 },
                 "US_ETF": {
                   "samples": 278,
-                  "eligible_samples": 785,
-                  "abstain_samples": 507,
-                  "coverage_pct": 35.4,
+                  "eligible_samples": 805,
+                  "abstain_samples": 527,
+                  "coverage_pct": 34.5,
                   "win_rate_pct": 45.3,
                   "avg_return_pct": -0.18,
                   "worst_return_pct": -7.08,
@@ -24665,9 +24982,9 @@
                 },
                 "US_STOCK": {
                   "samples": 331,
-                  "eligible_samples": 798,
-                  "abstain_samples": 467,
-                  "coverage_pct": 41.5,
+                  "eligible_samples": 818,
+                  "abstain_samples": 487,
+                  "coverage_pct": 40.5,
                   "win_rate_pct": 50.2,
                   "avg_return_pct": 0.17,
                   "worst_return_pct": -26.96,
@@ -24677,9 +24994,9 @@
                 },
                 "US_ETF": {
                   "samples": 254,
-                  "eligible_samples": 785,
-                  "abstain_samples": 531,
-                  "coverage_pct": 32.4,
+                  "eligible_samples": 805,
+                  "abstain_samples": 551,
+                  "coverage_pct": 31.6,
                   "win_rate_pct": 45.7,
                   "avg_return_pct": -0.15,
                   "worst_return_pct": -6.79,
@@ -24767,9 +25084,9 @@
                 },
                 "US_STOCK": {
                   "samples": 451,
-                  "eligible_samples": 798,
-                  "abstain_samples": 347,
-                  "coverage_pct": 56.5,
+                  "eligible_samples": 818,
+                  "abstain_samples": 367,
+                  "coverage_pct": 55.1,
                   "win_rate_pct": 49.7,
                   "avg_return_pct": 0.03,
                   "worst_return_pct": -13.25,
@@ -24779,9 +25096,9 @@
                 },
                 "US_ETF": {
                   "samples": 407,
-                  "eligible_samples": 785,
-                  "abstain_samples": 378,
-                  "coverage_pct": 51.8,
+                  "eligible_samples": 805,
+                  "abstain_samples": 398,
+                  "coverage_pct": 50.6,
                   "win_rate_pct": 44.7,
                   "avg_return_pct": -0.13,
                   "worst_return_pct": -7.08,
@@ -24869,9 +25186,9 @@
                 },
                 "US_STOCK": {
                   "samples": 384,
-                  "eligible_samples": 798,
-                  "abstain_samples": 414,
-                  "coverage_pct": 48.1,
+                  "eligible_samples": 818,
+                  "abstain_samples": 434,
+                  "coverage_pct": 46.9,
                   "win_rate_pct": 48.2,
                   "avg_return_pct": -0.06,
                   "worst_return_pct": -26.96,
@@ -24881,9 +25198,9 @@
                 },
                 "US_ETF": {
                   "samples": 473,
-                  "eligible_samples": 785,
-                  "abstain_samples": 312,
-                  "coverage_pct": 60.3,
+                  "eligible_samples": 805,
+                  "abstain_samples": 332,
+                  "coverage_pct": 58.8,
                   "win_rate_pct": 44.2,
                   "avg_return_pct": -0.2,
                   "worst_return_pct": -6.15,
@@ -24971,9 +25288,9 @@
                 },
                 "US_STOCK": {
                   "samples": 200,
-                  "eligible_samples": 798,
-                  "abstain_samples": 598,
-                  "coverage_pct": 25.1,
+                  "eligible_samples": 818,
+                  "abstain_samples": 618,
+                  "coverage_pct": 24.4,
                   "win_rate_pct": 50.5,
                   "avg_return_pct": 0.06,
                   "worst_return_pct": -12.74,
@@ -24983,9 +25300,9 @@
                 },
                 "US_ETF": {
                   "samples": 164,
-                  "eligible_samples": 785,
-                  "abstain_samples": 621,
-                  "coverage_pct": 20.9,
+                  "eligible_samples": 805,
+                  "abstain_samples": 641,
+                  "coverage_pct": 20.4,
                   "win_rate_pct": 41.5,
                   "avg_return_pct": -0.24,
                   "worst_return_pct": -5.73,
@@ -25045,7 +25362,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 51,
-              "samples": 3538,
+              "samples": 3540,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 2846,
@@ -25073,9 +25390,9 @@
                 },
                 "US_STOCK": {
                   "samples": 411,
-                  "eligible_samples": 798,
-                  "abstain_samples": 387,
-                  "coverage_pct": 51.5,
+                  "eligible_samples": 818,
+                  "abstain_samples": 407,
+                  "coverage_pct": 50.2,
                   "win_rate_pct": 48.2,
                   "avg_return_pct": 0.04,
                   "worst_return_pct": -13.25,
@@ -25084,12 +25401,12 @@
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 280,
-                  "eligible_samples": 785,
-                  "abstain_samples": 505,
-                  "coverage_pct": 35.7,
-                  "win_rate_pct": 42.9,
-                  "avg_return_pct": -0.2,
+                  "samples": 282,
+                  "eligible_samples": 805,
+                  "abstain_samples": 523,
+                  "coverage_pct": 35.0,
+                  "win_rate_pct": 43.3,
+                  "avg_return_pct": -0.18,
                   "worst_return_pct": -6.79,
                   "lowest_actual_return_pct": -6.79,
                   "highest_actual_return_pct": 8.82,
@@ -25147,7 +25464,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 51,
-              "samples": 3042,
+              "samples": 3065,
               "by_cohort": {
                 "TW_STOCK": {
                   "samples": 2621,
@@ -25174,24 +25491,24 @@
                   "sample_status": "樣本不足"
                 },
                 "US_STOCK": {
-                  "samples": 267,
-                  "eligible_samples": 798,
-                  "abstain_samples": 531,
-                  "coverage_pct": 33.5,
-                  "win_rate_pct": 52.1,
-                  "avg_return_pct": 0.25,
+                  "samples": 272,
+                  "eligible_samples": 818,
+                  "abstain_samples": 546,
+                  "coverage_pct": 33.3,
+                  "win_rate_pct": 52.2,
+                  "avg_return_pct": 0.26,
                   "worst_return_pct": -13.25,
                   "lowest_actual_return_pct": -13.25,
                   "highest_actual_return_pct": 23.68,
                   "sample_status": "較具參考性"
                 },
                 "US_ETF": {
-                  "samples": 153,
-                  "eligible_samples": 785,
-                  "abstain_samples": 632,
-                  "coverage_pct": 19.5,
-                  "win_rate_pct": 42.5,
-                  "avg_return_pct": -0.14,
+                  "samples": 171,
+                  "eligible_samples": 805,
+                  "abstain_samples": 634,
+                  "coverage_pct": 21.2,
+                  "win_rate_pct": 47.4,
+                  "avg_return_pct": 0.09,
                   "worst_return_pct": -5.75,
                   "lowest_actual_return_pct": -5.75,
                   "highest_actual_return_pct": 6.49,
@@ -25277,9 +25594,9 @@
                 },
                 "US_STOCK": {
                   "samples": 372,
-                  "eligible_samples": 798,
-                  "abstain_samples": 426,
-                  "coverage_pct": 46.6,
+                  "eligible_samples": 818,
+                  "abstain_samples": 446,
+                  "coverage_pct": 45.5,
                   "win_rate_pct": 48.4,
                   "avg_return_pct": 0.07,
                   "worst_return_pct": -26.96,
@@ -25289,9 +25606,9 @@
                 },
                 "US_ETF": {
                   "samples": 210,
-                  "eligible_samples": 785,
-                  "abstain_samples": 575,
-                  "coverage_pct": 26.8,
+                  "eligible_samples": 805,
+                  "abstain_samples": 595,
+                  "coverage_pct": 26.1,
                   "win_rate_pct": 42.9,
                   "avg_return_pct": -0.26,
                   "worst_return_pct": -5.75,
@@ -25346,7 +25663,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 49,
-              "samples": 15450,
+              "samples": 15451,
               "streams": 4
             },
             "stage": "manual_review_available",
@@ -25490,7 +25807,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 36,
-              "samples": 10628,
+              "samples": 10629,
               "streams": 4
             },
             "stage": "manual_review_available",
@@ -25879,7 +26196,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 39,
-              "samples": 12847,
+              "samples": 12848,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 5557,
@@ -25906,13 +26223,13 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
-                  "scored_samples": 5380,
+                  "matured_rows": 5937,
+                  "scored_samples": 5381,
                   "session_count": 39,
-                  "direction_hit_pct": 54.01,
-                  "holdout_hit_pct": 53.77,
-                  "holdout_samples": 967,
-                  "average_return_pct": -0.3543,
+                  "direction_hit_pct": 54.02,
+                  "holdout_hit_pct": 53.82,
+                  "holdout_samples": 968,
+                  "average_return_pct": -0.3557,
                   "average_strength": 78.4,
                   "average_confidence": 78.4,
                   "latest_session": "2026-10-30"
@@ -25985,7 +26302,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 39,
-              "samples": 12023,
+              "samples": 12024,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 5557,
@@ -26012,14 +26329,14 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
-                  "scored_samples": 5075,
+                  "matured_rows": 5937,
+                  "scored_samples": 5076,
                   "session_count": 39,
-                  "direction_hit_pct": 51.94,
-                  "holdout_hit_pct": 52.29,
-                  "holdout_samples": 918,
-                  "average_return_pct": -0.3927,
-                  "average_strength": 62.18,
+                  "direction_hit_pct": 51.95,
+                  "holdout_hit_pct": 52.34,
+                  "holdout_samples": 919,
+                  "average_return_pct": -0.3942,
+                  "average_strength": 62.19,
                   "average_confidence": 85.52,
                   "latest_session": "2026-10-30"
                 },
@@ -26112,7 +26429,7 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 3521,
                   "session_count": 39,
                   "direction_hit_pct": 48.85,
@@ -26212,7 +26529,7 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 301,
                   "session_count": 39,
                   "direction_hit_pct": 48.84,
@@ -26361,7 +26678,7 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 0,
                   "session_count": 39,
                   "direction_hit_pct": null,
@@ -26461,7 +26778,7 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 0,
                   "session_count": 39,
                   "direction_hit_pct": null,
@@ -26632,7 +26949,7 @@
             "connected_to_learning_governance": true,
             "progress": {
               "sessions": 39,
-              "samples": 8332,
+              "samples": 8333,
               "by_cohort": {
                 "TW_STOCK": {
                   "matured_rows": 5557,
@@ -26659,13 +26976,13 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
-                  "scored_samples": 3663,
+                  "matured_rows": 5937,
+                  "scored_samples": 3664,
                   "session_count": 39,
-                  "direction_hit_pct": 50.89,
-                  "holdout_hit_pct": 45.66,
-                  "holdout_samples": 611,
-                  "average_return_pct": -0.3005,
+                  "direction_hit_pct": 50.9,
+                  "holdout_hit_pct": 45.75,
+                  "holdout_samples": 612,
+                  "average_return_pct": -0.3026,
                   "average_strength": 37.47,
                   "average_confidence": 85.52,
                   "latest_session": "2026-10-30"
@@ -26759,7 +27076,7 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 0,
                   "session_count": 39,
                   "direction_hit_pct": null,
@@ -26859,14 +27176,14 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 5097,
                   "session_count": 39,
                   "direction_hit_pct": 49.19,
                   "holdout_hit_pct": 53.59,
                   "holdout_samples": 974,
                   "average_return_pct": -0.2943,
-                  "average_strength": 57.5,
+                  "average_strength": 57.49,
                   "average_confidence": 85.52,
                   "latest_session": "2026-10-30"
                 },
@@ -26930,7 +27247,7 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 28,
+              "sessions": 29,
               "samples": 8000
             },
             "stage": "collecting",
@@ -27008,7 +27325,7 @@
                   "latest_session": "2026-10-30"
                 },
                 "US_STOCK": {
-                  "matured_rows": 5936,
+                  "matured_rows": 5937,
                   "scored_samples": 0,
                   "session_count": 39,
                   "direction_hit_pct": null,
@@ -27572,8 +27889,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 45,
-              "samples": 93
+              "sessions": 46,
+              "samples": 94
             },
             "stage": "collecting",
             "uses_future_data": false,
@@ -27672,8 +27989,8 @@
             "source_available": true,
             "connected_to_learning_governance": true,
             "progress": {
-              "sessions": 39,
-              "samples": 921
+              "sessions": 40,
+              "samples": 936
             },
             "stage": "manual_review_available",
             "uses_future_data": false,
