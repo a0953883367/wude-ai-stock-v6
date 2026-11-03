@@ -2,7 +2,6 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
-import shutil
 
 import pytest
 
@@ -13,10 +12,45 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def reports(tmp_path):
-    source = ROOT/'reports'
-    analysis = json.loads((source/'all_analysis.json').read_bytes())
-    names = ['all_analysis.json'] + [s['path'] for s in analysis['research_integration']['sources']]
-    for name in names: shutil.copyfile(source/name, tmp_path/name)
+    # Deliberately synthetic complete pool: live reports can correctly be
+    # unavailable, and must never be edited merely to make unit tests pass.
+    batch = '2026-11-03 06:00:00'
+    manifest = {'updated_at': batch, 'contract_version': 'test', 'data_files': {}}
+    rows = []
+    for market in ('TW', 'US'):
+        symbols = (['8046.TW', '4971.TWO'] + [f'T{i:03}.TW' for i in range(188)]
+                   if market == 'TW' else ['LEU'] + [f'U{i:03}' for i in range(189)])
+        group = f'{market}_STOCK'
+        manifest['data_files'][group] = {}
+        for code in delivery.HORIZONS:
+            name = f'prediction_engine_data_{group}_{code}.json'
+            manifest['data_files'][group][code] = name
+            records = [{'market': market, 'symbol': symbol, 'asset_group': group,
+                        'horizon_code': code, 'session_date': '2026-11-02',
+                        'model_version': 'synthetic-test', 'created_at': batch,
+                        'expected_return_pct': 1.0} for symbol in symbols]
+            save(tmp_path/name, {'updated_at': batch, 'contract_version': 'test',
+                                'group': group, 'horizon_code': code, 'predictions': records})
+        for symbol in symbols:
+            judgment = {key: {} for key in delivery.JUDGMENT_FIELDS}
+            judgment.update(mode='test', evaluated_at=batch, source_session_date='2026-11-02',
+                            headline='Synthetic fixture', execution_authorized=False,
+                            holdings_assumed=False, probability=None, target_price=None)
+            # Exercise real multi-part output and interrupted publication.
+            judgment['short']['forecast_basis'] = []
+            judgment['quarter']['learning_status'] = {}
+            judgment['short']['reason'] = 'Synthetic evidence. ' * 100
+            rows.append({'market': market, 'symbol': symbol, 'research': {
+                'judgment': judgment,
+                'horizons': [{'horizon_code': code, 'status': 'frozen_research',
+                              'session_date': '2026-11-02', 'model_version': 'synthetic-test',
+                              'created_at': batch, 'expected_return_pct': 1.0}
+                             for code in delivery.HORIZONS]}})
+    save(tmp_path/'prediction_engine.json', manifest)
+    sources = [{'path': p.name, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+               for p in tmp_path.iterdir()]
+    save(tmp_path/'all_analysis.json', {'updated_at': batch, 'analyzed_count': len(rows), 'data': rows,
+         'research_integration': {'status': 'complete_projection', 'sources': sources}})
     return tmp_path
 
 
@@ -28,7 +62,7 @@ def save(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, separators=(',', ':')))
 
 
-def test_real_complete_pool_small_files_and_exact_projection(reports):
+def test_complete_fixture_pool_small_files_and_exact_projection(reports):
     before = {p.name: p.read_bytes() for p in reports.iterdir()}
     output = delivery.build_delivery(reports)
     assert before == {p.name: p.read_bytes() for p in reports.iterdir()}
@@ -199,3 +233,22 @@ def test_census_log_samples_are_bounded_and_reject_multiline_values():
     assert len(samples) == 10
     assert 'PRIVATE_SENTINEL' not in str(samples)
     assert samples == sorted(samples)
+
+
+def test_missing_frozen_leu_horizons_still_blocks_complete_analysis(reports, caplog):
+    assert delivery.publish_delivery_safely(reports)
+    analysis = read(reports/'all_analysis.json')
+    manifest = read(reports/'prediction_engine.json')
+    for name in manifest['data_files']['US_STOCK'].values():
+        chunk = read(reports/name)
+        chunk['predictions'] = [r for r in chunk['predictions'] if r['symbol'] != 'LEU']
+        save(reports/name, chunk)
+    for source in analysis['research_integration']['sources']:
+        source['sha256'] = hashlib.sha256((reports/source['path']).read_bytes()).hexdigest()
+    save(reports/'all_analysis.json', analysis)
+    before = {p.name: p.read_bytes() for p in reports.iterdir() if p.name != delivery.INDEX}
+    assert not delivery.publish_delivery_safely(reports)
+    assert 'expected=3800 actual=3790 missing=10 extra=0' in caplog.text
+    assert "missing_symbols=['US:LEU']" in caplog.text
+    assert read(reports/delivery.INDEX)['status'] == 'unavailable'
+    assert all((reports/name).read_bytes() == raw for name, raw in before.items())
