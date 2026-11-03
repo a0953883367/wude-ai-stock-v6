@@ -15,6 +15,9 @@ from tests.test_prediction_engine import _row
 NOW = datetime(2026, 10, 18, 2, tzinfo=timezone.utc)
 
 
+pytestmark = pytest.mark.usefixtures("engine_calendar")
+
+
 def write(path, value):
     path.write_text(json.dumps(value))
 

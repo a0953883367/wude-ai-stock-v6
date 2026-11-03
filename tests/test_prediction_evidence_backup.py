@@ -15,6 +15,9 @@ from prediction_engine.engine import run_prediction_engine
 from prediction_engine.storage import PredictionStore
 
 
+pytestmark = pytest.mark.usefixtures("engine_calendar")
+
+
 def _row(symbol: str, market: str = "TW") -> dict:
     return {
         "symbol": symbol,
@@ -49,7 +52,7 @@ def _populated_store(tmp_path: Path) -> PredictionStore:
         reports,
         rows,
         period="test",
-        updated_at="2026-01-02T12:00:00Z",
+        updated_at="2026-01-02T22:00:00Z",
         intraday=False,
         db_path=database,
     )
@@ -63,7 +66,7 @@ def _populated_store(tmp_path: Path) -> PredictionStore:
             (
                 "technical", "direction", "TW", "TW_STOCK", "2026-01-02",
                 "2330.TW", "台積電", 100.0, 1, 70.0, 65.0, "available",
-                "2026-01-02T12:00:00Z",
+                "2026-01-02T22:00:00Z",
             ),
         )
     return store
@@ -73,7 +76,7 @@ def test_private_prediction_evidence_backup_round_trip_is_exact(tmp_path: Path) 
     source = _populated_store(tmp_path)
     backup = tmp_path / "private" / "prediction_evidence_backup.json.gz"
     manifest = create_verified_backup(
-        source, backup, created_at="2026-01-02T12:30:00Z"
+        source, backup, created_at="2026-01-02T22:30:00Z"
     )
     assert manifest["verified"] is True
     assert manifest["compressed_bytes"] < manifest["raw_bytes"]
@@ -90,7 +93,7 @@ def test_private_backup_recovers_only_an_empty_store(tmp_path: Path) -> None:
     source = _populated_store(tmp_path)
     recovery_dir = tmp_path / "recovery"
     backup = recovery_dir / "prediction_evidence_backup.json.gz"
-    create_verified_backup(source, backup, created_at="2026-01-02T12:30:00Z")
+    create_verified_backup(source, backup, created_at="2026-01-02T22:30:00Z")
 
     restored, status = open_store_with_private_backup(
         recovery_dir / "prediction_engine.sqlite3", max_bytes=500 * 1024 * 1024
@@ -108,7 +111,7 @@ def test_private_backup_recovers_only_an_empty_store(tmp_path: Path) -> None:
 def test_private_backup_rejects_checksum_tampering(tmp_path: Path) -> None:
     source = _populated_store(tmp_path)
     backup = tmp_path / "private" / "prediction_evidence_backup.json.gz"
-    create_verified_backup(source, backup, created_at="2026-01-02T12:30:00Z")
+    create_verified_backup(source, backup, created_at="2026-01-02T22:30:00Z")
     raw = bytearray(backup.read_bytes())
     raw[-1] ^= 1
     backup.write_bytes(bytes(raw))
@@ -121,7 +124,7 @@ def test_private_backup_rejects_checksum_tampering(tmp_path: Path) -> None:
 def test_manifest_never_claims_formal_or_order_changes(tmp_path: Path) -> None:
     source = _populated_store(tmp_path)
     backup = tmp_path / "private" / "prediction_evidence_backup.json.gz"
-    create_verified_backup(source, backup, created_at="2026-01-02T12:30:00Z")
+    create_verified_backup(source, backup, created_at="2026-01-02T22:30:00Z")
     manifest_path = backup.with_suffix(backup.suffix + ".manifest.json")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["private_backup"] is True

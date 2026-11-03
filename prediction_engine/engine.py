@@ -11,11 +11,15 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 from history_archive import iter_archive_documents, read_json_document
+from market_calendar import OfficialMarketCalendar
 
 from .evidence_backup import open_store_with_private_backup
 from .factor_discovery import build_factor_discovery, explain_prediction
@@ -149,6 +153,45 @@ def _market_ready(market: str, period: str | None, intraday: bool) -> bool:
         return True
     expected = "evening" if market == "TW" else "morning"
     return str(period).lower() == expected
+
+
+def _checkpoint_close_reason(calendar, market, rows, updated_at):
+    """Validate cached official sessions at the report's own timestamp, offline.
+
+    Naive report timestamps use the producer's Asia/Taipei convention. Neither
+    a period label nor today's clock can certify an archived report's close.
+    """
+    try:
+        if not isinstance(updated_at, str) or not any(c in updated_at for c in ("T", " ")):
+            return "invalid_checkpoint_timestamp"
+        stamp = datetime.fromisoformat(updated_at)
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=ZoneInfo("Asia/Taipei"))
+        dates = {row.get("official_session_date") for row in rows}
+        if len(dates) != 1 or not all(
+            isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day) for day in dates
+        ):
+            return "invalid_checkpoint_sessions"
+        day = next(iter(dates))
+        status = calendar.session_status(market, day)
+        expected = "verified_twse_tpex" if market == "TW" else "verified_alpaca"
+        if status.get("available") is not True or status.get("status") != expected:
+            return "official_calendar_unverified"
+        if status.get("is_session") is not True:
+            return "not_official_session"
+        if market == "US":
+            # Reject malformed times instead of letting a prefix parse certify
+            # a close. The existing calendar handles early closes and DST.
+            for key in ("open", "close"):
+                if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d(?::00)?", str(status.get(key) or "")):
+                    return "official_close_unavailable"
+            if status["open"][:5] >= status["close"][:5]:
+                return "official_close_unavailable"
+        if not calendar.session_complete(market, day, at_epoch=stamp.timestamp()):
+            return "session_not_completed"
+    except (ValueError, TypeError, KeyError, OverflowError, AttributeError):
+        return "official_close_unavailable"
+    return None
 
 
 def _capital_flow_index(payload: dict[str, Any]) -> dict[tuple[str, str, str], dict[str, Any]]:
@@ -290,6 +333,7 @@ def _make_predictions(
 def _bootstrap_archived_point_in_time_reports(
     reports_dir: Path,
     store: PredictionStore,
+    calendar: OfficialMarketCalendar,
 ) -> dict[str, Any]:
     """Seed learning only from immutable reports that existed at prediction time."""
     if not (reports_dir / "archive").is_dir():
@@ -300,6 +344,7 @@ def _bootstrap_archived_point_in_time_reports(
             for row in db.execute("SELECT market,session_date FROM market_sessions")
         }
     checkpoints: dict[tuple[str, str], tuple[str, list[dict[str, Any]]]] = {}
+    rejected = Counter()
     for path in iter_archive_documents(reports_dir / "archive"):
         logical_name = path.name[:-3] if path.name.endswith(".json.gz") else path.name
         checkpoint_date = logical_name[:10]
@@ -326,6 +371,10 @@ def _bootstrap_archived_point_in_time_reports(
             market_rows = [row for row in rows if isinstance(row, dict) and str(row.get("market") or "").upper() == market]
             date = _dominant_session(market_rows)
             if date and market_rows and (market, date) not in existing_sessions:
+                reason = _checkpoint_close_reason(calendar, market, market_rows, updated)
+                if reason:
+                    rejected[reason] += 1
+                    continue
                 checkpoints[(market, date)] = (updated, market_rows)
     inserted = 0
     for (market, date), (updated, rows) in sorted(checkpoints.items(), key=lambda item: (item[0][1], item[0][0])):
@@ -353,6 +402,7 @@ def _bootstrap_archived_point_in_time_reports(
     return {
         "attempted": True,
         "sessions": len(checkpoints),
+        "rejected_close_checks": dict(rejected),
         "predictions": inserted,
         "matured": matured,
         "source": "private evidence backup plus missing reports/archive checkpoints",
@@ -549,6 +599,9 @@ def _build_public_contract(
             "large_buy_used_as_read_only_evidence": True,
             "news_used_as_point_in_time_evidence": True,
             "future_outcomes_forbidden": True,
+            "new_checkpoints_require_verified_close": True,
+            "existing_frozen_records_revalidated": False,
+            "historical_close_risk": "existing records may predate close validation; not rewritten or certified",
             "same_session_gain_direction_bonus": 0,
             "continuation_allowed_when_independent_evidence_supports": True,
             "automatic_orders": False,
@@ -773,7 +826,10 @@ def run_prediction_engine(
     store, evidence_restore = open_store_with_private_backup(
         database_path, max_bytes=max_bytes
     )
-    archive_bootstrap = _bootstrap_archived_point_in_time_reports(reports_dir, store)
+    calendar = OfficialMarketCalendar(
+        reports_dir / "official_market_calendar.json", auto_refresh=False, allow_network=False
+    )
+    archive_bootstrap = _bootstrap_archived_point_in_time_reports(reports_dir, store, calendar)
     archive_bootstrap["private_evidence_restore"] = evidence_restore
     selected_models = _selected_models(store)
     flow_payload = _read_json(reports_dir / "capital_flow_daily.json")
@@ -792,12 +848,14 @@ def run_prediction_engine(
         market_rows = by_market.get(market, [])
         date = _dominant_session(market_rows)
         ready = bool(date and market_rows and _market_ready(market, period, intraday))
+        close_reason = _checkpoint_close_reason(calendar, market, market_rows, updated_at) if ready else None
+        ready = ready and close_reason is None
         market_status[market] = {
             "ready_for_checkpoint": ready,
             "session_date": date or None,
             "row_count": len(market_rows),
             "checkpoint": "evening" if market == "TW" else "morning",
-            "reason": "completed_close_checkpoint" if ready else (
+            "reason": "completed_close_checkpoint" if ready else close_reason or (
                 "intraday_never_freezes" if intraday else "waiting_for_market_checkpoint"
             ),
         }
