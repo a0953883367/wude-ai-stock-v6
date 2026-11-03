@@ -1,3 +1,4 @@
+import pytest
 import copy
 import json
 import sqlite3
@@ -6,6 +7,9 @@ from prediction_engine.engine import run_prediction_engine
 from prediction_engine.industry_lifecycle import analyze_industry_lifecycle
 from prediction_engine.models import forecast
 from prediction_engine.storage import PredictionStore
+
+
+pytestmark = pytest.mark.usefixtures("engine_calendar")
 
 
 def stock(**overrides):

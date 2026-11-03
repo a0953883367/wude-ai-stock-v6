@@ -7,6 +7,8 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
+import pytest
+
 import prediction_engine.engine as prediction_engine_module
 
 from prediction_engine.engine import (
@@ -27,6 +29,9 @@ from prediction_engine.storage import (
     SHADOW_PROMOTION_SCOPE,
     STABLE_MODEL_VERSION,
 )
+
+
+pytestmark = pytest.mark.usefixtures("engine_calendar")
 
 
 def _row(symbol: str, market: str = "TW", asset_type: str = "個股") -> dict:
@@ -173,11 +178,11 @@ def test_engine_is_immutable_compact_and_preserves_old_ledgers(tmp_path: Path) -
     rows = [_row(f"T{i}") for i in range(8)] + [_row(f"U{i}", "US") for i in range(8)]
     database = tmp_path / "private" / "engine.sqlite3"
     first = run_prediction_engine(
-        reports, rows, period="test", updated_at="2026-01-02T12:00:00Z",
+        reports, rows, period="test", updated_at="2026-01-02T22:00:00Z",
         intraday=False, db_path=database,
     )
     second = run_prediction_engine(
-        reports, rows, period="test", updated_at="2026-01-02T13:00:00Z",
+        reports, rows, period="test", updated_at="2026-01-02T23:00:00Z",
         intraday=False, db_path=database,
     )
     assert first["run_summary"]["inserted_predictions"] == len(rows) * len(HORIZONS)
@@ -252,7 +257,7 @@ def test_market_checkpoints_do_not_freeze_intraday_or_wrong_market(tmp_path: Pat
     )
     assert intraday["run_summary"]["inserted_predictions"] == 0
     evening = run_prediction_engine(
-        reports, rows, period="evening", updated_at="2026-01-02T12:00:00Z",
+        reports, rows, period="evening", updated_at="2026-01-02T22:00:00Z",
         intraday=False, db_path=database,
     )
     assert evening["market_status"]["TW"]["ready_for_checkpoint"] is True
@@ -291,9 +296,10 @@ def test_forward_settlement_uses_later_session_only(tmp_path: Path) -> None:
     reports.mkdir()
     database = tmp_path / "engine.sqlite3"
     start = date(2026, 1, 5)
-    for offset in range(6):
+    sessions = [start + timedelta(days=i) for i in range(8) if (start + timedelta(days=i)).weekday() < 5]
+    for offset, day in enumerate(sessions):
         row = _row("2330")
-        row["official_session_date"] = (start + timedelta(days=offset)).isoformat()
+        row["official_session_date"] = day.isoformat()
         row["official_close_price"] = 100.0 + offset
         row["price"] = 100.0 + offset
         run_prediction_engine(
@@ -314,7 +320,7 @@ def test_forward_settlement_uses_later_session_only(tmp_path: Path) -> None:
         ).fetchone()
     assert next_day[0] == (start + timedelta(days=1)).isoformat()
     assert round(next_day[1], 2) == 1.0
-    assert five_day[0] == (start + timedelta(days=5)).isoformat()
+    assert five_day[0] == sessions[5].isoformat()
     assert round(five_day[1], 2) == 5.0
 
 
@@ -492,7 +498,7 @@ def test_archive_bootstrap_uses_only_then_current_checkpoint_rows(tmp_path: Path
     row = _row("2330")
     archived = {
         "period": "evening",
-        "updated_at": "2026-01-02T12:00:00Z",
+        "updated_at": "2026-01-02T22:00:00Z",
         "watchlist": [row],
     }
     (archive / "2026-01-02-evening.json").write_text(json.dumps(archived), encoding="utf-8")
