@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-04T07:32:27.296381+08:00",
+  "checked_at": "2026-11-04T10:17:19.488304+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -951,8 +951,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
       "diagnosis": [
         "invalid_free_us_data",
         "missing_fixed_generation"
@@ -971,7 +971,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-04:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -983,7 +989,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-04 03:31:39",
+        "updated_at": "2026-11-04 07:34:07",
         "error": null
       }
     },
@@ -1919,9 +1925,14 @@
           "at": "2026-11-04T03:29:06.073847+08:00",
           "guard_run_id": "41703460307",
           "state": "dispatch_accepted"
+        },
+        {
+          "at": "2026-11-04T10:17:19.488304+08:00",
+          "guard_run_id": "41759664313",
+          "state": "reserved"
         }
       ],
-      "status": "waiting_primary_or_active_run",
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -1942,15 +1953,17 @@
   "diagnosis": [
     "invalid_free_us_data"
   ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
-    "status": "ready_silent_refresh",
-    "reason": "direction_receipt_missing_inside_forecast_window",
-    "needs_silent_refresh": true,
-    "verified_recovered": false,
-    "last_source_session_date": "2026-11-02",
+    "status": "verified_current",
+    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "needs_silent_refresh": false,
+    "verified_recovered": true,
+    "last_source_session_date": "2026-11-03",
     "latest_official_session_date": "2026-11-03",
-    "historical_backfill_allowed": false
+    "historical_backfill_allowed": false,
+    "snapshot_id": "US:2026-11-03",
+    "captured_at": "2026-11-04 07:34:07"
   },
   "capabilities": {
     "actions_read_confirmed": true,
