@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-04T23:37:43+08:00",
+  "updated_at": "2026-11-04T23:46:00+08:00",
   "system": "股票成長控制塔 V1",
   "status": "attention",
   "light": "yellow",
@@ -58,7 +58,7 @@
       "status": "collecting",
       "light": "blue",
       "status_label": "累積中",
-      "detail": "60日中央驗證目前 53/60；交易計畫已成熟 3257 筆。",
+      "detail": "60日中央驗證目前 53/60；交易計畫已成熟 3273 筆。",
       "current": 53,
       "target": 60
     },
@@ -101,9 +101,9 @@
     {
       "id": "model",
       "label": "模型監控",
-      "status": "attention",
-      "light": "yellow",
-      "status_label": "注意",
+      "status": "ok",
+      "light": "green",
+      "status_label": "正常",
       "detail": "準確率、報酬、回撤、獲利因子與預判引擎健康。"
     },
     {
@@ -162,7 +162,7 @@
       "formal_validation_target": 60,
       "formal_progress_pct": 88.3,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 53/60；目前只可初評，不可畢業；有效交易日最少 27/10",
+      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 53/60；目前只可初評，不可畢業；有效交易日最少 28/10",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -257,11 +257,6 @@
       "priority": "review",
       "title": "查看系統值班注意項",
       "detail": "正式 V6 維持不變，先確認黃色項目。"
-    },
-    {
-      "priority": "review",
-      "title": "檢查預判引擎健康",
-      "detail": "獨立預判有警示；不影響正式 V6，但不可升級。"
     },
     {
       "priority": "wait",
