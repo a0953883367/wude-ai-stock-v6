@@ -3,10 +3,23 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
+
+
+DEFAULT_MAX_BYTES = 2 * 1024 * 1024 * 1024
+
+
+def configured_max_bytes() -> int:
+    """One private-store limit for every entry point; explicit overrides remain supported."""
+    value = int(os.getenv("PREDICTION_ENGINE_MAX_BYTES", str(DEFAULT_MAX_BYTES)))
+    if value <= 0:
+        raise ValueError("PREDICTION_ENGINE_MAX_BYTES must be positive")
+    return value
 
 
 SCHEMA_VERSION = 5
@@ -15,9 +28,11 @@ SHADOW_PROMOTION_SCOPE = "independent_shadow_engine_only"
 
 
 class PredictionStore:
-    def __init__(self, path: Path, *, max_bytes: int = 500 * 1024 * 1024):
+    def __init__(self, path: Path, *, max_bytes: int | None = None):
         self.path = Path(path)
-        self.max_bytes = int(max_bytes)
+        self.max_bytes = configured_max_bytes() if max_bytes is None else int(max_bytes)
+        if self.max_bytes <= 0:
+            raise ValueError("prediction database capacity must be positive")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
@@ -1193,51 +1208,21 @@ class PredictionStore:
             )
 
     def maintain_capacity(self, *, keep_matured_sessions: int = 140) -> dict[str, Any]:
-        """Bound storage while retaining pending labels and a rolling learning window."""
-        with self.connect() as db:
-            compacted = db.execute(
-                "UPDATE predictions SET evidence_json='{}' "
-                "WHERE status='matured' AND evidence_json<>'{}'"
-            ).rowcount
-            deleted = 0
-            unit_deleted = 0
-            for market in ("TW", "US"):
-                sessions = [row[0] for row in db.execute(
-                    "SELECT session_date FROM market_sessions WHERE market=? ORDER BY session_date DESC",
-                    (market,),
-                )]
-                if len(sessions) <= keep_matured_sessions:
-                    continue
-                cutoff = sessions[keep_matured_sessions - 1]
-                deleted += db.execute(
-                    "DELETE FROM predictions WHERE market=? AND status='matured' AND session_date<?",
-                    (market, cutoff),
-                ).rowcount
-                unit_deleted += db.execute(
-                    "DELETE FROM unit_learning_predictions "
-                    "WHERE market=? AND status='matured' AND session_date<?",
-                    (market, cutoff),
-                ).rowcount
-                db.execute(
-                    "DELETE FROM prices WHERE market=? AND session_date<? AND session_date NOT IN "
-                    "(SELECT DISTINCT session_date FROM predictions WHERE market=?)",
-                    (market, cutoff, market),
-                )
+        """Checkpoint SQLite without deleting history or clearing evidence.
+
+        keep_matured_sessions is retained for caller compatibility only; it no
+        longer authorizes pruning. Capacity exhaustion still blocks new writes.
+        """
         with self.connect() as db:
             db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        size = self.path.stat().st_size if self.path.exists() else 0
-        vacuumed = False
-        if self.max_bytes and size / self.max_bytes >= 0.8 and (deleted or unit_deleted):
-            with self.connect() as db:
-                db.execute("VACUUM")
-            vacuumed = True
         return {
-            "matured_evidence_compacted": int(compacted),
-            "old_matured_predictions_pruned": int(deleted),
-            "old_matured_unit_rows_pruned": int(unit_deleted),
-            "rolling_matured_sessions_retained": int(keep_matured_sessions),
+            "matured_evidence_compacted": 0,
+            "old_matured_predictions_pruned": 0,
+            "old_matured_unit_rows_pruned": 0,
+            "rolling_matured_sessions_retained": None,
+            "all_history_retained": True,
             "pending_predictions_never_pruned": True,
-            "vacuumed": vacuumed,
+            "vacuumed": False,
         }
 
     def health(self) -> dict[str, Any]:
@@ -1255,11 +1240,15 @@ class PredictionStore:
             mature = int(db.execute(
                 "SELECT COUNT(*) FROM predictions WHERE status='matured'"
             ).fetchone()[0])
+        disk = shutil.disk_usage(self.path.parent)
         ratio = size / self.max_bytes if self.max_bytes else 0.0
         return {
             "schema_version": SCHEMA_VERSION,
             "database_bytes": size,
             "configured_max_bytes": self.max_bytes,
+            "filesystem_free_bytes": disk.free,
+            "filesystem_total_bytes": disk.total,
+            "retention_policy": "preserve_all_history_and_evidence",
             "capacity_pct": round(ratio * 100, 2),
             "capacity_status": "blocked" if ratio >= 1 else "warning" if ratio >= 0.8 else "ok",
             "tables": tables,

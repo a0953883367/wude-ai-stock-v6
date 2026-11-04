@@ -319,6 +319,8 @@ jobs:
           restore-keys: |
             prediction-engine-v1-
       - run: pip install -r requirements.txt "pytest>=8,<10"
+      - name: Report private prediction storage capacity
+        run: python tools/prediction_capacity_status.py
       - name: Select report period and delivery mode
         id: period
         shell: bash
