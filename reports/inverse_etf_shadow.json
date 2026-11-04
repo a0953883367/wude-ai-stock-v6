@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-04 14:47:42",
+  "updated_at": "2026-11-04 19:30:24",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -498,7 +498,8 @@
           "entry_open": 2.5299999713897705,
           "observed_sessions": [
             "2026-11-03",
-            "2026-11-03"
+            "2026-11-03",
+            "2026-11-04"
           ],
           "outcomes": {
             "1": {
@@ -510,6 +511,12 @@
             "2": {
               "status": "valid",
               "session_date": "2026-11-03",
+              "actual_etf_return_pct": 0.791,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "3": {
+              "status": "valid",
+              "session_date": "2026-11-04",
               "actual_etf_return_pct": 0.791,
               "price_source": "inverse_etf_own_ohlc"
             }
@@ -532,10 +539,19 @@
             "breakdown_pct": 78.4
           },
           "signal_close": 10.520000457763672,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 10.430000305175781,
+          "observed_sessions": [
+            "2026-11-04"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-11-04",
+              "actual_etf_return_pct": 1.438,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         },
         {
@@ -553,10 +569,19 @@
             "breakdown_pct": 100.0
           },
           "signal_close": 2.549999952316284,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 2.549999952316284,
+          "observed_sessions": [
+            "2026-11-04"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-11-04",
+              "actual_etf_return_pct": 0.0,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         }
       ],
@@ -566,18 +591,18 @@
           "inverse_symbol": "00632R.TW",
           "inverse_name": "元大台灣50反1",
           "daily_target": -1,
-          "bear_score": 100.0,
-          "status": "confirmed",
+          "bear_score": 49.2,
+          "status": "waiting",
           "constituent_count": 186,
           "evidence": {
             "coverage": 186,
-            "negative_breadth_pct": 97.8,
-            "median_change_pct": -5.67,
-            "breakdown_pct": 78.5
+            "negative_breadth_pct": 56.5,
+            "median_change_pct": -0.58,
+            "breakdown_pct": 44.6
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": 1.88,
-          "product_volume_ratio_20d": 1.57,
+          "product_session_change_pct": 1.44,
+          "product_opening_gap_pct": -0.86,
+          "product_volume_ratio_20d": 2.7,
           "no_chase": false
         },
         {
@@ -585,26 +610,26 @@
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 100.0,
-          "status": "confirmed",
+          "bear_score": 13.3,
+          "status": "waiting",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
-            "negative_breadth_pct": 100.0,
-            "median_change_pct": -2.51,
-            "breakdown_pct": 100.0
+            "negative_breadth_pct": 16.7,
+            "median_change_pct": 0.24,
+            "breakdown_pct": 16.7
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": 1.2,
-          "product_volume_ratio_20d": 1.82,
+          "product_session_change_pct": 0.0,
+          "product_opening_gap_pct": 0.0,
+          "product_volume_ratio_20d": 2.88,
           "no_chase": false
         }
       ],
       "summary": {
         "1": {
-          "samples": 10,
+          "samples": 12,
           "win_rate_pct": 50.0,
-          "average_return_pct": 0.043
+          "average_return_pct": 0.155
         },
         "2": {
           "samples": 10,
@@ -612,9 +637,9 @@
           "average_return_pct": 0.043
         },
         "3": {
-          "samples": 9,
-          "win_rate_pct": 33.3,
-          "average_return_pct": -0.266
+          "samples": 10,
+          "win_rate_pct": 40.0,
+          "average_return_pct": -0.161
         },
         "5": {
           "samples": 9,
