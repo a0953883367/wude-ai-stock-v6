@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-04T10:17:26.522428+08:00",
+  "checked_at": "2026-11-04T14:45:52.991808+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -951,8 +951,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "generated_suppressed",
-      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent",
       "diagnosis": [
         "invalid_free_us_data",
         "missing_fixed_generation"
@@ -961,8 +961,8 @@
     "2026-11-04:noon": {
       "period": "noon",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-11-04:evening": {
       "period": "evening",
@@ -971,7 +971,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-04:noon",
+      "period": "noon",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -983,7 +989,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-04 07:34:07",
+        "updated_at": "2026-11-04 10:19:16",
         "error": null
       }
     },
@@ -1927,6 +1933,18 @@
         }
       ],
       "status": "awaiting_verification",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-04:noon": {
+      "period": "noon",
+      "attempts": [
+        {
+          "at": "2026-11-04T14:45:52.991808+08:00",
+          "guard_run_id": "41787604773",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
