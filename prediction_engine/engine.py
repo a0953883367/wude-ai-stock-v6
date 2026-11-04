@@ -33,7 +33,7 @@ from .models import (
     forecast,
     learned_forecast,
 )
-from .storage import PredictionStore, SHADOW_PROMOTION_SCOPE, STABLE_MODEL_VERSION
+from .storage import PredictionStore, SHADOW_PROMOTION_SCOPE, STABLE_MODEL_VERSION, configured_max_bytes
 
 
 SCHEMA_VERSION = 2
@@ -822,7 +822,7 @@ def run_prediction_engine(
         or os.getenv("PREDICTION_ENGINE_DB")
         or reports_dir.parent / ".prediction_engine" / "prediction_engine.sqlite3"
     )
-    max_bytes = int(os.getenv("PREDICTION_ENGINE_MAX_BYTES", str(500 * 1024 * 1024)))
+    max_bytes = configured_max_bytes()
     store, evidence_restore = open_store_with_private_backup(
         database_path, max_bytes=max_bytes
     )

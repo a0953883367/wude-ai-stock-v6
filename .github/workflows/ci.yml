@@ -37,6 +37,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt pytest
+      - name: Report runner prediction storage capacity
+        run: python tools/prediction_capacity_status.py
       - name: Check complete canonical watchlist manifest
         run: python watchlist_manifest.py --check
       - name: 執行完整測試

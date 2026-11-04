@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from prediction_engine.storage import PredictionStore
+from prediction_engine.storage import PredictionStore, configured_max_bytes
 
 
 SCHEMA_VERSION = 1
@@ -580,5 +580,5 @@ def open_prediction_store(reports_dir: Path) -> PredictionStore:
         os.getenv("PREDICTION_ENGINE_DB")
         or project_root / ".prediction_engine" / "prediction_engine.sqlite3"
     )
-    max_bytes = int(os.getenv("PREDICTION_ENGINE_MAX_BYTES", str(500 * 1024 * 1024)))
+    max_bytes = configured_max_bytes()
     return PredictionStore(database_path, max_bytes=max_bytes)
