@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-04T23:36:21.877704+08:00",
+  "checked_at": "2026-11-04T23:37:39.232970+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -971,13 +971,7 @@
       "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
     }
   },
-  "next_actions": [
-    {
-      "incident_key": "2026-11-04:evening",
-      "period": "evening",
-      "kind": "data_refresh"
-    }
-  ],
+  "next_actions": [],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1953,10 +1947,10 @@
         {
           "at": "2026-11-04T23:36:21.877704+08:00",
           "guard_run_id": "41859349029",
-          "state": "reserved"
+          "state": "dispatch_accepted"
         }
       ],
-      "status": "reserved",
+      "status": "awaiting_verification",
       "verified_at": "2026-11-04T20:03:15.737250+08:00",
       "report_updated_at": "2026-11-04 19:49:21",
       "reason": "current data requires silent refresh; no delivery receipt is created"
