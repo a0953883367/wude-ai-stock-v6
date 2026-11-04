@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-04 19:30:24",
+  "updated_at": "2026-11-04 19:38:53",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -499,6 +499,7 @@
           "observed_sessions": [
             "2026-11-03",
             "2026-11-03",
+            "2026-11-04",
             "2026-11-04"
           ],
           "outcomes": {
@@ -541,10 +542,17 @@
           "signal_close": 10.520000457763672,
           "entry_open": 10.430000305175781,
           "observed_sessions": [
+            "2026-11-04",
             "2026-11-04"
           ],
           "outcomes": {
             "1": {
+              "status": "valid",
+              "session_date": "2026-11-04",
+              "actual_etf_return_pct": 1.438,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
               "status": "valid",
               "session_date": "2026-11-04",
               "actual_etf_return_pct": 1.438,
@@ -571,10 +579,17 @@
           "signal_close": 2.549999952316284,
           "entry_open": 2.549999952316284,
           "observed_sessions": [
+            "2026-11-04",
             "2026-11-04"
           ],
           "outcomes": {
             "1": {
+              "status": "valid",
+              "session_date": "2026-11-04",
+              "actual_etf_return_pct": 0.0,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
               "status": "valid",
               "session_date": "2026-11-04",
               "actual_etf_return_pct": 0.0,
@@ -591,14 +606,14 @@
           "inverse_symbol": "00632R.TW",
           "inverse_name": "元大台灣50反1",
           "daily_target": -1,
-          "bear_score": 49.2,
+          "bear_score": 49.6,
           "status": "waiting",
-          "constituent_count": 186,
+          "constituent_count": 185,
           "evidence": {
-            "coverage": 186,
-            "negative_breadth_pct": 56.5,
-            "median_change_pct": -0.58,
-            "breakdown_pct": 44.6
+            "coverage": 185,
+            "negative_breadth_pct": 56.8,
+            "median_change_pct": -0.6,
+            "breakdown_pct": 44.9
           },
           "product_session_change_pct": 1.44,
           "product_opening_gap_pct": -0.86,
@@ -632,9 +647,9 @@
           "average_return_pct": 0.155
         },
         "2": {
-          "samples": 10,
+          "samples": 12,
           "win_rate_pct": 50.0,
-          "average_return_pct": 0.043
+          "average_return_pct": 0.155
         },
         "3": {
           "samples": 10,
