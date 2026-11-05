@@ -1,19 +1,44 @@
 {
   "version": 1,
-  "checked_on": "2026-11-04",
+  "checked_on": "2026-11-05",
   "mode": "compress_and_remove_verified_source",
   "status": "ok",
-  "reports_bytes": 531350704,
+  "reports_bytes": 526616948,
   "warning_bytes": 629145600,
   "critical_bytes": 786432000,
-  "plain_archive_count": 85,
-  "compressed_archive_count": 125,
-  "eligible_plain_count": 0,
+  "plain_archive_count": 83,
+  "compressed_archive_count": 127,
+  "eligible_plain_count": 2,
   "older_than_days": 30,
-  "verified_count": 0,
-  "source_removed_count": 0,
+  "verified_count": 2,
+  "source_removed_count": 2,
   "errors": [],
-  "results": [],
+  "results": [
+    {
+      "source": "2026-10-05-evening.json",
+      "compressed": "2026-10-05-evening.json.gz",
+      "source_sha256": "dd878cb8f7251e44b2c2528e990e2aae949d757f2c1abf04086088d6813c15eb",
+      "compressed_sha256": "53e2d8060fdcf11f7ea830a81761ea035967d745100057cd9f857d433e47e656",
+      "source_bytes": 3516208,
+      "compressed_bytes": 381449,
+      "record_count": 162,
+      "verified": true,
+      "source_removed": true,
+      "error": ""
+    },
+    {
+      "source": "2026-10-05-morning.json",
+      "compressed": "2026-10-05-morning.json.gz",
+      "source_sha256": "c00b9a2769b64d1958a3900bed77ea2ea8b8c70f464d08a042b4f5d64e654228",
+      "compressed_sha256": "3bf51c9035a9efe672f223b6d3b887c19fd6286e12988e9975bf756ae0d168a8",
+      "source_bytes": 3714587,
+      "compressed_bytes": 437567,
+      "record_count": 162,
+      "verified": true,
+      "source_removed": true,
+      "error": ""
+    }
+  ],
   "formal_v6_changed": false,
   "broker_orders": false
 }
