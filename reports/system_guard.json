@@ -2,13 +2,13 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-11-05T19:54:25+08:00",
+  "checked_at": "2026-11-05T20:15:49+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-11-05 19:51:30",
-  "report_age_minutes": 2.9,
+  "report_age_minutes": 24.3,
   "counts": {
     "ok": 27,
-    "info": 11,
+    "info": 12,
     "warning": 1,
     "critical": 0
   },
@@ -42,7 +42,15 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "最近更新距今 3 分鐘",
+      "detail": "最近更新距今 24 分鐘",
+      "action": ""
+    },
+    {
+      "code": "report_period_alignment",
+      "title": "晚報時段同步",
+      "level": "ok",
+      "label": "正常",
+      "detail": "20:00 後的最新固定報表已是 evening",
       "action": ""
     },
     {
@@ -317,7 +325,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
