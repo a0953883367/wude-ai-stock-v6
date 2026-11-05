@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-05 09:55:09",
+  "updated_at": "2026-11-05 19:27:34",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -552,7 +552,8 @@
             "2026-11-04",
             "2026-11-04",
             "2026-11-04",
-            "2026-11-04"
+            "2026-11-04",
+            "2026-11-05"
           ],
           "outcomes": {
             "1": {
@@ -572,9 +573,15 @@
               "session_date": "2026-11-04",
               "actual_etf_return_pct": 1.438,
               "price_source": "inverse_etf_own_ohlc"
+            },
+            "5": {
+              "status": "valid",
+              "session_date": "2026-11-05",
+              "actual_etf_return_pct": 4.698,
+              "price_source": "inverse_etf_own_ohlc"
             }
           },
-          "status": "tracking",
+          "status": "complete",
           "quarantine_reason": null
         },
         {
@@ -597,7 +604,8 @@
             "2026-11-04",
             "2026-11-04",
             "2026-11-04",
-            "2026-11-04"
+            "2026-11-04",
+            "2026-11-05"
           ],
           "outcomes": {
             "1": {
@@ -617,9 +625,36 @@
               "session_date": "2026-11-04",
               "actual_etf_return_pct": 0.0,
               "price_source": "inverse_etf_own_ohlc"
+            },
+            "5": {
+              "status": "valid",
+              "session_date": "2026-11-05",
+              "actual_etf_return_pct": -0.784,
+              "price_source": "inverse_etf_own_ohlc"
             }
           },
-          "status": "tracking",
+          "status": "complete",
+          "quarantine_reason": null
+        },
+        {
+          "cohort_id": "TW:2026-11-05:00632R.TW",
+          "market": "TW",
+          "signal_session_date": "2026-11-05",
+          "inverse_symbol": "00632R.TW",
+          "inverse_name": "元大台灣50反1",
+          "daily_target": -1,
+          "bear_score": 100.0,
+          "evidence": {
+            "coverage": 186,
+            "negative_breadth_pct": 95.2,
+            "median_change_pct": -6.22,
+            "breakdown_pct": 71.5
+          },
+          "signal_close": 10.920000076293945,
+          "entry_open": null,
+          "observed_sessions": [],
+          "outcomes": {},
+          "status": "pending_entry",
           "quarantine_reason": null
         }
       ],
@@ -629,37 +664,37 @@
           "inverse_symbol": "00632R.TW",
           "inverse_name": "元大台灣50反1",
           "daily_target": -1,
-          "bear_score": 49.2,
-          "status": "waiting",
+          "bear_score": 100.0,
+          "status": "no_chase",
           "constituent_count": 186,
           "evidence": {
             "coverage": 186,
-            "negative_breadth_pct": 56.5,
-            "median_change_pct": -0.58,
-            "breakdown_pct": 44.6
+            "negative_breadth_pct": 95.2,
+            "median_change_pct": -6.22,
+            "breakdown_pct": 71.5
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": -0.86,
-          "product_volume_ratio_20d": 2.7,
-          "no_chase": false
+          "product_session_change_pct": 2.63,
+          "product_opening_gap_pct": 0.57,
+          "product_volume_ratio_20d": 1.98,
+          "no_chase": true
         },
         {
           "group": "tw_nasdaq",
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 13.3,
+          "bear_score": 18.3,
           "status": "waiting",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
-            "negative_breadth_pct": 16.7,
-            "median_change_pct": 0.24,
-            "breakdown_pct": 16.7
+            "negative_breadth_pct": 33.3,
+            "median_change_pct": 0.59,
+            "breakdown_pct": 0.0
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": 0.0,
-          "product_volume_ratio_20d": 2.88,
+          "product_session_change_pct": 0.8,
+          "product_opening_gap_pct": -1.57,
+          "product_volume_ratio_20d": 2.59,
           "no_chase": false
         }
       ],
@@ -680,9 +715,9 @@
           "average_return_pct": -0.014
         },
         "5": {
-          "samples": 10,
-          "win_rate_pct": 40.0,
-          "average_return_pct": -0.334
+          "samples": 12,
+          "win_rate_pct": 41.7,
+          "average_return_pct": 0.048
         }
       }
     },
