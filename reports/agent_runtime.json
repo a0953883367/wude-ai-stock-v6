@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-06T07:01:20+00:00",
+  "generated_at": "2026-11-06T08:05:12+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-06T10:23:33.430123+08:00",
+    "checked_at": "2026-11-06T16:05:08.423584+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-06T10:23:32.361979+08:00",
+    "checked_at": "2026-11-06T16:05:05.999746+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1059,8 +1059,8 @@
       "2026-11-06:noon": {
         "period": "noon",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-11-06:evening": {
         "period": "evening",
@@ -2080,6 +2080,18 @@
         "reason": "current data requires silent refresh; no delivery receipt is created",
         "verified_at": "2026-11-06T10:23:23.883429+08:00",
         "report_updated_at": "2026-11-06 09:56:48"
+      },
+      "2026-11-06:noon": {
+        "period": "noon",
+        "attempts": [
+          {
+            "at": "2026-11-06T16:04:58.296208+08:00",
+            "guard_run_id": "42185049769",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
