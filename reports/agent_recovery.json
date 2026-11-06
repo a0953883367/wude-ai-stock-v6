@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-06T04:10:21.700163+08:00",
+  "checked_at": "2026-11-06T08:27:33.989241+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -991,8 +991,8 @@
     "2026-11-06:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-11-06:noon": {
       "period": "noon",
@@ -1007,7 +1007,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-06:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -2025,9 +2031,15 @@
     },
     "2026-11-06:morning": {
       "period": "morning",
-      "attempts": [],
-      "status": "blocked_evidence",
-      "reason": "source_session_not_closed"
+      "attempts": [
+        {
+          "at": "2026-11-06T08:27:33.989241+08:00",
+          "guard_run_id": "42136873742",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -2044,17 +2056,19 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "blocked_evidence",
+  "diagnosis": [
+    "invalid_free_us_data",
+    "report_freshness"
+  ],
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
-    "status": "blocked_evidence",
-    "reason": "source_session_not_closed",
-    "needs_silent_refresh": false,
+    "status": "ready_silent_refresh",
+    "reason": "direction_receipt_missing_inside_forecast_window",
+    "needs_silent_refresh": true,
     "verified_recovered": false,
     "last_source_session_date": "2026-11-04",
     "latest_official_session_date": "2026-11-05",
-    "historical_backfill_allowed": false,
-    "next_session_date": null
+    "historical_backfill_allowed": false
   },
   "capabilities": {
     "actions_read_confirmed": true,
