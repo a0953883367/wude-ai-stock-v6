@@ -10,6 +10,7 @@ from data_fetcher import (
 )
 from datetime import date, datetime
 import pandas as pd
+import pytest
 from zoneinfo import ZoneInfo
 
 
@@ -40,6 +41,209 @@ def test_download_history_retries_partial_batch_omissions_individually(monkeypat
 
     assert set(result) == {"ANET", "QUBT"}
     assert calls == [["ANET", "QUBT"], "QUBT"]
+
+
+
+def _yahoo_retry_frame(session="2026-08-28", symbol="QUBT", group_by="column"):
+    """Model yfinance's default Price/Ticker and requested Ticker/Price output."""
+    frame = pd.DataFrame({
+        "Open": [100.0], "High": [103.0], "Low": [99.0],
+        "Close": [102.0], "Adj Close": [102.0], "Volume": [1200],
+        "Dividends": [0.0], "Stock Splits": [0.0],
+    }, index=pd.to_datetime([session]))
+    if group_by == "flat":
+        return frame
+    raw = pd.concat({symbol: frame}, axis=1, names=["Ticker", "Price"])
+    return raw if group_by == "ticker" else raw.swaplevel(axis=1).sort_index(axis=1)
+
+
+@pytest.mark.parametrize("layout, symbol, accepted", [
+    ("flat", "QUBT", True),
+    ("ticker", "QUBT", True),
+    ("column", "QUBT", False),
+    ("ticker", "OTHER", False),
+    ("column", "OTHER", False),
+    ("empty", "QUBT", False),
+])
+def test_daily_retry_extraction_contract(layout, symbol, accepted):
+    from data_fetcher import _extract_frame
+
+    raw = (pd.DataFrame() if layout == "empty" else
+           _yahoo_retry_frame(symbol=symbol, group_by=layout))
+    original = raw.copy(deep=True)
+    frame = _extract_frame(raw, "QUBT", isinstance(raw.columns, pd.MultiIndex))
+
+    assert (not frame.empty) is accepted
+    pd.testing.assert_frame_equal(raw, original)
+    if accepted:
+        assert frame.iloc[-1]["close"] == 102.0
+        assert frame.iloc[-1]["volume"] == 1200
+        assert "dividends" in frame and "stock splits" in frame
+
+
+@pytest.mark.parametrize("recover_on", [1, 2])
+def test_missing_retry_requests_ticker_grouping_and_attests_source(monkeypatch, recover_on):
+    from daily_price_provenance import us_daily_metadata
+    from data_fetcher import download_history
+
+    calls = []
+
+    def fake_download(*, tickers, group_by="column", **kwargs):
+        calls.append((tickers, group_by, kwargs))
+        if isinstance(tickers, list):
+            return _yahoo_retry_frame(symbol="ANET", group_by=group_by)
+        if len(calls) - 1 < recover_on:
+            return pd.DataFrame()
+        return _yahoo_retry_frame(symbol=tickers, group_by=group_by)
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    result = download_history(["ANET", "QUBT"], period="6mo")
+
+    assert set(result) == {"ANET", "QUBT"}
+    assert len(calls) == 1 + recover_on
+    for tickers, group_by, kwargs in calls[1:]:
+        assert tickers == "QUBT" and group_by == "ticker"
+        assert kwargs["period"] == "6mo" and kwargs["interval"] == "1d"
+        assert kwargs["actions"] is True and kwargs["auto_adjust"] is False
+        assert kwargs["threads"] is False
+    proof = us_daily_metadata(result["QUBT"], "QUBT")
+    assert proof["source_daily_ohlcv_complete"] is True
+    assert proof["source_daily_ohlcv_session_date"] == "2026-08-28"
+    assert proof["us_daily_source"] == "Yahoo Finance daily bars"
+
+
+@pytest.mark.parametrize("response", ["empty", "wrong_ticker", "column", "exception"])
+def test_missing_retry_failure_is_bounded_and_does_not_invent_data(monkeypatch, response):
+    from data_fetcher import download_history
+
+    calls = []
+
+    def fake_download(*, tickers, **kwargs):
+        calls.append(tickers)
+        if isinstance(tickers, list) or response == "empty":
+            return pd.DataFrame()
+        if response == "exception":
+            raise RuntimeError("database is locked")
+        return _yahoo_retry_frame(
+            symbol="OTHER" if response == "wrong_ticker" else tickers,
+            group_by="ticker" if response == "wrong_ticker" else "column",
+        )
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    assert download_history(["QUBT"]) == {}
+    assert calls == [["QUBT"], "QUBT", "QUBT"]
+
+
+def test_missing_retry_skips_provider_wide_request_storm(monkeypatch):
+    from data_fetcher import download_history
+
+    calls = []
+    symbols = [f"US{i:02d}" for i in range(61)]
+
+    def fake_download(*, tickers, **kwargs):
+        calls.append(tickers)
+        assert isinstance(tickers, list)
+        return pd.DataFrame()
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    assert download_history(symbols) == {}
+    assert calls == [symbols[:35], symbols[35:]]
+
+
+@pytest.mark.parametrize("recover_on", [1, 2])
+def test_stale_retry_requests_ticker_grouping_and_preserves_source_date(monkeypatch, recover_on):
+    from daily_price_provenance import us_daily_metadata
+
+    symbols = [f"US{i:02d}" for i in range(10)]
+    result = {
+        symbol: _yahoo_retry_frame(
+            "2026-08-28" if index < 9 else "2026-08-27", group_by="flat"
+        ).rename(columns=str.lower)
+        for index, symbol in enumerate(symbols)
+    }
+    calls = []
+
+    def fake_download(*, tickers, group_by="column", **kwargs):
+        calls.append((tickers, group_by, kwargs))
+        session = "2026-08-27" if len(calls) < recover_on else "2026-08-28"
+        return _yahoo_retry_frame(session, tickers, group_by)
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    advanced = _retry_stale_us_daily_history(
+        result, symbols, now=datetime(2026, 8, 29, tzinfo=ZoneInfo("America/New_York")),
+    )
+
+    assert advanced == [symbols[-1]]
+    assert len(calls) == recover_on
+    for tickers, group_by, kwargs in calls:
+        assert tickers == symbols[-1] and group_by == "ticker"
+        assert kwargs["period"] == "10d" and kwargs["interval"] == "1d"
+        assert kwargs["actions"] is True and kwargs["auto_adjust"] is False
+        assert kwargs["threads"] is False
+    proof = us_daily_metadata(result[symbols[-1]], symbols[-1])
+    assert proof["source_daily_ohlcv_complete"] is True
+    assert proof["source_daily_ohlcv_session_date"] == "2026-08-28"
+
+
+@pytest.mark.parametrize("response", ["same", "older", "empty", "wrong_ticker", "column", "exception"])
+def test_stale_retry_does_not_replace_with_invalid_or_nonadvancing_data(monkeypatch, response):
+    symbols = [f"US{i:02d}" for i in range(10)]
+    result = {
+        symbol: _yahoo_retry_frame(
+            "2026-08-28" if index < 9 else "2026-08-27", group_by="flat"
+        ).rename(columns=str.lower)
+        for index, symbol in enumerate(symbols)
+    }
+    original = result[symbols[-1]]
+    original.attrs["source_marker"] = "preserve original"
+    calls = []
+
+    def fake_download(*, tickers, group_by="column", **kwargs):
+        calls.append(tickers)
+        if response == "exception":
+            raise RuntimeError("database is locked")
+        if response == "empty":
+            return pd.DataFrame()
+        session = {"same": "2026-08-27", "older": "2026-08-26"}.get(response, "2026-08-28")
+        return _yahoo_retry_frame(
+            session, "OTHER" if response == "wrong_ticker" else tickers,
+            "column" if response == "column" else group_by,
+        )
+
+    monkeypatch.setattr("data_fetcher.yf.download", fake_download)
+    monkeypatch.setattr("data_fetcher.time.sleep", lambda _: None)
+    advanced = _retry_stale_us_daily_history(
+        result, symbols, now=datetime(2026, 8, 29, tzinfo=ZoneInfo("America/New_York")),
+    )
+
+    assert advanced == [] and calls == [symbols[-1], symbols[-1]]
+    assert result[symbols[-1]] is original
+    assert original.attrs == {"source_marker": "preserve original"}
+    assert original.index[-1].date().isoformat() == "2026-08-27"
+
+
+@pytest.mark.parametrize("count, current_count, observed_at", [
+    (122, 61, datetime(2026, 8, 29, tzinfo=ZoneInfo("America/New_York"))),
+    (10, 9, datetime(2026, 8, 28, 16, 4, tzinfo=ZoneInfo("America/New_York"))),
+])
+def test_stale_retry_respects_storm_and_before_close_guards(monkeypatch, count, current_count, observed_at):
+    symbols = [f"US{i:03d}" for i in range(count)]
+    result = {
+        symbol: _yahoo_retry_frame(
+            "2026-08-28" if index < current_count else "2026-08-27", group_by="flat"
+        ).rename(columns=str.lower)
+        for index, symbol in enumerate(symbols)
+    }
+
+    def unexpected_download(**kwargs):
+        pytest.fail("guarded cohort must not make an individual request")
+
+    monkeypatch.setattr("data_fetcher.yf.download", unexpected_download)
+    assert _retry_stale_us_daily_history(result, symbols, now=observed_at) == []
 
 
 def test_download_history_keeps_coretronic_securities_separate(monkeypatch):
