@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-11-06T01:31:30.641251+00:00",
+  "generated_at": "2026-11-07T00:54:55.018016+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 380,
@@ -10,19 +10,33 @@
     "officially_matched_stocks": 312,
     "officially_matched_etfs": 68,
     "unmatched": 0,
-    "event_count": 0,
-    "warning_count": 0,
+    "event_count": 1,
+    "warning_count": 1,
     "critical_count": 0,
-    "source_failure_count": 1,
+    "source_failure_count": 0,
     "degraded_source_count": 1,
     "degraded_sources": [
       "sec_registry"
     ],
-    "registry_source_failure_count": 1,
+    "registry_source_failure_count": 0,
     "event_source_failure_count": 0,
-    "available_registry_source_count": 6
+    "available_registry_source_count": 7
   },
-  "events": [],
+  "events": [
+    {
+      "type": "MERGER_OR_SHARE_EXCHANGE",
+      "label": "合併／換股",
+      "level": "warning",
+      "symbol": "1303.TW",
+      "asset_type": "STOCK",
+      "source": "twse_announcements",
+      "source_date": "1151106",
+      "headline": "公告本公司2026年10月合併營業額",
+      "action": "記錄承接公司、換股比例與生效日候選；禁止自動拼接或刪除歷史資料",
+      "event_id": "59b4f1e572ba436bc4f2",
+      "requires_manual_approval": true
+    }
+  ],
   "source_health": {
     "twse_registry": {
       "ok": true,
@@ -33,14 +47,17 @@
       "live_ok": true
     },
     "tpex_registry": {
-      "ok": false,
-      "record_count": 0,
-      "error": "ChunkedEncodingError: Response ended prematurely"
+      "ok": true,
+      "record_count": 897,
+      "error": "",
+      "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
+      "mode": "live",
+      "live_ok": true
     },
     "sec_registry": {
       "ok": false,
       "record_count": 0,
-      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 59.6 days exceeds 7"
+      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 60.6 days exceeds 7"
     },
     "twse_securities": {
       "ok": true,
@@ -52,7 +69,7 @@
     },
     "tpex_securities": {
       "ok": true,
-      "record_count": 13679,
+      "record_count": 13618,
       "error": "",
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
       "mode": "live",
@@ -78,7 +95,7 @@
     },
     "us_symbol_directory": {
       "ok": true,
-      "record_count": 13244,
+      "record_count": 13239,
       "error": "",
       "url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt + https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
       "mode": "live",
@@ -86,20 +103,20 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 381,
-      "event_count": 4,
+      "record_count": 401,
+      "event_count": 13,
       "error": ""
     },
     "tpex_announcements": {
       "ok": true,
-      "record_count": 159,
-      "event_count": 0,
+      "record_count": 212,
+      "event_count": 4,
       "error": ""
     },
     "nasdaq_halts": {
       "ok": true,
-      "record_count": 129,
-      "event_count": 129,
+      "record_count": 84,
+      "event_count": 84,
       "error": ""
     }
   },
