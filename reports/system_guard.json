@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-11-08T01:03:08+08:00",
+  "checked_at": "2026-11-08T01:11:11+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-11-08 00:59:35",
+  "report_updated_at": "2026-11-08 01:07:37",
   "report_age_minutes": 3.6,
   "counts": {
     "ok": 26,
-    "info": 11,
-    "warning": 2,
+    "info": 10,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 528.9 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 528.3 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -120,10 +120,10 @@
     {
       "code": "tw_core_data",
       "title": "台股核心資料",
-      "level": "ok",
-      "label": "正常",
-      "detail": "價格 192、法人 192、信用 188",
-      "action": ""
+      "level": "warning",
+      "label": "注意",
+      "detail": "價格 192、法人 190、信用 37；預期 85",
+      "action": "缺資料股票不得取得完整買進資格"
     },
     {
       "code": "broker_data",
@@ -160,10 +160,10 @@
     {
       "code": "tiingo_us_close",
       "title": "Tiingo 免費版覆蓋測試",
-      "level": "info",
-      "label": "資訊",
-      "detail": "免費版分批收集中，目前已嘗試 141 檔；尚未切換半套快取",
-      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
+      "level": "ok",
+      "label": "正常",
+      "detail": "私密完整快取涵蓋 146 檔；原始價格未進入網站或計算",
+      "action": ""
     },
     {
       "code": "us_sec_fundamentals",
@@ -221,7 +221,7 @@
       "detail": "台美股共 85 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 85,
-      "ledger_updated_at": "2026-11-08 00:59:35"
+      "ledger_updated_at": "2026-11-08 01:07:37"
     },
     {
       "code": "unified_evidence",
@@ -331,6 +331,7 @@
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
+    "缺資料股票不得取得完整買進資格",
     "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
   ],
   "safety": {
