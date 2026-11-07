@@ -121,7 +121,7 @@
     }
   },
   "schema_version": 2,
-  "updated_at": "2026-11-07 18:51:06",
+  "updated_at": "2026-11-07 23:49:38",
   "mode": "event_level_shadow_learning_only",
   "status": "collecting",
   "progress": {
@@ -30324,12 +30324,12 @@
         "limitation": "列數不是獨立事件數；目前無改善或晉升結論。"
       },
       "event_gap_risk": {
-        "status": "blocked",
+        "status": "collecting",
         "source": "tw_weight_experiment.json:entry_gap_shadow",
         "completed_sessions": 0,
         "invalid_sessions": 4,
-        "pending_receipt": false,
-        "last_block_reason": "missing_frozen_source_signal",
+        "pending_receipt": true,
+        "last_block_reason": null,
         "paired_rule_registered": true,
         "limitation": "只驗證台股跳空進場／留現金規則，不能代表全部新聞事件風險已接通。"
       },
@@ -30343,7 +30343,7 @@
         "paired_rule_registered": false,
         "related_experiment": {
           "source": "market_rotation_shadow.json",
-          "updated_at": "2026-11-07 18:51:06",
+          "updated_at": "2026-11-07 23:49:38",
           "status": "reported",
           "same_candidate": false,
           "scope": "正式V6 TOP10 對照 85%原分數＋15%同市場族群輪動排序；不是看跌反轉規則。",
