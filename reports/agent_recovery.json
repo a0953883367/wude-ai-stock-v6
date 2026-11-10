@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-10T18:08:32.648019+08:00",
+  "checked_at": "2026-11-10T20:58:46.140064+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1106,8 +1106,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "generated_suppressed",
-      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent",
       "diagnosis": [
         "missing_fixed_generation"
       ]
@@ -1115,8 +1115,8 @@
     "2026-11-10:evening": {
       "period": "evening",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
     }
   },
   "next_actions": [],
@@ -1131,7 +1131,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-10 12:28:02",
+        "updated_at": "2026-11-10 19:59:28",
         "error": null
       }
     },
@@ -2321,6 +2321,13 @@
       "verified_at": "2026-11-10T12:26:10.622445+08:00",
       "report_updated_at": "2026-11-10 11:56:26",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-10:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-11-10T20:58:46.140064+08:00",
+      "report_updated_at": "2026-11-10 19:59:28"
     }
   },
   "permission_probe": {
@@ -2337,11 +2344,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
