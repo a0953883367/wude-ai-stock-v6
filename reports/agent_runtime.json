@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-10T12:58:56+00:00",
+  "generated_at": "2026-11-10T18:01:25+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-10T20:58:53.488622+08:00",
+    "checked_at": "2026-11-11T02:01:22.956809+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-10T20:58:52.556318+08:00",
+    "checked_at": "2026-11-11T02:01:21.770632+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1179,6 +1179,24 @@
         "attempts": [],
         "status": "generated_suppressed",
         "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
+      },
+      "2026-11-11:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-11-11:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-11-11:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "data_incidents": {
@@ -2372,18 +2390,23 @@
         "status": "verified_fresh",
         "verified_at": "2026-11-10T20:58:46.140064+08:00",
         "report_updated_at": "2026-11-10 19:59:28"
+      },
+      "2026-11-11:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "blocked_evidence",
+        "reason": "source_session_not_closed"
       }
     },
     "us_direction_verification": {
-      "status": "verified_current",
-      "reason": "immutable_eligible_snapshot_matches_official_session",
+      "status": "blocked_evidence",
+      "reason": "source_session_not_closed",
       "needs_silent_refresh": false,
-      "verified_recovered": true,
+      "verified_recovered": false,
       "last_source_session_date": "2026-11-09",
-      "latest_official_session_date": "2026-11-09",
+      "latest_official_session_date": "2026-11-10",
       "historical_backfill_allowed": false,
-      "snapshot_id": "US:2026-11-09",
-      "captured_at": "2026-11-10 05:26:34"
+      "next_session_date": null
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
