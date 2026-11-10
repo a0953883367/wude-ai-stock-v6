@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-10T01:41:04+00:00",
+  "generated_at": "2026-11-10T04:26:23+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-10T09:41:00.857025+08:00",
+    "checked_at": "2026-11-10T12:26:19.932259+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-10T09:40:58.470647+08:00",
+    "checked_at": "2026-11-10T12:26:17.640326+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1152,8 +1152,8 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "generated_suppressed",
-        "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent",
         "diagnosis": [
           "invalid_free_us_data",
           "missing_fixed_generation"
@@ -1161,9 +1161,18 @@
       },
       "2026-11-10:noon": {
         "period": "noon",
-        "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "attempts": [
+          {
+            "at": "2026-11-10T12:26:10.622445+08:00",
+            "guard_run_id": "42755777755",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+        "diagnosis": [
+          "missing_fixed_generation"
+        ]
       },
       "2026-11-10:evening": {
         "period": "evening",
@@ -2342,6 +2351,13 @@
         ],
         "status": "awaiting_verification",
         "reason": "current data requires silent refresh; no delivery receipt is created"
+      },
+      "2026-11-10:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "verified_fresh",
+        "verified_at": "2026-11-10T12:26:10.622445+08:00",
+        "report_updated_at": "2026-11-10 11:56:26"
       }
     },
     "us_direction_verification": {
@@ -2394,7 +2410,7 @@
           "research"
         ],
         "files": 11,
-        "bytes": 184793,
+        "bytes": 185351,
         "truncated": true,
         "cross_domain_reads": false
       },
