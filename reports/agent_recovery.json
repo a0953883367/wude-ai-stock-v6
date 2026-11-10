@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-10T12:26:17.640326+08:00",
+  "checked_at": "2026-11-10T18:08:24.613482+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1106,8 +1106,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
       "diagnosis": [
         "missing_fixed_generation"
       ]
@@ -1119,7 +1119,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-10:noon",
+      "period": "noon",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1131,7 +1137,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-10 11:56:26",
+        "updated_at": "2026-11-10 12:28:02",
         "error": null
       }
     },
@@ -2310,10 +2316,17 @@
     },
     "2026-11-10:noon": {
       "period": "noon",
-      "attempts": [],
-      "status": "verified_fresh",
+      "attempts": [
+        {
+          "at": "2026-11-10T18:08:24.613482+08:00",
+          "guard_run_id": "42796467047",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
       "verified_at": "2026-11-10T12:26:10.622445+08:00",
-      "report_updated_at": "2026-11-10 11:56:26"
+      "report_updated_at": "2026-11-10 11:56:26",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -2330,8 +2343,11 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "invalid_free_us_data",
+    "report_freshness"
+  ],
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
