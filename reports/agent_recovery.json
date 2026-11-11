@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-11T23:29:05.903367+08:00",
+  "checked_at": "2026-11-12T03:33:48.915274+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1146,9 +1146,33 @@
       "attempts": [],
       "status": "generated_suppressed",
       "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
+    },
+    "2026-11-12:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-12:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-12:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-12:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1160,7 +1184,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-11 19:45:01",
+        "updated_at": "2026-11-12 03:02:03",
         "error": null
       }
     },
@@ -2393,6 +2417,18 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-12:morning": {
+      "period": "morning",
+      "attempts": [
+        {
+          "at": "2026-11-12T03:33:48.915274+08:00",
+          "guard_run_id": "43088235309",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -2414,15 +2450,14 @@
   ],
   "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "status": "blocked_evidence",
+    "reason": "source_session_not_closed",
     "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-11-10",
-    "latest_official_session_date": "2026-11-10",
+    "latest_official_session_date": "2026-11-11",
     "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-11-10",
-    "captured_at": "2026-11-11 07:38:32"
+    "next_session_date": null
   },
   "capabilities": {
     "actions_read_confirmed": true,
