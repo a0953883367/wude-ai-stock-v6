@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_registry.v1",
-  "updated_at": "2026-11-11T01:15:58.048117+00:00",
+  "updated_at": "2026-11-12T02:15:30.195309+00:00",
   "records": {
     "6781.TW": {
       "symbol": "6781.TW",
@@ -3961,7 +3961,8 @@
       "source": "twse_securities",
       "display_name": "富邦NASDAQ",
       "asset_type": "ETF",
-      "present": true
+      "present": false,
+      "missing_observations": 1
     },
     "SMH": {
       "symbol": "SMH",
@@ -5296,7 +5297,9 @@
       "present": true
     }
   },
-  "missing_observations": {},
+  "missing_observations": {
+    "00662.TW": 1
+  },
   "policy": {
     "shadow_only": true,
     "updates_active_universe": false,
