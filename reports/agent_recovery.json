@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-13T04:58:57.152993+08:00",
+  "checked_at": "2026-11-13T09:59:35.530838+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1178,8 +1178,8 @@
     "2026-11-13:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "generated_suppressed",
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
     },
     "2026-11-13:noon": {
       "period": "noon",
@@ -1206,7 +1206,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-13 04:30:05",
+        "updated_at": "2026-11-13 05:00:49",
         "error": null
       }
     },
@@ -2480,7 +2480,7 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
+      "status": "exhausted",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -2499,18 +2499,20 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [
-    "invalid_free_us_data"
+    "invalid_free_us_data",
+    "report_freshness"
   ],
-  "data_recovery_status": "ready_silent_refresh",
+  "data_recovery_status": "exhausted",
   "us_direction_verification": {
-    "status": "blocked_evidence",
-    "reason": "source_session_not_closed",
+    "status": "verified_current",
+    "reason": "immutable_eligible_snapshot_matches_official_session",
     "needs_silent_refresh": false,
-    "verified_recovered": false,
-    "last_source_session_date": "2026-11-11",
+    "verified_recovered": true,
+    "last_source_session_date": "2026-11-12",
     "latest_official_session_date": "2026-11-12",
     "historical_backfill_allowed": false,
-    "next_session_date": null
+    "snapshot_id": "US:2026-11-12",
+    "captured_at": "2026-11-13 05:00:49"
   },
   "capabilities": {
     "actions_read_confirmed": true,
