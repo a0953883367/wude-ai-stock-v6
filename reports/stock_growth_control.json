@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-13T17:52:00+08:00",
+  "updated_at": "2026-11-13T19:33:34+08:00",
   "system": "股票成長控制塔 V1",
   "status": "attention",
   "light": "yellow",
@@ -10,8 +10,8 @@
     "workflow_stages": 7,
     "monitoring_layers": 6,
     "tracked_models": 7,
-    "models_waiting_owner": 0,
-    "validation_days": 59,
+    "models_waiting_owner": 3,
+    "validation_days": 60,
     "validation_target": 60
   },
   "workflow_stages": [
@@ -55,21 +55,21 @@
       "id": "phased_validation",
       "order": 5,
       "label": "1／3／5／20／60／126日驗證",
-      "status": "collecting",
-      "light": "blue",
-      "status_label": "累積中",
-      "detail": "60日中央驗證目前 59/60；交易計畫已成熟 3367 筆。",
-      "current": 59,
+      "status": "manual_review",
+      "light": "orange",
+      "status_label": "待人工決定",
+      "detail": "60日中央驗證目前 60/60；交易計畫已成熟 3385 筆。",
+      "current": 60,
       "target": 60
     },
     {
       "id": "graduation_gate",
       "order": 6,
       "label": "畢業閘門",
-      "status": "collecting",
-      "light": "blue",
-      "status_label": "累積中",
-      "detail": "0 個候選已到人工決定階段；未達門檻者繼續累積。"
+      "status": "manual_review",
+      "light": "orange",
+      "status_label": "待人工決定",
+      "detail": "3 個候選已到人工決定階段；未達門檻者繼續累積。"
     },
     {
       "id": "formal_release",
@@ -135,34 +135,34 @@
     {
       "model_id": "next_session_v7",
       "label": "隔日方向影子模型",
-      "phase": "preliminary_review",
-      "phase_label": "20日初評",
-      "light": "blue",
-      "current": 59,
+      "phase": "waiting_owner",
+      "phase_label": "待人工畢業決定",
+      "light": "orange",
+      "current": 60,
       "target": 60,
-      "progress_pct": 98.3,
-      "formal_validation_days": 59,
+      "progress_pct": 100.0,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
-      "component_gate_passed": false,
-      "reason": "模型資料進度 59/60，尚未達初評門檻",
+      "formal_progress_pct": 100.0,
+      "component_gate_passed": true,
+      "reason": "正式共同驗證 60/60 且品質條件通過，可人工決定是否畢業",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
     {
       "model_id": "valuation_risk",
       "label": "估值風險雷達",
-      "phase": "preliminary_review",
-      "phase_label": "20日初評／等待60日",
-      "light": "blue",
+      "phase": "waiting_owner",
+      "phase_label": "待人工畢業決定",
+      "light": "orange",
       "current": 8000,
       "target": 100,
       "progress_pct": 100.0,
-      "formal_validation_days": 59,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
+      "formal_progress_pct": 100.0,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 8000/100，但正式共同驗證只有 59/60；目前只可初評，不可畢業；有效交易日最少 29/10",
+      "reason": "正式共同驗證 60/60 且品質條件通過，可人工決定是否畢業；有效交易日最少 28/10",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -175,9 +175,9 @@
       "current": 48,
       "target": 60,
       "progress_pct": 80.0,
-      "formal_validation_days": 59,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
+      "formal_progress_pct": 100.0,
       "component_gate_passed": false,
       "reason": "模型資料進度 48/60，尚未達初評門檻",
       "formal_promotion": "manual_only",
@@ -186,34 +186,34 @@
     {
       "model_id": "tw_institution_weight",
       "label": "台股法人權重模型",
-      "phase": "preliminary_review",
-      "phase_label": "20日初評／等待60日",
-      "light": "blue",
+      "phase": "performance_review",
+      "phase_label": "績效／品質複核",
+      "light": "yellow",
       "current": 27,
       "target": 20,
       "progress_pct": 100.0,
-      "formal_validation_days": 59,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
+      "formal_progress_pct": 100.0,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 27/20，但正式共同驗證只有 59/60；目前只可初評，不可畢業；20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
+      "reason": "正式共同驗證已達 60/60，但品質或績效條件尚未全部通過；20日影子初判：目前隔日開盤買、當日收盤賣的滿倉規則失敗",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
     {
       "model_id": "inverse_etf",
       "label": "反向ETF影子模型",
-      "phase": "preliminary_review",
-      "phase_label": "20日初評／等待60日",
-      "light": "blue",
-      "current": 204,
+      "phase": "waiting_owner",
+      "phase_label": "待人工畢業決定",
+      "light": "orange",
+      "current": 205,
       "target": 20,
       "progress_pct": 100.0,
-      "formal_validation_days": 59,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
+      "formal_progress_pct": 100.0,
       "component_gate_passed": true,
-      "reason": "模型資料門檻已達 204/20，但正式共同驗證只有 59/60；目前只可初評，不可畢業",
+      "reason": "正式共同驗證 60/60 且品質條件通過，可人工決定是否畢業",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -223,14 +223,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 50,
+      "current": 51,
       "target": 60,
-      "progress_pct": 83.3,
-      "formal_validation_days": 59,
+      "progress_pct": 85.0,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
+      "formal_progress_pct": 100.0,
       "component_gate_passed": false,
-      "reason": "模型資料進度 50/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
+      "reason": "模型資料進度 51/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -243,9 +243,9 @@
       "current": 45,
       "target": 60,
       "progress_pct": 75.0,
-      "formal_validation_days": 59,
+      "formal_validation_days": 60,
       "formal_validation_target": 60,
-      "formal_progress_pct": 98.3,
+      "formal_progress_pct": 100.0,
       "component_gate_passed": false,
       "reason": "模型資料進度 45/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
@@ -259,9 +259,9 @@
       "detail": "正式 V6 維持不變，先確認黃色項目。"
     },
     {
-      "priority": "wait",
-      "title": "繼續累積60日證據",
-      "detail": "目前 59/60，尚差 1 個有效交易日。"
+      "priority": "owner",
+      "title": "人工審查畢業候選",
+      "detail": "已有 3 個候選等待你的決定；系統不會自動合併。"
     }
   ],
   "rules": {
@@ -294,27 +294,6 @@
     "note": "控制塔只整理既有證據與提醒人工決定，不控制券商、不付款。"
   },
   "pending_notifications": [
-    {
-      "id": "layer:system:attention:2026-10-12T06:10:10+08:00",
-      "type": "control_layer_change",
-      "level": "warning",
-      "created_at": "2026-10-12T06:10:10+08:00",
-      "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
-    },
-    {
-      "id": "layer:data:attention:2026-10-12T09:18:40+08:00",
-      "type": "control_layer_change",
-      "level": "warning",
-      "created_at": "2026-10-12T09:18:40+08:00",
-      "message": "🟡 股票成長控制塔：資料監控變為注意。完整度、來源、更新時間與缺值隔離。"
-    },
-    {
-      "id": "layer:system:attention:2026-10-12T09:18:40+08:00",
-      "type": "control_layer_change",
-      "level": "warning",
-      "created_at": "2026-10-12T09:18:40+08:00",
-      "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
-    },
     {
       "id": "layer:data:attention:2026-10-15T15:36:00+08:00",
       "type": "control_layer_change",
@@ -433,6 +412,27 @@
       "level": "warning",
       "created_at": "2026-11-13T17:52:00+08:00",
       "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
+    },
+    {
+      "id": "model:next_session_v7:waiting_owner:2026-11-13 19:29:08",
+      "type": "model_waiting_owner",
+      "level": "manual_review",
+      "created_at": "2026-11-13 19:29:08",
+      "message": "🟠 模型人工審查：隔日方向影子模型已完成60日正式門檻，等待你決定畢業或退回。"
+    },
+    {
+      "id": "model:valuation_risk:waiting_owner:2026-11-13 19:29:08",
+      "type": "model_waiting_owner",
+      "level": "manual_review",
+      "created_at": "2026-11-13 19:29:08",
+      "message": "🟠 模型人工審查：估值風險雷達已完成60日正式門檻，等待你決定畢業或退回。"
+    },
+    {
+      "id": "model:inverse_etf:waiting_owner:2026-11-13 19:29:08",
+      "type": "model_waiting_owner",
+      "level": "manual_review",
+      "created_at": "2026-11-13 19:29:08",
+      "message": "🟠 模型人工審查：反向ETF影子模型已完成60日正式門檻，等待你決定畢業或退回。"
     }
   ]
 }
