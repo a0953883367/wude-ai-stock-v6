@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-13T20:08:40.263305+08:00",
+  "checked_at": "2026-11-14T01:55:40.644600+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1192,6 +1192,24 @@
       "attempts": [],
       "status": "generated_suppressed",
       "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
+    },
+    "2026-11-14:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-14:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-14:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -1206,7 +1224,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-13 19:50:57",
+        "updated_at": "2026-11-14 01:11:14",
         "error": null
       }
     },
@@ -2501,6 +2519,12 @@
       "status": "verified_fresh",
       "verified_at": "2026-11-13T20:08:32.791924+08:00",
       "report_updated_at": "2026-11-13 19:50:57"
+    },
+    "2026-11-14:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "blocked_evidence",
+      "reason": "source_session_not_closed"
     }
   },
   "permission_probe": {
@@ -2518,17 +2542,16 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "data_recovery_status": "blocked_evidence",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
+    "status": "blocked_evidence",
+    "reason": "source_session_not_closed",
     "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-11-12",
-    "latest_official_session_date": "2026-11-12",
+    "latest_official_session_date": "2026-11-13",
     "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-11-12",
-    "captured_at": "2026-11-13 05:00:49"
+    "next_session_date": null
   },
   "capabilities": {
     "actions_read_confirmed": true,
