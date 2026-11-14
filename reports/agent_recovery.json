@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-14T22:22:17.590806+08:00",
+  "checked_at": "2026-11-15T01:57:59.787710+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1220,6 +1220,24 @@
       "attempts": [],
       "status": "expired",
       "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-11-15:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-15:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-15:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
   "next_actions": [],
@@ -1234,7 +1252,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-14 19:08:05",
+        "updated_at": "2026-11-15 01:26:51",
         "error": null
       }
     },
@@ -2567,6 +2585,13 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-15:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-11-15T01:57:59.787710+08:00",
+      "report_updated_at": "2026-11-15 01:26:51"
     }
   },
   "permission_probe": {
@@ -2583,10 +2608,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data"
-  ],
-  "data_recovery_status": "ready_silent_refresh",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
