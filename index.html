@@ -227,6 +227,8 @@ function normalizeLegacy(row){
 }
 function normalizeReport(row){
   return {
+    quoteDisplay:row.quote_display,
+    sourceSessionDate:row.official_session_date,
     name:row.name||'—',symbol:row.symbol||'—',market:row.market||'US',type:row.type||'個股',theme:row.theme||'—',
     score:row.score,entryScore:row.entry_score,price:row.price,change:row.change_pct,rsi:row.rsi,volume:row.volume_pace,technical:row.technical_score,volumeScore:row.volume_score,institutionScore:row.institution_score,creditScore:row.credit_score,valuationScore:row.valuation_score,growthScore:row.growth_score,financialQualityScore:row.financial_quality_score,fundamental:row.fundamental_score,news:row.news_summary||'—',
     newsRiskLevel:row.news_risk_level,newsPenalty:row.news_penalty,newsVerified:row.news_verified,newsArticles:Array.isArray(row.news_articles)?row.news_articles:[],newsDataAvailable:row.news_data_available,
@@ -322,7 +324,29 @@ function delayedUsNote(stock){
   var minutes=Math.max(16,Math.ceil(Number(stock.usDelayedMinimumSeconds||960)/60));
   return '延遲歷史行情（至少延遲'+minutes+'分鐘；非即時）｜參考價 '+number(stock.usDelayedPrice,2)+'｜週期 '+(stock.usDelayedInterval==='1Day'?'日線收盤備援':'1分鐘')+'｜資料時間 '+(stock.usDelayedAsOf||'未提供')+'｜擷取時間 '+(stock.usDelayedFetchedAt||'未提供')+'｜來源 '+(stock.usDelayedSource||'Alpaca SIP historical')+'｜休市或成交稀疏時可能更舊；不取代正式價格、權重或即時判斷';
 }
+function suspensionDisplayFor(stock){
+  if(stock.symbol!=='00662.TW'||stock.market!=='TW'||stock.type!=='ETF')return null;
+  function valid(value){return value&&value.schema==='wude.quote_display.suspension.v1'&&value.scope==='report_display_only'&&value.suppress_current_quote===true&&value.event&&value.event.symbol===stock.symbol&&value.event.market===stock.market;}
+  if(valid(stock.quoteDisplay))return stock.quoteDisplay;
+  // Mixed-generation merges must not erase an already published warning.
+  var candidates=(STATE.latest&&STATE.latest.watchlist||[]).concat(STATE.latest&&STATE.latest.top||[],STATE.allAnalysis&&STATE.allAnalysis.data||[],STATE.normalized||[]);
+  for(var i=0;i<candidates.length;i++){
+    var row=candidates[i],display=row.quote_display||row.quoteDisplay;
+    if(row.symbol===stock.symbol&&row.market===stock.market&&valid(display))return display;
+  }
+  // A legacy fallback or failed fetch is not evidence of confirmed resumption.
+  return {schema:'wude.quote_display.suspension.v1',scope:'report_display_only',suppress_current_quote:true,status:'display_status_unavailable',label:'停牌／恢復狀態尚待核對，報價暫不採用',event:{symbol:stock.symbol,market:stock.market},source_reference:{reported_session_date:stock.sourceSessionDate||null},note:'尚缺同批停牌展示資料，不把舊值當成最新成交；不猜測最後成交日期。',model_reference_note:'既有模型分數、排名與歷史紀錄保留；未確認前不展示當期買賣區間。'};
+}
 function stockCard(stock,index){
+  var display=suspensionDisplayFor(stock);
+  if(display&&display.schema==='wude.quote_display.suspension.v1'&&display.scope==='report_display_only'&&display.suppress_current_quote===true&&display.event&&display.event.symbol===stock.symbol&&display.event.market===stock.market){
+    var event=display.event||{},reference=display.source_reference||{};
+    var schedule=event.suspension_start?'公告停牌 '+esc(event.suspension_start)+'～'+esc(event.suspension_end)+'<br>預計恢復 '+esc(event.planned_resumption_date)+'（尚未確認）':'停牌／恢復狀態資料尚未同步';
+    var source=typeof event.source_url==='string'&&event.source_url.indexOf('https://www.twse.com.tw/zh/ETFortune/announcement?')===0?'<br><a href="'+esc(event.source_url)+'" target="_blank" rel="noopener noreferrer">證交所公告</a>':'';
+    return '<article class="card"><div class="card-head"><div><div class="rank">'+esc(stock.displayRankLabel||'觀察')+'</div><div class="stock">'+esc(stock.name)+'</div><div class="ticker">'+esc(marketCode(stock.symbol,stock.market))+'</div></div><div class="light">⏸️</div></div>'+
+      '<div class="score">保留模型排名分（非當期買賣訊號）：'+esc(number(stock.score,1))+'</div>'+
+      '<div class="databox"><b>'+esc(display.label)+'</b><br>'+esc(display.report_date||'日期未核對')+' 報告狀態，非即時恢復確認<br>'+schedule+'<br>成交報價／漲跌／成交量：暫不提供<br>原始來源標示日期 '+esc(reference.reported_session_date||'未知')+' 僅供稽核<br>'+esc(display.note)+'<br>'+esc(display.model_reference_note)+source+'</div></article>';
+  }
   var nextSession='';
   if(stock.nextSessionVersion){
     var nsClass=String(stock.nextSessionDirection).indexOf('看漲')>=0?'up':String(stock.nextSessionDirection).indexOf('看跌')>=0?'down':'muted';

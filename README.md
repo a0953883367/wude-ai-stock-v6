@@ -4,6 +4,8 @@
 
 完整逐檔研究讀取入口：[研究交付索引](reports/research_delivery.json)。由既有產報流程產生，包含全部已分析身份的判斷分片與10期間預測分片對應，不以TOP名單代替完整池；[讀取與完整性契約](docs/research-delivery.md)。
 
+已知 ETF 停牌的報價展示以 `quote_display` 為準；停牌或恢復未確認時不得退回原始價格欄位冒充成交價。[停牌展示契約與驗收邊界](docs/etf-suspension-display.md)。
+
 ## 手機版儀表板
 
 - 顯示台股、美股、ETF TOP 20
