@@ -1,44 +1,44 @@
 {
   "schema": "wude.weekly_shadow_coach.v1",
-  "generated_at": "2026-11-07T22:29:31.104528+00:00",
+  "generated_at": "2026-11-14T22:52:27.496197+00:00",
   "status": "ok",
   "mode": "openai",
   "source": {
-    "report_updated_at": "2026-11-08 04:23:46",
-    "trading_days_collected": 55,
+    "report_updated_at": "2026-11-15 01:26:51",
+    "trading_days_collected": 60,
     "promotion_review_days": 60,
-    "raw_error_rows": 6505,
-    "independent_events": 1350,
-    "duplicate_rows_collapsed": 5155,
+    "raw_error_rows": 7974,
+    "independent_events": 1552,
+    "duplicate_rows_collapsed": 6422,
     "cause_counts": {
-      "etf_model_separation": 141,
-      "event_gap_risk": 133,
-      "missed_strength_rotation": 98,
-      "direction_calibration": 972,
-      "intraday_reversal": 6
+      "etf_model_separation": 152,
+      "event_gap_risk": 131,
+      "missed_strength_rotation": 229,
+      "direction_calibration": 1031,
+      "intraday_reversal": 9
     },
     "signal_health": {
       "TW_STOCK": {
         "label": "台股個股",
-        "direction_samples": 2746,
-        "trade_signal_samples": 42,
+        "direction_samples": 3086,
+        "trade_signal_samples": 44,
         "status": "collecting_trade_outcomes",
-        "detail": "已有 42 筆完整交易訊號結果，繼續前向驗證。",
+        "detail": "已有 44 筆完整交易訊號結果，繼續前向驗證。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
           "diagnosis": "healthy_triggered",
-          "qualified_setups": 57,
-          "evaluated_setups": 57,
-          "triggered_setups": 42,
-          "pending_setups": 0,
-          "untouched_entry_zones": 15,
-          "source_ineligible_rows": 5722,
-          "guard_blocked_rows": 2835,
+          "qualified_setups": 62,
+          "evaluated_setups": 60,
+          "triggered_setups": 44,
+          "pending_setups": 2,
+          "untouched_entry_zones": 16,
+          "source_ineligible_rows": 6506,
+          "guard_blocked_rows": 3216,
           "data_contract_errors": 0,
           "evaluation_status_counts": {
-            "entry_zone_not_touched": 15,
-            "completed_session_zone_touch": 42
+            "entry_zone_not_touched": 16,
+            "completed_session_zone_touch": 44
           },
           "affects_formal_v6": false,
           "places_orders": false
@@ -69,7 +69,7 @@
       },
       "US_STOCK": {
         "label": "美股個股",
-        "direction_samples": 409,
+        "direction_samples": 450,
         "trade_signal_samples": 9,
         "status": "collecting_trade_outcomes",
         "detail": "已有 9 筆完整交易訊號結果，繼續前向驗證。",
@@ -77,16 +77,16 @@
         "trade_signal_diagnostics": {
           "contract_version": 2,
           "diagnosis": "healthy_triggered",
-          "qualified_setups": 17,
-          "evaluated_setups": 16,
+          "qualified_setups": 19,
+          "evaluated_setups": 18,
           "triggered_setups": 9,
           "pending_setups": 1,
-          "untouched_entry_zones": 7,
-          "source_ineligible_rows": 743,
+          "untouched_entry_zones": 9,
+          "source_ineligible_rows": 841,
           "guard_blocked_rows": 40,
           "data_contract_errors": 0,
           "evaluation_status_counts": {
-            "entry_zone_not_touched": 7,
+            "entry_zone_not_touched": 9,
             "completed_session_zone_touch": 9
           },
           "affects_formal_v6": false,
@@ -95,23 +95,25 @@
       },
       "US_ETF": {
         "label": "美國ETF",
-        "direction_samples": 281,
+        "direction_samples": 325,
         "trade_signal_samples": 0,
-        "status": "no_qualified_setup",
-        "detail": "已有 281 筆方向結果，但目前沒有符合正式買進條件的設定；完整交易訊號為 0 筆屬正常，不需放寬門檻。",
+        "status": "waiting_for_entry_zone",
+        "detail": "已有 325 筆方向結果；1 筆合格買點中已檢查 1 筆，1 筆價格尚未進入買進區，另有 0 筆等待結算。這是正常等待，不是缺資料。",
         "requires_diagnostic": false,
         "trade_signal_diagnostics": {
           "contract_version": 2,
-          "diagnosis": "healthy_no_qualified_setup",
-          "qualified_setups": 0,
-          "evaluated_setups": 0,
+          "diagnosis": "healthy_waiting_for_zone",
+          "qualified_setups": 1,
+          "evaluated_setups": 1,
           "triggered_setups": 0,
           "pending_setups": 0,
-          "untouched_entry_zones": 0,
-          "source_ineligible_rows": 760,
+          "untouched_entry_zones": 1,
+          "source_ineligible_rows": 859,
           "guard_blocked_rows": 67,
           "data_contract_errors": 0,
-          "evaluation_status_counts": {},
+          "evaluation_status_counts": {
+            "entry_zone_not_touched": 1
+          },
           "affects_formal_v6": false,
           "places_orders": false
         }
@@ -119,13 +121,13 @@
     },
     "recent_matured_events": [
       {
-        "event_id": "US:SOXX:2026-10-27:2026-11-06",
+        "event_id": "US:SOXX:2026-10-27:2026-11-10",
         "market": "US",
         "symbol": "SOXX",
         "cohort": "US_ETF",
         "source_start_date": "2026-10-27",
-        "evaluated_end_date": "2026-11-06",
-        "row_count": 5,
+        "evaluated_end_date": "2026-11-10",
+        "row_count": 6,
         "horizons": [
           1,
           2,
@@ -143,13 +145,13 @@
         "learning_action": "建立ETF專屬影子候選並分市場驗證，不修改個股正式權重。"
       },
       {
-        "event_id": "US:ITA:2026-10-29:2026-11-06",
+        "event_id": "US:ITA:2026-10-29:2026-11-12",
         "market": "US",
         "symbol": "ITA",
         "cohort": "US_ETF",
         "source_start_date": "2026-10-29",
-        "evaluated_end_date": "2026-11-06",
-        "row_count": 10,
+        "evaluated_end_date": "2026-11-12",
+        "row_count": 17,
         "horizons": [
           1,
           2,
@@ -192,6 +194,30 @@
         "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
       },
       {
+        "event_id": "TW:1802.TW:2026-11-06:2026-11-13",
+        "market": "TW",
+        "symbol": "1802.TW",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-11-06",
+        "evaluated_end_date": "2026-11-13",
+        "row_count": 4,
+        "horizons": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "predicted_directions": [
+          "DOWN"
+        ],
+        "worst_directional_return_pct": -47.2318,
+        "largest_actual_move_pct": 47.2318,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
+      },
+      {
         "event_id": "US:LITE:2026-10-29:2026-11-05",
         "market": "US",
         "symbol": "LITE",
@@ -216,60 +242,36 @@
         "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
       },
       {
-        "event_id": "US:CRDO:2026-08-27:2026-09-03",
-        "market": "US",
-        "symbol": "CRDO",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-08-27",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 4,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -31.6642,
-        "largest_actual_move_pct": 31.6642,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
-      },
-      {
-        "event_id": "US:AAOI:2026-10-09:2026-10-16",
-        "market": "US",
-        "symbol": "AAOI",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-10-09",
-        "evaluated_end_date": "2026-10-16",
-        "row_count": 4,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -31.0681,
-        "largest_actual_move_pct": 31.0681,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
-      },
-      {
-        "event_id": "TW:1303.TW:2026-08-24:2026-09-01",
+        "event_id": "TW:3661.TW:2026-11-03:2026-11-13",
         "market": "TW",
-        "symbol": "1303.TW",
+        "symbol": "3661.TW",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-08-24",
-        "evaluated_end_date": "2026-09-01",
+        "source_start_date": "2026-11-03",
+        "evaluated_end_date": "2026-11-13",
+        "row_count": 9,
+        "horizons": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "predicted_directions": [
+          "DOWN"
+        ],
+        "worst_directional_return_pct": -42.0495,
+        "largest_actual_move_pct": 42.0495,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
+      },
+      {
+        "event_id": "US:MOD:2026-11-06:2026-11-13",
+        "market": "US",
+        "symbol": "MOD",
+        "cohort": "US_STOCK",
+        "source_start_date": "2026-11-06",
+        "evaluated_end_date": "2026-11-13",
         "row_count": 4,
         "horizons": [
           1,
@@ -280,20 +282,68 @@
         "predicted_directions": [
           "DOWN"
         ],
-        "worst_directional_return_pct": -29.2011,
-        "largest_actual_move_pct": 29.2011,
+        "worst_directional_return_pct": -40.6532,
+        "largest_actual_move_pct": 40.6532,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
         "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
       },
       {
-        "event_id": "TW:3264.TWO:2026-09-09:2026-09-21",
+        "event_id": "TW:3693.TWO:2026-11-03:2026-11-13",
         "market": "TW",
-        "symbol": "3264.TWO",
+        "symbol": "3693.TWO",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-09-09",
-        "evaluated_end_date": "2026-09-21",
+        "source_start_date": "2026-11-03",
+        "evaluated_end_date": "2026-11-13",
+        "row_count": 9,
+        "horizons": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "predicted_directions": [
+          "DOWN"
+        ],
+        "worst_directional_return_pct": -39.961,
+        "largest_actual_move_pct": 39.961,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
+      },
+      {
+        "event_id": "TW:3443.TW:2026-11-03:2026-11-13",
+        "market": "TW",
+        "symbol": "3443.TW",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-11-03",
+        "evaluated_end_date": "2026-11-13",
+        "row_count": 9,
+        "horizons": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "predicted_directions": [
+          "DOWN"
+        ],
+        "worst_directional_return_pct": -38.7591,
+        "largest_actual_move_pct": 38.7591,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
+      },
+      {
+        "event_id": "TW:1802.TW:2026-10-29:2026-11-12",
+        "market": "TW",
+        "symbol": "1802.TW",
+        "cohort": "TW_STOCK",
+        "source_start_date": "2026-10-29",
+        "evaluated_end_date": "2026-11-12",
         "row_count": 11,
         "horizons": [
           1,
@@ -305,44 +355,20 @@
           "DOWN",
           "UP"
         ],
-        "worst_directional_return_pct": -28.5068,
-        "largest_actual_move_pct": 28.5068,
+        "worst_directional_return_pct": -35.9401,
+        "largest_actual_move_pct": 35.9401,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
         "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
       },
       {
-        "event_id": "US:VRT:2026-10-29:2026-11-05",
-        "market": "US",
-        "symbol": "VRT",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-10-29",
-        "evaluated_end_date": "2026-11-05",
-        "row_count": 4,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -28.141,
-        "largest_actual_move_pct": 28.141,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
-      },
-      {
-        "event_id": "TW:2360.TW:2026-10-22:2026-11-04",
+        "event_id": "TW:6223.TWO:2026-11-05:2026-11-13",
         "market": "TW",
-        "symbol": "2360.TW",
+        "symbol": "6223.TWO",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-10-22",
-        "evaluated_end_date": "2026-11-04",
+        "source_start_date": "2026-11-05",
+        "evaluated_end_date": "2026-11-13",
         "row_count": 6,
         "horizons": [
           1,
@@ -351,48 +377,23 @@
           5
         ],
         "predicted_directions": [
-          "DOWN",
-          "UP"
+          "DOWN"
         ],
-        "worst_directional_return_pct": -27.7641,
-        "largest_actual_move_pct": 27.7641,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
+        "worst_directional_return_pct": -35.5588,
+        "largest_actual_move_pct": 35.5588,
+        "primary_cause": "missed_strength_rotation",
+        "cause_label": "漏抓強勢／族群輪動",
+        "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
+        "learning_action": "建立強勢反轉影子候選；比較量能、攻擊量、突破與族群廣度，禁止事後把贏家塞回排名。"
       },
       {
-        "event_id": "US:PCG:2026-08-24:2026-09-03",
-        "market": "US",
-        "symbol": "PCG",
-        "cohort": "US_STOCK",
-        "source_start_date": "2026-08-24",
-        "evaluated_end_date": "2026-09-03",
-        "row_count": 10,
-        "horizons": [
-          1,
-          2,
-          3,
-          5
-        ],
-        "predicted_directions": [
-          "UP"
-        ],
-        "worst_directional_return_pct": -27.5061,
-        "largest_actual_move_pct": 27.5061,
-        "primary_cause": "event_gap_risk",
-        "cause_label": "突發事件／跳空風險",
-        "diagnosis": "出現異常幅度或隔夜跳空，普通量價模型不應把它當成一般方向錯誤。",
-        "learning_action": "建立事件風險影子防護；只使用預測當時已有的新聞與盤前異常資料，必要時降信心或棄權。"
-      },
-      {
-        "event_id": "TW:6147.TWO:2026-09-07:2026-09-18",
+        "event_id": "TW:4916.TW:2026-11-06:2026-11-13",
         "market": "TW",
-        "symbol": "6147.TWO",
+        "symbol": "4916.TW",
         "cohort": "TW_STOCK",
-        "source_start_date": "2026-09-07",
-        "evaluated_end_date": "2026-09-18",
-        "row_count": 10,
+        "source_start_date": "2026-11-06",
+        "evaluated_end_date": "2026-11-13",
+        "row_count": 5,
         "horizons": [
           1,
           2,
@@ -403,8 +404,8 @@
           "DOWN",
           "UP"
         ],
-        "worst_directional_return_pct": -26.5193,
-        "largest_actual_move_pct": 26.5193,
+        "worst_directional_return_pct": -35.5422,
+        "largest_actual_move_pct": 35.5422,
         "primary_cause": "missed_strength_rotation",
         "cause_label": "漏抓強勢／族群輪動",
         "diagnosis": "模型維持看跌，但股票其後明顯轉強，需檢查量能、突破及族群共振是否反轉。",
@@ -412,32 +413,32 @@
       }
     ],
     "backup": {
-      "created_at": "2026-11-08 04:23:46",
+      "created_at": "2026-11-15 01:26:51",
       "verified": true,
       "table_counts": {
         "metadata": 1,
-        "market_sessions": 109,
-        "prices": 17474,
-        "predictions": 155348,
-        "model_versions": 294,
-        "portfolios": 408,
-        "portfolio_positions": 1980,
-        "source_usage": 104,
-        "model_control": 14,
-        "model_control_events": 284,
-        "unit_learning_predictions": 176440,
+        "market_sessions": 117,
+        "prices": 18883,
+        "predictions": 169438,
+        "model_versions": 368,
+        "portfolios": 456,
+        "portfolio_positions": 2220,
+        "source_usage": 114,
+        "model_control": 20,
+        "model_control_events": 358,
+        "unit_learning_predictions": 193105,
         "unit_trust_control": 44,
-        "unit_trust_events": 1826,
-        "forward_outcome_cohorts": 85,
-        "forward_outcome_candidates": 13153,
-        "forward_outcome_results": 50084
+        "unit_trust_events": 2002,
+        "forward_outcome_cohorts": 92,
+        "forward_outcome_candidates": 14236,
+        "forward_outcome_results": 56103
       }
     },
     "cloud_archive": {
       "verified": true,
-      "total": 218,
+      "total": 237,
       "uploaded": 0,
-      "verified_existing": 51,
+      "verified_existing": 48,
       "errors": 0
     },
     "tw_signal_confirmation_shadow": {
@@ -449,10 +450,10 @@
         "rejected": 0,
         "settled": 0,
         "confirmation_rate_pct": null,
-        "diagnostic_rows": 0,
-        "kd_aligned": 0,
-        "kd_divergent": 0,
-        "rsi_sideways": 0
+        "diagnostic_rows": 192,
+        "kd_aligned": 47,
+        "kd_divergent": 145,
+        "rsi_sideways": 12
       },
       "rules": {
         "intraday_to_close": "盤中訊號只標暫定；同一交易日收盤後才確認或否決",
@@ -462,68 +463,68 @@
     }
   },
   "coach": {
-    "headline": "本週重點：方向校準為主，ETF分離與事件跳空次之；僅做前向影子驗證。",
+    "headline": "本週主因為方向判斷偏差，並集中於ETF分離與台股強勢輪動。",
     "root_causes": [
       {
-        "cause": "direction_calibration",
-        "evidence_events": 972,
-        "explanation": "方向校準錯誤占主要事件，需分強度與持有期檢查。",
-        "shadow_experiment": "新預測按市場、強度區間及1/2/3/5日追蹤命中率與最差方向報酬。",
-        "risk": "樣本分層後可能不足，不改正式方向、排名或權重。"
+        "cause": "方向校準偏差",
+        "evidence_events": 1031,
+        "explanation": "為最多成熟事件，應按市場、strength與持有天數拆解，避免混合解讀。",
+        "shadow_experiment": "沿用原方向，分市場及strength區間比較1/2/3/5日命中率與最差方向報酬。",
+        "risk": "strength不是機率；樣本分層後可能不足，僅影子觀察。"
       },
       {
-        "cause": "etf_model_separation",
-        "evidence_events": 141,
-        "explanation": "ETF結構與個股不同，近期SOXX、ITA均出現成熟錯誤。",
-        "shadow_experiment": "新ETF預測獨立記錄，與同市場個股規則分組比較，不回填舊資料。",
-        "risk": "US_ETF目前無完整交易訊號，短期無法評估進場效果。"
+        "cause": "漏抓強勢與族群輪動",
+        "evidence_events": 229,
+        "explanation": "台股個股多次維持看跌後轉強，需檢查量能、突破及族群共振。",
+        "shadow_experiment": "只用預測當時資料，記錄攻擊量、突破與族群廣度，前向比較反轉識別效果。",
+        "risk": "不可事後補排名；反轉條件可能增加噪音與誤判。"
       },
       {
-        "cause": "event_gap_risk",
-        "evidence_events": 133,
-        "explanation": "異常波動與跳空造成方向結果失真，不宜視為一般量價錯誤。",
-        "shadow_experiment": "新預測只用當時可得事件與盤前異常資料，前向比較降信心或棄權差異。",
-        "risk": "事件樣本異質，可能混入一般波動，需持續累積成熟事件。"
+        "cause": "ETF模型未分離",
+        "evidence_events": 152,
+        "explanation": "美國ETF成熟錯誤明顯，ETF結構與個股不同，需獨立驗證。",
+        "shadow_experiment": "建立美國ETF專屬影子分組，與個股規則分開追蹤方向結果。",
+        "risk": "目前ETF完整交易訊號少，不能據此修改正式模型。"
       }
     ],
     "priority_actions": [
-      "先啟動方向強度與持有期分層追蹤，不改正式系統。",
-      "建立US_ETF獨立影子紀錄，等待足夠完整結果。",
-      "為US_STOCK與TW_STOCK保留事件風險標記，僅前向驗證。"
+      "優先完成方向偏差的市場、strength與期限分層審計。",
+      "追蹤台股強勢輪動影子特徵，不回填歷史排名。",
+      "維持ETF獨立影子驗證，並持續收集交易結果。"
     ],
     "data_gaps": [
-      "各cohort的strength分布與1/2/3/5日成熟結果尚未提供。",
-      "TW_ETF與US_ETF目前完整交易訊號皆為0。",
-      "台股盤中確認影子目前追蹤訊號為0，無法評估確認率。"
+      "TW_ETF僅1筆方向結果，無法評估ETF規則。",
+      "US_ETF有325筆方向結果，但合格買點尚未觸及。",
+      "TW、US個股完整交易結果仍少，需持續前向收集。"
     ],
     "confidence_notes": [
-      "方向校準事件數最多，但缺少強度、期限及市場交叉分布。",
-      "ETF與事件原因有成熟錯誤支持；ETF交易樣本仍不足。",
-      "所有觀察均限於凍結資料，不回填歷史或影響正式V6。"
+      "事件已合併重複觀察窗，共1552個獨立成熟事件。",
+      "突發事件／跳空131件、盤中反轉9件，本週不列主要候選。",
+      "所有影子實驗不影響正式V6、排名、權重或下單。"
     ],
     "candidate_proposals": [
       {
         "rule_id": "direction_calibration",
         "cohort": "ALL",
-        "hypothesis": "方向命中率與最差報酬會隨strength區間及持有期而異。",
-        "measurement": "新預測按市場、strength 0/50/65/80/100及1/2/3/5交易日分層比較。",
-        "risk_control": "保持原方向；只觀察full_day結果，不計算strength機率校準誤差。",
+        "hypothesis": "方向錯誤可能集中於特定strength區間、資產市場或持有期限。",
+        "measurement": "固定strength 0/50/65/80/100，分市場資產及1/2/3/5日比較命中率與最差方向報酬。",
+        "risk_control": "保持原方向；僅影子分層，不計算strength機率校準誤差。",
         "execution_template": "direction_strength_horizon_audit_v1"
       },
       {
         "rule_id": "etf_model_separation",
         "cohort": "US_ETF",
-        "hypothesis": "美國ETF獨立規則可降低ETF結構造成的方向錯誤。",
-        "measurement": "新預測分別記錄ETF與個股基準的方向命中率及最差方向報酬。",
-        "risk_control": "僅影子驗證；交易訊號不足時不下結論、不放寬門檻。",
+        "hypothesis": "美國ETF的成分與結構差異，可能使個股方向規則失效。",
+        "measurement": "前向比較ETF專屬影子規則與現行共用規則的各期限方向結果。",
+        "risk_control": "不改正式權重；交易訊號不足時只記錄方向結果。",
         "execution_template": "unsupported"
       },
       {
-        "rule_id": "event_gap_risk",
-        "cohort": "US_STOCK",
-        "hypothesis": "預測時可識別的事件或盤前異常，可能降低跳空型錯誤。",
-        "measurement": "新成熟事件比較原始方向與事件風險標記下的命中率、最差報酬。",
-        "risk_control": "只使用預測當時資料；不追認事後新聞，不改正式權重。",
+        "rule_id": "missed_strength_rotation",
+        "cohort": "TW_STOCK",
+        "hypothesis": "量能、突破及族群廣度共振，可能提前識別看跌後的強勢反轉。",
+        "measurement": "以前向預測時點資料記錄三類特徵，追蹤反轉命中與最差方向報酬。",
+        "risk_control": "不回填排名、不改正式方向；樣本不足時只累積觀察。",
         "execution_template": "unsupported"
       }
     ]
@@ -536,18 +537,22 @@
   "api": {
     "called": true,
     "model": "gpt-5.6-luna",
-    "response_id": "resp_05d7ff64a45b640e016aefa6400c0c87d19237987c9d7d6e8a",
+    "response_id": "resp_0300dcfb442ba489016af8e620d35487d18d5e389037fa52a0",
     "usage": {
-      "input_tokens": 4162,
+      "input_tokens": 4213,
       "input_tokens_details": {
-        "cache_write_tokens": 4159,
+        "cache_write_tokens": 4210,
+        "cache_write_tokens_details": {
+          "ttl_12h_tokens": 0,
+          "ttl_30m_tokens": 4210
+        },
         "cached_tokens": 0
       },
-      "output_tokens": 1364,
+      "output_tokens": 1227,
       "output_tokens_details": {
-        "reasoning_tokens": 492
+        "reasoning_tokens": 352
       },
-      "total_tokens": 5526
+      "total_tokens": 5440
     },
     "attempts": 1,
     "store": false
