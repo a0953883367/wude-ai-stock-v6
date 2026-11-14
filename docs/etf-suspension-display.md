@@ -1,0 +1,17 @@
+# Known ETF suspension: report-only quote contract
+
+The 00662.TW fund issuer's [2026-11-12 announcement on TWSE](https://www.twse.com.tw/zh/ETFortune/announcement?company=A00010&date=20261112&fund=00662&seq=1&type=value) confirms a 1:5 split, suspension on November 11–16, and planned resumption on November 17. The scheduled last trading day is November 10. This does not establish the price of that day's close. NAV, PCF and split-reference arithmetic are not traded quotes.
+
+The executable schedule cites the original [2026-09-10 announcement](https://www.twse.com.tw/zh/ETFortune/announcement?company=A00010&date=20260910&fund=00662&seq=1&type=all), which was already available before the suspension. The later confirmation is not injected as future knowledge into an earlier report.
+
+`quote_display` is authoritative for **presentation only** when `suppress_current_quote=true`. Its quote price, trading date, change and volume are null. Do not fall back to raw row values. The original row is retained as legacy model evidence for audit, not as a verified quote. `source_reference.reported_session_date` remains the provider's label and must never be silently backdated to the announcement's last trading day.
+
+The pure projection copies publication payloads. It does not change price history, ranking inputs, scores, weights, simulation records or broker behavior. It applies to `latest.json`, fixed report snapshots produced by the ordinary producer, rankings and full-analysis serialization. Existing archived files are not rewritten. Markdown rendering, including research finalization, and the static homepage consume the qualified view. Previously published JSON and other consumers, including the separately deployed Vercel app, require explicit integration/acceptance; code changes do not prove those consumers adopted this contract.
+
+The static homepage preserves any matching valid suspension warning across mixed publication generations. If all projections are absent or fetches fall back to the old `stock_data.json`, only 00662.TW shows an unverified-status card without a current quote. Absence of metadata is never a resumption signal. Other pages, including `chart-pattern-shadow.html`, still read raw fields and are outside this patch; this is not a site-wide or Vercel acceptance claim.
+
+The homepage labels the projection's report date instead of claiming a live trading-status check. With no usable projection it also suppresses unqualified pre-suspension legacy cards; this conservative presentation fallback does not rewrite their historical files. Python's dated historical rendering remains unchanged before the suspension.
+
+Reaching November 17 never automatically clears the warning. After that date the display says resumption is unconfirmed. A later change must review the issuer/exchange's actual resumption announcement and symbol-specific, completed-session traded OHLCV. Provider flags, a positive volume, a split action, a computed one-fifth price or a future/stale source date alone do not authorize release. This patch deliberately has no automatic resume or historical price-adjustment path.
+
+Before release: verify the current producer outputs the projection, test both JSON/Markdown and the actual target frontend, resolve overlap with open PR #372, and confirm the production deployment's source commit. No production report regeneration or deployment is part of the local regression checks.

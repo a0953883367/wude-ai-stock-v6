@@ -37,6 +37,7 @@ from treasury_stress import (
     evaluate_treasury_stress,
 )
 from notifier import render_markdown, save_report
+from tw_etf_suspension_display import project_report_quotes
 from report_delivery import record_delivery
 from news_risk import fetch_news_risks, merge_official_announcements
 from performance import load_frozen_forecasts, load_performance_context, update_performance
@@ -2155,7 +2156,7 @@ def main() -> int:
     ranking_tmp = SETTINGS.reports_dir / "rankings.tmp"
     _stamp_us_daily_reference_publication(ranking_payload)
     ranking_tmp.write_text(
-        json.dumps(ranking_payload, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(project_report_quotes(ranking_payload), ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
     ranking_tmp.replace(ranking_path)
@@ -2181,7 +2182,7 @@ def main() -> int:
     all_analysis_tmp = SETTINGS.reports_dir / "all_analysis.tmp"
     _stamp_us_daily_reference_publication(all_analysis_payload)
     all_analysis_tmp.write_text(
-        json.dumps(all_analysis_payload, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(project_report_quotes(all_analysis_payload), ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
     all_analysis_tmp.replace(all_analysis_path)
