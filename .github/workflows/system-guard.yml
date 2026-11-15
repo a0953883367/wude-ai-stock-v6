@@ -38,7 +38,7 @@ jobs:
         with:
           # A rerun must observe persisted retry history, not its old event SHA.
           ref: main
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install guard dependency
