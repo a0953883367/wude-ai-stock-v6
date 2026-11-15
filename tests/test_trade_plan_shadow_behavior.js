@@ -312,6 +312,60 @@ function mainLabels(app) {
   assert(!basisHtml.includes('資料不存在'));
   assert(basisHtml.includes('買進區（參考）'));
 
+  const oldPriceReason = '缺少可驗證收盤價，或現價與收盤基準不一致';
+  const precisePriceReason = '來源快照價格與日K收盤不一致；兩欄皆有數值，不等於缺少收盤資料';
+  const diagnosticRow = row('PRECISE', plan('insufficient', {no_buy_reason: '其他條件；'+oldPriceReason,
+    conclusion: conclusion('insufficient', {
+      reasons: [oldPriceReason], gates: [{code: 'price', passed: false, reason: oldPriceReason}],
+      data_status: {code: 'source_attestation_pending', label: '來源完整性待驗證', detail: oldPriceReason},
+      price_basis: {reported_quote: 346.62, completed_close: 347.01, aligned: false, diagnostic: {
+        close_source: 'Yahoo Finance daily bars', close_source_session_date: '2026-10-09',
+        absolute_difference: '0.39', allowed_tolerance: '0.01',
+      }},
+    })}));
+  const unchangedDiagnosticRow = JSON.stringify(diagnosticRow);
+  const preciseApp = await boot([diagnosticRow]);
+  assert.strictEqual(JSON.stringify(diagnosticRow), unchangedDiagnosticRow, 'display diagnostics cannot mutate source data');
+  const preciseHtml = preciseApp.nodes.cards.innerHTML;
+  assert(preciseHtml.includes(precisePriceReason));
+  assert(!preciseHtml.includes(oldPriceReason));
+  ['日K來源標示（不代表來源核對通過）：Yahoo Finance daily bars', '日K來源交易日：2026-10-09',
+    '絕對差額：0.39', '既有容差：0.01'].forEach(text => assert(preciseHtml.includes(text), text));
+  assert.deepStrictEqual(mainLabels(preciseApp), ['來源完整性待驗證']);
+  assert.strictEqual(countFor(preciseApp, 'eligible'), null);
+  assert.strictEqual(countFor(preciseApp, 'insufficient'), 1);
+  assert(basisHtml.includes('差額／容差診斷尚未提供；不重算或改變原判定'));
+  for (const [quote, close, expected] of [[null, 100, '缺少來源快照價格'], [100, null, '缺少日K收盤價格'],
+    [0, 100, '來源快照價格無效（須為有限正數）'], [100, -1, '日K收盤價格無效（須為有限正數）'],
+    [[100], 100, '來源快照價格無效（須為有限正數）'], ['0x64', 100, '來源快照價格無效（須為有限正數）']]) {
+    const missingApp = await boot([row('MISSING', plan('insufficient', {conclusion: conclusion('insufficient', {
+      reasons: [oldPriceReason], price_basis: {reported_quote: quote, completed_close: close, aligned: false},
+    })}))]);
+    assert(missingApp.nodes.cards.innerHTML.includes(expected));
+    assert(!missingApp.nodes.cards.innerHTML.includes('兩欄皆有數值'));
+    assert(!missingApp.nodes.cards.innerHTML.includes(oldPriceReason));
+    assert.strictEqual(countFor(missingApp, 'insufficient'), 1);
+  }
+  const injectedDiagnostic = JSON.parse(unchangedDiagnosticRow);
+  injectedDiagnostic.plans.short.conclusion.price_basis.diagnostic.close_source = '<img src=x onerror=alert(1)>';
+  injectedDiagnostic.plans.short.conclusion.price_basis.diagnostic.close_source_session_date = '<script>date</script>';
+  injectedDiagnostic.plans.short.conclusion.price_basis.diagnostic.absolute_difference = '<script>difference</script>';
+  const injectionApp = await boot([injectedDiagnostic]);
+  assert(!injectionApp.nodes.cards.innerHTML.includes('<img'));
+  assert(!injectionApp.nodes.cards.innerHTML.includes('<script>'));
+  assert(injectionApp.nodes.cards.innerHTML.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  const decimalStringApp = await boot([row('DECIMAL_STRING', plan('insufficient', {conclusion: conclusion('insufficient', {
+    reasons: [oldPriceReason], price_basis: {reported_quote: '1_02', completed_close: 100, aligned: false},
+  })}))]);
+  assert(decimalStringApp.nodes.cards.innerHTML.includes(precisePriceReason));
+  const serverDiagnosticApp = await boot([row('SERVER_DIAGNOSTIC', plan('insufficient', {conclusion: conclusion('insufficient', {
+    reasons: [oldPriceReason], price_basis: {reported_quote: '非標準數值', completed_close: 100, aligned: false,
+      diagnostic: {status: 'price_comparison_unavailable', reason: '<script>reason</script>保留原判定待核對'}},
+  })}))]);
+  assert(serverDiagnosticApp.nodes.cards.innerHTML.includes('&lt;script&gt;reason&lt;/script&gt;保留原判定待核對'));
+  assert(!serverDiagnosticApp.nodes.cards.innerHTML.includes('<script>'));
+  assert.strictEqual(countFor(serverDiagnosticApp, 'insufficient'), 1);
+
   const inconsistent = await boot([
     row('FAILED_GATE', plan('eligible', {conclusion: conclusion('eligible', {gates: [{code: 'source', passed: false, reason: '來源待核對'}]})})),
     row('PENDING_SOURCE', plan('eligible', {conclusion: conclusion('eligible', {data_status: {code: 'source_attestation_pending', label: '來源完整性待驗證'}})})),

@@ -42,6 +42,47 @@ def _price_matches_close(price: Any, close: Any) -> bool:
         return False
 
 
+def _price_diagnostic(price: Any, snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Explain the unchanged price gate, without promoting source provenance.
+
+    Numeric strings retain the exact decimal comparison for display. Provider
+    labels describe the existing close only; they do not identify the quote's
+    source or make an unqualified provider acceptable.
+    """
+    close = snapshot.get("close")
+    missing = []
+    for label, value in (("來源快照價格", price), ("日K收盤價格", close)):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            missing.append("缺少" + label)
+        elif not _positive(value):
+            missing.append(label + "無效（須為有限正數）")
+    comparable = not missing
+    aligned = _price_matches_close(price, close)
+    status = "aligned" if aligned else "price_basis_mismatch" if comparable else "price_missing_or_invalid"
+    reason = ("；".join(missing) if missing else
+              "來源快照價格與日K收盤在既有容差內一致" if aligned else
+              "來源快照價格與日K收盤不一致；兩欄皆有數值，不等於缺少收盤資料")
+    source = snapshot.get("source")
+    source_date = snapshot.get("source_session_date")
+    result = {"status": status, "reason": reason,
+              "close_source": source if isinstance(source, str) and source.strip() else None,
+              "close_source_session_date": source_date if _date(source_date) else None,
+              "absolute_difference": None, "allowed_tolerance": None}
+    try:
+        if _positive(close):
+            completed = Decimal(str(close))
+            result["allowed_tolerance"] = str(max(Decimal("0.01"), abs(completed) * Decimal("0.00001")))
+            if comparable:
+                result["absolute_difference"] = str(abs(Decimal(str(price)) - completed))
+    except (InvalidOperation, ValueError):
+        # Some non-JSON objects are float-convertible but not decimal strings.
+        # Diagnostics must not break a conclusion the existing gate rejects.
+        result.update(status="price_comparison_unavailable",
+                      reason="價格資料無法進行既有小數比較；保留原判定待核對",
+                      absolute_difference=None, allowed_tolerance=None)
+    return result
+
+
 def source_snapshot(row: dict[str, Any]) -> dict[str, Any]:
     """Carry provenance through the hub without filling unknown source metadata.
 
@@ -261,8 +302,9 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
     gate("completed", timing["completed"], "尚無已完成的正式收盤")
     gate("freshness", timing["fresh"], "收盤快照已落後，等待最新完成交易日")
     price, close = row.get("price"), snapshot.get("close")
+    price_diagnostic = _price_diagnostic(price, snapshot)
     gate("price", _price_matches_close(price, close),
-         "缺少可驗證收盤價，或現價與收盤基準不一致")
+         price_diagnostic["reason"])
     gate("snapshot", source_coherent, "中央報告與分檔不是同一批次，等待重算")
     gate("core_data", not row.get("core_data_missing"), "關鍵資料缺漏")
     required_source = {"short": "short_plan", "medium": "medium_45d", "long": "long_6m"}.get(horizon)
@@ -321,6 +363,7 @@ def build_conclusion(row: dict[str, Any], plan: dict[str, Any], *,
                         "detail": "；".join(failures)},
         "price_basis": {"reported_quote": price, "completed_close": close,
                         "aligned": "price" not in failed,
+                        "diagnostic": price_diagnostic,
                         "note": "報告參考價與正式收盤分開列示；不以替換價格讓既有計畫通過"},
         "version": VERSION, "code": code, "label": "計畫等待條件" if code == "wait" else LABELS[code], "horizon": horizon,
         "reasons": list(dict.fromkeys(reasons)), "as_of": session,
