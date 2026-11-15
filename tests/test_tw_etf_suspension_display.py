@@ -98,15 +98,29 @@ def test_stale_display_annotation_is_recomputed_for_historical_report():
     assert "quote_display" not in project_report_quotes(payload)["watchlist"][0]
 
 
-def test_live_pinned_full_report_preserves_every_original_field():
+@pytest.mark.parametrize("already_projected", [False, True])
+def test_live_pinned_full_report_preserves_every_original_field(already_projected):
     payload = json.loads((ROOT / "reports/latest.json").read_text())
+    # Both legacy publications and reports emitted by the new producer are
+    # valid inputs. Compare raw evidence independently of our presentation view.
+    if already_projected:
+        payload = project_report_quotes(payload)
+    else:
+        for key in ("watchlist", "top"):
+            for row in payload.get(key, []):
+                if (row.get("quote_display") or {}).get("schema") == SCHEMA:
+                    row.pop("quote_display")
     before = deepcopy(payload)
     projected = project_report_quotes(payload)
     for key in ("watchlist", "top"):
         for old, new in zip(payload.get(key, []), projected.get(key, [])):
-            stripped = dict(new); stripped.pop("quote_display", None)
-            assert stripped == old
+            original, stripped = dict(old), dict(new)
+            for row in (original, stripped):
+                if (row.get("quote_display") or {}).get("schema") == SCHEMA:
+                    row.pop("quote_display")
+            assert stripped == original
     assert payload == before
+    assert project_report_quotes(projected) == projected
 
 
 def test_initial_and_final_research_markdown_keep_suspension_warning(tmp_path):

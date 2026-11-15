@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-14T10:23:19.558142+08:00",
+  "checked_at": "2026-11-15T07:15:14.658195+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1202,8 +1202,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "generated_suppressed",
-      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable",
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent",
       "diagnosis": [
         "invalid_free_us_data",
         "missing_fixed_generation"
@@ -1212,10 +1212,38 @@
     "2026-11-14:noon": {
       "period": "noon",
       "attempts": [],
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-11-14:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
+    },
+    "2026-11-15:morning": {
+      "period": "morning",
+      "attempts": [
+        {
+          "at": "2026-11-15T07:15:07.071516+08:00",
+          "guard_run_id": "43652222073",
+          "state": "dispatch_accepted"
+        }
+      ],
+      "status": "awaiting_verification",
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation"
+      ]
+    },
+    "2026-11-15:noon": {
+      "period": "noon",
+      "attempts": [],
       "status": "waiting_window",
       "reason": "primary delivery grace / future period"
     },
-    "2026-11-14:evening": {
+    "2026-11-15:evening": {
       "period": "evening",
       "attempts": [],
       "status": "waiting_window",
@@ -1234,7 +1262,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-14 07:47:31",
+        "updated_at": "2026-11-15 01:26:51",
         "error": null
       }
     },
@@ -2541,6 +2569,40 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-14:noon": {
+      "period": "noon",
+      "attempts": [
+        {
+          "at": "2026-11-14T14:48:31.995835+08:00",
+          "guard_run_id": "43568067852",
+          "state": "dispatch_accepted"
+        }
+      ],
+      "status": "verified_fresh",
+      "reason": "current data requires silent refresh; no delivery receipt is created",
+      "verified_at": "2026-11-14T19:25:51.198509+08:00",
+      "report_updated_at": "2026-11-14 19:08:05"
+    },
+    "2026-11-14:evening": {
+      "period": "evening",
+      "attempts": [
+        {
+          "at": "2026-11-14T22:22:09.501807+08:00",
+          "guard_run_id": "43604432243",
+          "state": "dispatch_accepted"
+        }
+      ],
+      "status": "awaiting_verification",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-15:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "verified_at": "2026-11-15T03:22:45.242814+08:00",
+      "report_updated_at": "2026-11-15 01:26:51",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -2560,7 +2622,7 @@
   "diagnosis": [
     "invalid_free_us_data"
   ],
-  "data_recovery_status": "ready_silent_refresh",
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
