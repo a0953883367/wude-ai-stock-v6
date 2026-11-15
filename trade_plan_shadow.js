@@ -12,6 +12,45 @@
   function num(v,d){var n=numeric(v);return n==null?'—':n.toFixed(d==null?2:d);}
   function price(v){var n=numeric(v);if(n==null)return '—';return n.toLocaleString('zh-TW',{maximumFractionDigits:n>=1000?1:n>=10?2:3});}
   function pct(v){var n=numeric(v);return n==null?'—':n.toFixed(1)+'%';}
+  function diagnosticNumber(value){
+    if(typeof value==='string'){
+      value=value.trim().replace(/(\d)_(?=\d)/g,'$1');
+      if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value))return null;
+    }else if(typeof value!=='number')return null;
+    return numeric(value);
+  }
+  function priceDiagnosticLabel(raw){
+    var basis=raw&&raw.price_basis;
+    if(!basis||basis.aligned!==false)return '';
+    var diagnostic=basis.diagnostic||{};
+    if(['price_basis_mismatch','price_missing_or_invalid','price_comparison_unavailable'].indexOf(diagnostic.status)>=0&&typeof diagnostic.reason==='string'&&diagnostic.reason.trim())return diagnostic.reason;
+    var missing=[];
+    [['來源快照價格',basis.reported_quote],['日K收盤價格',basis.completed_close]].forEach(function(pair){
+      var value=pair[1], n=diagnosticNumber(value);
+      if(value==null||(typeof value==='string'&&!value.trim()))missing.push('缺少'+pair[0]);
+      else if(n==null||n<=0)missing.push(pair[0]+'無效（須為有限正數）');
+    });
+    return missing.length?missing.join('；'):'來源快照價格與日K收盤不一致；兩欄皆有數值，不等於缺少收盤資料';
+  }
+  function precisePriceReason(text,raw){
+    var label=priceDiagnosticLabel(raw);
+    return label&&typeof text==='string'?text.split('缺少可驗證收盤價，或現價與收盤基準不一致').join(label):text;
+  }
+  function priceDiagnosticDetails(raw){
+    var basis=raw.price_basis||{}, diagnostic=basis.diagnostic||{}, parts=[];
+    if(basis.aligned!==false)return '';
+    var label=priceDiagnosticLabel(raw);
+    if(label)parts.push(esc(label));
+    // Never infer a provider or date from the market, quote, or report batch.
+    if(typeof diagnostic.close_source==='string'&&diagnostic.close_source.trim())parts.push('日K來源標示（不代表來源核對通過）：'+esc(diagnostic.close_source));
+    if(typeof diagnostic.close_source_session_date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(diagnostic.close_source_session_date))parts.push('日K來源交易日：'+esc(diagnostic.close_source_session_date));
+    if(numeric(diagnostic.absolute_difference)!=null&&numeric(diagnostic.absolute_difference)>=0)parts.push('絕對差額：'+esc(diagnostic.absolute_difference));
+    if(numeric(diagnostic.allowed_tolerance)!=null&&numeric(diagnostic.allowed_tolerance)>=0)parts.push('既有容差：'+esc(diagnostic.allowed_tolerance));
+    if(!diagnostic.close_source)parts.push('日K來源標示未提供');
+    if(!diagnostic.close_source_session_date)parts.push('日K來源交易日未提供');
+    if(numeric(diagnostic.absolute_difference)==null||numeric(diagnostic.allowed_tolerance)==null)parts.push('差額／容差診斷尚未提供；不重算或改變原判定');
+    return '<div class="reason warn price-diagnostic">'+parts.join('<br>')+'</div>';
+  }
   function fetchJSON(path){return fetch(path+'?ts='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(path+' HTTP '+r.status);return r.json();});}
   function planFor(row){var h=state.horizon==='preferred'?row.preferred_horizon:state.horizon;return (row.plans||{})[h]||{};}
   function expiryTime(conclusion){
@@ -46,7 +85,7 @@
       else if(risk&&(risk.reason||risk.label))reasons.push(risk.reason||risk.label);
     });
     if(plan.no_buy_reason)reasons.push(plan.no_buy_reason);
-    return reasons.filter(function(reason,i,all){return typeof reason==='string'&&reason.trim()&&all.indexOf(reason)===i;});
+    return reasons.map(function(reason){return precisePriceReason(reason,conclusion.raw);}).filter(function(reason,i,all){return typeof reason==='string'&&reason.trim()&&all.indexOf(reason)===i;});
   }
   function evidenceValue(value){
     if(typeof value==='number'&&Number.isFinite(value))return esc(value);
@@ -134,7 +173,7 @@
       '<div class="head"><div><div class="symbol">'+esc(row.market)+'｜'+esc(row.symbol)+'</div><div class="name">'+esc(row.name)+'</div></div>'+
       '<div class="status"><b>'+esc(conclusion.label)+'</b><small>'+esc(summary.label||'')+'｜影子計畫｜'+entryEvaluationLabel+'</small></div></div>'+
       '<div class="reason'+reasonClass+'">'+guidance+'</div>'+
-      (conclusion.dataStatus?'<div class="reason'+reasonClass+'" data-source-status="'+(conclusion.expired?'stale_snapshot':conclusion.dataStatus.code)+'">資料狀態：'+esc(conclusion.expired?dataStatusLabels.stale_snapshot:(conclusion.dataStatus.label||dataStatusLabels[conclusion.dataStatus.code]))+(conclusion.expired?'<br>結論有效期限已到，需重新核對最新資料。':conclusion.dataStatus.detail?'<br>'+esc(conclusion.dataStatus.detail):'')+'</div>':'')+
+      (conclusion.dataStatus?'<div class="reason'+reasonClass+'" data-source-status="'+(conclusion.expired?'stale_snapshot':conclusion.dataStatus.code)+'">資料狀態：'+esc(conclusion.expired?dataStatusLabels.stale_snapshot:(conclusion.dataStatus.label||dataStatusLabels[conclusion.dataStatus.code]))+(conclusion.expired?'<br>結論有效期限已到，需重新核對最新資料。':conclusion.dataStatus.detail?'<br>'+esc(precisePriceReason(conclusion.dataStatus.detail,raw)):'')+'</div>':'')+
       '<div class="planline">'+
         '<div class="box"><span>來源快照價格'+(mismatch?'（待對齊）':'')+'</span><b>'+price(mismatch?basis.reported_quote:row.price)+'</b></div>'+
         (mismatch?'<div class="box"><span>已完成日K收盤（參考）</span><b>'+price(basis.completed_close)+'</b></div>':'')+
@@ -146,6 +185,7 @@
         '<div class="box"><span>最長持有'+ref+'</span><b>'+num(summary.max_hold_sessions,0)+' 個有效交易日</b></div>'+
       '</div>'+
       (mismatch?'<div class="reason warn">'+esc(basis.note||'行情快照與已完成日K收盤尚未對齊；兩者分開顯示，價格計畫暫供參考。')+'</div>':'')+
+      priceDiagnosticDetails(raw)+
       '<div class="sell">'+(reference?'參考出場價位：':'')+(sell.length?sell.join('｜'):'尚無完整分批賣出價')+(rr.length?'<br>'+rr.join('｜'):'')+
       (summary.stop_too_tight?'<br>🛡️ 停損距離過窄：系統不自動放寬，先等待重算。參考安全距離價 '+price(summary.reference_stop_floor):'')+'</div>'+
       '<div class="reason'+reasonClass+'">原始快照條件（依據與風險）：'+(reasons.length?reasons.map(esc).join('<br>'):'未提供完整原始條件；後續進場仍待另行評估。')+'</div>'+
