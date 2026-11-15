@@ -11,6 +11,7 @@ from typing import Any
 import requests
 
 from config import SETTINGS
+from tw_etf_suspension_display import SCHEMA as SUSPENSION_DISPLAY_SCHEMA, project_report_quotes
 
 
 LOG = logging.getLogger(__name__)
@@ -88,6 +89,17 @@ def _research_lines(research):
 
 
 def _stock_block(row: dict[str, Any]) -> str:
+    display = row.get("quote_display") or {}
+    if display.get("schema") == SUSPENSION_DISPLAY_SCHEMA and display.get("suppress_current_quote") is True:
+        event = display["event"]
+        return "\n".join([
+            f"⏸️ {row['name']} {_code(row)}｜{display['label']}",
+            f"   公告停牌 {event['suspension_start']}～{event['suspension_end']}；預計恢復 {event['planned_resumption_date']}（未視為已恢復）",
+            f"   成交報價／漲跌／成交量：暫不提供；原始來源標示日期 {display['source_reference'].get('reported_session_date') or '未知'} 僅供稽核",
+            f"   {display['note']}",
+            f"   {display['model_reference_note']}",
+            f"   官方公告：{event['source_url']}",
+        ])
     action = str(row.get("action", "🟡 觀察"))
     light = action[:1] if action[:1] in {"🟢", "🟡", "🔴"} else "🟡"
     action_text = action[1:].strip()
@@ -149,6 +161,7 @@ def _stock_block(row: dict[str, Any]) -> str:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
+    report = project_report_quotes(report)
     period_names = {"morning": "早報", "noon": "午報", "evening": "晚報"}
     lines = [
         f"📊 武得 AI 股票{period_names[report['period']]}",
@@ -283,7 +296,7 @@ def save_report(
     SETTINGS.reports_dir.mkdir(parents=True, exist_ok=True)
     latest_json = SETTINGS.reports_dir / "latest.json"
     latest_md = SETTINGS.reports_dir / "latest.md"
-    payload = json.dumps(report, ensure_ascii=False, indent=2)
+    payload = json.dumps(project_report_quotes(report), ensure_ascii=False, indent=2)
     latest_json.write_text(payload, encoding="utf-8")
     latest_md.write_text(markdown, encoding="utf-8")
     if save_snapshot:

@@ -46832,7 +46832,40 @@
       ],
       "buy_candidate_status": "🟡 觀察｜1至5日趨勢分不足；進場條件分不足；技術結構未達候選門檻；資料完整度不足；成交量過低；RSI過熱或弱勢",
       "after_close_price_policy": "carried_completed_session",
-      "price_fetch_deferred_until_close": true
+      "price_fetch_deferred_until_close": true,
+      "quote_display": {
+        "schema": "wude.quote_display.suspension.v1",
+        "scope": "report_display_only",
+        "status": "official_suspension",
+        "label": "分割停牌中，沒有當日成交報價",
+        "suppress_current_quote": true,
+        "price": null,
+        "session_date": null,
+        "change_pct": null,
+        "volume": null,
+        "official_close_available": false,
+        "report_date": "2026-11-14",
+        "event": {
+          "symbol": "00662.TW",
+          "market": "TW",
+          "asset_type": "ETF",
+          "last_scheduled_trading_date": "2026-11-10",
+          "suspension_start": "2026-11-11",
+          "suspension_end": "2026-11-16",
+          "planned_resumption_date": "2026-11-17",
+          "split_ratio": 5,
+          "source_url": "https://www.twse.com.tw/zh/ETFortune/announcement?company=A00010&date=20260910&fund=00662&seq=1&type=all",
+          "source_published_date": "2026-09-10",
+          "resumption_confirmed": false
+        },
+        "source_reference": {
+          "price": 117.8,
+          "reported_session_date": "2026-11-12",
+          "verified_as_trade": false
+        },
+        "note": "原始來源日期與數值僅供稽核，不視為停牌期間成交；不回填最後交易日、不以淨值或分割試算替代報價。",
+        "model_reference_note": "既有模型分數、排名與歷史紀錄保留；停牌或恢復未確認期間不展示當期買賣區間。"
+      }
     },
     {
       "symbol": "SOXX",
