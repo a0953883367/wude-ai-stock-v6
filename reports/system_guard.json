@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "warning",
   "status_label": "🟡 需要注意",
-  "checked_at": "2026-11-17T03:37:01+08:00",
+  "checked_at": "2026-11-17T05:04:45+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": "2026-11-17 03:33:34",
-  "report_age_minutes": 3.5,
+  "report_updated_at": "2026-11-17 05:00:55",
+  "report_age_minutes": 3.8,
   "counts": {
-    "ok": 26,
+    "ok": 27,
     "info": 9,
-    "warning": 4,
+    "warning": 3,
     "critical": 0
   },
   "checks": [
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 586.7 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 587.5 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -96,9 +96,9 @@
     {
       "code": "us_direction_ledger",
       "title": "美股方向原始帳本",
-      "level": "warning",
-      "label": "注意",
-      "detail": "行情 2026-11-16；已驗證帳本 2026-11-13；source_session_not_closed",
+      "level": "ok",
+      "label": "正常",
+      "detail": "行情 2026-11-16；已驗證帳本 2026-11-16；immutable_eligible_snapshot_matches_official_session",
       "action": "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測"
     },
     {
@@ -178,7 +178,7 @@
       "title": "60日向前驗證",
       "level": "ok",
       "label": "正常",
-      "detail": "真實交易日 60/60；進度監控正常；TW 2026-11-16／58天、US 2026-11-13／55天",
+      "detail": "真實交易日 60/60；進度監控正常；TW 2026-11-16／58天、US 2026-11-16／56天",
       "action": ""
     },
     {
@@ -194,7 +194,7 @@
       "title": "錯題學習／影子成長",
       "level": "ok",
       "label": "正常",
-      "detail": "已將 8059 筆錯誤列合併為 1570 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
+      "detail": "已將 8105 筆錯誤列合併為 1573 個事件；影子候選 5 組；完整學習治理 55/55 項，正式V6鎖定",
       "action": ""
     },
     {
@@ -210,7 +210,7 @@
       "title": "多期間影子自動升退版",
       "level": "ok",
       "label": "正常",
-      "detail": "本次升級 2、退版 0；正式V6升級 0",
+      "detail": "本次升級 0、退版 0；正式V6升級 0",
       "action": ""
     },
     {
@@ -221,7 +221,7 @@
       "detail": "台美股共 93 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 93,
-      "ledger_updated_at": "2026-11-17 03:33:34"
+      "ledger_updated_at": "2026-11-17 05:00:55"
     },
     {
       "code": "unified_evidence",
@@ -331,7 +331,6 @@
   ],
   "action_required": [
     "核對官方事件或失效來源；正式名單、歷史資料、排名與下單維持鎖定",
-    "現有 Agent 檢查固定快照；僅在合格窗口靜默補跑，禁止補造歷史預測",
     "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
     "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
   ],
