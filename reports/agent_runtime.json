@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-16T12:41:02+00:00",
+  "generated_at": "2026-11-16T22:24:15+00:00",
   "status": "active",
   "status_label": "三個 Agent 已實際工作；2 項等待輸入",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-16T20:40:59.442687+08:00",
+    "checked_at": "2026-11-17T06:24:12.633249+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-16T20:40:58.474093+08:00",
+    "checked_at": "2026-11-17T06:24:09.509447+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1338,6 +1338,34 @@
         "attempts": [],
         "status": "generated_suppressed",
         "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
+      },
+      "2026-11-17:morning": {
+        "period": "morning",
+        "attempts": [
+          {
+            "at": "2026-11-17T06:24:00.268188+08:00",
+            "guard_run_id": "43969561161",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "diagnosis": [
+          "invalid_free_us_data",
+          "missing_fixed_generation"
+        ],
+        "reason": "retry missing fixed report generation inside protected window; Telegram disabled"
+      },
+      "2026-11-17:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-11-17:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "data_incidents": {
@@ -2719,6 +2747,12 @@
         "status": "verified_fresh",
         "verified_at": "2026-11-16T20:40:39.695493+08:00",
         "report_updated_at": "2026-11-16 20:20:42"
+      },
+      "2026-11-17:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "waiting_primary_or_active_run",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
@@ -2726,11 +2760,11 @@
       "reason": "immutable_eligible_snapshot_matches_official_session",
       "needs_silent_refresh": false,
       "verified_recovered": true,
-      "last_source_session_date": "2026-11-13",
-      "latest_official_session_date": "2026-11-13",
+      "last_source_session_date": "2026-11-16",
+      "latest_official_session_date": "2026-11-16",
       "historical_backfill_allowed": false,
-      "snapshot_id": "US:2026-11-13",
-      "captured_at": "2026-11-14 07:47:31"
+      "snapshot_id": "US:2026-11-16",
+      "captured_at": "2026-11-17 05:00:55"
     },
     "blockers": [
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
@@ -2826,7 +2860,7 @@
       },
       "status": "completed",
       "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 60/60 日、錯誤事件 1570 筆、成熟學習 186635 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "summary": "已讀取影子證據：向前驗證 60/60 日、錯誤事件 1573 筆、成熟學習 188747 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -2838,11 +2872,11 @@
         },
         "validation_days": 60,
         "target_days": 60,
-        "eligible_samples": 3898,
-        "independent_error_events": 1570,
+        "eligible_samples": 3905,
+        "independent_error_events": 1573,
         "guard_status": "warning",
         "learning_units": 11,
-        "matured_learning_rows": 186635,
+        "matured_learning_rows": 188747,
         "active_shadow_trust_streams": 12,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
