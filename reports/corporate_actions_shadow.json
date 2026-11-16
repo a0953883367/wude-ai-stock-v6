@@ -1,6 +1,6 @@
 {
   "schema": "wude.corporate_actions_shadow.v1",
-  "generated_at": "2026-11-15T01:01:13.372486+00:00",
+  "generated_at": "2026-11-16T01:02:16.987668+00:00",
   "status": "warning",
   "summary": {
     "tracked_total": 380,
@@ -31,7 +31,7 @@
       "entity_id": "TW-ISSUE-TWSE-00662",
       "source": "twse_securities",
       "asset_type": "ETF",
-      "consecutive_observations": 5,
+      "consecutive_observations": 6,
       "action": "停止把缺值冒充今日價格並等待人工核對；不得把ETF缺值當成清算，不得刪除歷史資料",
       "event_id": "9b7fa50e4e3bbd056de6",
       "requires_manual_approval": true
@@ -57,7 +57,7 @@
     "sec_registry": {
       "ok": false,
       "record_count": 0,
-      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 68.6 days exceeds 7"
+      "error": "SourceError: https://www.sec.gov/files/company_tickers_exchange.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers_exchange.json; https://www.sec.gov/files/company_tickers.json: HTTPError: 403 Client Error: Forbidden for url: https://www.sec.gov/files/company_tickers.json; AAOI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=AAOI; ACHR: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACHR; ACLS: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ACLS; ADBE: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADBE; ADI: HTTPError: 403 Client Error: Forbidden for url: https://efts.sec.gov/LATEST/search-index?keysTyped=ADI; snapshot: SourceError: SEC snapshot age 69.6 days exceeds 7"
     },
     "twse_securities": {
       "ok": true,
@@ -103,14 +103,14 @@
     },
     "twse_announcements": {
       "ok": true,
-      "record_count": 2,
+      "record_count": 4,
       "event_count": 0,
       "error": ""
     },
     "tpex_announcements": {
       "ok": true,
-      "record_count": 173,
-      "event_count": 2,
+      "record_count": 4,
+      "event_count": 0,
       "error": ""
     },
     "nasdaq_halts": {
