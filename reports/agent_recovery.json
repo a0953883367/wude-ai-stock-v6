@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-17T21:59:25.539026+08:00",
+  "checked_at": "2026-11-17T22:44:34.795616+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1319,8 +1319,8 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
-      "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent",
       "diagnosis": [
         "invalid_free_us_data",
         "missing_fixed_generation",
@@ -1328,7 +1328,13 @@
       ]
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-17:evening",
+      "period": "evening",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -2744,8 +2750,14 @@
     },
     "2026-11-17:evening": {
       "period": "evening",
-      "attempts": [],
-      "status": "waiting_primary_or_active_run",
+      "attempts": [
+        {
+          "at": "2026-11-17T22:44:34.795616+08:00",
+          "guard_run_id": "44106311419",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -2767,7 +2779,7 @@
     "invalid_free_us_data",
     "report_freshness"
   ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
