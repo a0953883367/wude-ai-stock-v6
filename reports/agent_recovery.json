@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-17T22:44:41.966820+08:00",
+  "checked_at": "2026-11-18T07:02:00.568333+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1326,9 +1326,42 @@
         "missing_fixed_generation",
         "report_freshness"
       ]
+    },
+    "2026-11-18:morning": {
+      "period": "morning",
+      "attempts": [
+        {
+          "at": "2026-11-18T07:02:00.568333+08:00",
+          "guard_run_id": "44195559717",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "diagnosis": [
+        "invalid_free_us_data",
+        "missing_fixed_generation"
+      ],
+      "reason": "retry missing fixed report generation inside protected window; Telegram disabled"
+    },
+    "2026-11-18:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-18:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-18:morning",
+      "period": "morning"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1340,7 +1373,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-17 12:49:09",
+        "updated_at": "2026-11-18 04:11:14",
         "error": null
       }
     },
@@ -2753,6 +2786,12 @@
       ],
       "status": "awaiting_verification",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-18:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -2770,20 +2809,17 @@
     "reason": "model listing only; no paid inference performed"
   },
   "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
+    "invalid_free_us_data"
   ],
-  "data_recovery_status": "ready_silent_refresh",
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
-    "status": "verified_current",
-    "reason": "immutable_eligible_snapshot_matches_official_session",
-    "needs_silent_refresh": false,
-    "verified_recovered": true,
+    "status": "ready_silent_refresh",
+    "reason": "direction_receipt_missing_inside_forecast_window",
+    "needs_silent_refresh": true,
+    "verified_recovered": false,
     "last_source_session_date": "2026-11-16",
-    "latest_official_session_date": "2026-11-16",
-    "historical_backfill_allowed": false,
-    "snapshot_id": "US:2026-11-16",
-    "captured_at": "2026-11-17 05:00:55"
+    "latest_official_session_date": "2026-11-17",
+    "historical_backfill_allowed": false
   },
   "capabilities": {
     "actions_read_confirmed": true,
