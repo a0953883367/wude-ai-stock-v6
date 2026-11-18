@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-18 12:39:09",
+  "updated_at": "2026-11-18 21:01:04",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -861,12 +861,19 @@
           "signal_close": 10.989999771118164,
           "entry_open": 11.180000305175781,
           "observed_sessions": [
-            "2026-11-17"
+            "2026-11-17",
+            "2026-11-18"
           ],
           "outcomes": {
             "1": {
               "status": "valid",
               "session_date": "2026-11-17",
+              "actual_etf_return_pct": 0.089,
+              "price_source": "inverse_etf_own_ohlc"
+            },
+            "2": {
+              "status": "valid",
+              "session_date": "2026-11-18",
               "actual_etf_return_pct": 0.089,
               "price_source": "inverse_etf_own_ohlc"
             }
@@ -889,10 +896,19 @@
             "breakdown_pct": 27.4
           },
           "signal_close": 11.1899995803833,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 10.970000267028809,
+          "observed_sessions": [
+            "2026-11-18"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-11-18",
+              "actual_etf_return_pct": 2.005,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         },
         {
@@ -910,63 +926,72 @@
             "breakdown_pct": 0.0
           },
           "signal_close": 2.619999885559082,
-          "entry_open": null,
-          "observed_sessions": [],
-          "outcomes": {},
-          "status": "pending_entry",
+          "entry_open": 2.5899999141693115,
+          "observed_sessions": [
+            "2026-11-18"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-11-18",
+              "actual_etf_return_pct": 0.772,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
           "quarantine_reason": null
         }
       ],
       "current_candidates": [
         {
-          "group": "tw_broad",
-          "inverse_symbol": "00632R.TW",
-          "inverse_name": "元大台灣50反1",
-          "daily_target": -1,
-          "bear_score": 95.8,
-          "status": "confirmed",
-          "constituent_count": 186,
-          "evidence": {
-            "coverage": 186,
-            "negative_breadth_pct": 89.2,
-            "median_change_pct": -3.32,
-            "breakdown_pct": 27.4
-          },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": 1.73,
-          "product_volume_ratio_20d": 2.07,
-          "no_chase": false
-        },
-        {
           "group": "tw_nasdaq",
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 77.5,
-          "status": "confirmed",
+          "bear_score": 66.4,
+          "status": "watch",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
             "negative_breadth_pct": 100.0,
-            "median_change_pct": -1.88,
-            "breakdown_pct": 0.0
+            "median_change_pct": -0.6,
+            "breakdown_pct": 16.7
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": 0.78,
-          "product_volume_ratio_20d": 0.67,
+          "product_session_change_pct": 0.77,
+          "product_opening_gap_pct": -1.15,
+          "product_volume_ratio_20d": 0.82,
+          "no_chase": false
+        },
+        {
+          "group": "tw_broad",
+          "inverse_symbol": "00632R.TW",
+          "inverse_name": "元大台灣50反1",
+          "daily_target": -1,
+          "bear_score": 17.2,
+          "status": "waiting",
+          "constituent_count": 186,
+          "evidence": {
+            "coverage": 186,
+            "negative_breadth_pct": 28.5,
+            "median_change_pct": 0.84,
+            "breakdown_pct": 5.9
+          },
+          "product_session_change_pct": 2.01,
+          "product_opening_gap_pct": -1.97,
+          "product_volume_ratio_20d": 1.55,
           "no_chase": false
         }
       ],
       "summary": {
         "1": {
+          "samples": 19,
+          "win_rate_pct": 52.6,
+          "average_return_pct": -0.081
+        },
+        "2": {
           "samples": 17,
           "win_rate_pct": 47.1,
           "average_return_pct": -0.254
-        },
-        "2": {
-          "samples": 16,
-          "win_rate_pct": 43.8,
-          "average_return_pct": -0.275
         },
         "3": {
           "samples": 16,
