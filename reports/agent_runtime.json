@@ -1,13 +1,13 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-20T07:30:57+00:00",
-  "status": "active",
-  "status_label": "三個 Agent 已實際工作；2 項等待輸入",
+  "generated_at": "2026-11-20T12:50:14+00:00",
+  "status": "attention",
+  "status_label": "Agent 執行需要注意",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
   "summary": {
     "agent_count": 3,
-    "validation_completed": 1,
+    "validation_completed": 0,
     "validation_total": 3,
     "actual_work_performed": 3,
     "waiting_input": 2,
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-20T11:37:47.246072+08:00",
+    "checked_at": "2026-11-20T20:50:11.006422+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-20T11:37:46.465897+08:00",
+    "checked_at": "2026-11-20T20:50:08.862828+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1486,14 +1486,14 @@
       "2026-11-20:noon": {
         "period": "noon",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-11-20:evening": {
         "period": "evening",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "generated_suppressed",
+        "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
       }
     },
     "data_incidents": {
@@ -2949,6 +2949,18 @@
         "attempts": [],
         "status": "waiting_primary_or_active_run",
         "reason": "current data requires silent refresh; no delivery receipt is created"
+      },
+      "2026-11-20:evening": {
+        "period": "evening",
+        "attempts": [
+          {
+            "at": "2026-11-20T20:50:01.894336+08:00",
+            "guard_run_id": "44738952136",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
@@ -2963,6 +2975,7 @@
       "captured_at": "2026-11-20 06:21:56"
     },
     "blockers": [
+      "網頁兩次讀取仍失敗；瀏覽器程式錯誤需已驗收的修復執行器",
       "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
     ],
     "permission_probe": {
@@ -3000,8 +3013,8 @@
           "reference",
           "research"
         ],
-        "files": 10,
-        "bytes": 191467,
+        "files": 9,
+        "bytes": 192847,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -3054,9 +3067,9 @@
           "openai_shadow_coach"
         ]
       },
-      "status": "completed",
-      "status_label": "已實際核對影子進度與安全鎖",
-      "summary": "已讀取影子證據：向前驗證 60/60 日、錯誤事件 1662 筆、成熟學習 203355 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
+      "status": "attention",
+      "status_label": "影子巡檢發現異常",
+      "summary": "已讀取影子證據：向前驗證 60/60 日、錯誤事件 1662 筆、成熟學習 205467 筆；影子升退版是否啟用以安全政策與有效樣本為準。",
       "evidence": {
         "checked_files": {
           "validation_60d.json": true,
@@ -3068,12 +3081,12 @@
         },
         "validation_days": 60,
         "target_days": 60,
-        "eligible_samples": 4184,
+        "eligible_samples": 4272,
         "independent_error_events": 1662,
-        "guard_status": "warning",
+        "guard_status": "critical",
         "learning_units": 11,
-        "matured_learning_rows": 203355,
-        "active_shadow_trust_streams": 10,
+        "matured_learning_rows": 205467,
+        "active_shadow_trust_streams": 11,
         "self_learning_enabled": true,
         "automatic_shadow_promotion": true,
         "automatic_shadow_rollback_after_failures": 2,
