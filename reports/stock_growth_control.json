@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-20T11:37:48+08:00",
+  "updated_at": "2026-11-20T20:11:47+08:00",
   "system": "股票成長控制塔 V1",
-  "status": "attention",
-  "light": "yellow",
-  "status_label": "注意",
+  "status": "blocked",
+  "light": "red",
+  "status_label": "阻擋",
   "detail": "七階段流程與六層監控已統一。",
   "summary": {
     "workflow_stages": 7,
@@ -19,19 +19,19 @@
       "id": "data_ingestion",
       "order": 1,
       "label": "資料進站",
-      "status": "attention",
-      "light": "yellow",
-      "status_label": "注意",
+      "status": "blocked",
+      "light": "red",
+      "status_label": "阻擋",
       "detail": "台股、美股、ETF 與官方資料先進入獨立資料層。"
     },
     {
       "id": "quality_gate",
       "order": 2,
       "label": "品質檢查",
-      "status": "attention",
-      "light": "yellow",
-      "status_label": "注意",
-      "detail": "系統值班檢查：異常 0 項、注意 4 項。"
+      "status": "blocked",
+      "light": "red",
+      "status_label": "阻擋",
+      "detail": "系統值班檢查：異常 1 項、注意 2 項。"
     },
     {
       "id": "formal_v6",
@@ -58,7 +58,7 @@
       "status": "manual_review",
       "light": "orange",
       "status_label": "待人工決定",
-      "detail": "60日中央驗證目前 60/60；交易計畫已成熟 3432 筆。",
+      "detail": "60日中央驗證目前 60/60；交易計畫已成熟 3444 筆。",
       "current": 60,
       "target": 60
     },
@@ -85,9 +85,9 @@
     {
       "id": "data",
       "label": "資料監控",
-      "status": "attention",
-      "light": "yellow",
-      "status_label": "注意",
+      "status": "blocked",
+      "light": "red",
+      "status_label": "阻擋",
       "detail": "完整度、來源、更新時間與缺值隔離。"
     },
     {
@@ -109,9 +109,9 @@
     {
       "id": "system",
       "label": "系統監控",
-      "status": "attention",
-      "light": "yellow",
-      "status_label": "注意",
+      "status": "blocked",
+      "light": "red",
+      "status_label": "阻擋",
       "detail": "GitHub Actions、主 App、Railway 與通知分開判斷。"
     },
     {
@@ -162,7 +162,7 @@
       "formal_validation_target": 60,
       "formal_progress_pct": 100.0,
       "component_gate_passed": true,
-      "reason": "正式共同驗證 60/60 且品質條件通過，可人工決定是否畢業；有效交易日最少 29/10",
+      "reason": "正式共同驗證 60/60 且品質條件通過，可人工決定是否畢業；有效交易日最少 27/10",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -206,7 +206,7 @@
       "phase": "waiting_owner",
       "phase_label": "待人工畢業決定",
       "light": "orange",
-      "current": 239,
+      "current": 242,
       "target": 20,
       "progress_pct": 100.0,
       "formal_validation_days": 60,
@@ -223,14 +223,14 @@
       "phase": "preliminary_review",
       "phase_label": "20日初評",
       "light": "blue",
-      "current": 55,
+      "current": 56,
       "target": 60,
-      "progress_pct": 91.7,
+      "progress_pct": 93.3,
       "formal_validation_days": 60,
       "formal_validation_target": 60,
       "formal_progress_pct": 100.0,
       "component_gate_passed": false,
-      "reason": "模型資料進度 55/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
+      "reason": "模型資料進度 56/60，尚未達初評門檻；20個交易日先初評，60日後才可人工決定是否整合",
       "formal_promotion": "manual_only",
       "automatic_orders": false
     },
@@ -254,9 +254,9 @@
   ],
   "action_queue": [
     {
-      "priority": "review",
-      "title": "查看系統值班注意項",
-      "detail": "正式 V6 維持不變，先確認黃色項目。"
+      "priority": "urgent",
+      "title": "先修復資料或系統異常",
+      "detail": "紅燈解除前停止採用新的影子結論。"
     },
     {
       "priority": "owner",
@@ -294,20 +294,6 @@
     "note": "控制塔只整理既有證據與提醒人工決定，不控制券商、不付款。"
   },
   "pending_notifications": [
-    {
-      "id": "layer:data:attention:2026-10-15T15:36:00+08:00",
-      "type": "control_layer_change",
-      "level": "warning",
-      "created_at": "2026-10-15T15:36:00+08:00",
-      "message": "🟡 股票成長控制塔：資料監控變為注意。完整度、來源、更新時間與缺值隔離。"
-    },
-    {
-      "id": "layer:system:attention:2026-10-15T15:36:00+08:00",
-      "type": "control_layer_change",
-      "level": "warning",
-      "created_at": "2026-10-15T15:36:00+08:00",
-      "message": "🟡 股票成長控制塔：系統監控變為注意。GitHub Actions、主 App、Railway 與通知分開判斷。"
-    },
     {
       "id": "layer:data:attention:2026-10-15T17:10:25+08:00",
       "type": "control_layer_change",
@@ -433,6 +419,20 @@
       "level": "manual_review",
       "created_at": "2026-11-13 19:29:08",
       "message": "🟠 模型人工審查：反向ETF影子模型已完成60日正式門檻，等待你決定畢業或退回。"
+    },
+    {
+      "id": "layer:data:blocked:2026-11-20T20:11:47+08:00",
+      "type": "control_layer_change",
+      "level": "critical",
+      "created_at": "2026-11-20T20:11:47+08:00",
+      "message": "🔴 股票成長控制塔：資料監控變為阻擋。完整度、來源、更新時間與缺值隔離。"
+    },
+    {
+      "id": "layer:system:blocked:2026-11-20T20:11:47+08:00",
+      "type": "control_layer_change",
+      "level": "critical",
+      "created_at": "2026-11-20T20:11:47+08:00",
+      "message": "🔴 股票成長控制塔：系統監控變為阻擋。GitHub Actions、主 App、Railway 與通知分開判斷。"
     }
   ]
 }

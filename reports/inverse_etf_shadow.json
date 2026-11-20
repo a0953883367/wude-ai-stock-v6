@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-20 06:21:56",
+  "updated_at": "2026-11-20 20:07:20",
   "mode": "isolated_inverse_etf_shadow",
   "policy": {
     "actual_etf_prices_only": true,
@@ -916,7 +916,8 @@
             "2026-11-18",
             "2026-11-19",
             "2026-11-19",
-            "2026-11-19"
+            "2026-11-19",
+            "2026-11-20"
           ],
           "outcomes": {
             "1": {
@@ -936,9 +937,15 @@
               "session_date": "2026-11-19",
               "actual_etf_return_pct": 6.472,
               "price_source": "inverse_etf_own_ohlc"
+            },
+            "5": {
+              "status": "valid",
+              "session_date": "2026-11-20",
+              "actual_etf_return_pct": 14.129,
+              "price_source": "inverse_etf_own_ohlc"
             }
           },
-          "status": "tracking",
+          "status": "complete",
           "quarantine_reason": null
         },
         {
@@ -961,7 +968,8 @@
             "2026-11-18",
             "2026-11-19",
             "2026-11-19",
-            "2026-11-19"
+            "2026-11-19",
+            "2026-11-20"
           ],
           "outcomes": {
             "1": {
@@ -981,9 +989,15 @@
               "session_date": "2026-11-19",
               "actual_etf_return_pct": 0.772,
               "price_source": "inverse_etf_own_ohlc"
+            },
+            "5": {
+              "status": "valid",
+              "session_date": "2026-11-20",
+              "actual_etf_return_pct": 4.247,
+              "price_source": "inverse_etf_own_ohlc"
             }
           },
-          "status": "tracking",
+          "status": "complete",
           "quarantine_reason": null
         },
         {
@@ -1001,6 +1015,57 @@
             "breakdown_pct": 55.9
           },
           "signal_close": 11.680000305175781,
+          "entry_open": 12.130000114440918,
+          "observed_sessions": [
+            "2026-11-20"
+          ],
+          "outcomes": {
+            "1": {
+              "status": "valid",
+              "session_date": "2026-11-20",
+              "actual_etf_return_pct": 3.215,
+              "price_source": "inverse_etf_own_ohlc"
+            }
+          },
+          "status": "tracking",
+          "quarantine_reason": null
+        },
+        {
+          "cohort_id": "TW:2026-11-20:00632R.TW",
+          "market": "TW",
+          "signal_session_date": "2026-11-20",
+          "inverse_symbol": "00632R.TW",
+          "inverse_name": "元大台灣50反1",
+          "daily_target": -1,
+          "bear_score": 100.0,
+          "evidence": {
+            "coverage": 186,
+            "negative_breadth_pct": 100.0,
+            "median_change_pct": -9.21,
+            "breakdown_pct": 87.6
+          },
+          "signal_close": 12.520000457763672,
+          "entry_open": null,
+          "observed_sessions": [],
+          "outcomes": {},
+          "status": "pending_entry",
+          "quarantine_reason": null
+        },
+        {
+          "cohort_id": "TW:2026-11-20:00671R.TW",
+          "market": "TW",
+          "signal_session_date": "2026-11-20",
+          "inverse_symbol": "00671R.TW",
+          "inverse_name": "富邦NASDAQ反1",
+          "daily_target": -1,
+          "bear_score": 100.0,
+          "evidence": {
+            "coverage": 6,
+            "negative_breadth_pct": 100.0,
+            "median_change_pct": -4.44,
+            "breakdown_pct": 100.0
+          },
+          "signal_close": 2.700000047683716,
           "entry_open": null,
           "observed_sessions": [],
           "outcomes": {},
@@ -1015,44 +1080,44 @@
           "inverse_name": "元大台灣50反1",
           "daily_target": -1,
           "bear_score": 100.0,
-          "status": "confirmed",
+          "status": "no_chase",
           "constituent_count": 186,
           "evidence": {
             "coverage": 186,
-            "negative_breadth_pct": 98.9,
-            "median_change_pct": -8.03,
-            "breakdown_pct": 55.9
+            "negative_breadth_pct": 100.0,
+            "median_change_pct": -9.21,
+            "breakdown_pct": 87.6
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": 0.18,
-          "product_volume_ratio_20d": 1.42,
-          "no_chase": false
+          "product_session_change_pct": 3.22,
+          "product_opening_gap_pct": 3.85,
+          "product_volume_ratio_20d": 2.12,
+          "no_chase": true
         },
         {
           "group": "tw_nasdaq",
           "inverse_symbol": "00671R.TW",
           "inverse_name": "富邦NASDAQ反1",
           "daily_target": -1,
-          "bear_score": 0.0,
-          "status": "waiting",
+          "bear_score": 100.0,
+          "status": "confirmed",
           "constituent_count": 6,
           "evidence": {
             "coverage": 6,
-            "negative_breadth_pct": 0.0,
-            "median_change_pct": 0.8,
-            "breakdown_pct": 0.0
+            "negative_breadth_pct": 100.0,
+            "median_change_pct": -4.44,
+            "breakdown_pct": 100.0
           },
-          "product_session_change_pct": null,
-          "product_opening_gap_pct": -0.77,
-          "product_volume_ratio_20d": 0.64,
+          "product_session_change_pct": 0.37,
+          "product_opening_gap_pct": 3.07,
+          "product_volume_ratio_20d": 2.03,
           "no_chase": false
         }
       ],
       "summary": {
         "1": {
-          "samples": 19,
-          "win_rate_pct": 52.6,
-          "average_return_pct": -0.081
+          "samples": 20,
+          "win_rate_pct": 55.0,
+          "average_return_pct": 0.084
         },
         "2": {
           "samples": 19,
@@ -1065,9 +1130,9 @@
           "average_return_pct": 0.278
         },
         "5": {
-          "samples": 17,
-          "win_rate_pct": 41.2,
-          "average_return_pct": -0.072
+          "samples": 19,
+          "win_rate_pct": 47.4,
+          "average_return_pct": 0.903
         }
       }
     },
