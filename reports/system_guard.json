@@ -2,15 +2,15 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "critical",
   "status_label": "🔴 需要處理",
-  "checked_at": "2026-11-20T20:50:12+08:00",
+  "checked_at": "2026-11-20T20:55:57+08:00",
   "timezone": "Asia/Taipei",
-  "report_updated_at": null,
-  "report_age_minutes": null,
+  "report_updated_at": "2026-11-20 20:51:55",
+  "report_age_minutes": 4.0,
   "counts": {
-    "ok": 23,
-    "info": 10,
-    "warning": 3,
-    "critical": 3
+    "ok": 26,
+    "info": 11,
+    "warning": 2,
+    "critical": 1
   },
   "checks": [
     {
@@ -18,7 +18,7 @@
       "title": "歷史資料保存",
       "level": "ok",
       "label": "正常",
-      "detail": "封存容量 598.6 MB；可壓縮 0 份；未發現校驗錯誤",
+      "detail": "封存容量 598.7 MB；可壓縮 0 份；未發現校驗錯誤",
       "action": ""
     },
     {
@@ -40,18 +40,26 @@
     {
       "code": "report_freshness",
       "title": "股票資料更新",
-      "level": "critical",
-      "label": "異常",
-      "detail": "找不到可辨識的最新報表時間",
-      "action": "重新執行股票報告排程"
+      "level": "ok",
+      "label": "正常",
+      "detail": "最近更新距今 4 分鐘",
+      "action": ""
+    },
+    {
+      "code": "report_period_alignment",
+      "title": "晚報時段同步",
+      "level": "ok",
+      "label": "正常",
+      "detail": "20:00 後的最新固定報表已是 evening",
+      "action": ""
     },
     {
       "code": "report_delivery",
       "title": "V6 通知派發",
-      "level": "warning",
-      "label": "注意",
-      "detail": "股票報告 Telegram 已停用；ChatGPT 原對話送達狀態由原任務管理",
-      "action": "保留報表但停止標示為已派發；檢查資料新鮮度與 Telegram"
+      "level": "info",
+      "label": "資訊",
+      "detail": "本次是排程指定的靜默資料更新，未發送通知",
+      "action": ""
     },
     {
       "code": "fixed_delivery_morning",
@@ -80,10 +88,10 @@
     {
       "code": "report_consistency",
       "title": "三份報表一致性",
-      "level": "critical",
-      "label": "異常",
-      "detail": "latest、rankings 或 all_analysis 有檔案／時間缺失",
-      "action": "重新產生完整報表，禁止只補單一檔案"
+      "level": "ok",
+      "label": "正常",
+      "detail": "排行、完整分析與首頁報表時間一致",
+      "action": ""
     },
     {
       "code": "analysis_output",
@@ -122,7 +130,7 @@
       "title": "台股核心資料",
       "level": "ok",
       "label": "正常",
-      "detail": "價格 192、法人 189、信用 0（沿用最近完整收盤）",
+      "detail": "價格 192、法人 189、信用 188",
       "action": ""
     },
     {
@@ -138,7 +146,7 @@
       "title": "財務品質",
       "level": "ok",
       "label": "正常",
-      "detail": "已取得 0/0 檔公司",
+      "detail": "已取得 69/69 檔公司；另有 16 檔 ETF 不適用公司財報",
       "action": ""
     },
     {
@@ -162,8 +170,8 @@
       "title": "Tiingo 免費版覆蓋測試",
       "level": "info",
       "label": "資訊",
-      "detail": "尚未設定免費 API key；此為選用備援，不影響整體報告",
-      "action": "需要啟用時在 GitHub Actions Secrets 設定 TIINGO_API_KEY"
+      "detail": "免費版分批收集中，目前已嘗試 47 檔；尚未切換半套快取",
+      "action": "後續固定報告會自動續抓；只測涵蓋率，不影響正式排名與結算"
     },
     {
       "code": "us_sec_fundamentals",
@@ -221,7 +229,7 @@
       "detail": "台美股共 101 組事前樣本；5／45／60／126日依到期順序結算，正式V6未變更",
       "action": "",
       "cohort_count": 101,
-      "ledger_updated_at": "2026-11-20 20:27:58"
+      "ledger_updated_at": "2026-11-20 20:51:55"
     },
     {
       "code": "unified_evidence",
@@ -317,7 +325,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
+      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
       "action": ""
     },
     {
@@ -325,14 +333,11 @@
       "title": "股票三報產報檢查",
       "level": "warning",
       "label": "注意",
-      "detail": "最近執行 2026-11-20T20:50:08.862828+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
+      "detail": "最近執行 2026-11-20T20:50:01.894336+08:00；待驗收 0、停止重試 0；每日期時段最多 2 次",
       "action": "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
     }
   ],
   "action_required": [
-    "重新執行股票報告排程",
-    "保留報表但停止標示為已派發；檢查資料新鮮度與 Telegram",
-    "重新產生完整報表，禁止只補單一檔案",
     "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名",
     "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立",
     "股票 Telegram 已停用；驗收有效產報證據以避免重複補跑，產報不等於送達。ChatGPT 原對話送達狀態不可觀測；缺權限、耗盡重試或網頁程式錯誤仍保留阻塞紀錄"
