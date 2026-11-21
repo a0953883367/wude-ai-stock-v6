@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-21T11:11:32.912921+08:00",
+  "checked_at": "2026-11-21T19:29:54.017499+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1442,8 +1442,8 @@
     "2026-11-21:noon": {
       "period": "noon",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-11-21:evening": {
       "period": "evening",
@@ -2951,6 +2951,12 @@
       "reason": "current data requires silent refresh; no delivery receipt is created",
       "verified_at": "2026-11-21T11:11:25.139713+08:00",
       "report_updated_at": "2026-11-21 11:01:40"
+    },
+    "2026-11-21:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_primary_or_active_run",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -2967,8 +2973,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "invalid_free_us_data"
+  ],
+  "data_recovery_status": "waiting_primary_or_active_run",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
