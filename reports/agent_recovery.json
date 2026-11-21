@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-21T05:23:11.197384+08:00",
+  "checked_at": "2026-11-21T10:41:32.234795+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1436,8 +1436,8 @@
     "2026-11-21:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-11-21:noon": {
       "period": "noon",
@@ -1452,7 +1452,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-21:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -2940,8 +2946,14 @@
     },
     "2026-11-21:morning": {
       "period": "morning",
-      "attempts": [],
-      "status": "waiting_primary_or_active_run",
+      "attempts": [
+        {
+          "at": "2026-11-21T10:41:32.234795+08:00",
+          "guard_run_id": "44857203267",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
       "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
@@ -2962,7 +2974,7 @@
   "diagnosis": [
     "invalid_free_us_data"
   ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "ready_silent_refresh",
     "reason": "direction_receipt_missing_inside_forecast_window",
