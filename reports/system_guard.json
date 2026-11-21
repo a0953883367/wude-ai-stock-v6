@@ -2,14 +2,14 @@
   "system": "武得 AI 系統值班員 V1",
   "status": "critical",
   "status_label": "🔴 需要處理",
-  "checked_at": "2026-11-21T19:59:57+08:00",
+  "checked_at": "2026-11-21T20:34:57+08:00",
   "timezone": "Asia/Taipei",
   "report_updated_at": "2026-11-21 19:57:40",
-  "report_age_minutes": 2.3,
+  "report_age_minutes": 37.3,
   "counts": {
     "ok": 24,
     "info": 12,
-    "warning": 2,
+    "warning": 3,
     "critical": 1
   },
   "checks": [
@@ -42,8 +42,16 @@
       "title": "股票資料更新",
       "level": "ok",
       "label": "正常",
-      "detail": "週末休市；最近完成交易日 2026-11-20 已正確入帳，報表距今 0.0 小時",
+      "detail": "週末休市；最近完成交易日 2026-11-20 已正確入帳，報表距今 0.6 小時",
       "action": ""
+    },
+    {
+      "code": "report_period_alignment",
+      "title": "晚報時段同步",
+      "level": "warning",
+      "label": "注意",
+      "detail": "20:00 後最新報表仍是 noon",
+      "action": "等待晚報排程；通知不得把午報標示成 V6 晚報"
     },
     {
       "code": "report_delivery",
@@ -317,7 +325,7 @@
       "title": "舊本人版同步（非主 App）",
       "level": "info",
       "label": "資訊",
-      "detail": "舊入口最近一次同步成功；主 App 狀態另行判斷",
+      "detail": "本次未檢查舊入口；不影響主 App、Railway、報表或排名",
       "action": ""
     },
     {
@@ -331,6 +339,7 @@
   ],
   "action_required": [
     "先建立並驗證壓縮副本；未通過不得移除原檔",
+    "等待晚報排程；通知不得把午報標示成 V6 晚報",
     "檢查完成交易日、隔離紀錄、買點門檻與資料契約；只啟動影子診斷，不自動修改模型、權重或正式排名",
     "檢查對應行情授權與重新連線紀錄；另一市場、正式報表及排名維持獨立"
   ],
