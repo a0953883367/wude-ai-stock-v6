@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-22T20:00:13+00:00",
+  "generated_at": "2026-11-22T22:38:29+00:00",
   "status": "attention",
   "status_label": "Agent 執行需要注意",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-23T04:00:09.473556+08:00",
+    "checked_at": "2026-11-23T06:38:25.076281+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-23T04:00:06.851244+08:00",
+    "checked_at": "2026-11-23T06:38:23.098944+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1551,9 +1551,19 @@
       },
       "2026-11-23:morning": {
         "period": "morning",
-        "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "attempts": [
+          {
+            "at": "2026-11-23T06:38:15.603915+08:00",
+            "guard_run_id": "45078769688",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "reason": "retry missing fixed report generation inside protected window; Telegram disabled",
+        "diagnosis": [
+          "invalid_free_us_data",
+          "missing_fixed_generation"
+        ]
       },
       "2026-11-23:noon": {
         "period": "noon",
@@ -3115,7 +3125,7 @@
             "state": "dispatch_accepted"
           }
         ],
-        "status": "awaiting_verification",
+        "status": "waiting_primary_or_active_run",
         "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
@@ -3168,8 +3178,8 @@
           "reference",
           "research"
         ],
-        "files": 8,
-        "bytes": 179345,
+        "files": 9,
+        "bytes": 180315,
         "truncated": true,
         "cross_domain_reads": false
       },
@@ -3511,7 +3521,7 @@
   },
   "context_efficiency": {
     "status": "passed",
-    "average_reduction_pct": 36.33,
+    "average_reduction_pct": 36.34,
     "exact_provider_tokens": false,
     "dynamic_skill_loading": true,
     "dynamic_tool_schema_loading": true,
