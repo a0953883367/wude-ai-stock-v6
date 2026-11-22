@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-22T20:31:56.257641+08:00",
+  "checked_at": "2026-11-23T00:29:53.560151+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1486,9 +1486,33 @@
       "diagnosis": [
         "missing_fixed_generation"
       ]
+    },
+    "2026-11-23:morning": {
+      "period": "morning",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-23:noon": {
+      "period": "noon",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
+    },
+    "2026-11-23:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "waiting_window",
+      "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-23:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -1500,7 +1524,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-22 20:11:17",
+        "updated_at": "2026-11-22 20:33:30",
         "error": null
       }
     },
@@ -3038,6 +3062,18 @@
       "status": "verified_fresh",
       "verified_at": "2026-11-22T20:31:48.884928+08:00",
       "report_updated_at": "2026-11-22 20:11:17"
+    },
+    "2026-11-23:morning": {
+      "period": "morning",
+      "attempts": [
+        {
+          "at": "2026-11-23T00:29:53.560151+08:00",
+          "guard_run_id": "45044069907",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -3054,8 +3090,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "invalid_free_us_data"
+  ],
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
