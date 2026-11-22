@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-22T03:47:39.086215+08:00",
+  "checked_at": "2026-11-22T08:31:58.135471+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1463,8 +1463,8 @@
     "2026-11-22:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-11-22:noon": {
       "period": "noon",
@@ -1479,7 +1479,13 @@
       "reason": "primary delivery grace / future period"
     }
   },
-  "next_actions": [],
+  "next_actions": [
+    {
+      "incident_key": "2026-11-22:morning",
+      "period": "morning",
+      "kind": "data_refresh"
+    }
+  ],
   "web_probe": {
     "ok": true,
     "endpoints": {
@@ -2994,10 +3000,17 @@
     },
     "2026-11-22:morning": {
       "period": "morning",
-      "attempts": [],
-      "status": "verified_fresh",
+      "attempts": [
+        {
+          "at": "2026-11-22T08:31:58.135471+08:00",
+          "guard_run_id": "44967002411",
+          "state": "reserved"
+        }
+      ],
+      "status": "reserved",
       "verified_at": "2026-11-22T03:47:32.192969+08:00",
-      "report_updated_at": "2026-11-22 02:18:23"
+      "report_updated_at": "2026-11-22 02:18:23",
+      "reason": "current data requires silent refresh; no delivery receipt is created"
     }
   },
   "permission_probe": {
@@ -3014,8 +3027,10 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [],
-  "data_recovery_status": "no_required_data_fault_detected",
+  "diagnosis": [
+    "invalid_free_us_data"
+  ],
+  "data_recovery_status": "ready_silent_refresh",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
