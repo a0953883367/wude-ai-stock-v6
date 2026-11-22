@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-21T19:47:43+00:00",
+  "generated_at": "2026-11-22T00:32:11+00:00",
   "status": "attention",
   "status_label": "Agent 執行需要注意",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-22T03:47:39.916725+08:00",
+    "checked_at": "2026-11-22T08:32:07.964952+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-22T03:47:39.086215+08:00",
+    "checked_at": "2026-11-22T08:32:05.709693+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1525,8 +1525,8 @@
       "2026-11-22:morning": {
         "period": "morning",
         "attempts": [],
-        "status": "waiting_window",
-        "reason": "primary delivery grace / future period"
+        "status": "expired",
+        "reason": "no valid receipt; expired reports must not be sent"
       },
       "2026-11-22:noon": {
         "period": "noon",
@@ -3038,10 +3038,17 @@
       },
       "2026-11-22:morning": {
         "period": "morning",
-        "attempts": [],
-        "status": "verified_fresh",
+        "attempts": [
+          {
+            "at": "2026-11-22T08:31:58.135471+08:00",
+            "guard_run_id": "44967002411",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
         "verified_at": "2026-11-22T03:47:32.192969+08:00",
-        "report_updated_at": "2026-11-22 02:18:23"
+        "report_updated_at": "2026-11-22 02:18:23",
+        "reason": "current data requires silent refresh; no delivery receipt is created"
       }
     },
     "us_direction_verification": {
@@ -3094,7 +3101,7 @@
           "research"
         ],
         "files": 9,
-        "bytes": 199668,
+        "bytes": 199731,
         "truncated": true,
         "cross_domain_reads": false
       },
