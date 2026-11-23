@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-23T11:51:37.973713+08:00",
+  "checked_at": "2026-11-23T22:31:06.779586+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1506,14 +1506,14 @@
     "2026-11-23:noon": {
       "period": "noon",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     },
     "2026-11-23:evening": {
       "period": "evening",
       "attempts": [],
-      "status": "waiting_window",
-      "reason": "primary delivery grace / future period"
+      "status": "expired",
+      "reason": "no valid receipt; expired reports must not be sent"
     }
   },
   "next_actions": [],
@@ -1528,7 +1528,7 @@
       "json": {
         "ok": true,
         "read_attempts": 1,
-        "updated_at": "2026-11-23 06:40:18",
+        "updated_at": "2026-11-23 22:03:19",
         "error": null
       }
     },
@@ -3083,6 +3083,13 @@
       ],
       "status": "waiting_primary_or_active_run",
       "reason": "current data requires silent refresh; no delivery receipt is created"
+    },
+    "2026-11-23:evening": {
+      "period": "evening",
+      "attempts": [],
+      "status": "verified_fresh",
+      "verified_at": "2026-11-23T22:31:06.779586+08:00",
+      "report_updated_at": "2026-11-23 22:03:19"
     }
   },
   "permission_probe": {
@@ -3099,11 +3106,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "invalid_free_us_data",
-    "report_freshness"
-  ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
