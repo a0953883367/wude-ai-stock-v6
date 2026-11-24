@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-25 04:08:33",
+  "updated_at": "2026-11-25 05:10:26",
   "status": "critical",
   "mode": "completed_session_observer_only",
   "current": {
@@ -19,12 +19,12 @@
       "detail": "2026-11-24 應增加但仍為 60 天；連續 4 次"
     },
     "US": {
-      "status": "warning",
-      "last_session_date": "2026-11-23",
+      "status": "critical",
+      "last_session_date": "2026-11-24",
       "last_completed_days": 60,
       "last_progress_at": "2026-11-21 10:43:44",
-      "stalled_sessions": 1,
-      "detail": "2026-11-23 應增加但仍為 60 天；連續 1 次"
+      "stalled_sessions": 2,
+      "detail": "2026-11-24 應增加但仍為 60 天；連續 2 次"
     }
   },
   "weekly_baseline": {
@@ -99,6 +99,14 @@
       "level": "warning",
       "created_at": "2026-11-24 05:17:19",
       "message": "⚠️ 60日驗證進度提醒：美股已完成 2026-11-23，但驗證仍為 60 天；連續 1 個應前進交易日沒有增加。只通報檢查，不改模型、權重或正式排名。"
+    },
+    {
+      "id": "stall:US:2026-11-24:critical:2",
+      "type": "validation_stall",
+      "market": "US",
+      "level": "critical",
+      "created_at": "2026-11-25 05:10:26",
+      "message": "🔴 60日驗證進度提醒：美股已完成 2026-11-24，但驗證仍為 60 天；連續 2 個應前進交易日沒有增加。只通報檢查，不改模型、權重或正式排名。"
     }
   ],
   "policy": {
@@ -132,8 +140,8 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-11-23",
-      "last_validation_days": 58,
+      "last_session_date": "2026-11-24",
+      "last_validation_days": 59,
       "last_trade_signal_samples": 9,
       "direction_samples": 517,
       "stagnant_sessions": 0,
