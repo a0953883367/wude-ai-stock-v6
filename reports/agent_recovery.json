@@ -1,6 +1,6 @@
 {
   "schema": "wude.stock_agent_recovery.v1",
-  "checked_at": "2026-11-25T06:21:41.521364+08:00",
+  "checked_at": "2026-11-25T07:34:17.842213+08:00",
   "executor": "existing system-guard workflow / stock_shadow maintenance",
   "delivery_scope": {
     "channel": "telegram_v6",
@@ -1551,7 +1551,7 @@
           "state": "dispatch_accepted"
         }
       ],
-      "status": "awaiting_verification",
+      "status": "generated_suppressed",
       "diagnosis": [
         "missing_fixed_generation",
         "missing_report",
@@ -1559,7 +1559,7 @@
         "report_freshness",
         "us_data_mode_mismatch"
       ],
-      "reason": "retry missing fixed report generation inside protected window; Telegram disabled"
+      "reason": "stock report generated; Telegram disabled; ChatGPT delivery not observable"
     },
     "2026-11-25:noon": {
       "period": "noon",
@@ -1576,7 +1576,7 @@
   },
   "next_actions": [],
   "web_probe": {
-    "ok": false,
+    "ok": true,
     "endpoints": {
       "html": {
         "ok": true,
@@ -1584,9 +1584,10 @@
         "error": null
       },
       "json": {
-        "ok": false,
-        "read_attempts": 2,
-        "error": "JSONDecodeError"
+        "ok": true,
+        "read_attempts": 1,
+        "updated_at": "2026-11-25 06:23:31",
+        "error": null
       }
     },
     "scope": "HTTP / JSON / required DOM nodes; not browser JavaScript execution"
@@ -3182,8 +3183,10 @@
     "2026-11-25:morning": {
       "period": "morning",
       "attempts": [],
-      "status": "waiting_primary_or_active_run",
-      "reason": "current data requires silent refresh; no delivery receipt is created"
+      "status": "verified_fresh",
+      "reason": "current data requires silent refresh; no delivery receipt is created",
+      "verified_at": "2026-11-25T07:34:17.842213+08:00",
+      "report_updated_at": "2026-11-25 06:23:31"
     }
   },
   "permission_probe": {
@@ -3200,13 +3203,8 @@
     "inference_verified": false,
     "reason": "model listing only; no paid inference performed"
   },
-  "diagnosis": [
-    "missing_report",
-    "report_consistency",
-    "report_freshness",
-    "us_data_mode_mismatch"
-  ],
-  "data_recovery_status": "waiting_primary_or_active_run",
+  "diagnosis": [],
+  "data_recovery_status": "no_required_data_fault_detected",
   "us_direction_verification": {
     "status": "verified_current",
     "reason": "immutable_eligible_snapshot_matches_official_session",
@@ -3226,7 +3224,6 @@
     "paid_model_executor": false
   },
   "blockers": [
-    "網頁兩次讀取仍失敗；瀏覽器程式錯誤需已驗收的修復執行器",
     "一般程式自動修復尚未接通；此執行器不能生成或合併未測試程式"
   ],
   "limits": {
