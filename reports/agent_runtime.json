@@ -1,7 +1,7 @@
 {
   "schema": "wude.central_agent_runtime.v1",
   "version": "CENTRAL-AGENT-RUNTIME-V3",
-  "generated_at": "2026-11-26T21:56:06+00:00",
+  "generated_at": "2026-11-26T22:29:00+00:00",
   "status": "attention",
   "status_label": "Agent 執行需要注意",
   "control_version": "CENTRAL-AGENT-CONTROL-V1",
@@ -26,7 +26,7 @@
       "pr_number": 297,
       "url": "https://github.com/a0953883367/wude-ai-stock-v6/pull/297"
     },
-    "checked_at": "2026-11-26T21:54:11.604024+08:00",
+    "checked_at": "2026-11-27T06:28:57.352531+08:00",
     "scope": "exact approved DOM-null repair only; unknown bugs require review",
     "allowed_paths": [
       "decision_hub.js"
@@ -56,7 +56,7 @@
       "note": "Telegram disabled; silent generation prevents retries; ChatGPT delivery is not observable"
     },
     "executor": "existing system-guard workflow / stock_shadow maintenance",
-    "checked_at": "2026-11-26T21:54:10.478052+08:00",
+    "checked_at": "2026-11-27T06:28:55.063066+08:00",
     "capabilities": {
       "actions_read_confirmed": true,
       "protected_briefing_retry": true,
@@ -1674,6 +1674,33 @@
           "missing_fixed_generation",
           "report_freshness"
         ]
+      },
+      "2026-11-27:morning": {
+        "period": "morning",
+        "attempts": [
+          {
+            "at": "2026-11-27T06:28:47.798156+08:00",
+            "guard_run_id": "45904968384",
+            "state": "dispatch_accepted"
+          }
+        ],
+        "status": "awaiting_verification",
+        "diagnosis": [
+          "missing_fixed_generation"
+        ],
+        "reason": "retry missing fixed report generation inside protected window; Telegram disabled"
+      },
+      "2026-11-27:noon": {
+        "period": "noon",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
+      },
+      "2026-11-27:evening": {
+        "period": "evening",
+        "attempts": [],
+        "status": "waiting_window",
+        "reason": "primary delivery grace / future period"
       }
     },
     "data_incidents": {
@@ -3310,6 +3337,13 @@
         "reason": "current data requires silent refresh; no delivery receipt is created",
         "verified_at": "2026-11-26T21:54:01.002036+08:00",
         "report_updated_at": "2026-11-26 21:27:35"
+      },
+      "2026-11-27:morning": {
+        "period": "morning",
+        "attempts": [],
+        "status": "verified_fresh",
+        "verified_at": "2026-11-27T06:28:47.798156+08:00",
+        "report_updated_at": "2026-11-27 04:37:11"
       }
     },
     "us_direction_verification": {
