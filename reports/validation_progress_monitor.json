@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-28 04:26:20",
+  "updated_at": "2026-11-28 08:10:39",
   "status": "critical",
   "mode": "completed_session_observer_only",
   "current": {
@@ -20,19 +20,19 @@
     },
     "US": {
       "status": "critical",
-      "last_session_date": "2026-11-25",
+      "last_session_date": "2026-11-27",
       "last_completed_days": 60,
       "last_progress_at": "2026-11-21 10:43:44",
-      "stalled_sessions": 3,
-      "detail": "2026-11-25 應增加但仍為 60 天；連續 3 次"
+      "stalled_sessions": 4,
+      "detail": "2026-11-27 應增加但仍為 60 天；連續 4 次"
     }
   },
   "weekly_baseline": {
-    "date": "2026-11-21",
+    "date": "2026-11-28",
     "trading_days_collected": 60,
-    "eligible_samples": 4312
+    "eligible_samples": 4703
   },
-  "last_weekly_summary_date": "2026-11-21",
+  "last_weekly_summary_date": "2026-11-28",
   "pending_notifications": [
     {
       "id": "weekly:2026-10-17",
@@ -107,6 +107,13 @@
       "level": "critical",
       "created_at": "2026-11-25 05:10:26",
       "message": "🔴 60日驗證進度提醒：美股已完成 2026-11-24，但驗證仍為 60 天；連續 2 個應前進交易日沒有增加。只通報檢查，不改模型、權重或正式排名。"
+    },
+    {
+      "id": "weekly:2026-11-28",
+      "type": "validation_weekly_summary",
+      "level": "info",
+      "created_at": "2026-11-28 08:10:39",
+      "message": "📅 60日驗證週報：本週增加 0 個真實交易日、391 筆共識樣本；目前 60/60，還差 0 個交易日。"
     }
   ],
   "policy": {
@@ -140,8 +147,8 @@
     },
     "US": {
       "status": "ok",
-      "last_session_date": "2026-11-25",
-      "last_validation_days": 60,
+      "last_session_date": "2026-11-27",
+      "last_validation_days": 61,
       "last_trade_signal_samples": 9,
       "direction_samples": 517,
       "stagnant_sessions": 0,
